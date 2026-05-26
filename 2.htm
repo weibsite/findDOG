@@ -105,11 +105,11 @@
         <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
 
-    <!-- UI 左側排版列表 (加入 EVA 網格測試按鈕) -->
+    <!-- UI 左側排版列表 -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
     
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">測試中</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
@@ -422,7 +422,10 @@
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             drawProjectBounds(); 
 
+            // 迷霧圖層與 EVA 高亮圖層設定 (確保高於迷霧)
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
+            map.createPane('evaPane'); map.getPane('evaPane').style.zIndex = 460; map.getPane('evaPane').style.pointerEvents = 'none';
+            
             initFogSystem();
             setInterval(renderMap, 15000);
             
@@ -513,7 +516,6 @@
                 targetRouteUid = myUid;
                 let testMessage = "🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。";
 
-                // 管理員專屬：尋找資料量最多的使用者做為測試展現
                 if (isAdmin) {
                     let maxLen = 0;
                     for (const uid in allUsersData) {
@@ -542,7 +544,7 @@
             requestFogRender();
         });
 
-        // ================= EVA 網格測試模式 (使徒雷達) =================
+        // ================= EVA 網格模式 (精準涵蓋率與時間) =================
         function offsetLatLng(lat, lng, dNorth, dEast) {
             const rEarth = 6378137;
             const pi = Math.PI;
@@ -567,7 +569,7 @@
             if (evaGridLayer) map.removeLayer(evaGridLayer);
             evaGridLayer = L.layerGroup().addTo(map);
 
-            const R = 1000; // 半徑 1 公里
+            const R = 300; // 半徑 300 公尺
             const proj = PROJECTS[currentProjectKey];
             const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
             const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
@@ -577,64 +579,90 @@
             const dx = w;
             const dy = h * 0.75;
 
-            // 擴散 5x5 網格
-            for (let q = -4; q <= 4; q++) {
-                for (let r = -4; r <= 4; r++) {
+            // 擴散 13x13 網格覆蓋搜尋區域
+            for (let q = -6; q <= 6; q++) {
+                for (let r = -6; r <= 6; r++) {
                     const x = dx * (q + r/2.0);
                     const y = dy * r;
                     const cLatLng = offsetLatLng(centerLat, centerLng, y, x);
 
-                    let pointsInHex = 0;
-                    let maxTs = 0;
+                    // 1. 產生 19 個高密度測試點 (測量該網格內的未探索死角)
+                    let testPoints = [ cLatLng ];
+                    for(let i=0; i<6; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 100*Math.sin(i*Math.PI/3), 100*Math.cos(i*Math.PI/3)));
+                    for(let i=0; i<12; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 200*Math.sin(i*Math.PI/6), 200*Math.cos(i*Math.PI/6)));
 
-                    // 計算該網格區域的探索狀態
+                    // 2. 收集附近的探索點，大幅減少迴圈次數
+                    let nearPts = [];
                     for (const uid in allUsersData) {
                         const u = allUsersData[uid];
                         if ((u.project || "阿妹") === currentProjectKey && u.history) {
                             for (const pt of u.history) {
-                                // 快速距離比對，0.9倍半徑大約等同於六邊形面積
-                                const dist = getDistance(cLatLng[0], cLatLng[1], pt.lat, pt.lng);
-                                if (dist < R * 0.9) { 
-                                    pointsInHex++;
-                                    if (pt.timestamp > maxTs) maxTs = pt.timestamp;
+                                if (Math.abs(pt.lat - cLatLng[0]) < 0.005 && Math.abs(pt.lng - cLatLng[1]) < 0.005) {
+                                    nearPts.push(pt);
                                 }
                             }
                         }
                     }
 
+                    // 3. 檢查 19 個測試點是否被使用者迷霧半徑 (125m) 清除
+                    let coveredCount = 0;
+                    let hexMaxTs = 0;
+                    for(let tp of testPoints) {
+                        for(let pt of nearPts) {
+                            if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 125) {
+                                coveredCount++;
+                                if (pt.timestamp > hexMaxTs) hexMaxTs = pt.timestamp;
+                                break; // 該測試點已被照亮，換下一個
+                            }
+                        }
+                    }
+
+                    // 繪製螢光綠網格，放置於專屬 evaPane，不受迷霧遮擋
                     const hexPoints = getHexPoints(cLatLng[0], cLatLng[1], R);
                     L.polygon(hexPoints, {
                         color: '#39ff14', 
                         weight: 2,
                         fillColor: '#39ff14',
-                        fillOpacity: 0.1,
-                        dashArray: '10, 10'
+                        fillOpacity: 0.05,
+                        dashArray: '5, 5',
+                        pane: 'evaPane'
                     }).addTo(evaGridLayer);
 
                     let textHtml = "";
-                    if (pointsInHex > 0) {
-                        const density = Math.min(100, Math.round((pointsInHex / 200) * 100)); // 粗估 200點 達到 100% 密集
-                        const diff = Math.max(0, Date.now() - maxTs);
+                    if (coveredCount > 0) {
+                        const density = Math.min(100, Math.round((coveredCount / 19) * 100));
+                        const diff = Math.max(0, Date.now() - hexMaxTs);
                         const hrs = Math.floor(diff / 3600000);
                         const mins = Math.floor((diff % 3600000) / 60000);
-                        const timeStr = hrs > 0 ? `${hrs}H${mins}M前` : `${mins}M前`;
+                        
+                        let timeStr = "";
+                        if (hrs > 0) timeStr += `${hrs}時`;
+                        timeStr += `${mins}分前`;
+
+                        // 判斷完成度顏色
+                        let densityColor = '#39ff14'; // 預設螢光綠
+                        if (density <= 50) {
+                            densityColor = '#ef4444'; // 紅色
+                        } else if (density <= 75) {
+                            densityColor = '#f97316'; // 橘色
+                        }
 
                         textHtml = `
-                            <div class="text-center font-bold text-[#39ff14]" style="text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;">
-                                <div class="text-lg tracking-wider">${density}%</div>
-                                <div class="text-[10px] whitespace-nowrap">${timeStr}</div>
+                            <div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;">
+                                <div class="text-xl tracking-wider">${density}%</div>
+                                <div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div>
                             </div>
                         `;
                     } else {
                         textHtml = `
-                            <div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 10px;">
+                            <div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 11px;">
                                 未探索
                             </div>
                         `;
                     }
 
-                    const icon = L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [60, 40], iconAnchor: [30, 20] });
-                    L.marker(cLatLng, { icon: icon, zIndexOffset: -100 }).addTo(evaGridLayer);
+                    const icon = L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] });
+                    L.marker(cLatLng, { icon: icon, zIndexOffset: -100, pane: 'evaPane' }).addTo(evaGridLayer);
                 }
             }
         }
@@ -642,13 +670,12 @@
         evaGridBtn.addEventListener('click', () => {
             isEvaMode = !isEvaMode;
             if (isEvaMode) {
-                evaGridBtn.innerText = "❌ 關閉EVA";
+                evaGridBtn.innerText = "❌ 關閉顯示";
                 evaGridBtn.style.backgroundColor = "#ef4444";
                 evaGridBtn.style.color = "white";
                 drawEvaGrid();
-                showModal("🟢 EVA 測試模式已啟動！\n全地圖已展開使徒雷達網格，幫助判斷區域搜索密度。");
             } else {
-                evaGridBtn.innerText = "測試中";
+                evaGridBtn.innerText = "完成度";
                 evaGridBtn.style.backgroundColor = "#f59e0b";
                 evaGridBtn.style.color = "#1a202c";
                 if (evaGridLayer) {
