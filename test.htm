@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>尋狗地圖 -  線上部署版</title>
+    <title>尋狗地圖 - 線上部署版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -46,7 +46,6 @@
         </div>
     </div>
 
-    <!-- 各式 Modal (對話框) -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
     <div id="input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
@@ -70,7 +69,6 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
-    <!-- 管理員面板 -->
     <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
@@ -81,7 +79,6 @@
         <button id="set-ws-btn" class="pixel-btn w-full p-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
     </div>
 
-    <!-- UI 按鈕 -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
@@ -104,11 +101,17 @@
             },
             "烏泥": {
                 name: "找烏泥",
-                // 設定烏泥的預設搜尋範圍 (您可以在此修改經緯度)
+                // 已更新為最新的烏泥座標範圍
                 bounds: [ [25.058413, 121.489253], [25.058575, 121.489066] ] 
             }
         };
-        let currentProjectKey = "阿妹";
+        
+        // 讀取上次使用者選擇的目標，如果沒有紀錄或名稱不符合則預設為 "阿妹"
+        let currentProjectKey = localStorage.getItem('dogMap_currentProject');
+        if (!currentProjectKey || !PROJECTS[currentProjectKey]) {
+            currentProjectKey = "阿妹";
+        }
+        
         let allAnnouncements = { "阿妹": "目前無最新公告。", "烏泥": "目前無最新公告。" };
         let boundsRectangle = null;
         let centerMarker = null;
@@ -287,10 +290,10 @@
                         if (typeof parsed === 'object' && parsed !== null) {
                             allAnnouncements = { ...allAnnouncements, ...parsed };
                         } else {
-                            allAnnouncements["阿妹"] = response.data.announcements.current; // 兼容舊版單一字串
+                            allAnnouncements["阿妹"] = response.data.announcements.current; 
                         }
                     } catch(e) {
-                        allAnnouncements["阿妹"] = response.data.announcements.current; // 兼容舊版單一字串
+                        allAnnouncements["阿妹"] = response.data.announcements.current; 
                     }
                     
                     localStorage.setItem('dogMap_cachedSightings', JSON.stringify(allSightings));
@@ -343,7 +346,9 @@
                 }
             });
 
-            drawProjectBounds(); // 繪製當前專案的範圍與中心點
+            // 確保一開始進入時按鈕顯示為記錄的正確目標
+            switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
+            drawProjectBounds(); 
 
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             initFogSystem();
@@ -364,12 +369,15 @@
             connectWebSocket(); checkLocalSetupAndStart();
         }
 
-        // ================= 目標切換邏輯 =================
+        // ================= 目標切換邏輯 (含記錄 localStorage) =================
         switchProjectBtn.addEventListener('click', () => {
             const keys = Object.keys(PROJECTS);
             let idx = keys.indexOf(currentProjectKey);
             idx = (idx + 1) % keys.length;
             currentProjectKey = keys[idx];
+            
+            // 將最新的目標儲存到瀏覽器記憶中
+            localStorage.setItem('dogMap_currentProject', currentProjectKey);
             
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             
@@ -482,7 +490,7 @@
             const container = document.getElementById('sightings-list-container');
             container.innerHTML = '';
             
-            // 過濾出屬於當前專案的點位 (若無 project 標籤，則預設歸類為阿妹以向下相容)
+            // 過濾出屬於當前專案的點位
             const ids = Object.keys(allSightings).filter(id => {
                 const p = allSightings[id].project || "阿妹";
                 return p === currentProjectKey;
@@ -563,7 +571,6 @@
             showInputModal(`📢 更新「${PROJECTS[currentProjectKey].name}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
                 allAnnouncements[currentProjectKey] = text; // 只更新當前專案的公告
                 if(isSystemReady) {
-                    // 利用 JSON stringify 將所有專案的公告打包送給伺服器的單一字串欄位中
                     ws.send(JSON.stringify({ type: "update_announcement", data: JSON.stringify(allAnnouncements) })); 
                     showModal("✅ 公告更新指令已送出！"); 
                 }
