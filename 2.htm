@@ -52,6 +52,24 @@
     <div id="confirm-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
 
+    <!-- 個人設定 Modal -->
+    <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center">
+            <h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3>
+            <p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p>
+            <input type="text" id="profile-name" class="pixel-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱 (限中英文、數字、底線)" maxlength="15">
+            <div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black">
+                <label class="text-sm font-bold text-gray-800">代表色:</label>
+                <input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer">
+                <input type="text" id="profile-hex" class="pixel-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7">
+            </div>
+            <div class="flex gap-2">
+                <button id="profile-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="profile-save-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button>
+            </div>
+        </div>
+    </div>
+
     <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">📍 選擇定位方式</h3><p class="text-gray-700 mb-6 text-sm font-bold">請選擇如何指定此出沒點的地理位置：</p><div class="flex flex-col gap-3"><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white">🖱️ 在地圖上點擊選點</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white">✍️ 手動輸入經緯度座標</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div></div>
     <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">✍️ 輸入座標</h3><p class="text-left text-gray-700 mb-3 text-xs leading-relaxed font-bold">支援格式：<br>• 度分秒 (DMS)：<br><span class="text-blue-600">23°45'10.4"N 120°23'40.0"E</span><br>• 十進位 (Decimal)：<br><span class="text-blue-600">23.75288, 120.39444</span></p><input type="text" id="coord-input-value" class="pixel-input w-full p-3 text-sm mb-4 text-center text-gray-900 font-mono" placeholder="貼上或輸入座標..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
@@ -60,7 +78,12 @@
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold" placeholder="路線名稱"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
 
-    <div id="status-toast" class="absolute top-4 right-4 z-[2000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text">斷線中...</span></div>
+    <!-- UI 右上狀態列：加入個人檔案設定入口 -->
+    <div id="status-toast" class="absolute top-4 right-4 z-[2000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2">
+        <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
+        <span id="toast-text" class="flex-1">斷線中...</span>
+        <div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div>
+    </div>
     
     <div id="announcement-panel" class="absolute top-[60px] right-4 z-[2000] pixel-panel p-3 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300">
         <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-xs sm:text-sm flex justify-between items-center">
@@ -82,9 +105,11 @@
         <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
 
-    <!-- UI 按鈕左側排版 (加入我的軌跡按鈕) -->
+    <!-- UI 左側排版列表 (加入 EVA 網格測試按鈕) -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
-    <button id="my-route-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
+    
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">測試中</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
@@ -99,9 +124,8 @@
         </div>
     </div>
 
-    <!-- 精簡且移至最右下角的版權 (可點擊發信) -->
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
-        <a href="mailto:mi000731@gmail.com" class="text-gray-900 hover:text-blue-700 no-underline">版權所有，桃園八德阿偉</a>
+        <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-gray-900 hover:text-blue-700 no-underline">版權所有，桃園八德阿偉</a>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -173,6 +197,11 @@
 
         // 貪食蛇我的軌跡模式變數
         let isMyRouteMode = false;
+        let targetRouteUid = null; // 管理員測試用變數
+
+        // EVA 網格模式變數
+        let isEvaMode = false;
+        let evaGridLayer = null;
 
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx;
         let fogRenderPending = false; const FOG_SCALE = 0.08;
@@ -187,9 +216,11 @@
         const errorMsg = document.getElementById('error-msg');
         const statusToast = document.getElementById('status-toast');
         const toastText = document.getElementById('toast-text');
+        const profileEditTrigger = document.getElementById('profile-edit-trigger');
         const locateBtn = document.getElementById('locate-btn');
         const spectatorBtn = document.getElementById('spectator-btn');
         const myRouteBtn = document.getElementById('my-route-btn');
+        const evaGridBtn = document.getElementById('eva-grid-btn');
         const switchProjectBtn = document.getElementById('switch-project-btn');
         const customModal = document.getElementById('custom-modal');
         const customModalText = document.getElementById('custom-modal-text');
@@ -341,6 +372,7 @@
                     document.getElementById('announcement-text').innerHTML = escapeHTML(allAnnouncements[currentProjectKey] || "目前無最新公告。").replace(/\n/g, '<br>');
                     
                     renderMap(); renderSightings(); renderRoutes();
+                    if(isEvaMode) drawEvaGrid();
                     if(!manageSightingsModal.classList.contains('hidden')) renderManageSightingsList();
                     if(!manageRoutesModal.classList.contains('hidden')) renderManageRoutesList();
                 }
@@ -358,7 +390,6 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            // 判斷中心點圖示 (烏泥為貓，其餘為狗)
             const iconSymbol = currentProjectKey === '烏泥' ? '🐈' : '🐕';
 
             const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
@@ -422,23 +453,209 @@
             document.getElementById('step-counter-value').innerText = steps.toLocaleString();
         }
 
-        // ================= 我的軌跡模式 (貪食蛇) =================
+        // ================= 個人資料設定 (Profile Edit) =================
+        const profileColorPicker = document.getElementById('profile-color');
+        const profileHexInput = document.getElementById('profile-hex');
+        
+        profileColorPicker.addEventListener('input', e => profileHexInput.value = e.target.value.toUpperCase());
+        profileHexInput.addEventListener('input', e => {
+            let val = e.target.value;
+            if (val.startsWith('#') && (val.length === 4 || val.length === 7)) {
+                profileColorPicker.value = val;
+            }
+        });
+
+        profileEditTrigger.addEventListener('click', () => {
+            document.getElementById('profile-name').value = currentUserName;
+            profileColorPicker.value = dbUserColor;
+            profileHexInput.value = dbUserColor.toUpperCase();
+            document.getElementById('profile-error').classList.add('hidden');
+            document.getElementById('profile-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('profile-cancel-btn').addEventListener('click', () => {
+            document.getElementById('profile-modal').classList.add('hidden');
+        });
+
+        document.getElementById('profile-save-btn').addEventListener('click', () => {
+            const name = document.getElementById('profile-name').value.trim();
+            const hex = profileColorPicker.value;
+            const nameRegex = /^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/;
+            
+            if (!nameRegex.test(name)) {
+                document.getElementById('profile-error').classList.remove('hidden');
+                return;
+            }
+
+            currentUserName = name;
+            dbUserColor = hex;
+            localStorage.setItem('dogMap_userName', currentUserName);
+            localStorage.setItem('dogMap_userColor', dbUserColor);
+            profileEditTrigger.style.backgroundColor = dbUserColor;
+            
+            if (allUsersData[myUid]) {
+                allUsersData[myUid].userName = currentUserName;
+                allUsersData[myUid].color = dbUserColor;
+            }
+            
+            saveLocationToServer();
+            renderMap();
+            document.getElementById('profile-modal').classList.add('hidden');
+            showModal("✅ 個人資料已成功更新！");
+        });
+
+        // ================= 我的軌跡模式 (貪食蛇 / 尋找最多紀錄使用者) =================
         myRouteBtn.addEventListener('click', () => {
             if (isSpectatorMode) { showModal("觀看模式下無法使用此功能！"); return; }
             
             isMyRouteMode = !isMyRouteMode;
             if (isMyRouteMode) {
+                targetRouteUid = myUid;
+                let testMessage = "🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。";
+
+                // 管理員專屬：尋找資料量最多的使用者做為測試展現
+                if (isAdmin) {
+                    let maxLen = 0;
+                    for (const uid in allUsersData) {
+                        const u = allUsersData[uid];
+                        if ((u.project || "阿妹") === currentProjectKey && u.history && u.history.length > maxLen) {
+                            maxLen = u.history.length;
+                            targetRouteUid = uid;
+                        }
+                    }
+                    if (targetRouteUid !== myUid) {
+                        testMessage = `👑 [管理員模式]\n已自動鎖定探索資料最豐富的使用者「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡測試呈現！`;
+                    }
+                }
+
                 myRouteBtn.innerText = "❌ 退出軌跡";
                 myRouteBtn.style.backgroundColor = "#ef4444";
                 myRouteBtn.style.color = "white";
-                showModal("🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。\n且您已探索過的區域將『100%全亮』顯示！");
+                showModal(testMessage);
             } else {
+                targetRouteUid = null;
                 myRouteBtn.innerText = "🐍 我的軌跡";
                 myRouteBtn.style.backgroundColor = "#a855f7"; 
                 myRouteBtn.style.color = "white";
             }
             renderMap();
             requestFogRender();
+        });
+
+        // ================= EVA 網格測試模式 (使徒雷達) =================
+        function offsetLatLng(lat, lng, dNorth, dEast) {
+            const rEarth = 6378137;
+            const pi = Math.PI;
+            const dLat = (dNorth / rEarth) * (180 / pi);
+            const dLng = (dEast / (rEarth * Math.cos(lat * pi / 180))) * (180 / pi);
+            return [lat + dLat, lng + dLng];
+        }
+
+        function getHexPoints(centerLat, centerLng, R) {
+            const points = [];
+            for(let i=0; i<6; i++) {
+                const angle_deg = 60 * i - 30;
+                const angle_rad = Math.PI / 180 * angle_deg;
+                const dEast = R * Math.cos(angle_rad);
+                const dNorth = R * Math.sin(angle_rad);
+                points.push(offsetLatLng(centerLat, centerLng, dNorth, dEast));
+            }
+            return points;
+        }
+
+        function drawEvaGrid() {
+            if (evaGridLayer) map.removeLayer(evaGridLayer);
+            evaGridLayer = L.layerGroup().addTo(map);
+
+            const R = 1000; // 半徑 1 公里
+            const proj = PROJECTS[currentProjectKey];
+            const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
+            const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
+
+            const w = Math.sqrt(3) * R;
+            const h = 2 * R;
+            const dx = w;
+            const dy = h * 0.75;
+
+            // 擴散 5x5 網格
+            for (let q = -4; q <= 4; q++) {
+                for (let r = -4; r <= 4; r++) {
+                    const x = dx * (q + r/2.0);
+                    const y = dy * r;
+                    const cLatLng = offsetLatLng(centerLat, centerLng, y, x);
+
+                    let pointsInHex = 0;
+                    let maxTs = 0;
+
+                    // 計算該網格區域的探索狀態
+                    for (const uid in allUsersData) {
+                        const u = allUsersData[uid];
+                        if ((u.project || "阿妹") === currentProjectKey && u.history) {
+                            for (const pt of u.history) {
+                                // 快速距離比對，0.9倍半徑大約等同於六邊形面積
+                                const dist = getDistance(cLatLng[0], cLatLng[1], pt.lat, pt.lng);
+                                if (dist < R * 0.9) { 
+                                    pointsInHex++;
+                                    if (pt.timestamp > maxTs) maxTs = pt.timestamp;
+                                }
+                            }
+                        }
+                    }
+
+                    const hexPoints = getHexPoints(cLatLng[0], cLatLng[1], R);
+                    L.polygon(hexPoints, {
+                        color: '#39ff14', 
+                        weight: 2,
+                        fillColor: '#39ff14',
+                        fillOpacity: 0.1,
+                        dashArray: '10, 10'
+                    }).addTo(evaGridLayer);
+
+                    let textHtml = "";
+                    if (pointsInHex > 0) {
+                        const density = Math.min(100, Math.round((pointsInHex / 200) * 100)); // 粗估 200點 達到 100% 密集
+                        const diff = Math.max(0, Date.now() - maxTs);
+                        const hrs = Math.floor(diff / 3600000);
+                        const mins = Math.floor((diff % 3600000) / 60000);
+                        const timeStr = hrs > 0 ? `${hrs}H${mins}M前` : `${mins}M前`;
+
+                        textHtml = `
+                            <div class="text-center font-bold text-[#39ff14]" style="text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;">
+                                <div class="text-lg tracking-wider">${density}%</div>
+                                <div class="text-[10px] whitespace-nowrap">${timeStr}</div>
+                            </div>
+                        `;
+                    } else {
+                        textHtml = `
+                            <div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 10px;">
+                                未探索
+                            </div>
+                        `;
+                    }
+
+                    const icon = L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [60, 40], iconAnchor: [30, 20] });
+                    L.marker(cLatLng, { icon: icon, zIndexOffset: -100 }).addTo(evaGridLayer);
+                }
+            }
+        }
+
+        evaGridBtn.addEventListener('click', () => {
+            isEvaMode = !isEvaMode;
+            if (isEvaMode) {
+                evaGridBtn.innerText = "❌ 關閉EVA";
+                evaGridBtn.style.backgroundColor = "#ef4444";
+                evaGridBtn.style.color = "white";
+                drawEvaGrid();
+                showModal("🟢 EVA 測試模式已啟動！\n全地圖已展開使徒雷達網格，幫助判斷區域搜索密度。");
+            } else {
+                evaGridBtn.innerText = "測試中";
+                evaGridBtn.style.backgroundColor = "#f59e0b";
+                evaGridBtn.style.color = "#1a202c";
+                if (evaGridLayer) {
+                    map.removeLayer(evaGridLayer);
+                    evaGridLayer = null;
+                }
+            }
         });
 
         // ================= 目標切換邏輯 =================
@@ -456,6 +673,7 @@
             renderMap(); 
             renderSightings();
             renderRoutes();
+            if(isEvaMode) drawEvaGrid();
             requestFogRender(); 
             
             document.getElementById('announcement-text').innerHTML = escapeHTML(allAnnouncements[currentProjectKey] || "目前無最新公告。").replace(/\n/g, '<br>');
@@ -506,7 +724,7 @@
             });
         });
 
-        // ================= 增設與管理出沒點系統 (加入 Token 驗證) =================
+        // ================= 增設與管理出沒點系統 =================
         document.getElementById('add-sighting-btn').addEventListener('click', () => {
             if(!isAdmin) return;
             showInputModal(`📍 新增「${PROJECTS[currentProjectKey].name}」出沒點`, "請詳細描述此事件點...", "", (desc) => {
@@ -641,11 +859,11 @@
 
                 const icon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #fef08a; border-color: #1a202c; animation: blink-pixel 2s infinite alternate;">⚠️ ${safeShortTitle}</div><div style="font-size: 28px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐾</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                 const marker = L.marker([data.lat, data.lng], { icon, zIndexOffset: 3000 }).addTo(sightingsLayer);
-                marker.bindPopup(`<div class="p-2 w-48 font-bold text-gray-900"><div class="border-b-2 border-black pb-1 mb-2 text-sm text-blue-600">🕒 時間：${dateStr}</div><div class="text-sm mb-4 whitespace-pre-wrap leading-relaxed">${safeDesc}</div><a href="${gmapsUrl}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white shadow-[4px_4px_0px_#1a202c] no-underline">🚀 開啟 Google 導航</a></div>`, { className: 'pixel-popup', closeButton: true, offset: [0, -30] });
+                
+                marker.bindPopup(`<div class="p-2 w-48 font-bold text-gray-900"><div class="border-b-2 border-black pb-1 mb-2 text-sm text-blue-600">🕒 時間：${dateStr}</div><div class="text-sm mb-4 whitespace-pre-wrap leading-relaxed">${safeDesc}</div><a href="${gmapsUrl}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white shadow-[4px_4px_0px_#1a202c] no-underline" style="color: white !important;">🚀 開啟 Google 導航</a></div>`, { className: 'pixel-popup', closeButton: true, offset: [0, -30] });
             });
         }
 
-        // ================= 專案獨立公告更新 (加入 Token 驗證) =================
         document.getElementById('update-announce-btn').addEventListener('click', () => {
             if(!isAdmin) return;
             let currentRawText = allAnnouncements[currentProjectKey] || "";
@@ -658,7 +876,7 @@
             });
         });
 
-        // ================= 路線繪製與管理系統 (加入 Token 驗證) =================
+        // ================= 路線繪製與管理系統 =================
         document.getElementById('route-weight').addEventListener('input', (e) => { document.getElementById('route-weight-val').innerText = e.target.value; updateDrawingRoutePreview(); });
         document.getElementById('route-color').addEventListener('input', updateDrawingRoutePreview);
 
@@ -723,7 +941,6 @@
 
         function renderManageRoutesList() {
             routesListContainer.innerHTML = ''; 
-            
             const ids = Object.keys(allRoutes).filter(id => {
                 const p = allRoutes[id].project || "阿妹";
                 return p === currentProjectKey;
@@ -792,12 +1009,11 @@
                 tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
-                    if (isMyRouteMode && uid !== myUid) return; // 我的軌跡模式下，隱藏別人的迷霧孔洞
+                    if (isMyRouteMode && uid !== targetRouteUid) return; // 軌跡模式下，隱藏所選目標以外的人
                     
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        // 在「非我的軌跡模式」且超過一小時的舊軌跡，才會以 0.4 半透明挖除迷霧
                         if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { 
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
@@ -808,12 +1024,11 @@
                 tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
-                    if (isMyRouteMode && uid !== myUid) return; // 我的軌跡模式下，隱藏別人的迷霧孔洞
+                    if (isMyRouteMode && uid !== targetRouteUid) return; 
                     
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        // 新的點位，或者是「我的軌跡模式」，全部以 1.0 (100%) 透明度挖除，保持全亮！
                         if (now - point.timestamp < ONE_HOUR || isMyRouteMode) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
@@ -827,13 +1042,13 @@
             const maxFadeTime = 30 * 60 * 1000; 
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
-                if (isMyRouteMode && uid !== myUid) return; // 我的模式下隱藏其他人的歷史方塊
+                if (isMyRouteMode && uid !== targetRouteUid) return; 
                 
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6');
                 
-                if (isMyRouteMode && isSelf) return; // 已經用粗貪食蛇線條畫出來了，方塊不重複繪製
+                if (isMyRouteMode && uid === targetRouteUid) return; // 已經用粗貪食蛇線條畫出來了，方塊不重複繪製
 
                 userData.history.forEach((point, index) => {
                     const age = Math.max(0, now - point.timestamp);
@@ -865,6 +1080,7 @@
                     renderMap(); 
                     updateStepsCounter(); 
                 }
+                document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
                 finishUIReveal(); toastText.innerText = "自動定位..."; startLocationServices(true);
             } else { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; }
         }
@@ -873,7 +1089,9 @@
             e.preventDefault(); errorMsg.classList.add('hidden'); masterStartBtn.innerText = "連線中...";
             let name = nameInput.value.trim().replace(/[<>]/g, ''); if (!name) name = `P${Math.floor(100 + Math.random() * 900)}`;
             currentUserName = name; dbUserColor = generateRandomColor();
-            localStorage.setItem('dogMap_userName', currentUserName); localStorage.setItem('dogMap_userColor', dbUserColor); startLocationServices(false);
+            localStorage.setItem('dogMap_userName', currentUserName); localStorage.setItem('dogMap_userColor', dbUserColor); 
+            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            startLocationServices(false);
         });
 
         // ================= UI 按鈕邏輯綁定 =================
@@ -883,7 +1101,7 @@
             if (navMarker) { map.removeLayer(navMarker); navMarker = null; navPinBtn.innerText = "📍 導航標記"; navPinBtn.style.backgroundColor = "#f59e0b"; navPinBtn.style.color = "#1a202c"; } 
             else {
                 navMarker = L.marker(map.getCenter(), { draggable: true, zIndexOffset: 10000, icon: L.divIcon({ className: 'custom-div-icon', html: `<div style="font-size: 36px; filter: drop-shadow(2px 2px 0px #1a202c); margin-top: -36px; margin-left: -18px; cursor: grab;">🎯</div>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(map);
-                const updatePopup = () => { const pos = navMarker.getLatLng(); navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs text-gray-800 border-b-2 border-black pb-1">拖曳標靶調整位置</p><a href="https://www.google.com/maps/dir/?api=1&destination=${pos.lat},${pos.lng}" target="_blank" class="pixel-btn px-4 py-2 mt-2 text-sm inline-block no-underline bg-blue-500 text-white border-black w-full shadow-[4px_4px_0px_#1a202c]">🚀 導航至此</a></div>`, { className: 'pixel-popup', closeButton: false, offset: [0, -40] }).openPopup(); };
+                const updatePopup = () => { const pos = navMarker.getLatLng(); navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs text-gray-800 border-b-2 border-black pb-1">拖曳標靶調整位置</p><a href="https://www.google.com/maps/dir/?api=1&destination=${pos.lat},${pos.lng}" target="_blank" class="pixel-btn px-4 py-2 mt-2 text-sm inline-block no-underline bg-blue-500 text-white border-black w-full shadow-[4px_4px_0px_#1a202c]" style="color: white !important;">🚀 導航至此</a></div>`, { className: 'pixel-popup', closeButton: false, offset: [0, -40] }).openPopup(); };
                 navMarker.on('dragend', updatePopup); updatePopup();
                 navPinBtn.innerText = "❌ 移除標記"; navPinBtn.style.backgroundColor = "#ef4444"; navPinBtn.style.color = "white";
             }
@@ -897,13 +1115,13 @@
                 const newPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
                 localHistory.push(newPoint); lastSavedPos = newPoint;
                 localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
-                allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+                allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
                 updateStepsCounter(); 
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer();
                 resetForceUploadBtn(); showModal("✅ 強制打卡成功！");
             }, (err) => { resetForceUploadBtn(); handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         });
-        function resetForceUploadBtn() { forceUploadBtn.innerText = "📤 強制打卡"; forceUploadBtn.style.backgroundColor = "#f59e0b"; }
+        function resetForceUploadBtn() { forceUploadBtn.innerText = "📤 強制打卡"; forceUploadBtn.style.backgroundColor = ""; }
 
         spectatorBtn.addEventListener('click', () => {
             isSpectatorMode = !isSpectatorMode;
@@ -913,6 +1131,7 @@
                 
                 if (isMyRouteMode) {
                     isMyRouteMode = false;
+                    targetRouteUid = null;
                     myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#f59e0b"; myRouteBtn.style.color = "#1a202c";
                 }
                 
@@ -940,7 +1159,7 @@
         function finishUIReveal() {
             startupOverlay.style.opacity = '0'; setTimeout(() => { startupOverlay.style.display = 'none'; }, 300);
             statusToast.classList.remove('hidden'); locateBtn.classList.remove('hidden'); spectatorBtn.classList.remove('hidden'); toggleFogBtn.classList.remove('hidden'); navPinBtn.classList.remove('hidden'); forceUploadBtn.classList.remove('hidden'); switchProjectBtn.classList.remove('hidden');
-            myRouteBtn.classList.remove('hidden');
+            myRouteBtn.classList.remove('hidden'); evaGridBtn.classList.remove('hidden');
             toastText.innerText = "位置同步成功";
         }
 
@@ -958,7 +1177,7 @@
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
-            allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+            allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
             
             updateStepsCounter(); 
             
@@ -976,18 +1195,34 @@
             
             // 🐍【我的軌跡貪食蛇模式】
             if (isMyRouteMode) {
-                if (localHistory && localHistory.length > 0) {
-                    const latlngs = localHistory.map(p => [p.lat, p.lng]);
-                    // 畫出不受時間限制的貪食蛇粗線條
-                    L.polyline(latlngs, { color: dbUserColor || '#ef4444', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(markersLayer);
+                const targetData = allUsersData[targetRouteUid];
+                let historyToDraw = [];
+                let rColor = '#ef4444';
+                let rName = '使用者';
+
+                if (targetRouteUid === myUid) {
+                    historyToDraw = localHistory;
+                    rColor = dbUserColor;
+                    rName = currentUserName;
+                } else if (targetData && targetData.history) {
+                    historyToDraw = targetData.history;
+                    rColor = targetData.color || '#ef4444';
+                    rName = targetData.userName;
+                }
+
+                if (historyToDraw && historyToDraw.length > 0) {
+                    const latlngs = historyToDraw.map(p => [p.lat, p.lng]);
+                    L.polyline(latlngs, { color: rColor, weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(markersLayer);
                     
-                    const lastPoint = localHistory[localHistory.length - 1];
-                    const safeUserName = escapeHTML(currentUserName);
-                    const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel"></div>`;
-                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel" style="color: #ef4444;">${safeUserName}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+                    const lastPoint = historyToDraw[historyToDraw.length - 1];
+                    const safeUserName = escapeHTML(rName);
+                    const tagSuffix = (targetRouteUid !== myUid) ? ' (觀察中)' : '';
+                    const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${rColor}; animation-duration: 2s;"></div>`;
+                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel" style="color: ${rColor}; border-color: ${rColor};">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                     L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: 5000 }).addTo(markersLayer);
                 }
-                toastText.innerText = `軌跡模式中`;
+                
+                toastText.innerText = "軌跡模式中";
                 requestFogRender();
                 return; // 直接返回，隱藏其他所有人
             }
@@ -1001,28 +1236,24 @@
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 
                 const isSelf = (uid === myUid); 
-                
-                // 【修改】以 lastUpdate 判斷是否為在線活躍人數 (5分鐘內有更新)
                 const lastTime = userData.lastUpdate || userData.history[userData.history.length - 1].timestamp;
                 if (now - lastTime < ACTIVE_THRESHOLD) {
-                    if (!(isSpectatorMode && isSelf)) {
-                        onlineUserCount++;
-                    }
+                    if (!(isSpectatorMode && isSelf)) onlineUserCount++;
                 }
 
                 if (isSpectatorMode && isSelf) return;
                 const lastPoint = userData.history[userData.history.length - 1];
                 if (now - lastPoint.timestamp < ONE_HOUR) { 
-                    const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? '#ef4444' : (userData.color || '#3b82f6'));
-                    const avatarHtml = isSelf ? `<div class="user-avatar-pixel blinking-red-pixel"></div>` : `<div class="user-avatar-pixel" style="background-color: ${safeRenderColor};"></div>`;
-                    const nameColor = isSelf ? 'color: #ef4444;' : 'color: #1a202c;';
+                    const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? dbUserColor : (userData.color || '#3b82f6'));
+                    const avatarHtml = isSelf ? `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${safeRenderColor};"></div>` : `<div class="user-avatar-pixel" style="background-color: ${safeRenderColor};"></div>`;
+                    const nameColor = isSelf ? `color: ${safeRenderColor};` : 'color: #1a202c;';
                     const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel" style="${nameColor}">${safeUserName}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                     L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: isSelf ? 5000 : 1000 }).addTo(markersLayer);
                 }
             });
-            if (toastText.innerText.includes("同步成功") || toastText.innerText.includes("線上") || toastText.innerText.includes("觀看")) {
-                toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上探索: ${onlineUserCount} 人`;
-            }
+
+            // 狀態列恢復顯示線上探索人數
+            toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上探索: ${onlineUserCount} 人`;
             requestFogRender();
         }
 
@@ -1034,7 +1265,7 @@
         function handleGeoError(error, isAutoStart) {
             if (isSpectatorMode) return; 
             masterStartBtn.innerText = "START [重新授權]";
-            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); myRouteBtn.classList.add('hidden'); }
+            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); myRouteBtn.classList.add('hidden'); evaGridBtn.classList.add('hidden'); }
             let msg = "無定位權限。請至手機設定中確認。", isCopyable = false;
             if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; isCopyable = true; } 
             else if (error.code === 2) msg = "無法獲取位置，請確認 GPS 已開啟。"; 
