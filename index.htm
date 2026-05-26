@@ -62,14 +62,7 @@
 
     <div id="status-toast" class="absolute top-4 right-4 z-[2000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text">斷線中...</span></div>
     
-    <!-- 步數計數器 -->
-    <div id="step-panel" class="absolute top-16 right-4 z-[2000] pixel-panel p-2 text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c]">
-        👣 累積步數<br>
-        <span id="step-counter-value" class="text-xl text-blue-700 font-black tracking-wider">0</span>
-    </div>
-
-    <!-- 公告面板往下移，避免與步數重疊 -->
-    <div id="announcement-panel" class="absolute top-[120px] right-4 z-[2000] pixel-panel p-3 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300">
+    <div id="announcement-panel" class="absolute top-[60px] right-4 z-[2000] pixel-panel p-3 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300">
         <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-xs sm:text-sm flex justify-between items-center">
             <span>📢 最新公告</span>
             <button id="toggle-announce-panel-btn" class="ml-2 px-1 py-0.5 border-2 border-black bg-yellow-400 hover:bg-yellow-500 active:translate-x-[1px] active:translate-y-[1px] text-black font-extrabold cursor-pointer text-[10px]" style="box-shadow: 2px 2px 0px #1a202c; line-height: 1;">➖</button>
@@ -77,7 +70,7 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
-    <!-- 管理員面板 -->
+    <!-- 管理員面板 (加入退出面板按鈕) -->
     <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
@@ -85,18 +78,31 @@
         <button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
         <button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
         <button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
-        <button id="set-ws-btn" class="pixel-btn w-full p-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
+        <button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
+        <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
 
-    <!-- UI 按鈕 -->
+    <!-- UI 按鈕左側排版 (加入我的軌跡按鈕) -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
+    <button id="my-route-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
-    <div class="absolute bottom-24 right-4 sm:bottom-20 sm:right-4 z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">版權所有，桃園八德阿偉製作<br><a href="mailto:mi000731@gmail.com" class="text-blue-700 hover:text-blue-900 hover:underline">mi000731@gmail.com</a><div class="mt-1 pt-1 border-t-2 border-gray-300 text-gray-400 cursor-pointer hover:text-red-500 text-[10px]" id="admin-login-trigger">管理員登入</div></div>
+    <!-- 步數面板獨立放置 -->
+    <div class="absolute bottom-10 right-4 z-[2000] flex gap-2 items-end pointer-events-none">
+        <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
+            👣 累積步數<br>
+            <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+        </div>
+    </div>
+
+    <!-- 精簡且移至最右下角的版權 (可點擊發信) -->
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
+        <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-gray-900 hover:text-blue-700 no-underline">版權所有，桃園八德阿偉</a>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -141,7 +147,6 @@
         if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('dogMap_UID', myUid); }
         let currentUserName = ""; let dbUserColor = ""; 
         
-        // 取得管理員權限憑證
         let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
         let adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
@@ -166,6 +171,9 @@
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
         let isFogVisible = true; let navMarker = null;
 
+        // 貪食蛇我的軌跡模式變數
+        let isMyRouteMode = false;
+
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx;
         let fogRenderPending = false; const FOG_SCALE = 0.08;
 
@@ -181,6 +189,7 @@
         const toastText = document.getElementById('toast-text');
         const locateBtn = document.getElementById('locate-btn');
         const spectatorBtn = document.getElementById('spectator-btn');
+        const myRouteBtn = document.getElementById('my-route-btn');
         const switchProjectBtn = document.getElementById('switch-project-btn');
         const customModal = document.getElementById('custom-modal');
         const customModalText = document.getElementById('custom-modal-text');
@@ -188,7 +197,7 @@
         const toggleFogBtn = document.getElementById('toggle-fog-btn');
         const navPinBtn = document.getElementById('nav-pin-btn');
         const forceUploadBtn = document.getElementById('force-upload-btn');
-        const adminLoginTrigger = document.getElementById('admin-login-trigger');
+        const stepPanel = document.getElementById('step-panel');
         const adminPanel = document.getElementById('admin-panel');
 
         const manageSightingsModal = document.getElementById('manage-sightings-modal');
@@ -298,22 +307,20 @@
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
                 
-                // 【新增安全機制】：攔截登入驗證結果
                 if (response.type === 'admin_login_result') {
                     document.getElementById('admin-submit-btn').innerText = "登入";
                     if (response.success) {
                         isAdmin = true;
-                        adminToken = response.token; // 保存伺服器核發的安全憑證
+                        adminToken = response.token; 
                         sessionStorage.setItem('dogMap_isAdmin', 'true');
                         sessionStorage.setItem('dogMap_adminToken', adminToken);
                         document.getElementById('admin-login-modal').classList.add('hidden');
-                        adminLoginTrigger.classList.add('hidden');
                         adminPanel.classList.remove('hidden');
                         showModal("登入成功！您現在擁有伺服器管理權限。");
                     } else {
                         showModal("密碼錯誤，請重試！");
                     }
-                    return; // 登入結果不需要執行下方的 sync 同步
+                    return; 
                 }
                 
                 if (response.type === 'sync') {
@@ -351,7 +358,10 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+            // 判斷中心點圖示 (烏泥為貓，其餘為狗)
+            const iconSymbol = currentProjectKey === '烏泥' ? '🐈' : '🐕';
+
+            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
 
             boundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.2, dashArray: '5, 10'}).addTo(map)
@@ -385,7 +395,7 @@
             initFogSystem();
             setInterval(renderMap, 15000);
             
-            if (isAdmin) { adminLoginTrigger.classList.add('hidden'); adminPanel.classList.remove('hidden'); }
+            if (isAdmin) { adminPanel.classList.remove('hidden'); }
             
             const cachedAnnounce = localStorage.getItem('dogMap_cachedAnnounce');
             if (cachedAnnounce) {
@@ -412,6 +422,26 @@
             document.getElementById('step-counter-value').innerText = steps.toLocaleString();
         }
 
+        // ================= 我的軌跡模式 (貪食蛇) =================
+        myRouteBtn.addEventListener('click', () => {
+            if (isSpectatorMode) { showModal("觀看模式下無法使用此功能！"); return; }
+            
+            isMyRouteMode = !isMyRouteMode;
+            if (isMyRouteMode) {
+                myRouteBtn.innerText = "❌ 退出軌跡";
+                myRouteBtn.style.backgroundColor = "#ef4444";
+                myRouteBtn.style.color = "white";
+                showModal("🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。\n且您已探索過的區域將『100%全亮』顯示！");
+            } else {
+                myRouteBtn.innerText = "🐍 我的軌跡";
+                myRouteBtn.style.backgroundColor = "#a855f7"; 
+                myRouteBtn.style.color = "white";
+            }
+            renderMap();
+            requestFogRender();
+        });
+
+        // ================= 目標切換邏輯 =================
         switchProjectBtn.addEventListener('click', () => {
             const keys = Object.keys(PROJECTS);
             let idx = keys.indexOf(currentProjectKey);
@@ -443,19 +473,26 @@
             else { announcementText.classList.remove('hidden'); toggleAnnouncePanelBtn.innerText = '➖'; }
         }
 
-        // ================= 【安全升級】登入系統 =================
-        adminLoginTrigger.addEventListener('click', () => { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-pwd-input').value = ""; });
+        // ================= 【安全升級】隱藏版登入與退出 =================
+        stepPanel.addEventListener('click', () => { 
+            document.getElementById('admin-login-modal').classList.remove('hidden'); 
+            document.getElementById('admin-pwd-input').value = ""; 
+        });
+        
         document.getElementById('admin-cancel-btn').addEventListener('click', () => { document.getElementById('admin-login-modal').classList.add('hidden'); });
         
         document.getElementById('admin-submit-btn').addEventListener('click', () => {
             const pwd = document.getElementById('admin-pwd-input').value.trim();
             if(isSystemReady) {
-                // 將密碼傳送給伺服器驗證，不再依賴前端運算
                 ws.send(JSON.stringify({ type: "admin_login", data: { password: pwd } }));
                 document.getElementById('admin-submit-btn').innerText = "驗證中...";
             } else {
                 showModal("⚠️ 系統未連線，無法驗證管理員身份！");
             }
+        });
+
+        document.getElementById('close-admin-btn').addEventListener('click', () => {
+            adminPanel.classList.add('hidden');
         });
 
         document.getElementById('set-ws-btn').addEventListener('click', () => {
@@ -604,7 +641,9 @@
 
                 const icon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #fef08a; border-color: #1a202c; animation: blink-pixel 2s infinite alternate;">⚠️ ${safeShortTitle}</div><div style="font-size: 28px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐾</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                 const marker = L.marker([data.lat, data.lng], { icon, zIndexOffset: 3000 }).addTo(sightingsLayer);
-                marker.bindPopup(`<div class="p-2 w-48 font-bold text-gray-900"><div class="border-b-2 border-black pb-1 mb-2 text-sm text-blue-600">🕒 時間：${dateStr}</div><div class="text-sm mb-4 whitespace-pre-wrap leading-relaxed">${safeDesc}</div><a href="${gmapsUrl}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white shadow-[4px_4px_0px_#1a202c] no-underline">🚀 開啟 Google 導航</a></div>`, { className: 'pixel-popup', closeButton: true, offset: [0, -30] });
+                
+                // 【修改】為「開啟 Google 導航」按鈕加上 style="color: white !important;"
+                marker.bindPopup(`<div class="p-2 w-48 font-bold text-gray-900"><div class="border-b-2 border-black pb-1 mb-2 text-sm text-blue-600">🕒 時間：${dateStr}</div><div class="text-sm mb-4 whitespace-pre-wrap leading-relaxed">${safeDesc}</div><a href="${gmapsUrl}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white shadow-[4px_4px_0px_#1a202c] no-underline" style="color: white !important;">🚀 開啟 Google 導航</a></div>`, { className: 'pixel-popup', closeButton: true, offset: [0, -30] });
             });
         }
 
@@ -748,17 +787,20 @@
             lowResCanvas.width = w; lowResCanvas.height = h; tempCanvas.width = w; tempCanvas.height = h;
             lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h);
             const center = map.getCenter(); const metersPerPixel = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI/180))) / Math.pow(2, map.getZoom() + 8);
-            const exploreRadius = 75; const radiusPx = (exploreRadius / metersPerPixel) * FOG_SCALE;
+            const exploreRadius = 125; const radiusPx = (exploreRadius / metersPerPixel) * FOG_SCALE;
             const now = Date.now(); const ONE_HOUR = 60 * 60 * 1000;
 
             if (radiusPx >= 1) {
                 tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
+                    if (isMyRouteMode && uid !== myUid) return; // 我的軌跡模式下，隱藏別人的迷霧孔洞
+                    
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        if (now - point.timestamp >= ONE_HOUR) {
+                        // 在「非我的軌跡模式」且超過一小時的舊軌跡，才會以 0.4 半透明挖除迷霧
+                        if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { 
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
                         }
@@ -768,10 +810,13 @@
                 tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
+                    if (isMyRouteMode && uid !== myUid) return; // 我的軌跡模式下，隱藏別人的迷霧孔洞
+                    
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        if (now - point.timestamp < ONE_HOUR) {
+                        // 新的點位，或者是「我的軌跡模式」，全部以 1.0 (100%) 透明度挖除，保持全亮！
+                        if (now - point.timestamp < ONE_HOUR || isMyRouteMode) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
                         }
@@ -784,9 +829,14 @@
             const maxFadeTime = 30 * 60 * 1000; 
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
+                if (isMyRouteMode && uid !== myUid) return; // 我的模式下隱藏其他人的歷史方塊
+                
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6');
+                
+                if (isMyRouteMode && isSelf) return; // 已經用粗貪食蛇線條畫出來了，方塊不重複繪製
+
                 userData.history.forEach((point, index) => {
                     const age = Math.max(0, now - point.timestamp);
                     const isLatest = index === userData.history.length - 1;
@@ -835,12 +885,16 @@
             if (navMarker) { map.removeLayer(navMarker); navMarker = null; navPinBtn.innerText = "📍 導航標記"; navPinBtn.style.backgroundColor = "#f59e0b"; navPinBtn.style.color = "#1a202c"; } 
             else {
                 navMarker = L.marker(map.getCenter(), { draggable: true, zIndexOffset: 10000, icon: L.divIcon({ className: 'custom-div-icon', html: `<div style="font-size: 36px; filter: drop-shadow(2px 2px 0px #1a202c); margin-top: -36px; margin-left: -18px; cursor: grab;">🎯</div>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(map);
-                const updatePopup = () => { const pos = navMarker.getLatLng(); navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs text-gray-800 border-b-2 border-black pb-1">拖曳標靶調整位置</p><a href="https://www.google.com/maps/dir/?api=1&destination=${pos.lat},${pos.lng}" target="_blank" class="pixel-btn px-4 py-2 mt-2 text-sm inline-block no-underline bg-blue-500 text-white border-black w-full shadow-[4px_4px_0px_#1a202c]">🚀 導航至此</a></div>`, { className: 'pixel-popup', closeButton: false, offset: [0, -40] }).openPopup(); };
+                
+                // 【修改】為「導航至此」按鈕加上 style="color: white !important;"
+                const updatePopup = () => { const pos = navMarker.getLatLng(); navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs text-gray-800 border-b-2 border-black pb-1">拖曳標靶調整位置</p><a href="https://www.google.com/maps/dir/?api=1&destination=${pos.lat},${pos.lng}" target="_blank" class="pixel-btn px-4 py-2 mt-2 text-sm inline-block no-underline bg-blue-500 text-white border-black w-full shadow-[4px_4px_0px_#1a202c]" style="color: white !important;">🚀 導航至此</a></div>`, { className: 'pixel-popup', closeButton: false, offset: [0, -40] }).openPopup(); };
+                
                 navMarker.on('dragend', updatePopup); updatePopup();
                 navPinBtn.innerText = "❌ 移除標記"; navPinBtn.style.backgroundColor = "#ef4444"; navPinBtn.style.color = "white";
             }
         });
 
+        // 【修改】強制打卡錯誤修復：寫入時加上 project: currentProjectKey，並且重置按鈕顏色
         forceUploadBtn.addEventListener('click', () => {
             if (isSpectatorMode) { showModal("觀看模式下無法上傳位置！"); return; }
             forceUploadBtn.innerText = "⏳ 獲取中..."; forceUploadBtn.style.backgroundColor = "#9ca3af";
@@ -849,19 +903,25 @@
                 const newPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
                 localHistory.push(newPoint); lastSavedPos = newPoint;
                 localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
-                allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+                // 這裡必須補上 project: currentProjectKey，否則打卡後人物會消失
+                allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
                 updateStepsCounter(); 
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer();
                 resetForceUploadBtn(); showModal("✅ 強制打卡成功！");
             }, (err) => { resetForceUploadBtn(); handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
         });
-        function resetForceUploadBtn() { forceUploadBtn.innerText = "📤 強制打卡"; forceUploadBtn.style.backgroundColor = "#f59e0b"; }
+        function resetForceUploadBtn() { forceUploadBtn.innerText = "📤 強制打卡"; forceUploadBtn.style.backgroundColor = ""; }
 
         spectatorBtn.addEventListener('click', () => {
             isSpectatorMode = !isSpectatorMode;
             if (isSpectatorMode) {
                 spectatorBtn.innerText = "退出觀看"; spectatorBtn.style.backgroundColor = "#ef4444"; spectatorBtn.style.color = "white";
                 if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+                
+                if (isMyRouteMode) {
+                    isMyRouteMode = false;
+                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#f59e0b"; myRouteBtn.style.color = "#1a202c";
+                }
                 
                 const proj = PROJECTS[currentProjectKey];
                 const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
@@ -886,7 +946,9 @@
 
         function finishUIReveal() {
             startupOverlay.style.opacity = '0'; setTimeout(() => { startupOverlay.style.display = 'none'; }, 300);
-            statusToast.classList.remove('hidden'); locateBtn.classList.remove('hidden'); spectatorBtn.classList.remove('hidden'); toggleFogBtn.classList.remove('hidden'); navPinBtn.classList.remove('hidden'); forceUploadBtn.classList.remove('hidden'); switchProjectBtn.classList.remove('hidden'); toastText.innerText = "位置同步成功";
+            statusToast.classList.remove('hidden'); locateBtn.classList.remove('hidden'); spectatorBtn.classList.remove('hidden'); toggleFogBtn.classList.remove('hidden'); navPinBtn.classList.remove('hidden'); forceUploadBtn.classList.remove('hidden'); switchProjectBtn.classList.remove('hidden');
+            myRouteBtn.classList.remove('hidden');
+            toastText.innerText = "位置同步成功";
         }
 
         function handleValidPosition(lat, lng, timestamp) {
@@ -903,7 +965,7 @@
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
-            allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+            allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
             
             updateStepsCounter(); 
             
@@ -918,13 +980,44 @@
         function renderMap() {
             if (!markersLayer) return;
             markersLayer.clearLayers(); 
+            
+            // 🐍【我的軌跡貪食蛇模式】
+            if (isMyRouteMode) {
+                if (localHistory && localHistory.length > 0) {
+                    const latlngs = localHistory.map(p => [p.lat, p.lng]);
+                    // 畫出不受時間限制的貪食蛇粗線條
+                    L.polyline(latlngs, { color: dbUserColor || '#ef4444', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(markersLayer);
+                    
+                    const lastPoint = localHistory[localHistory.length - 1];
+                    const safeUserName = escapeHTML(currentUserName);
+                    const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel"></div>`;
+                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel" style="color: #ef4444;">${safeUserName}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+                    L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: 5000 }).addTo(markersLayer);
+                }
+                toastText.innerText = `軌跡模式中`;
+                requestFogRender();
+                return; // 直接返回，隱藏其他所有人
+            }
+
+            // 正常的多人顯示模式
             let onlineUserCount = 0; const ONE_HOUR = 60 * 60 * 1000; const now = Date.now();
+            const ACTIVE_THRESHOLD = 5 * 60 * 1000; // 5分鐘判定為在線上探索
 
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
-                const isSelf = (uid === myUid); if (isSpectatorMode && isSelf) return;
-                onlineUserCount++;
+                
+                const isSelf = (uid === myUid); 
+                
+                // 【修改】以 lastUpdate 判斷是否為在線活躍人數 (5分鐘內有更新)
+                const lastTime = userData.lastUpdate || userData.history[userData.history.length - 1].timestamp;
+                if (now - lastTime < ACTIVE_THRESHOLD) {
+                    if (!(isSpectatorMode && isSelf)) {
+                        onlineUserCount++;
+                    }
+                }
+
+                if (isSpectatorMode && isSelf) return;
                 const lastPoint = userData.history[userData.history.length - 1];
                 if (now - lastPoint.timestamp < ONE_HOUR) { 
                     const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? '#ef4444' : (userData.color || '#3b82f6'));
@@ -935,7 +1028,7 @@
                 }
             });
             if (toastText.innerText.includes("同步成功") || toastText.innerText.includes("線上") || toastText.innerText.includes("觀看")) {
-                toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上: ${onlineUserCount} 人`;
+                toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上探索: ${onlineUserCount} 人`;
             }
             requestFogRender();
         }
@@ -948,7 +1041,7 @@
         function handleGeoError(error, isAutoStart) {
             if (isSpectatorMode) return; 
             masterStartBtn.innerText = "START [重新授權]";
-            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); }
+            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); myRouteBtn.classList.add('hidden'); }
             let msg = "無定位權限。請至手機設定中確認。", isCopyable = false;
             if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; isCopyable = true; } 
             else if (error.code === 2) msg = "無法獲取位置，請確認 GPS 已開啟。"; 
