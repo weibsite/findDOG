@@ -46,6 +46,7 @@
         </div>
     </div>
 
+    <!-- 各式 Modal (對話框) -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
     <div id="input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
@@ -61,7 +62,14 @@
 
     <div id="status-toast" class="absolute top-4 right-4 z-[2000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text">斷線中...</span></div>
     
-    <div id="announcement-panel" class="absolute top-16 right-4 z-[2000] pixel-panel p-3 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300">
+    <!-- 步數計數器 -->
+    <div id="step-panel" class="absolute top-16 right-4 z-[2000] pixel-panel p-2 text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c]">
+        👣 累積步數<br>
+        <span id="step-counter-value" class="text-xl text-blue-700 font-black tracking-wider">0</span>
+    </div>
+
+    <!-- 公告面板往下移，避免與步數重疊 -->
+    <div id="announcement-panel" class="absolute top-[120px] right-4 z-[2000] pixel-panel p-3 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300">
         <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-xs sm:text-sm flex justify-between items-center">
             <span>📢 最新公告</span>
             <button id="toggle-announce-panel-btn" class="ml-2 px-1 py-0.5 border-2 border-black bg-yellow-400 hover:bg-yellow-500 active:translate-x-[1px] active:translate-y-[1px] text-black font-extrabold cursor-pointer text-[10px]" style="box-shadow: 2px 2px 0px #1a202c; line-height: 1;">➖</button>
@@ -69,6 +77,7 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
+    <!-- 管理員面板 -->
     <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
@@ -79,6 +88,7 @@
         <button id="set-ws-btn" class="pixel-btn w-full p-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
     </div>
 
+    <!-- UI 按鈕 -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
@@ -101,16 +111,26 @@
             },
             "烏泥": {
                 name: "找烏泥",
-                // 已更新為最新的烏泥座標範圍
                 bounds: [ [25.058413, 121.489253], [25.058575, 121.489066] ] 
             }
         };
         
-        // 讀取上次使用者選擇的目標，如果沒有紀錄或名稱不符合則預設為 "阿妹"
+        // 【新增】智能判斷網址參數 (例如 ?阿妹 或 ?烏尼)
         let currentProjectKey = localStorage.getItem('dogMap_currentProject');
+        const searchStr = decodeURIComponent(window.location.search);
+        
+        if (searchStr.includes('阿妹')) {
+            currentProjectKey = '阿妹';
+        } else if (searchStr.includes('烏泥') || searchStr.includes('烏尼')) { // 兼容錯字
+            currentProjectKey = '烏泥';
+        }
+        
         if (!currentProjectKey || !PROJECTS[currentProjectKey]) {
             currentProjectKey = "阿妹";
         }
+        
+        // 將判斷結果存回快取，確保下次進入不用網址參數也能記住
+        localStorage.setItem('dogMap_currentProject', currentProjectKey);
         
         let allAnnouncements = { "阿妹": "目前無最新公告。", "烏泥": "目前無最新公告。" };
         let boundsRectangle = null;
@@ -284,17 +304,12 @@
                     allSightings = response.data.sightings;
                     allRoutes = response.data.routes || {}; 
                     
-                    // 處理並解析 JSON 格式的多專案公告
                     try {
                         let parsed = JSON.parse(response.data.announcements.current);
                         if (typeof parsed === 'object' && parsed !== null) {
                             allAnnouncements = { ...allAnnouncements, ...parsed };
-                        } else {
-                            allAnnouncements["阿妹"] = response.data.announcements.current; 
-                        }
-                    } catch(e) {
-                        allAnnouncements["阿妹"] = response.data.announcements.current; 
-                    }
+                        } else { allAnnouncements["阿妹"] = response.data.announcements.current; }
+                    } catch(e) { allAnnouncements["阿妹"] = response.data.announcements.current; }
                     
                     localStorage.setItem('dogMap_cachedSightings', JSON.stringify(allSightings));
                     localStorage.setItem('dogMap_cachedRoutes', JSON.stringify(allRoutes));
@@ -319,7 +334,8 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 尋找: ${proj.name}</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+            // 【修改】將中心點名稱動態換為 `{名稱}走失中心點`
+            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
 
             boundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.2, dashArray: '5, 10'}).addTo(map)
@@ -346,7 +362,6 @@
                 }
             });
 
-            // 確保一開始進入時按鈕顯示為記錄的正確目標
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             drawProjectBounds(); 
 
@@ -369,33 +384,43 @@
             connectWebSocket(); checkLocalSetupAndStart();
         }
 
-        // ================= 目標切換邏輯 (含記錄 localStorage) =================
+        // ================= 防作弊：動態步數計算系統 =================
+        function updateStepsCounter() {
+            let totalDist = 0;
+            if (localHistory && localHistory.length > 1) {
+                for (let i = 1; i < localHistory.length; i++) {
+                    let d = getDistance(localHistory[i-1].lat, localHistory[i-1].lng, localHistory[i].lat, localHistory[i].lng);
+                    // 防作弊判斷：如果兩個打卡點瞬間移動超過 1000 公尺 (1公里)，判定為坐車或定位飄移，不計入步數
+                    if (d < 1000) { 
+                        totalDist += d;
+                    }
+                }
+            }
+            // 假設每步平均步幅為 0.6 公尺
+            const steps = Math.floor(totalDist / 0.6);
+            document.getElementById('step-counter-value').innerText = steps.toLocaleString();
+        }
+
+        // ================= 目標切換邏輯 =================
         switchProjectBtn.addEventListener('click', () => {
             const keys = Object.keys(PROJECTS);
             let idx = keys.indexOf(currentProjectKey);
             idx = (idx + 1) % keys.length;
             currentProjectKey = keys[idx];
             
-            // 將最新的目標儲存到瀏覽器記憶中
             localStorage.setItem('dogMap_currentProject', currentProjectKey);
-            
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             
-            saveLocationToServer(); // 切換目標時，立即更新自己的狀態給伺服器，讓其他人看見
-
+            saveLocationToServer(); 
             drawProjectBounds();
-            renderMap(); // 重繪地圖與在線人數
+            renderMap(); 
             renderSightings();
             renderRoutes();
-            requestFogRender(); // 重繪迷霧
+            requestFogRender(); 
             
-            // 更新公告 UI
             document.getElementById('announcement-text').innerHTML = escapeHTML(allAnnouncements[currentProjectKey] || "目前無最新公告。").replace(/\n/g, '<br>');
-            
-            // 如果管理介面開著，也一併刷新
             if(!manageSightingsModal.classList.contains('hidden')) renderManageSightingsList();
             if(!manageRoutesModal.classList.contains('hidden')) renderManageRoutesList();
-            
             showModal(`✅ 已切換至「${PROJECTS[currentProjectKey].name}」模式！\n地圖範圍與公告已更新。`);
         });
 
@@ -494,7 +519,6 @@
             const container = document.getElementById('sightings-list-container');
             container.innerHTML = '';
             
-            // 過濾出屬於當前專案的點位
             const ids = Object.keys(allSightings).filter(id => {
                 const p = allSightings[id].project || "阿妹";
                 return p === currentProjectKey;
@@ -550,7 +574,6 @@
             sightingsLayer.clearLayers();
             Object.keys(allSightings).forEach(id => {
                 const data = allSightings[id];
-                // 區分專案呈現
                 const p = data.project || "阿妹";
                 if (p !== currentProjectKey) return;
                 
@@ -573,7 +596,7 @@
             if(!isAdmin) return;
             let currentRawText = allAnnouncements[currentProjectKey] || "";
             showInputModal(`📢 更新「${PROJECTS[currentProjectKey].name}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
-                allAnnouncements[currentProjectKey] = text; // 只更新當前專案的公告
+                allAnnouncements[currentProjectKey] = text; 
                 if(isSystemReady) {
                     ws.send(JSON.stringify({ type: "update_announcement", data: JSON.stringify(allAnnouncements) })); 
                     showModal("✅ 公告更新指令已送出！"); 
@@ -629,7 +652,6 @@
                 const r = allRoutes[id]; 
                 if (!r.points || r.points.length === 0) return;
                 
-                // 區分專案呈現
                 const p = r.project || "阿妹";
                 if (p !== currentProjectKey) return;
                 
@@ -648,7 +670,6 @@
         function renderManageRoutesList() {
             routesListContainer.innerHTML = ''; 
             
-            // 過濾出屬於當前專案的路線
             const ids = Object.keys(allRoutes).filter(id => {
                 const p = allRoutes[id].project || "阿妹";
                 return p === currentProjectKey;
@@ -718,7 +739,7 @@
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
                     const userData = allUsersData[uid]; if (!userData.history) return;
-                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案迷霧
+                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
                         if (now - point.timestamp >= ONE_HOUR) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
@@ -731,7 +752,7 @@
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
                     const userData = allUsersData[uid]; if (!userData.history) return;
-                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案迷霧
+                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
                         if (now - point.timestamp < ONE_HOUR) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
@@ -747,7 +768,7 @@
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
-                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案軌跡
+                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6');
                 userData.history.forEach((point, index) => {
                     const age = Math.max(0, now - point.timestamp);
@@ -774,7 +795,11 @@
             if (savedName) {
                 currentUserName = escapeHTML(savedName); dbUserColor = savedColor || generateRandomColor();
                 if (!savedColor) localStorage.setItem('dogMap_userColor', dbUserColor);
-                if (localHistory.length > 0) { allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() }; renderMap(); }
+                if (localHistory.length > 0) { 
+                    allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() }; 
+                    renderMap(); 
+                    updateStepsCounter(); // 載入歷史紀錄後立即計算並更新步數 UI
+                }
                 finishUIReveal(); toastText.innerText = "自動定位..."; startLocationServices(true);
             } else { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; }
         }
@@ -808,6 +833,7 @@
                 localHistory.push(newPoint); lastSavedPos = newPoint;
                 localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+                updateStepsCounter(); // 新增打卡點後更新步數 UI
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer();
                 resetForceUploadBtn(); showModal("✅ 強制打卡成功！");
             }, (err) => { resetForceUploadBtn(); handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
@@ -820,7 +846,6 @@
                 spectatorBtn.innerText = "退出觀看"; spectatorBtn.style.backgroundColor = "#ef4444"; spectatorBtn.style.color = "white";
                 if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
                 
-                // 動態取得當下專案的中心點視角
                 const proj = PROJECTS[currentProjectKey];
                 const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
                 map.setView(center, 13, { animate: true }); 
@@ -862,6 +887,9 @@
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
+            
+            updateStepsCounter(); // 新增打卡點後立即更新步數 UI
+            
             renderMap(); if (shouldUpload) saveLocationToServer();
         }
 
@@ -877,7 +905,7 @@
 
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
-                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案呈現志工位置
+                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 const isSelf = (uid === myUid); if (isSpectatorMode && isSelf) return;
                 onlineUserCount++;
                 const lastPoint = userData.history[userData.history.length - 1];
