@@ -217,7 +217,12 @@
         // 迷霧系統變數
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx;
         let fogRenderPending = false; const FOG_SCALE = 0.08;
-        const LOST_DOG_CENTER = [23.7509678, 120.3995609];
+        // 計算中心點，並儲存範圍
+        // 23°00'33.2"N 120°15'20.0"E -> 23.009222, 120.255556
+        // 23°00'28.4"N 120°15'34.3"E -> 23.007889, 120.259528
+        const BOUNDS_NW = [23.009222, 120.255556];
+        const BOUNDS_SE = [23.007889, 120.259528];
+        const LOST_DOG_CENTER = [(BOUNDS_NW[0] + BOUNDS_SE[0]) / 2, (BOUNDS_NW[1] + BOUNDS_SE[1]) / 2];
 
         // 路線繪製變數
         let isDrawingRoute = false;
@@ -391,9 +396,14 @@
                 }
             });
 
-            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 走失中心</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
-            L.marker(LOST_DOG_CENTER, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
-            
+            // 繪製紅色的搜尋範圍長方形
+            const bounds = [BOUNDS_NW, BOUNDS_SE];
+            L.rectangle(bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.2, dashArray: '5, 10'}).addTo(map)
+             .bindPopup(`<div class="font-bold text-center">📍 搜尋範圍</div>`, {className: 'pixel-popup'});
+
+            // 調整地圖視野以包含該長方形
+            map.fitBounds(bounds, {padding: [50, 50]});
+
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             initFogSystem();
             setInterval(renderMap, 15000);
