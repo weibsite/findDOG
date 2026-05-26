@@ -396,6 +396,10 @@
                 }
             });
 
+            // 恢復顯示「走失中心」的動畫標記，並定位於長方形的正中央
+            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 走失中心</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+            L.marker(LOST_DOG_CENTER, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
+
             // 繪製紅色的搜尋範圍長方形
             const bounds = [BOUNDS_NW, BOUNDS_SE];
             L.rectangle(bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.2, dashArray: '5, 10'}).addTo(map)
