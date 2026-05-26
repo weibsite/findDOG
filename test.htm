@@ -103,7 +103,7 @@
     <script>
         let NGROK_WS_URL = "";
 
-        // ================= 目標切換設定 (支援無限擴充) =================
+        // ================= 目標切換設定 =================
         const PROJECTS = {
             "阿妹": {
                 name: "找阿妹",
@@ -115,21 +115,18 @@
             }
         };
         
-        // 【新增】智能判斷網址參數 (例如 ?阿妹 或 ?烏尼)
         let currentProjectKey = localStorage.getItem('dogMap_currentProject');
         const searchStr = decodeURIComponent(window.location.search);
         
         if (searchStr.includes('阿妹')) {
             currentProjectKey = '阿妹';
-        } else if (searchStr.includes('烏泥') || searchStr.includes('烏尼')) { // 兼容錯字
+        } else if (searchStr.includes('烏泥') || searchStr.includes('烏尼')) { 
             currentProjectKey = '烏泥';
         }
         
         if (!currentProjectKey || !PROJECTS[currentProjectKey]) {
             currentProjectKey = "阿妹";
         }
-        
-        // 將判斷結果存回快取，確保下次進入不用網址參數也能記住
         localStorage.setItem('dogMap_currentProject', currentProjectKey);
         
         let allAnnouncements = { "阿妹": "目前無最新公告。", "烏泥": "目前無最新公告。" };
@@ -143,6 +140,10 @@
         let myUid = localStorage.getItem('dogMap_UID');
         if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('dogMap_UID', myUid); }
         let currentUserName = ""; let dbUserColor = ""; 
+        
+        // 取得管理員權限憑證
+        let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
+        let adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
         let localHistory = []; 
         try {
@@ -163,7 +164,6 @@
         } catch(e) {}
         
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
-        let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
         let isFogVisible = true; let navMarker = null;
 
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx;
@@ -234,7 +234,6 @@
         
         function generateRandomColor() { const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return colors[Math.floor(Math.random() * colors.length)]; }
 
-        // --- 座標解析工具 ---
         function parseDMS(dmsStr) {
             dmsStr = dmsStr.trim().toUpperCase();
             let multiplier = 1;
@@ -272,7 +271,6 @@
             return null;
         }
 
-        // ================= 動態獲取伺服器網址邏輯 =================
         async function getWebSocketUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             const wsParam = urlParams.get('ws');
@@ -286,7 +284,7 @@
             } catch (e) { console.log("未找到 config.json，將使用本地暫存或預設值"); }
             const cachedUrl = localStorage.getItem('dogMap_wsUrl');
             if (cachedUrl) return cachedUrl;
-            return "wss://mapping-made-anticipated-carries.trycloudflare.com/ws"; // 預設值
+            return "wss://mapping-made-anticipated-carries.trycloudflare.com/ws"; 
         }
 
         // --- WebSocket 與 初始化 ---
@@ -299,6 +297,25 @@
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
+                
+                // 【新增安全機制】：攔截登入驗證結果
+                if (response.type === 'admin_login_result') {
+                    document.getElementById('admin-submit-btn').innerText = "登入";
+                    if (response.success) {
+                        isAdmin = true;
+                        adminToken = response.token; // 保存伺服器核發的安全憑證
+                        sessionStorage.setItem('dogMap_isAdmin', 'true');
+                        sessionStorage.setItem('dogMap_adminToken', adminToken);
+                        document.getElementById('admin-login-modal').classList.add('hidden');
+                        adminLoginTrigger.classList.add('hidden');
+                        adminPanel.classList.remove('hidden');
+                        showModal("登入成功！您現在擁有伺服器管理權限。");
+                    } else {
+                        showModal("密碼錯誤，請重試！");
+                    }
+                    return; // 登入結果不需要執行下方的 sync 同步
+                }
+                
                 if (response.type === 'sync') {
                     allUsersData = response.data.locations;
                     allSightings = response.data.sightings;
@@ -334,7 +351,6 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            // 【修改】將中心點名稱動態換為 `{名稱}走失中心點`
             const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
 
@@ -384,24 +400,18 @@
             connectWebSocket(); checkLocalSetupAndStart();
         }
 
-        // ================= 防作弊：動態步數計算系統 =================
         function updateStepsCounter() {
             let totalDist = 0;
             if (localHistory && localHistory.length > 1) {
                 for (let i = 1; i < localHistory.length; i++) {
                     let d = getDistance(localHistory[i-1].lat, localHistory[i-1].lng, localHistory[i].lat, localHistory[i].lng);
-                    // 防作弊判斷：如果兩個打卡點瞬間移動超過 1000 公尺 (1公里)，判定為坐車或定位飄移，不計入步數
-                    if (d < 1000) { 
-                        totalDist += d;
-                    }
+                    if (d < 1000) { totalDist += d; }
                 }
             }
-            // 假設每步平均步幅為 0.6 公尺
             const steps = Math.floor(totalDist / 0.6);
             document.getElementById('step-counter-value').innerText = steps.toLocaleString();
         }
 
-        // ================= 目標切換邏輯 =================
         switchProjectBtn.addEventListener('click', () => {
             const keys = Object.keys(PROJECTS);
             let idx = keys.indexOf(currentProjectKey);
@@ -433,12 +443,19 @@
             else { announcementText.classList.remove('hidden'); toggleAnnouncePanelBtn.innerText = '➖'; }
         }
 
-        // --- 管理員登入與伺服器手動設定 ---
+        // ================= 【安全升級】登入系統 =================
         adminLoginTrigger.addEventListener('click', () => { document.getElementById('admin-login-modal').classList.remove('hidden'); document.getElementById('admin-pwd-input').value = ""; });
         document.getElementById('admin-cancel-btn').addEventListener('click', () => { document.getElementById('admin-login-modal').classList.add('hidden'); });
+        
         document.getElementById('admin-submit-btn').addEventListener('click', () => {
-            const pwd = document.getElementById('admin-pwd-input').value.trim(); const targetHash = "=kDM2AzN4ImQ"; const inputHash = btoa(pwd).split('').reverse().join('');
-            if (inputHash === targetHash) { isAdmin = true; sessionStorage.setItem('dogMap_isAdmin', 'true'); document.getElementById('admin-login-modal').classList.add('hidden'); adminLoginTrigger.classList.add('hidden'); adminPanel.classList.remove('hidden'); showModal("登入成功！"); } else { showModal("密碼錯誤。"); }
+            const pwd = document.getElementById('admin-pwd-input').value.trim();
+            if(isSystemReady) {
+                // 將密碼傳送給伺服器驗證，不再依賴前端運算
+                ws.send(JSON.stringify({ type: "admin_login", data: { password: pwd } }));
+                document.getElementById('admin-submit-btn').innerText = "驗證中...";
+            } else {
+                showModal("⚠️ 系統未連線，無法驗證管理員身份！");
+            }
         });
 
         document.getElementById('set-ws-btn').addEventListener('click', () => {
@@ -452,7 +469,7 @@
             });
         });
 
-        // ================= 增設與管理出沒點系統 =================
+        // ================= 增設與管理出沒點系統 (加入 Token 驗證) =================
         document.getElementById('add-sighting-btn').addEventListener('click', () => {
             if(!isAdmin) return;
             showInputModal(`📍 新增「${PROJECTS[currentProjectKey].name}」出沒點`, "請詳細描述此事件點...", "", (desc) => {
@@ -473,7 +490,7 @@
                 showModal("📍 請在地圖上【點擊】發生該事件的精確位置！");
                 map.once('click', (e) => {
                     if(isSystemReady) {
-                        ws.send(JSON.stringify({ type: "add_sighting", data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
+                        ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
                         showModal("✅ 成功新增事件點！");
                     }
                 });
@@ -500,7 +517,7 @@
                 if (parsed) {
                     coordinateInputModal.classList.add('hidden');
                     if(isSystemReady) {
-                        ws.send(JSON.stringify({ type: "add_sighting", data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
+                        ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
                         showModal(`✅ 成功新增事件點！\n座標：[${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}]`);
                         map.setView([parsed.lat, parsed.lng], 16, { animate: true }); 
                     } else { showModal("⚠️ 系統未連線，無法送出指令！"); }
@@ -554,7 +571,7 @@
                     const id = e.target.getAttribute('data-id');
                     const data = allSightings[id];
                     showInputModal("📝 編輯出沒點", "請修改描述...", data.description, (newDesc) => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_sighting", id: id, data: { description: newDesc } })); showModal("✅ 編輯指令已送出！"); }
+                        if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_sighting", id: id, token: adminToken, data: { description: newDesc } })); showModal("✅ 編輯指令已送出！"); }
                     });
                 });
             });
@@ -563,7 +580,7 @@
                 btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
                     showConfirm("確定要永久刪除這個出沒紀錄嗎？", () => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_sighting", id: id })); showModal("✅ 刪除指令已送出！"); }
+                        if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_sighting", id: id, token: adminToken })); showModal("✅ 刪除指令已送出！"); }
                     });
                 });
             });
@@ -591,20 +608,20 @@
             });
         }
 
-        // ================= 專案獨立公告更新 =================
+        // ================= 專案獨立公告更新 (加入 Token 驗證) =================
         document.getElementById('update-announce-btn').addEventListener('click', () => {
             if(!isAdmin) return;
             let currentRawText = allAnnouncements[currentProjectKey] || "";
             showInputModal(`📢 更新「${PROJECTS[currentProjectKey].name}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
                 allAnnouncements[currentProjectKey] = text; 
                 if(isSystemReady) {
-                    ws.send(JSON.stringify({ type: "update_announcement", data: JSON.stringify(allAnnouncements) })); 
+                    ws.send(JSON.stringify({ type: "update_announcement", token: adminToken, data: JSON.stringify(allAnnouncements) })); 
                     showModal("✅ 公告更新指令已送出！"); 
                 }
             });
         });
 
-        // ================= 路線繪製與管理系統 =================
+        // ================= 路線繪製與管理系統 (加入 Token 驗證) =================
         document.getElementById('route-weight').addEventListener('input', (e) => { document.getElementById('route-weight-val').innerText = e.target.value; updateDrawingRoutePreview(); });
         document.getElementById('route-color').addEventListener('input', updateDrawingRoutePreview);
 
@@ -625,7 +642,7 @@
             if (currentRoutePoints.length < 2) { showModal("⚠️ 路線至少需要兩個節點才能成線！"); return; }
             const name = document.getElementById('route-name').value.trim() || '未命名路線';
             const color = document.getElementById('route-color').value; const weight = parseInt(document.getElementById('route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
+            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
             } else { showModal("⚠️ 系統未連線！"); }
         });
 
@@ -701,7 +718,7 @@
             routesListContainer.querySelectorAll('.delete-route-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
-                    showConfirm("確定要永久刪除這條路線嗎？", () => { if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_route", id: id })); showModal("✅ 刪除指令已送出！"); } });
+                    showConfirm("確定要永久刪除這條路線嗎？", () => { if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_route", id: id, token: adminToken })); showModal("✅ 刪除指令已送出！"); } });
                 });
             });
         }
@@ -712,7 +729,7 @@
             if (!editingRouteId) return;
             const newName = document.getElementById('edit-route-name').value.trim() || '未命名路線';
             const newColor = document.getElementById('edit-route-color').value; const newWeight = parseInt(document.getElementById('edit-route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_route", id: editingRouteId, data: { name: newName, color: newColor, weight: newWeight } })); showModal("✅ 屬性已更新！"); document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; }
+            if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_route", id: editingRouteId, token: adminToken, data: { name: newName, color: newColor, weight: newWeight } })); showModal("✅ 屬性已更新！"); document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; }
         });
 
         // ================= 迷霧系統 =================
@@ -798,7 +815,7 @@
                 if (localHistory.length > 0) { 
                     allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() }; 
                     renderMap(); 
-                    updateStepsCounter(); // 載入歷史紀錄後立即計算並更新步數 UI
+                    updateStepsCounter(); 
                 }
                 finishUIReveal(); toastText.innerText = "自動定位..."; startLocationServices(true);
             } else { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; }
@@ -833,7 +850,7 @@
                 localHistory.push(newPoint); lastSavedPos = newPoint;
                 localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
-                updateStepsCounter(); // 新增打卡點後更新步數 UI
+                updateStepsCounter(); 
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer();
                 resetForceUploadBtn(); showModal("✅ 強制打卡成功！");
             }, (err) => { resetForceUploadBtn(); handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
@@ -888,7 +905,7 @@
             localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() };
             
-            updateStepsCounter(); // 新增打卡點後立即更新步數 UI
+            updateStepsCounter(); 
             
             renderMap(); if (shouldUpload) saveLocationToServer();
         }
