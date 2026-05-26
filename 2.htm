@@ -70,7 +70,7 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
-    <!-- 管理員面板 -->
+    <!-- 管理員面板 (加入退出面板按鈕) -->
     <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
@@ -78,31 +78,30 @@
         <button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
         <button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
         <button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
-        <button id="set-ws-btn" class="pixel-btn w-full p-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
+        <button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
+        <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
 
-    <!-- UI 按鈕 -->
+    <!-- UI 按鈕左側排版 (加入我的軌跡按鈕) -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
+    <button id="my-route-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
-    <!-- 全新排版的步數面板與我的軌跡按鈕 -->
-    <div class="absolute bottom-[60px] right-4 z-[2000] flex gap-2 items-end pointer-events-none">
-        <button id="my-route-btn" class="pixel-btn p-2 px-3 text-[10px] sm:text-xs bg-purple-500 text-white hidden pointer-events-auto shadow-[4px_4px_0px_#1a202c]" style="margin-bottom: 2px;">🐍 我的軌跡</button>
-        
-        <!-- 點擊此步數方塊會觸發隱藏的管理員登入 -->
+    <!-- 步數面板獨立放置 -->
+    <div class="absolute bottom-10 right-4 z-[2000] flex gap-2 items-end pointer-events-none">
         <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
             👣 累積步數<br>
             <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
         </div>
     </div>
 
-    <!-- 精簡且移至最右下角的版權 -->
-    <div class="absolute bottom-4 right-4 z-[2000] pixel-panel p-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
-        版權所有，桃園八德阿偉<br><a href="mailto:mi000731@gmail.com" class="text-blue-700 hover:text-blue-900 hover:underline">✉️ 聯絡作者</a>
+    <!-- 精簡且移至最右下角的版權 (可點擊發信) -->
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
+        <a href="mailto:mi000731@gmail.com" class="text-gray-900 hover:text-blue-700 no-underline">版權所有，桃園八德阿偉</a>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -359,7 +358,10 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">🐕</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+            // 判斷中心點圖示 (烏泥為貓，其餘為狗)
+            const iconSymbol = currentProjectKey === '烏泥' ? '🐈' : '🐕';
+
+            const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
 
             boundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.2, dashArray: '5, 10'}).addTo(map)
@@ -429,7 +431,7 @@
                 myRouteBtn.innerText = "❌ 退出軌跡";
                 myRouteBtn.style.backgroundColor = "#ef4444";
                 myRouteBtn.style.color = "white";
-                showModal("🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。");
+                showModal("🐍 已開啟我的軌跡模式！\n現在地圖上將隱藏其他志工，並完整顯示您走過的所有連續路線。\n且您已探索過的區域將『100%全亮』顯示！");
             } else {
                 myRouteBtn.innerText = "🐍 我的軌跡";
                 myRouteBtn.style.backgroundColor = "#a855f7"; 
@@ -471,7 +473,7 @@
             else { announcementText.classList.remove('hidden'); toggleAnnouncePanelBtn.innerText = '➖'; }
         }
 
-        // ================= 【安全升級】隱藏版登入 =================
+        // ================= 【安全升級】隱藏版登入與退出 =================
         stepPanel.addEventListener('click', () => { 
             document.getElementById('admin-login-modal').classList.remove('hidden'); 
             document.getElementById('admin-pwd-input').value = ""; 
@@ -487,6 +489,10 @@
             } else {
                 showModal("⚠️ 系統未連線，無法驗證管理員身份！");
             }
+        });
+
+        document.getElementById('close-admin-btn').addEventListener('click', () => {
+            adminPanel.classList.add('hidden');
         });
 
         document.getElementById('set-ws-btn').addEventListener('click', () => {
@@ -791,7 +797,8 @@
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        if (now - point.timestamp >= ONE_HOUR || isMyRouteMode) { // 我的模式全開
+                        // 在「非我的軌跡模式」且超過一小時的舊軌跡，才會以 0.4 半透明挖除迷霧
+                        if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { 
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
                         }
@@ -806,7 +813,8 @@
                     const userData = allUsersData[uid]; if (!userData.history) return;
                     const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                     userData.history.forEach(point => {
-                        if (now - point.timestamp < ONE_HOUR && !isMyRouteMode) {
+                        // 新的點位，或者是「我的軌跡模式」，全部以 1.0 (100%) 透明度挖除，保持全亮！
+                        if (now - point.timestamp < ONE_HOUR || isMyRouteMode) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
                             if (sx > -radiusPx && sx < w + radiusPx && sy > -radiusPx && sy < h + radiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, radiusPx, 0, Math.PI * 2); tempCtx.fill(); }
                         }
@@ -905,7 +913,7 @@
                 
                 if (isMyRouteMode) {
                     isMyRouteMode = false;
-                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#f59e0b"; myRouteBtn.style.color = "#1a202c";
                 }
                 
                 const proj = PROJECTS[currentProjectKey];
@@ -986,12 +994,23 @@
 
             // 正常的多人顯示模式
             let onlineUserCount = 0; const ONE_HOUR = 60 * 60 * 1000; const now = Date.now();
+            const ACTIVE_THRESHOLD = 5 * 60 * 1000; // 5分鐘判定為在線上探索
 
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
-                const isSelf = (uid === myUid); if (isSpectatorMode && isSelf) return;
-                onlineUserCount++;
+                
+                const isSelf = (uid === myUid); 
+                
+                // 【修改】以 lastUpdate 判斷是否為在線活躍人數 (5分鐘內有更新)
+                const lastTime = userData.lastUpdate || userData.history[userData.history.length - 1].timestamp;
+                if (now - lastTime < ACTIVE_THRESHOLD) {
+                    if (!(isSpectatorMode && isSelf)) {
+                        onlineUserCount++;
+                    }
+                }
+
+                if (isSpectatorMode && isSelf) return;
                 const lastPoint = userData.history[userData.history.length - 1];
                 if (now - lastPoint.timestamp < ONE_HOUR) { 
                     const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? '#ef4444' : (userData.color || '#3b82f6'));
@@ -1002,7 +1021,7 @@
                 }
             });
             if (toastText.innerText.includes("同步成功") || toastText.innerText.includes("線上") || toastText.innerText.includes("觀看")) {
-                toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上: ${onlineUserCount} 人`;
+                toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上探索: ${onlineUserCount} 人`;
             }
             requestFogRender();
         }
