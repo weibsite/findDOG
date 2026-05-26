@@ -381,9 +381,13 @@
             
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             
+            saveLocationToServer(); // 切換目標時，立即更新自己的狀態給伺服器，讓其他人看見
+
             drawProjectBounds();
+            renderMap(); // 重繪地圖與在線人數
             renderSightings();
             renderRoutes();
+            requestFogRender(); // 重繪迷霧
             
             // 更新公告 UI
             document.getElementById('announcement-text').innerHTML = escapeHTML(allAnnouncements[currentProjectKey] || "目前無最新公告。").replace(/\n/g, '<br>');
@@ -706,7 +710,7 @@
             lowResCanvas.width = w; lowResCanvas.height = h; tempCanvas.width = w; tempCanvas.height = h;
             lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h);
             const center = map.getCenter(); const metersPerPixel = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI/180))) / Math.pow(2, map.getZoom() + 8);
-            const exploreRadius = 250; const radiusPx = (exploreRadius / metersPerPixel) * FOG_SCALE;
+            const exploreRadius = 125; const radiusPx = (exploreRadius / metersPerPixel) * FOG_SCALE;
             const now = Date.now(); const ONE_HOUR = 60 * 60 * 1000;
 
             if (radiusPx >= 1) {
@@ -714,6 +718,7 @@
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
                     const userData = allUsersData[uid]; if (!userData.history) return;
+                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案迷霧
                     userData.history.forEach(point => {
                         if (now - point.timestamp >= ONE_HOUR) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
@@ -726,6 +731,7 @@
                 Object.keys(allUsersData).forEach(uid => {
                     if (isSpectatorMode && uid === myUid) return;
                     const userData = allUsersData[uid]; if (!userData.history) return;
+                    const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案迷霧
                     userData.history.forEach(point => {
                         if (now - point.timestamp < ONE_HOUR) {
                             const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
@@ -741,6 +747,7 @@
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
+                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案軌跡
                 const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6');
                 userData.history.forEach((point, index) => {
                     const age = Math.max(0, now - point.timestamp);
@@ -860,7 +867,7 @@
 
         function saveLocationToServer() {
             if (!isSystemReady || localHistory.length === 0 || isSpectatorMode) return;
-            ws.send(JSON.stringify({ type: "update_location", uid: myUid, data: { userName: currentUserName, color: dbUserColor, history: localHistory, lastUpdate: Date.now() } }));
+            ws.send(JSON.stringify({ type: "update_location", uid: myUid, data: { userName: currentUserName, color: dbUserColor, history: localHistory, lastUpdate: Date.now(), project: currentProjectKey } }));
         }
 
         function renderMap() {
@@ -870,6 +877,7 @@
 
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
+                const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; // 區分專案呈現志工位置
                 const isSelf = (uid === myUid); if (isSpectatorMode && isSelf) return;
                 onlineUserCount++;
                 const lastPoint = userData.history[userData.history.length - 1];
