@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>尋寵地圖 - 線上部署版</title>
+    <title>尋寵地圖</title>
     <!--不請求icon-->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -75,7 +75,7 @@
     <div id="admin-user-info-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-5 w-full max-w-sm text-center relative">
             <h3 class="text-gray-900 font-bold mb-3 text-lg border-b-2 border-black pb-2 flex items-center justify-center gap-2">
-                🕵️ 玩家稽查 <span id="admin-user-badge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 border-2 border-black">限制中</span>
+                🕵️ 玩家稽查 <span id="admin-user-badge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 border-2 border-black">黑名單</span>
             </h3>
             <div class="text-left text-xs space-y-3 font-bold text-gray-800 mb-4 bg-gray-100 p-3 border-4 border-black">
                 <p>👤 暱稱：<span id="au-name" class="text-blue-700">載入中...</span></p>
@@ -90,17 +90,24 @@
                 </div>
             </div>
             <div class="flex flex-col gap-2">
-                <button id="au-restrict-btn" class="pixel-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 限制帳戶 (機率降至預設上限)</button>
+                <button id="au-restrict-btn" class="pixel-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 加入黑名單 (機率降至上限)</button>
                 <button id="au-close-btn" class="pixel-btn w-full py-2 bg-gray-400 text-sm">❌ 關閉</button>
             </div>
         </div>
     </div>
-
+    
     <!-- 管理員: 黑名單解除 Modal -->
     <div id="manage-blacklist-modal" class="hidden absolute inset-0 z-[11500] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col">
-            <h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統封鎖黑名單</h3>
-            <p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">被系統判定為多開的異常帳號將無法抽獎。<br>且管理員巡視時會看見其名牌標示為紅色。</p>
+            <h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統黑名單管理</h3>
+            <p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">黑名單玩家抽獎機率將被默默降至下方設定的上限。<br>且管理員巡視時會看見其名牌標示為紅色。</p>
+            
+            <div class="flex items-center justify-between gap-2 mb-3 bg-red-50 p-2 border-2 border-red-500">
+                <label class="text-xs font-bold text-gray-800 whitespace-nowrap">最高中獎機率(%):</label>
+                <input type="number" id="restrict-prob-input" class="pixel-input flex-1 p-1 text-sm font-sans" value="10.0" min="0" step="0.1">
+                <button id="save-restrict-prob-btn" class="pixel-btn px-3 py-1 bg-blue-500 text-white text-xs">儲存</button>
+            </div>
+
             <div id="blacklist-container" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2 text-left">
                 <!-- Javascript 動態生成黑名單列 -->
             </div>
@@ -610,13 +617,13 @@
                     
                     const restrictBtn = document.getElementById('au-restrict-btn');
                     restrictBtn.setAttribute('data-uid', data.uid);
-                    if (data.is_restricted) {
+                    if (data.is_blacklisted) {
                         document.getElementById('admin-user-badge').classList.remove('hidden');
-                        restrictBtn.innerText = "✅ 解除帳戶限制";
+                        restrictBtn.innerText = "✅ 解除黑名單限制";
                         restrictBtn.className = "pixel-btn w-full py-3 bg-green-500 text-white text-sm";
                     } else {
                         document.getElementById('admin-user-badge').classList.add('hidden');
-                        restrictBtn.innerText = "🚫 限制帳戶 (機率降至預設上限)";
+                        restrictBtn.innerText = "🚫 加入黑名單 (機率降至上限)";
                         restrictBtn.className = "pixel-btn w-full py-3 bg-red-600 text-white text-sm";
                     }
                     document.getElementById('admin-user-info-modal').classList.remove('hidden');
@@ -726,6 +733,9 @@
 
                 // 【管理員】獲取黑名單列表
                 if (response.type === 'admin_blacklist_data') {
+                    if (response.restrict_prob !== undefined) {
+                        document.getElementById('restrict-prob-input').value = response.restrict_prob;
+                    }
                     const container = document.getElementById('blacklist-container');
                     container.innerHTML = '';
                     if (!response.data || response.data.length === 0) {
@@ -912,6 +922,16 @@
 
         document.getElementById('close-blacklist-btn').addEventListener('click', () => {
             document.getElementById('manage-blacklist-modal').classList.add('hidden');
+        });
+
+        document.getElementById('save-restrict-prob-btn').addEventListener('click', () => {
+            if (!isAdmin) return;
+            const newProb = document.getElementById('restrict-prob-input').value;
+            if (isSystemReady) {
+                ws.send(JSON.stringify({ type: "admin_update_restrict_prob", token: adminToken, prob: newProb }));
+                document.getElementById('save-restrict-prob-btn').innerText = "⏳";
+                setTimeout(()=> document.getElementById('save-restrict-prob-btn').innerText = "儲存", 1000);
+            }
         });
         // ============================================================
 
@@ -2387,7 +2407,7 @@
                         
                         if (isAdmin && targetData && targetData.blacklisted) {
                             nameColor = 'color: #ffffff; background-color: #ef4444; border-color: #7f1d1d; pointer-events: auto;';
-                            tagSuffix = ' (封鎖中)';
+                            tagSuffix = ' (黑名單)';
                         }
                         
                         const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${rColor}; animation-duration: 2s;"></div>`;
@@ -2430,7 +2450,7 @@
                     // 管理員看見的紅名標示
                     if (isAdmin && userData.blacklisted) {
                         nameColor = 'color: #ffffff; background-color: #ef4444; border-color: #7f1d1d;';
-                        tagSuffix = ' (封鎖中)';
+                        tagSuffix = ' (黑名單)';
                     }
                     
                     const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${uid}" style="${nameColor}">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
