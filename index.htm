@@ -23,9 +23,13 @@
         .pixel-popup .leaflet-popup-content-wrapper { background-color: white; border: 4px solid #1a202c; border-radius: 0; box-shadow: 4px 4px 0px #1a202c; padding: 0; }
         .pixel-popup .leaflet-popup-tip-container { display: none; }
         .blinking-red-pixel { animation: blink-pixel 1s infinite alternate; }
+        
         @keyframes blink-pixel { 0% { background-color: #ef4444; transform: scale(1); } 100% { background-color: #fca5a5; transform: scale(1.3); } }
         @keyframes pulse-square { 0% { transform: scale(0.5); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 1px; } }
+        @keyframes marquee-scroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+        
         .center-pulse-square { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border: 4px solid #ef4444; box-sizing: border-box; animation: pulse-square 2s infinite linear; pointer-events: none; }
+        .animate-marquee-text { display: inline-block; white-space: nowrap; animation: marquee-scroll 10s linear infinite; }
         
         #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar, #prize-rows-container::-webkit-scrollbar, #admin-prizes-list-container::-webkit-scrollbar { width: 8px; }
         #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track, #prize-rows-container::-webkit-scrollbar-track, #admin-prizes-list-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
@@ -43,6 +47,13 @@
             <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
             <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button>
             <div id="error-msg" class="hidden"></div>
+        </div>
+    </div>
+
+    <!-- 跑馬燈提示 -->
+    <div id="lottery-marquee-container" class="hidden absolute top-1/3 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-red-600/90 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]">
+        <div class="animate-marquee-text text-white font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_#1a202c]">
+            🎉 累積探索 60 分鐘！可以抽獎了要趕快抽獎免得抽獎次數遺失哦！ 🎉
         </div>
     </div>
 
@@ -200,14 +211,20 @@
     </div>
 
     <!-- UI 左側排版列表 -->
-    <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
+    <button id="switch-project-btn" class="absolute top-[80px] left-4 sm:top-6 sm:left-1/2 sm:transform sm:-translate-x-1/2 z-[2000] pixel-btn p-2 px-4 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden flex items-center justify-between shadow-[4px_4px_0px_#1a202c] active:shadow-[2px_2px_0px_#1a202c]">🎯 目標: 找阿妹 <span class="ml-2 font-black text-lg leading-none">🔄</span></button>
     
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
     <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
+    
+    <!-- 觀看模式與過遠提示 -->
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
+    <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none">
+        <span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心
+    </div>
+
     <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
     <!-- 步數面板與禮物面板獨立放置在右下方 -->
@@ -740,7 +757,7 @@
                 }
             });
 
-            switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
+            switchProjectBtn.innerHTML = `🎯 目標: ${PROJECTS[currentProjectKey].name} <span class="ml-1 font-black text-lg leading-none">🔄</span>`;
             drawProjectBounds(); 
 
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
@@ -1113,7 +1130,7 @@
             currentProjectKey = keys[idx];
             
             setPersistentData('dogMap_currentProject', currentProjectKey);
-            switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
+            switchProjectBtn.innerHTML = `🎯 目標: ${PROJECTS[currentProjectKey].name} <span class="ml-1 font-black text-lg leading-none">🔄</span>`;
             
             saveLocationToServer(); 
             drawProjectBounds();
@@ -1897,13 +1914,16 @@
             }
 
             const timerUI = document.getElementById('gift-timer');
+            const spectatorHint = document.getElementById('spectator-hint');
 
             if (isOutOfRange) {
                 timerUI.style.color = '#ef4444'; 
                 timerUI.innerText = "太遠了";
+                if (!isSpectatorMode) spectatorHint.classList.remove('hidden');
                 return; 
             } else {
                 timerUI.style.color = ''; 
+                spectatorHint.classList.add('hidden');
             }
 
             if (lotteryTimeRemaining === 300) {
@@ -1947,7 +1967,10 @@
             if (lotteryTimeRemaining <= 0) {
                 lotteryTickets++;
                 lotteryTimeRemaining = 3600;
-                showModal("🎉 累積探索 60 分鐘！\n獲得 1 次抽獎機會！請點擊右上角禮物圖示抽獎。");
+                
+                const marquee = document.getElementById('lottery-marquee-container');
+                marquee.classList.remove('hidden');
+                setTimeout(() => marquee.classList.add('hidden'), 12000);
             }
             saveLotteryState();
             updateGiftUI();
@@ -2023,6 +2046,8 @@
 
         spectatorBtn.addEventListener('click', () => {
             isSpectatorMode = !isSpectatorMode;
+            document.getElementById('spectator-hint').classList.add('hidden');
+            
             if (isSpectatorMode) {
                 spectatorBtn.innerText = "退出觀看"; spectatorBtn.style.backgroundColor = "#ef4444"; spectatorBtn.style.color = "white";
                 if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
