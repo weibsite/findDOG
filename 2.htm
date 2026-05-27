@@ -77,7 +77,7 @@
     <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col">
             <h3 class="text-gray-900 font-bold mb-2 text-xl">🎁 新增獎品至獎池</h3>
-            <p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品至伺服器</p>
+            <p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品至伺服器<br><span class="text-red-500">系統將自動檢查並阻擋重複上傳的獎項</span></p>
             <div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left">
                 <!-- Javascript 動態生成獎品列 -->
             </div>
@@ -89,15 +89,19 @@
         </div>
     </div>
     
-    <!-- 管理員刪除管理獎池 Modal -->
+    <!-- 管理員刪除/編輯管理獎池 Modal -->
     <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4">
-        <div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col">
-            <h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">⚙️ 管理現有獎品</h3>
-            <p class="text-[10px] text-red-600 font-bold mb-2 text-center leading-tight">為防範惡意腳本與XSS攻擊<br>此清單僅顯示名稱與機率，不讀取並渲染網址資料</p>
-            <div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left">
-                <!-- 動態生成現有獎項 -->
+        <div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col">
+            <h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">⚙️ 管理獎品狀態</h3>
+            <p class="text-[10px] text-red-600 font-bold mb-2 text-center leading-tight">為防範XSS攻擊，此清單不渲染外部圖片</p>
+            
+            <div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left">
+                <!-- 動態生成現有獎項與已抽走獎項 -->
             </div>
-            <button id="close-manage-prizes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button>
+            <div class="flex gap-2 pt-2 border-t-2 border-black">
+                <button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button>
+                <button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉列表</button>
+            </div>
         </div>
     </div>
 
@@ -127,18 +131,9 @@
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold" placeholder="路線名稱"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
 
-    <!-- 右上角 UI 群組：抽獎與線上狀態 -->
+    <!-- 右上角 UI 群組：線上狀態 -->
     <div class="absolute top-4 right-4 z-[3000] flex items-center gap-3 pointer-events-none">
         
-        <!-- UI 禮物抽獎浮窗 -->
-        <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105">
-            <div class="relative">
-                <div style="font-size: 38px; filter: drop-shadow(2px 2px 0px #1a202c); line-height: 1;">🎁</div>
-                <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
-            </div>
-            <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
-        </div>
-
         <!-- UI 右上狀態列 -->
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto">
             <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
@@ -215,8 +210,17 @@
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
-    <!-- 步數面板獨立放置 -->
-    <div class="absolute bottom-10 right-4 z-[2000] flex gap-2 items-end pointer-events-none">
+    <!-- 步數面板與禮物面板獨立放置在右下方 -->
+    <div class="absolute bottom-10 right-4 z-[2000] flex flex-col gap-2 items-end pointer-events-none">
+        <!-- UI 禮物抽獎浮窗 -->
+        <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2">
+            <div class="relative">
+                <div style="font-size: 38px; filter: drop-shadow(2px 2px 0px #1a202c); line-height: 1;">🎁</div>
+                <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
+            </div>
+            <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
+        </div>
+
         <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
             👣 累積步數<br>
             <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
@@ -241,17 +245,16 @@
     <script>
         let NGROK_WS_URL = "";
         
-        // 將 WebSocket 網址轉換為一般的 HTTP 網址基準 (用於讀取本機圖片)
         function getBaseHttpUrl() {
             if (!NGROK_WS_URL) return "";
             return NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
         }
 
-        // ================= 持久化儲存機制 (LocalStorage + 10年 Cookie 備援) =================
+        // ================= 持久化儲存機制 =================
         function setPersistentData(key, value) {
             try { localStorage.setItem(key, value); } catch(e) {}
             try {
-                const d = new Date(); d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000)); // 10 years
+                const d = new Date(); d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000));
                 document.cookie = `${key}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/`;
             } catch(e) {}
         }
@@ -264,7 +267,7 @@
                     let c = ca[i]; while (c.charAt(0) == ' ') c = c.substring(1);
                     if (c.indexOf(name) == 0) {
                         let val = c.substring(name.length, c.length);
-                        try { localStorage.setItem(key, val); } catch(e){} // 回填至 LocalStorage
+                        try { localStorage.setItem(key, val); } catch(e){} 
                         return val;
                     }
                 }
@@ -324,7 +327,6 @@
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
         let isFogVisible = true; let navMarker = null;
 
-        // 貪食蛇我的軌跡模式變數
         let isMyRouteMode = false;
         let targetRouteUid = null; 
         let snakeInterval = null;
@@ -333,7 +335,6 @@
         let currentPlaybackSpeed = 500;
         let isPlaybackPaused = false;
 
-        // EVA 網格模式變數
         let isEvaMode = false;
         let evaGridLayer = null;
         let evaAnimationTimeout = null;
@@ -344,14 +345,14 @@
         let isDrawingRoute = false; let currentRoutePoints = []; let currentRoutePolyline = null;
         let currentRouteMarkers = []; let editingRouteId = null;
 
-        // --- 抽獎防掛網計時器相關 ---
         let lotteryTimeRemaining = 3600;
         let lotteryTickets = 0;
-        let lastLotteryTime = Date.now();
-        let lastLotteryLoc = null;
         let isTrackingStarted = false;
         let slotSpinning = false;
         let slotTimer = null;
+        
+        let isMapInteracting = false;
+        let mapInteractionTimer = null;
 
         // --- DOM 元素 ---
         const startupOverlay = document.getElementById('startup-overlay');
@@ -425,7 +426,7 @@
             let multiplier = 1;
             if (dmsStr.includes('S') || dmsStr.includes('W')) multiplier = -1;
             let clean = dmsStr.replace(/[NSEW]/g, '').trim();
-            clean = clean.replace(/[°ºdD]/g, ' ').replace(/['’‘]/g, ' ').replace(/["”裝裝″]/g, ' ').trim();
+            clean = clean.replace(/[°ºdD]/g, ' ').replace(/['’‘]/g, ' ').replace(/["”″]/g, ' ').trim();
             let parts = clean.split(/\s+/).map(Number);
             if (parts.length === 0 || isNaN(parts[0])) return null;
             let degrees = parts[0] || 0; let minutes = parts[1] || 0; let seconds = parts[2] || 0;
@@ -498,75 +499,133 @@
                     return; 
                 }
                 
-                // 【管理員】新增、刪除獎品結果
                 if (response.type === 'admin_action_result') {
                     showModal(response.msg);
                     return;
                 }
                 
-                // 【管理員】獲取當前獎池資料供管理
+                // 【管理員】獲取當前獎池與已被抽走紀錄 (含編輯雙機率介面)
                 if (response.type === 'admin_prizes_data') {
                     const container = document.getElementById('admin-prizes-list-container');
                     container.innerHTML = '';
                     
-                    if (response.data && response.data.length > 0) {
-                        response.data.forEach(item => {
+                    const available = response.data.available || [];
+                    const drawn = response.data.drawn || [];
+
+                    // 復原儲存按鈕狀態
+                    const saveBtn = document.getElementById('save-prizes-btn');
+                    saveBtn.className = "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed";
+                    saveBtn.innerText = "💾 送出修改";
+                    saveBtn.disabled = true;
+
+                    // --- 渲染現有獎池 ---
+                    const availableSection = document.createElement('div');
+                    availableSection.innerHTML = '<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>';
+                    if (available.length > 0) {
+                        available.forEach(item => {
+                            const firstProb = item.first_prob !== undefined ? item.first_prob : 70.0;
                             const div = document.createElement('div');
-                            div.className = 'border-4 border-black p-3 bg-white shadow-[4px_4px_0px_#1a202c]';
+                            div.className = 'border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2';
                             div.innerHTML = `
-                                <div class="font-bold text-gray-900 mb-2 border-b-2 border-dashed border-gray-400 pb-1">🎁 ${escapeHTML(item.name)}</div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <span class="text-sm font-bold text-blue-600">機率: ${item.prob}%</span>
-                                    <button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 border-2 border-black hover:bg-red-600 active:translate-y-[2px] transition" data-id="${item.id}">🗑️ 刪除</button>
+                                <div class="font-bold text-gray-900 mb-2">${escapeHTML(item.name)}</div>
+                                <div class="flex flex-col gap-2 mb-2">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span>
+                                        <input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${item.prob}" value="${item.prob}" min="0.001" step="0.1">
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span>
+                                        <input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${firstProb}" value="${firstProb}" min="0.001" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="text-right border-t-2 border-dashed border-gray-300 pt-2">
+                                    <button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black hover:bg-red-600 active:translate-y-[2px] transition" data-id="${item.id}">🗑️ 刪除此獎品</button>
                                 </div>
                             `;
-                            container.appendChild(div);
-                        });
-
-                        // 綁定刪除事件
-                        container.querySelectorAll('.delete-prize-btn').forEach(btn => {
-                            btn.addEventListener('click', (e) => {
-                                const id = e.target.getAttribute('data-id');
-                                showConfirm("確定要刪除這個獎品嗎？", () => {
-                                    if(isSystemReady) {
-                                        ws.send(JSON.stringify({ type: "delete_prize", id: id, token: adminToken }));
-                                    }
-                                });
-                            });
+                            availableSection.appendChild(div);
                         });
                     } else {
-                        container.innerHTML = '<p class="text-center text-gray-500 font-bold mt-8">目前獎池中沒有任何獎品。</p>';
+                        availableSection.innerHTML += '<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>';
                     }
+                    container.appendChild(availableSection);
+
+                    // --- 渲染已被抽走的獎品 ---
+                    const drawnSection = document.createElement('div');
+                    drawnSection.innerHTML = '<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>';
+                    if (drawn.length > 0) {
+                        drawn.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80';
+                            div.innerHTML = `
+                                <div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(item.name)}</div>
+                                <div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(item.winner)}</div>
+                            `;
+                            drawnSection.appendChild(div);
+                        });
+                    } else {
+                        drawnSection.innerHTML += '<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>';
+                    }
+                    container.appendChild(drawnSection);
+                    
+                    // 綁定機率變更事件 (啟用/停用 送出按鈕)
+                    const checkChanges = () => {
+                        let hasChanges = false;
+                        document.querySelectorAll('.edit-prob-input').forEach(inp => {
+                            if (inp.value !== inp.getAttribute('data-original')) hasChanges = true;
+                        });
+                        document.querySelectorAll('.edit-first-prob-input').forEach(inp => {
+                            if (inp.value !== inp.getAttribute('data-original')) hasChanges = true;
+                        });
+                        
+                        if (hasChanges) {
+                            saveBtn.className = "pixel-btn flex-1 py-3 bg-blue-500 text-white cursor-pointer";
+                            saveBtn.disabled = false;
+                        } else {
+                            saveBtn.className = "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed";
+                            saveBtn.disabled = true;
+                        }
+                    };
+
+                    container.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(input => {
+                        input.addEventListener('input', checkChanges);
+                    });
+
+                    // 綁定刪除事件
+                    container.querySelectorAll('.delete-prize-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const id = e.target.getAttribute('data-id');
+                            showConfirm("確定要刪除這個未抽出的獎品嗎？", () => {
+                                if(isSystemReady) {
+                                    ws.send(JSON.stringify({ type: "delete_prize", id: id, token: adminToken }));
+                                }
+                            });
+                        });
+                    });
                     return;
                 }
                 
-                // 【優化】差分更新 (只更新單一使用者位置)
                 if (response.type === 'user_update') {
                     allUsersData[response.uid] = response.data;
-                    renderMap(); // 更新畫面上的游標
+                    renderMap(); 
                     return;
                 }
                 
-                // 拉霸機動畫與結果處理
                 if (response.type === 'draw_result') {
                     setTimeout(() => {
                         clearInterval(slotTimer);
                         slotSpinning = false;
                         
-                        // 決定動畫結果圖案
                         if (response.success && response.prize) {
                             let symbol = Math.random() > 0.5 ? '🐶' : '🐱';
                             document.getElementById('reel-1').innerText = symbol;
                             document.getElementById('reel-2').innerText = symbol;
                             document.getElementById('reel-3').innerText = symbol;
                         } else {
-                            // 沒抽中，交錯圖案 (包含伺服端防止駭客的銘謝惠顧)
                             document.getElementById('reel-1').innerText = '🐶';
                             document.getElementById('reel-2').innerText = '🐱';
                             document.getElementById('reel-3').innerText = '🐶';
                         }
 
-                        // 稍微停留 800ms 後顯示 Modal 與恢復按鈕
                         setTimeout(() => {
                             document.getElementById('slot-draw-btn').innerText = "🚀 開始抽獎！";
                             document.getElementById('slot-draw-btn').disabled = false;
@@ -586,11 +645,10 @@
                                     <a href="${finalUrl}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${btnText}</a>
                                 `);
                             } else {
-                                // 沒抽中，永遠不退還次數！(真抽獎)
                                 showModal(response.msg || "💨 銘謝惠顧，下次再來！");
                             }
                         }, 800);
-                    }, 1500); // 強制播放至少1.5秒動畫營造刺激感
+                    }, 1500); 
                     return;
                 }
                 
@@ -685,10 +743,17 @@
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             drawProjectBounds(); 
 
-            // 迷霧圖層與 EVA 高亮圖層設定
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             map.createPane('evaPane'); map.getPane('evaPane').style.zIndex = 460; map.getPane('evaPane').style.pointerEvents = 'none';
             
+            map.on('dragstart zoomstart mousedown touchstart', () => {
+                isMapInteracting = true;
+                if (mapInteractionTimer) clearTimeout(mapInteractionTimer);
+            });
+            map.on('dragend zoomend mouseup touchend', () => {
+                mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); 
+            });
+
             initFogSystem();
             setInterval(renderMap, 15000);
             
@@ -763,10 +828,11 @@
                 allUsersData[myUid].color = dbUserColor;
             }
             
+            // 儲存後立即推送給伺服器，同步其他人的畫面
             saveLocationToServer();
             renderMap();
             document.getElementById('profile-modal').classList.add('hidden');
-            showModal("✅ 個人資料已成功更新！");
+            showModal("✅ 個人資料已成功更新！\n您的新顏色已同步給線上其他使用者。");
         });
 
         // ================= 我的軌跡模式 =================
@@ -860,7 +926,7 @@
             requestFogRender();
         });
 
-        // ================= EVA 網格模式 =================
+        // ================= EVA 網格模式 (嚴格版：完美貼合迷霧) =================
         function offsetLatLng(lat, lng, dNorth, dEast) {
             const rEarth = 6378137; const pi = Math.PI;
             const dLat = (dNorth / rEarth) * (180 / pi);
@@ -894,6 +960,7 @@
             for (const uid in allUsersData) {
                 const u = allUsersData[uid];
                 if ((u.project || "阿妹") === currentProjectKey && u.history) {
+                    // EVA 完成度只看經緯度有無被探索過，不論新舊 (消散的迷霧仍算作已探索)
                     allValidPts.push(...u.history);
                 }
             }
@@ -953,14 +1020,20 @@
                     const y = 1.5 * R * r;
                     const cLatLng = offsetLatLng(centerLat, centerLng, y, x);
 
+                    // 嚴格版網格探測：增加點密度至 61 點，完美覆蓋六角形內部
                     let testPoints = [ cLatLng ];
-                    for(let i=0; i<6; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 100*Math.sin(i*Math.PI/3), 100*Math.cos(i*Math.PI/3)));
-                    for(let i=0; i<12; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 200*Math.sin(i*Math.PI/6), 200*Math.cos(i*Math.PI/6)));
+                    for(let i=0; i<6; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 75*Math.sin(i*Math.PI/3), 75*Math.cos(i*Math.PI/3)));
+                    for(let i=0; i<12; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 150*Math.sin(i*Math.PI/6), 150*Math.cos(i*Math.PI/6)));
+                    for(let i=0; i<18; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 225*Math.sin(i*Math.PI/9), 225*Math.cos(i*Math.PI/9)));
+                    for(let i=0; i<24; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 285*Math.sin(i*Math.PI/12), 285*Math.cos(i*Math.PI/12)));
 
-                    let coveredCount = 0; let hexMaxTs = 0;
+                    let coveredCount = 0; 
+                    let hexMaxTs = 0;
+                    
+                    // 真實迷霧的覆蓋半徑約 40~80 公尺，將判定標準設為嚴格的 60 公尺
                     for(let tp of testPoints) {
                         for(let pt of allValidPts) {
-                            if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 125) {
+                            if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 60) {
                                 coveredCount++;
                                 if (pt.timestamp > hexMaxTs) hexMaxTs = pt.timestamp;
                                 break; 
@@ -971,14 +1044,14 @@
                     const hexPoints = getHexPoints(cLatLng[0], cLatLng[1], R);
                     let textHtml = "";
                     if (coveredCount > 0) {
-                        const density = Math.min(100, Math.round((coveredCount / 19) * 100));
+                        const density = Math.min(100, Math.floor((coveredCount / testPoints.length) * 100));
                         const diff = Math.max(0, Date.now() - hexMaxTs);
                         const hrs = Math.floor(diff / 3600000); const mins = Math.floor((diff % 3600000) / 60000);
                         let timeStr = ""; if (hrs > 0) timeStr += `${hrs}時`; timeStr += `${mins}分前`;
 
                         let densityColor = '#39ff14'; 
                         if (density <= 50) densityColor = '#ef4444'; 
-                        else if (density <= 75) densityColor = '#f97316'; 
+                        else if (density <= 98) densityColor = '#f97316'; // 必須完美 100% 才會顯示綠色
 
                         textHtml = `<div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;"><div class="text-xl tracking-wider">${density}%</div><div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div></div>`;
                     } else {
@@ -1099,6 +1172,12 @@
 
         document.getElementById('close-admin-btn').addEventListener('click', () => {
             adminPanel.classList.add('hidden');
+            isAdmin = false;
+            adminToken = "";
+            sessionStorage.removeItem('dogMap_isAdmin');
+            sessionStorage.removeItem('dogMap_adminToken');
+            updateGiftUI();
+            showModal("已退出管理員模式。");
         });
 
         document.getElementById('set-ws-btn').addEventListener('click', () => {
@@ -1126,7 +1205,6 @@
         const managePrizesModal = document.getElementById('manage-prizes-modal');
         const prizeRowsContainer = document.getElementById('prize-rows-container');
 
-        // 【手機版圖片拖曳裁切邏輯】
         const cropModal = document.getElementById('image-crop-modal');
         const cropCanvas = document.getElementById('crop-canvas');
         const cropCtx = cropCanvas.getContext('2d');
@@ -1136,7 +1214,7 @@
         let targetB64Input = null, targetPreviewImg = null;
 
         function drawCrop() {
-            cropCtx.fillStyle = '#e5e7eb'; // 灰底
+            cropCtx.fillStyle = '#e5e7eb';
             cropCtx.fillRect(0, 0, 250, 250);
             if(currentCropImage.src) {
                 cropCtx.drawImage(currentCropImage, cropX, cropY, currentCropImage.width * cropScale, currentCropImage.height * cropScale);
@@ -1167,7 +1245,6 @@
             reader.readAsDataURL(file);
         }
 
-        // 滑鼠與觸控拖曳事件
         cropCanvas.addEventListener('mousedown', (e) => { isDraggingCrop = true; startX = e.clientX - cropX; startY = e.clientY - cropY; });
         cropCanvas.addEventListener('mousemove', (e) => { if(isDraggingCrop) { cropX = e.clientX - startX; cropY = e.clientY - startY; drawCrop(); }});
         window.addEventListener('mouseup', () => isDraggingCrop = false);
@@ -1179,7 +1256,6 @@
         document.getElementById('crop-zoom-slider').addEventListener('input', (e) => {
             const oldScale = cropScale;
             cropScale = parseFloat(e.target.value);
-            // 盡可能以中心點為基準縮放
             cropX = 125 - (125 - cropX) * (cropScale / oldScale);
             cropY = 125 - (125 - cropY) * (cropScale / oldScale);
             drawCrop();
@@ -1188,7 +1264,30 @@
         document.getElementById('crop-cancel-btn').addEventListener('click', () => { cropModal.classList.add('hidden'); });
 
         document.getElementById('crop-confirm-btn').addEventListener('click', () => {
-            const dataUrl = cropCanvas.toDataURL('image/jpeg', 0.85); // 壓縮存為 jpg
+            const exportSize = 1000;
+            const scaleMultiplier = exportSize / 250;
+            
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = exportSize;
+            exportCanvas.height = exportSize;
+            const exportCtx = exportCanvas.getContext('2d');
+            
+            exportCtx.fillStyle = '#e5e7eb';
+            exportCtx.fillRect(0, 0, exportSize, exportSize);
+            
+            if (currentCropImage.src) {
+                exportCtx.imageSmoothingQuality = 'high';
+                exportCtx.drawImage(
+                    currentCropImage, 
+                    cropX * scaleMultiplier, 
+                    cropY * scaleMultiplier, 
+                    currentCropImage.width * cropScale * scaleMultiplier, 
+                    currentCropImage.height * cropScale * scaleMultiplier
+                );
+            }
+
+            const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.95); 
+            
             if (targetB64Input) targetB64Input.value = dataUrl;
             if (targetPreviewImg) {
                 targetPreviewImg.src = dataUrl;
@@ -1197,7 +1296,6 @@
             cropModal.classList.add('hidden');
         });
 
-        // 【新增獎品視窗邏輯】
         function createPrizeRow() {
             const div = document.createElement('div');
             div.className = 'border-4 border-black p-3 bg-gray-100 relative mb-3';
@@ -1219,9 +1317,14 @@
                     <input type="hidden" class="prize-b64-input">
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <label class="text-xs font-bold text-gray-800">中獎機率(%):</label>
-                    <input type="number" class="prize-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="10.0" min="0.1" step="0.1">
+                <div class="flex items-center gap-2 mb-2 bg-blue-50 p-1 border-2 border-blue-200">
+                    <label class="text-xs font-bold text-gray-800 whitespace-nowrap">一般機率(%):</label>
+                    <input type="number" class="prize-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="1.0" min="0.001" step="0.1">
+                </div>
+                
+                <div class="flex items-center gap-2 bg-red-50 p-1 border-2 border-red-200">
+                    <label class="text-xs font-bold text-gray-800 whitespace-nowrap">首抽機率(%):</label>
+                    <input type="number" class="prize-first-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="70.0" min="0.001" step="0.1">
                 </div>
             `;
             
@@ -1276,6 +1379,7 @@
             for (let i = 0; i < rows.length; i++) {
                 const name = rows[i].querySelector('.prize-name-input').value.trim();
                 const prob = parseFloat(rows[i].querySelector('.prize-prob-input').value);
+                const first_prob = parseFloat(rows[i].querySelector('.prize-first-prob-input').value);
                 const type = rows[i].querySelector('.prize-type-select').value;
                 
                 let url = "", image_base64 = "";
@@ -1285,8 +1389,8 @@
                     image_base64 = rows[i].querySelector('.prize-b64-input').value;
                 }
 
-                if (name && (url || image_base64) && !isNaN(prob)) {
-                    prizes.push({ name, url, image_base64, prob });
+                if (name && (url || image_base64) && !isNaN(prob) && !isNaN(first_prob)) {
+                    prizes.push({ name, url, image_base64, prob, first_prob });
                 }
             }
 
@@ -1298,13 +1402,12 @@
             if (isSystemReady) {
                 ws.send(JSON.stringify({ type: "add_prizes", token: adminToken, data: prizes }));
                 addPrizeModal.classList.add('hidden');
-                showModal("⏳ 獎品新增指令已送出！圖片正在上傳中...");
+                showModal("⏳ 獎品新增指令已送出！圖片正在上傳且系統將自動比對重複項目...");
             } else {
                 showModal("⚠️ 系統未連線！");
             }
         });
 
-        // 【管理獎品視窗邏輯】
         managePrizesBtn.addEventListener('click', () => {
             if (!isAdmin) return;
             if (isSystemReady) {
@@ -1318,6 +1421,35 @@
 
         document.getElementById('close-manage-prizes-btn').addEventListener('click', () => {
             managePrizesModal.classList.add('hidden');
+        });
+        
+        // 綁定儲存修改機率按鈕事件 (全域事件)
+        document.getElementById('save-prizes-btn').addEventListener('click', () => {
+            const updates = [];
+            const availableItems = document.querySelectorAll('.edit-prob-input');
+            
+            availableItems.forEach(probInp => {
+                const id = probInp.getAttribute('data-id');
+                const firstProbInp = document.querySelector(`.edit-first-prob-input[data-id="${id}"]`);
+                
+                if (firstProbInp && (probInp.value !== probInp.getAttribute('data-original') || 
+                    firstProbInp.value !== firstProbInp.getAttribute('data-original'))) {
+                    updates.push({
+                        id: id,
+                        prob: parseFloat(probInp.value),
+                        first_prob: parseFloat(firstProbInp.value)
+                    });
+                }
+            });
+            
+            if (updates.length > 0 && isSystemReady) {
+                const btn = document.getElementById('save-prizes-btn');
+                btn.innerText = "儲存中...";
+                btn.className = "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed";
+                btn.disabled = true;
+                
+                ws.send(JSON.stringify({ type: "update_prize_probs", token: adminToken, data: updates }));
+            }
         });
         // ===================================
 
@@ -1710,22 +1842,16 @@
         // ================= UI 按鈕邏輯綁定 =================
         toggleFogBtn.addEventListener('click', () => { isFogVisible = !isFogVisible; map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }});
         
-        // --- 抽獎機邏輯與倒數計算 (無退還機制) ---
         function updateGiftUI() {
             let displayTickets = isAdmin ? '無限' : lotteryTickets;
             document.getElementById('gift-ticket-badge').innerText = displayTickets;
             if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
                 document.getElementById('slot-tickets-display').innerText = displayTickets;
             }
-            
-            let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
-            let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
-            document.getElementById('gift-timer').innerText = `${m}:${s}`;
         }
         
         function saveLotteryState() {
             const data = JSON.stringify({ r: lotteryTimeRemaining, t: lotteryTickets });
-            // 利用 UID 作為 Salt 增加雜湊難度，防止直接修改 LocalStorage
             const salt = "S4lt_" + myUid;
             const hash = btoa(encodeURIComponent(data + salt)).split('').reverse().join('');
             setPersistentData('dogMap_lottery', data);
@@ -1755,7 +1881,69 @@
 
         setInterval(() => {
             if (isSpectatorMode || !isTrackingStarted) return;
+
+            let isOutOfRange = false;
+
+            if (localHistory && localHistory.length > 0) {
+                const currentLoc = localHistory[localHistory.length - 1];
+                const proj = PROJECTS[currentProjectKey];
+                const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
+                const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
+                const distToCenter = getDistance(currentLoc.lat, currentLoc.lng, centerLat, centerLng);
+                
+                if (distToCenter > 50000) {
+                    isOutOfRange = true;
+                }
+            }
+
+            const timerUI = document.getElementById('gift-timer');
+
+            if (isOutOfRange) {
+                timerUI.style.color = '#ef4444'; 
+                timerUI.innerText = "太遠了";
+                return; 
+            } else {
+                timerUI.style.color = ''; 
+            }
+
+            if (lotteryTimeRemaining === 300) {
+                const now = Date.now();
+                const fiftyMinsAgo = now - 50 * 60 * 1000;
+                let maxDist50Min = 0;
+                let hasValidOldPoints = false;
+                
+                if (localHistory && localHistory.length > 0) {
+                    const currentLoc = localHistory[localHistory.length - 1];
+                    for (let i = localHistory.length - 1; i >= 0; i--) {
+                        const pt = localHistory[i];
+                        if (pt.timestamp >= fiftyMinsAgo) {
+                            const d = getDistance(currentLoc.lat, currentLoc.lng, pt.lat, pt.lng);
+                            if (d > maxDist50Min) maxDist50Min = d;
+                            hasValidOldPoints = true;
+                        } else {
+                            break; 
+                        }
+                    }
+                }
+                
+                if (hasValidOldPoints && maxDist50Min < 50) {
+                    lotteryTimeRemaining = 3599; 
+                    showModal("⚠️ 系統偵測到您過去 50 分鐘內的移動範圍小於 50 公尺，疑似掛網。\n為維持公平性，抽獎計時器已重新計時！");
+                    
+                    let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
+                    let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
+                    timerUI.innerText = `${m}:${s}`;
+                    saveLotteryState();
+                    return;
+                }
+            }
+
             lotteryTimeRemaining--;
+            
+            let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
+            let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
+            timerUI.innerText = `${m}:${s}`;
+
             if (lotteryTimeRemaining <= 0) {
                 lotteryTickets++;
                 lotteryTimeRemaining = 3600;
@@ -1786,7 +1974,6 @@
             }
             if (!isSystemReady) { showModal("系統目前未連線！"); return; }
             
-            // 無論結果如何，立刻扣除次數 (真抽獎)
             if (!isAdmin) {
                 lotteryTickets--;
                 saveLotteryState();
@@ -1796,7 +1983,6 @@
             document.getElementById('slot-draw-btn').innerText = "🎰 抽獎中...";
             document.getElementById('slot-draw-btn').disabled = true;
             
-            // 啟動超萌拉霸機動畫
             slotSpinning = true;
             slotTimer = setInterval(() => {
                 const emojis = ['🐶', '🐱'];
@@ -1807,7 +1993,6 @@
 
             ws.send(JSON.stringify({ type: "draw_gift", uid: myUid, userName: currentUserName }));
         });
-        // ------------------------------
         
         navPinBtn.addEventListener('click', () => {
             if (navMarker) { map.removeLayer(navMarker); navMarker = null; navPinBtn.innerText = "📍 導航標記"; navPinBtn.style.backgroundColor = "#f59e0b"; navPinBtn.style.color = "#1a202c"; } 
@@ -1866,7 +2051,12 @@
             }
         });
 
-        locateBtn.addEventListener('click', () => { if (!isSpectatorMode && lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, { animate: true }); });
+        locateBtn.addEventListener('click', () => { 
+            if (!isSpectatorMode && lastSavedPos) {
+                map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, { animate: true }); 
+                isMapInteracting = false; 
+            }
+        });
 
         // ================= 定位服務與伺服器同步 =================
         function startLocationServices(isAutoStart) {
@@ -1895,19 +2085,6 @@
                 if (dist >= 50 || timeElapsed >= 3 * 60 * 1000) shouldUpload = true;
             } else { shouldUpload = true; }
             
-            // 防掛網檢測：如果距離小於 10m，判斷為原地掛網，將經過的時間加回計時器
-            if (lastLotteryLoc) {
-                const distCheck = getDistance(lastLotteryLoc.lat, lastLotteryLoc.lng, lat, lng);
-                const timeElapsedSec = Math.floor((timestamp - lastLotteryTime) / 1000);
-                if (distCheck < 10) {
-                    lotteryTimeRemaining = Math.min(3600, lotteryTimeRemaining + timeElapsedSec);
-                }
-            }
-            lastLotteryLoc = { lat, lng };
-            lastLotteryTime = timestamp;
-            saveLotteryState();
-            updateGiftUI();
-
             if (!shouldUpload && lastSavedPos) return;
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
@@ -1919,6 +2096,12 @@
             
             updateStepsCounter(); 
             
+            if (!isMapInteracting && map && !isMyRouteMode) {
+                if (!map.getBounds().contains([lat, lng])) {
+                    map.setView([lat, lng], map.getZoom() || 17, { animate: true });
+                }
+            }
+
             renderMap(); saveLocationToServer();
         }
 
