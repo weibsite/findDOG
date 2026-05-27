@@ -33,9 +33,9 @@
         .center-pulse-square { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border: 4px solid #ef4444; box-sizing: border-box; animation: pulse-square 2s infinite linear; pointer-events: none; }
         .animate-marquee-text { display: inline-block; white-space: nowrap; animation: marquee-scroll 20s linear infinite; }
         
-        #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar, #prize-rows-container::-webkit-scrollbar, #admin-prizes-list-container::-webkit-scrollbar { width: 8px; }
-        #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track, #prize-rows-container::-webkit-scrollbar-track, #admin-prizes-list-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
-        #sightings-list-container::-webkit-scrollbar-thumb, #routes-list-container::-webkit-scrollbar-thumb, #prize-rows-container::-webkit-scrollbar-thumb, #admin-prizes-list-container::-webkit-scrollbar-thumb { background: #1a202c; }
+        #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar, #prize-rows-container::-webkit-scrollbar, #admin-prizes-list-container::-webkit-scrollbar, #blacklist-container::-webkit-scrollbar { width: 8px; }
+        #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track, #prize-rows-container::-webkit-scrollbar-track, #admin-prizes-list-container::-webkit-scrollbar-track, #blacklist-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
+        #sightings-list-container::-webkit-scrollbar-thumb, #routes-list-container::-webkit-scrollbar-thumb, #prize-rows-container::-webkit-scrollbar-thumb, #admin-prizes-list-container::-webkit-scrollbar-thumb, #blacklist-container::-webkit-scrollbar-thumb { background: #1a202c; }
     </style>
 </head>
 <body>
@@ -44,7 +44,7 @@
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/70 flex items-center justify-center transition-opacity duration-300">
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">尋狗地圖</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 其他縣市可以按左下觀看模式觀看 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
             <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
             <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button>
@@ -93,6 +93,18 @@
                 <button id="au-restrict-btn" class="pixel-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 限制帳戶 (機率降至預設上限)</button>
                 <button id="au-close-btn" class="pixel-btn w-full py-2 bg-gray-400 text-sm">❌ 關閉</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 管理員: 黑名單解除 Modal -->
+    <div id="manage-blacklist-modal" class="hidden absolute inset-0 z-[11500] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col">
+            <h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統封鎖黑名單</h3>
+            <p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">被系統判定為多開的異常帳號將無法抽獎。<br>且管理員巡視時會看見其名牌標示為紅色。</p>
+            <div id="blacklist-container" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2 text-left">
+                <!-- Javascript 動態生成黑名單列 -->
+            </div>
+            <button id="close-blacklist-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">❌ 關閉列表</button>
         </div>
     </div>
 
@@ -177,14 +189,12 @@
 
     <!-- 右上角 UI 群組：線上狀態 -->
     <div class="absolute top-4 right-4 z-[3000] flex items-center gap-3 pointer-events-none">
-        
         <!-- UI 右上狀態列 -->
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto">
             <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
             <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
             <div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div>
         </div>
-        
     </div>
 
     <!-- 抽獎相關 UI -->
@@ -229,8 +239,8 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
-    <!-- 管理員面板 -->
-    <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
+    <!-- 管理員面板 (最高層級 z-[11000]) -->
+    <div id="admin-panel" class="absolute top-4 left-4 z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
         <button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
@@ -239,6 +249,7 @@
         <button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
         <button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button>
         <button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
+        <button id="manage-blacklist-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
         <button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
         <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
@@ -712,6 +723,41 @@
                     });
                     return;
                 }
+
+                // 【管理員】獲取黑名單列表
+                if (response.type === 'admin_blacklist_data') {
+                    const container = document.getElementById('blacklist-container');
+                    container.innerHTML = '';
+                    if (!response.data || response.data.length === 0) {
+                        container.innerHTML = '<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>';
+                    } else {
+                        response.data.forEach(user => {
+                            const div = document.createElement('div');
+                            div.className = 'border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center';
+                            div.innerHTML = `
+                                <div>
+                                    <div class="font-bold text-red-600">${escapeHTML(user.userName)}</div>
+                                    <div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(user.ip)}</div>
+                                    <div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(user.uid.substring(0, 8))}...</div>
+                                </div>
+                                <button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap active:translate-y-[2px]" data-uid="${user.uid}">✅ 解除</button>
+                            `;
+                            container.appendChild(div);
+                        });
+                        
+                        container.querySelectorAll('.unban-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                const targetUid = e.target.getAttribute('data-uid');
+                                if (isSystemReady) {
+                                    ws.send(JSON.stringify({ type: "admin_remove_blacklist", token: adminToken, uid: targetUid }));
+                                    e.target.innerText = "處理中...";
+                                }
+                            });
+                        });
+                    }
+                    document.getElementById('manage-blacklist-modal').classList.remove('hidden');
+                    return;
+                }
                 
                 if (response.type === 'sync_chunk') {
                     const uid = response.uid;
@@ -851,6 +897,21 @@
                 ws.send(JSON.stringify({ type: "admin_toggle_restriction", token: adminToken, uid: uid }));
                 e.target.innerText = "⏳ 處理中...";
             }
+        });
+
+        document.getElementById('manage-blacklist-btn').addEventListener('click', () => {
+            if (!isAdmin) return;
+            if (isSystemReady) {
+                document.getElementById('blacklist-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>';
+                ws.send(JSON.stringify({ type: "admin_get_blacklist", token: adminToken }));
+                document.getElementById('manage-blacklist-modal').classList.remove('hidden');
+            } else {
+                showModal("⚠️ 系統未連線！");
+            }
+        });
+
+        document.getElementById('close-blacklist-btn').addEventListener('click', () => {
+            document.getElementById('manage-blacklist-modal').classList.add('hidden');
         });
         // ============================================================
 
@@ -2320,9 +2381,17 @@
                         
                         const lastPoint = currentHistory[currentHistory.length - 1];
                         const safeUserName = escapeHTML(rName);
-                        const tagSuffix = (targetRouteUid !== myUid) ? ' (觀察中)' : '';
+                        
+                        let tagSuffix = (targetRouteUid !== myUid) ? ' (觀察中)' : '';
+                        let nameColor = `color: ${rColor}; border-color: ${rColor}; pointer-events: auto;`;
+                        
+                        if (isAdmin && targetData && targetData.blacklisted) {
+                            nameColor = 'color: #ffffff; background-color: #ef4444; border-color: #7f1d1d; pointer-events: auto;';
+                            tagSuffix = ' (封鎖中)';
+                        }
+                        
                         const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${rColor}; animation-duration: 2s;"></div>`;
-                        const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${targetRouteUid || myUid}" style="color: ${rColor}; border-color: ${rColor}; pointer-events: auto;">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+                        const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${targetRouteUid || myUid}" style="${nameColor}">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                         L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: 5000 }).addTo(markersLayer);
                         
                         if (snakeInterval) {
@@ -2351,10 +2420,20 @@
                 if (now - lastPoint.timestamp < ONE_HOUR) { 
                     onlineUserCount++;
                     
-                    const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? dbUserColor : (userData.color || '#3b82f6'));
+                    const safeUserName = escapeHTML(userData.userName);
+                    const safeRenderColor = escapeHTML(isSelf ? dbUserColor : (userData.color || '#3b82f6'));
                     const avatarHtml = isSelf ? `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${safeRenderColor};"></div>` : `<div class="user-avatar-pixel" style="background-color: ${safeRenderColor};"></div>`;
-                    const nameColor = isSelf ? `color: ${safeRenderColor};` : 'color: #1a202c;';
-                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${uid}" style="${nameColor}">${safeUserName}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+                    
+                    let nameColor = isSelf ? `color: ${safeRenderColor};` : 'color: #1a202c;';
+                    let tagSuffix = '';
+                    
+                    // 管理員看見的紅名標示
+                    if (isAdmin && userData.blacklisted) {
+                        nameColor = 'color: #ffffff; background-color: #ef4444; border-color: #7f1d1d;';
+                        tagSuffix = ' (封鎖中)';
+                    }
+                    
+                    const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${uid}" style="${nameColor}">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                     L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: isSelf ? 5000 : 1000 }).addTo(markersLayer);
                 }
             });
