@@ -78,7 +78,7 @@
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold" placeholder="路線名稱"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
 
-    <!-- UI 右上狀態列：加入個人檔案設定入口 -->
+    <!-- UI 右上狀態列 -->
     <div id="status-toast" class="absolute top-4 right-4 z-[2000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2">
         <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
         <span id="toast-text" class="flex-1">斷線中...</span>
@@ -93,7 +93,7 @@
         <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300">載入中...</div>
     </div>
     
-    <!-- 管理員面板 (加入退出面板按鈕) -->
+    <!-- 管理員面板 -->
     <div id="admin-panel" class="absolute top-4 left-4 z-[2000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
@@ -109,7 +109,7 @@
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
     
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">完成度</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
@@ -122,6 +122,15 @@
             👣 累積步數<br>
             <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
         </div>
+    </div>
+
+    <!-- 軌跡播放控制面板 (預設隱藏) -->
+    <div id="playback-controls" class="hidden absolute bottom-10 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1.5 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
+        <button id="pb-start" class="pixel-btn px-3 py-1.5 text-sm bg-gray-400 text-white" title="回到最前面">«</button>
+        <button id="pb-prev" class="pixel-btn px-3 py-1.5 text-sm bg-gray-400 text-white" title="回到上一格">‹</button>
+        <button id="pb-pause" class="pixel-btn px-3 py-1.5 text-sm bg-yellow-400 text-black font-black w-10" title="暫停/播放">=</button>
+        <button id="pb-speed" class="pixel-btn px-2 py-1.5 text-xs bg-green-500 text-white w-12" title="加速播放">› x1</button>
+        <button id="pb-end" class="pixel-btn px-3 py-1.5 text-sm bg-blue-500 text-white" title="直接完成">»</button>
     </div>
 
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
@@ -195,15 +204,19 @@
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
         let isFogVisible = true; let navMarker = null;
 
-        // 貪食蛇我的軌跡模式變數
+        // 貪食蛇我的軌跡模式變數 (含播放器控制)
         let isMyRouteMode = false;
         let targetRouteUid = null; 
         let snakeInterval = null;
         let snakeIndex = 0;
+        let basePlaybackSpeed = 500;
+        let currentPlaybackSpeed = 500;
+        let isPlaybackPaused = false;
 
         // EVA 網格模式變數
         let isEvaMode = false;
         let evaGridLayer = null;
+        let evaAnimationTimeout = null;
 
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx;
         let fogRenderPending = false; const FOG_SCALE = 0.08;
@@ -232,6 +245,7 @@
         const forceUploadBtn = document.getElementById('force-upload-btn');
         const stepPanel = document.getElementById('step-panel');
         const adminPanel = document.getElementById('admin-panel');
+        const playbackControls = document.getElementById('playback-controls');
 
         const manageSightingsModal = document.getElementById('manage-sightings-modal');
         const manageRoutesModal = document.getElementById('manage-routes-modal');
@@ -374,7 +388,6 @@
                     document.getElementById('announcement-text').innerHTML = escapeHTML(allAnnouncements[currentProjectKey] || "目前無最新公告。").replace(/\n/g, '<br>');
                     
                     renderMap(); renderSightings(); renderRoutes();
-                    if(isEvaMode) drawEvaGrid();
                     if(!manageSightingsModal.classList.contains('hidden')) renderManageSightingsList();
                     if(!manageRoutesModal.classList.contains('hidden')) renderManageRoutesList();
                 }
@@ -424,7 +437,7 @@
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             drawProjectBounds(); 
 
-            // 迷霧圖層與 EVA 高亮圖層設定 (確保高於迷霧)
+            // 迷霧圖層與 EVA 高亮圖層設定
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             map.createPane('evaPane'); map.getPane('evaPane').style.zIndex = 460; map.getPane('evaPane').style.pointerEvents = 'none';
             
@@ -509,15 +522,60 @@
             showModal("✅ 個人資料已成功更新！");
         });
 
-        // ================= 我的軌跡模式 (貪食蛇 / 尋找最多紀錄使用者) =================
+        // ================= 我的軌跡模式 (播放器系統) =================
+        function startPlaybackInterval() {
+            if (snakeInterval) clearInterval(snakeInterval);
+            if (isPlaybackPaused) return;
+
+            snakeInterval = setInterval(() => {
+                const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
+                const mLen = (tData && tData.history) ? tData.history.length : 0;
+                if (snakeIndex < mLen) {
+                    snakeIndex++;
+                    renderMap();
+                } else {
+                    clearInterval(snakeInterval);
+                    snakeInterval = null;
+                    isPlaybackPaused = true;
+                    document.getElementById('pb-pause').innerText = "▶";
+                }
+            }, currentPlaybackSpeed);
+        }
+
+        // 播放控制面板綁定
+        document.getElementById('pb-start').addEventListener('click', () => {
+            snakeIndex = 1; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+        });
+        document.getElementById('pb-prev').addEventListener('click', () => {
+            snakeIndex = Math.max(1, snakeIndex - 1); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+        });
+        document.getElementById('pb-pause').addEventListener('click', () => {
+            isPlaybackPaused = !isPlaybackPaused;
+            document.getElementById('pb-pause').innerText = isPlaybackPaused ? "▶" : "=";
+            startPlaybackInterval();
+        });
+        document.getElementById('pb-speed').addEventListener('click', () => {
+            currentPlaybackSpeed = currentPlaybackSpeed / 2;
+            if (currentPlaybackSpeed < 62.5) currentPlaybackSpeed = basePlaybackSpeed;
+            let mult = basePlaybackSpeed / currentPlaybackSpeed;
+            document.getElementById('pb-speed').innerText = `› x${mult}`;
+            startPlaybackInterval();
+        });
+        document.getElementById('pb-end').addEventListener('click', () => {
+            const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
+            snakeIndex = (tData && tData.history) ? tData.history.length : 0;
+            isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+        });
+
         myRouteBtn.addEventListener('click', () => {
             if (isSpectatorMode) { showModal("觀看模式下無法使用此功能！"); return; }
             
             isMyRouteMode = !isMyRouteMode;
             if (isMyRouteMode) {
                 targetRouteUid = myUid;
-                let testMessage = "🐍 已開啟軌跡重現模式！\n現在地圖上將隱藏其他志工，並以每 0.5 秒 1 格的貪食蛇方式慢慢重現探索路線。";
+                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。";
 
+                // 若為管理員，自動尋找目前資料最齊全的志工作為示範
                 if (isAdmin) {
                     let maxLen = 0;
                     for (const uid in allUsersData) {
@@ -535,33 +593,25 @@
                 myRouteBtn.innerText = "❌ 退出軌跡";
                 myRouteBtn.style.backgroundColor = "#ef4444";
                 myRouteBtn.style.color = "white";
+                playbackControls.classList.remove('hidden');
                 
                 // 動畫初始化
                 snakeIndex = 1;
-                if (snakeInterval) clearInterval(snakeInterval);
+                isPlaybackPaused = false;
+                currentPlaybackSpeed = basePlaybackSpeed;
+                document.getElementById('pb-pause').innerText = "=";
+                document.getElementById('pb-speed').innerText = "› x1";
                 
-                // 將視角移至路徑起點
                 const targetData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
                 if (targetData && targetData.history && targetData.history.length > 0) {
                     map.setView([targetData.history[0].lat, targetData.history[0].lng], 16);
                 }
 
-                // 啟動貪食蛇 0.5 秒繪製計時器
-                snakeInterval = setInterval(() => {
-                    const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
-                    const mLen = (tData && tData.history) ? tData.history.length : 0;
-                    if (snakeIndex < mLen) {
-                        snakeIndex++;
-                        renderMap();
-                    } else {
-                        clearInterval(snakeInterval);
-                        snakeInterval = null;
-                    }
-                }, 500);
-
+                startPlaybackInterval();
                 showModal(testMessage);
             } else {
                 targetRouteUid = null;
+                playbackControls.classList.add('hidden');
                 if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
                 myRouteBtn.innerText = "🐍 我的軌跡";
                 myRouteBtn.style.backgroundColor = "#a855f7"; 
@@ -571,10 +621,9 @@
             requestFogRender();
         });
 
-        // ================= EVA 網格模式 (精準涵蓋率與時間) =================
+        // ================= EVA 網格模式 (精準涵蓋率與擴散動畫) =================
         function offsetLatLng(lat, lng, dNorth, dEast) {
-            const rEarth = 6378137;
-            const pi = Math.PI;
+            const rEarth = 6378137; const pi = Math.PI;
             const dLat = (dNorth / rEarth) * (180 / pi);
             const dLng = (dEast / (rEarth * Math.cos(lat * pi / 180))) * (180 / pi);
             return [lat + dLat, lng + dLng];
@@ -583,11 +632,8 @@
         function getHexPoints(centerLat, centerLng, R) {
             const points = [];
             for(let i=0; i<6; i++) {
-                const angle_deg = 60 * i - 30;
-                const angle_rad = Math.PI / 180 * angle_deg;
-                const dEast = R * Math.cos(angle_rad);
-                const dNorth = R * Math.sin(angle_rad);
-                points.push(offsetLatLng(centerLat, centerLng, dNorth, dEast));
+                const angle_deg = 60 * i - 30; const angle_rad = Math.PI / 180 * angle_deg;
+                points.push(offsetLatLng(centerLat, centerLng, R * Math.sin(angle_rad), R * Math.cos(angle_rad)));
             }
             return points;
         }
@@ -595,103 +641,102 @@
         function drawEvaGrid() {
             if (evaGridLayer) map.removeLayer(evaGridLayer);
             evaGridLayer = L.layerGroup().addTo(map);
+            if (evaAnimationTimeout) clearTimeout(evaAnimationTimeout);
 
-            const R = 300; // 半徑 300 公尺
+            const R = 300; 
             const proj = PROJECTS[currentProjectKey];
             const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
             const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
 
-            const w = Math.sqrt(3) * R;
-            const h = 2 * R;
-            const dx = w;
-            const dy = h * 0.75;
+            // 自動縮放至 3 公里半徑的範圍
+            const radiusLat = 3000 / 111000;
+            const radiusLng = 3000 / (111000 * Math.cos(centerLat * Math.PI/180));
+            map.flyToBounds([
+                [centerLat - radiusLat, centerLng - radiusLng],
+                [centerLat + radiusLat, centerLng + radiusLng]
+            ], { animate: true, duration: 1.5 });
 
-            // 擴散 13x13 網格覆蓋搜尋區域
+            const w = Math.sqrt(3) * R; const h = 2 * R;
+            const dx = w; const dy = h * 0.75;
+            
+            // 預先計算所有網格資料並依據距離排序，實現由內而外擴散
+            let hexDataList = [];
+
             for (let q = -6; q <= 6; q++) {
                 for (let r = -6; r <= 6; r++) {
-                    const x = dx * (q + r/2.0);
-                    const y = dy * r;
+                    const x = dx * (q + r/2.0); const y = dy * r;
                     const cLatLng = offsetLatLng(centerLat, centerLng, y, x);
 
-                    // 1. 產生 19 個高密度測試點 (測量該網格內的未探索死角)
                     let testPoints = [ cLatLng ];
                     for(let i=0; i<6; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 100*Math.sin(i*Math.PI/3), 100*Math.cos(i*Math.PI/3)));
                     for(let i=0; i<12; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 200*Math.sin(i*Math.PI/6), 200*Math.cos(i*Math.PI/6)));
 
-                    // 2. 收集附近的探索點，大幅減少迴圈次數
                     let nearPts = [];
                     for (const uid in allUsersData) {
                         const u = allUsersData[uid];
                         if ((u.project || "阿妹") === currentProjectKey && u.history) {
                             for (const pt of u.history) {
-                                if (Math.abs(pt.lat - cLatLng[0]) < 0.005 && Math.abs(pt.lng - cLatLng[1]) < 0.005) {
-                                    nearPts.push(pt);
-                                }
+                                if (Math.abs(pt.lat - cLatLng[0]) < 0.005 && Math.abs(pt.lng - cLatLng[1]) < 0.005) nearPts.push(pt);
                             }
                         }
                     }
 
-                    // 3. 檢查 19 個測試點是否被使用者迷霧半徑 (125m) 清除
-                    let coveredCount = 0;
-                    let hexMaxTs = 0;
+                    let coveredCount = 0; let hexMaxTs = 0;
                     for(let tp of testPoints) {
                         for(let pt of nearPts) {
                             if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 125) {
                                 coveredCount++;
                                 if (pt.timestamp > hexMaxTs) hexMaxTs = pt.timestamp;
-                                break; // 該測試點已被照亮，換下一個
+                                break; 
                             }
                         }
                     }
 
-                    // 繪製螢光綠網格，放置於專屬 evaPane，不受迷霧遮擋
                     const hexPoints = getHexPoints(cLatLng[0], cLatLng[1], R);
-                    L.polygon(hexPoints, {
-                        color: '#39ff14', 
-                        weight: 2,
-                        fillColor: '#39ff14',
-                        fillOpacity: 0.05,
-                        dashArray: '5, 5',
-                        pane: 'evaPane'
-                    }).addTo(evaGridLayer);
-
                     let textHtml = "";
                     if (coveredCount > 0) {
                         const density = Math.min(100, Math.round((coveredCount / 19) * 100));
                         const diff = Math.max(0, Date.now() - hexMaxTs);
-                        const hrs = Math.floor(diff / 3600000);
-                        const mins = Math.floor((diff % 3600000) / 60000);
-                        
-                        let timeStr = "";
-                        if (hrs > 0) timeStr += `${hrs}時`;
-                        timeStr += `${mins}分前`;
+                        const hrs = Math.floor(diff / 3600000); const mins = Math.floor((diff % 3600000) / 60000);
+                        let timeStr = ""; if (hrs > 0) timeStr += `${hrs}時`; timeStr += `${mins}分前`;
 
-                        // 判斷完成度顏色
-                        let densityColor = '#39ff14'; // 預設螢光綠
-                        if (density <= 50) {
-                            densityColor = '#ef4444'; // 紅色
-                        } else if (density <= 75) {
-                            densityColor = '#f97316'; // 橘色
-                        }
+                        let densityColor = '#39ff14'; 
+                        if (density <= 50) densityColor = '#ef4444'; 
+                        else if (density <= 75) densityColor = '#f97316'; 
 
-                        textHtml = `
-                            <div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;">
-                                <div class="text-xl tracking-wider">${density}%</div>
-                                <div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div>
-                            </div>
-                        `;
+                        textHtml = `<div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;"><div class="text-xl tracking-wider">${density}%</div><div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div></div>`;
                     } else {
-                        textHtml = `
-                            <div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 11px;">
-                                未探索
-                            </div>
-                        `;
+                        textHtml = `<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 11px;">未探索</div>`;
                     }
 
-                    const icon = L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] });
-                    L.marker(cLatLng, { icon: icon, zIndexOffset: -100, pane: 'evaPane' }).addTo(evaGridLayer);
+                    hexDataList.push({
+                        hexPoints: hexPoints,
+                        cLatLng: cLatLng,
+                        polyOpts: { color: '#39ff14', weight: 2, fillColor: '#39ff14', fillOpacity: 0.05, dashArray: '5, 5', pane: 'evaPane' },
+                        markerOpts: { icon: L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] }), zIndexOffset: -100, pane: 'evaPane' },
+                        dist: getDistance(centerLat, centerLng, cLatLng[0], cLatLng[1])
+                    });
                 }
             }
+
+            // 依距離由內而外排序
+            hexDataList.sort((a, b) => a.dist - b.dist);
+
+            let drawIdx = 0;
+            function animateHex() {
+                if(!isEvaMode || !evaGridLayer) return;
+                let batch = 4; // 每次畫 4 格，製造順暢擴散效果
+                while(batch-- > 0 && drawIdx < hexDataList.length) {
+                     let d = hexDataList[drawIdx++];
+                     L.polygon(d.hexPoints, d.polyOpts).addTo(evaGridLayer);
+                     L.marker(d.cLatLng, d.markerOpts).addTo(evaGridLayer);
+                }
+                if (drawIdx < hexDataList.length) {
+                    evaAnimationTimeout = setTimeout(animateHex, 20); // 20ms 繪製下一波
+                }
+            }
+            // 等待鏡頭飛行動畫啟動後再開始繪製網格
+            evaAnimationTimeout = setTimeout(animateHex, 800); 
         }
 
         evaGridBtn.addEventListener('click', () => {
@@ -702,9 +747,10 @@
                 evaGridBtn.style.color = "white";
                 drawEvaGrid();
             } else {
-                evaGridBtn.innerText = "完成度";
+                evaGridBtn.innerText = "🕸️ 完成度";
                 evaGridBtn.style.backgroundColor = "#f59e0b";
                 evaGridBtn.style.color = "#1a202c";
+                if (evaAnimationTimeout) clearTimeout(evaAnimationTimeout);
                 if (evaGridLayer) {
                     map.removeLayer(evaGridLayer);
                     evaGridLayer = null;
@@ -728,8 +774,9 @@
             if (isMyRouteMode) {
                 isMyRouteMode = false;
                 targetRouteUid = null;
+                playbackControls.classList.add('hidden');
                 if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
-                myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#f59e0b"; myRouteBtn.style.color = "#1a202c";
+                myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
             }
 
             renderMap(); 
@@ -1203,8 +1250,9 @@
                 if (isMyRouteMode) {
                     isMyRouteMode = false;
                     targetRouteUid = null;
+                    playbackControls.classList.add('hidden');
                     if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
-                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#f59e0b"; myRouteBtn.style.color = "#1a202c";
+                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
                 }
                 
                 const proj = PROJECTS[currentProjectKey];
@@ -1283,8 +1331,7 @@
                 }
 
                 if (historyToDraw && historyToDraw.length > 0) {
-                    // 若動畫已結束但有新點傳入，確保索引追上長度
-                    if (!snakeInterval && snakeIndex < historyToDraw.length) {
+                    if (!snakeInterval && !isPlaybackPaused && snakeIndex < historyToDraw.length) {
                         snakeIndex = historyToDraw.length;
                     }
 
