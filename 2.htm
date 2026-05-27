@@ -78,11 +78,20 @@
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold" placeholder="路線名稱"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
 
+    <!-- UI 右上禮物抽獎浮浮窗 -->
+    <div id="floating-gift-container" class="hidden absolute top-[130px] right-4 z-[2000] flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105">
+        <div class="relative">
+            <div style="font-size: 38px; filter: drop-shadow(2px 2px 0px #1a202c);">🎁</div>
+            <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
+        </div>
+        <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
+    </div>
+
     <!-- 新增：拉霸機抽獎相關 UI -->
     <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-6 w-full max-w-sm text-center">
-            <h3 class="text-gray-900 font-bold mb-4 text-2xl">🎰 探索拉霸機</h3>
-            <p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">累積戶外探索約每 3 公里 (1小時)<br>即可獲得一次抽獎機會！<br><span class="text-red-500">需有實際GPS移動軌跡，原地掛網無效喔！</span></p>
+            <h3 class="text-gray-900 font-bold mb-4 text-2xl">🎰 探索抽獎</h3>
+            <p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免次數遺失<br><span class="text-red-500">如中獎請自行截圖避免遺失</span></p>
             <div class="bg-gray-200 border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_#1a202c]">
                 <div class="text-sm font-bold text-gray-800">剩餘可抽獎次數</div>
                 <div id="slot-tickets-display" class="text-5xl font-black text-red-600 mt-2">0</div>
@@ -135,9 +144,8 @@
     <!-- UI 左側排版列表 -->
     <button id="switch-project-btn" class="absolute top-6 left-1/2 transform -translate-x-1/2 z-[2000] pixel-btn p-2 px-6 text-sm bg-yellow-400 text-black border-4 border-black whitespace-nowrap hidden">🎯 目標: 找阿妹</button>
     
-    <button id="my-route-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🕸️ 完成度</button>
-    <button id="slot-machine-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden bg-pink-500 text-white border-black">🎁 抽獎</button>
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
@@ -283,6 +291,13 @@
         let isDrawingRoute = false; let currentRoutePoints = []; let currentRoutePolyline = null;
         let currentRouteMarkers = []; let editingRouteId = null;
 
+        // --- 抽獎防掛網計時器相關 ---
+        let lotteryTimeRemaining = 3600;
+        let lotteryTickets = 0;
+        let lastLotteryTime = Date.now();
+        let lastLotteryLoc = null;
+        let isTrackingStarted = false;
+
         // --- DOM 元素 ---
         const startupOverlay = document.getElementById('startup-overlay');
         const nameInput = document.getElementById('user-name-input');
@@ -423,6 +438,7 @@
                         sessionStorage.setItem('dogMap_adminToken', adminToken);
                         document.getElementById('admin-login-modal').classList.add('hidden');
                         adminPanel.classList.remove('hidden');
+                        updateGiftUI(); // 刷新抽獎按鈕狀態
                         showModal("登入成功！您現在擁有伺服器管理權限。");
                     } else {
                         showModal("密碼錯誤，請重試！");
@@ -430,7 +446,7 @@
                     return; 
                 }
                 
-                // 新增：處理拉霸機結果
+                // 處理拉霸機結果
                 if (response.type === 'draw_result') {
                     document.getElementById('slot-draw-btn').innerText = "🚀 開始抽獎！";
                     document.getElementById('slot-draw-btn').disabled = false;
@@ -440,15 +456,17 @@
                             <div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div>
                             <div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${response.prize.name}</div>
                             <div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>若未截圖導致遺失，系統可能無法補發。</div>
-                            <a href="${response.prize.url}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black box-shadow: 4px 4px 0px #1a202c; no-underline text-center">領取兌換連結</a>
+                            <a href="${response.prize.url}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">領取兌換連結</a>
                         `);
                     } else if (response.success && !response.prize) {
                         showModal(response.msg); // 銘謝惠顧
                     } else {
                         // 抽獎失敗(如沒獎品) 退還次數
-                        let usedT = parseInt(getPersistentData('dogMap_usedTickets') || '0');
-                        setPersistentData('dogMap_usedTickets', Math.max(0, usedT - 1));
-                        document.getElementById('slot-tickets-display').innerText = getAvailableTickets();
+                        if (!isAdmin) {
+                            lotteryTickets++;
+                            saveLotteryState();
+                            updateGiftUI();
+                        }
                         showModal(response.msg);
                     }
                     return;
@@ -1261,7 +1279,6 @@
             const center = map.getCenter(); const metersPerPixel = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI/180))) / Math.pow(2, map.getZoom() + 8);
             const now = Date.now(); const ONE_HOUR = 60 * 60 * 1000;
 
-            // 新增：根據停留時間計算動態半徑 (時間越長 半徑越大)
             function getDynamicRadiusPx(historyPts, i) {
                 let timeSpent = (i < historyPts.length - 1) ? (historyPts[i+1].timestamp - historyPts[i].timestamp) : (now - historyPts[i].timestamp);
                 let ratio = Math.max(0, Math.min(1.0, timeSpent / 60000.0)); // 60秒滿範圍
@@ -1356,6 +1373,9 @@
                     updateStepsCounter(); 
                 }
                 document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+                
+                loadLotteryState();
+                
                 finishUIReveal(); toastText.innerText = "自動定位..."; startLocationServices(true);
             } else { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; }
         }
@@ -1367,29 +1387,66 @@
             setPersistentData('dogMap_userName', currentUserName); 
             setPersistentData('dogMap_userColor', dbUserColor); 
             document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            
+            loadLotteryState();
+            
             startLocationServices(false);
         });
 
         // ================= UI 按鈕邏輯綁定 =================
         toggleFogBtn.addEventListener('click', () => { isFogVisible = !isFogVisible; map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }});
         
-        // --- 新增：抽獎機邏輯與計算 ---
-        function getAvailableTickets() {
-            let totalDist = 0;
-            if (localHistory && localHistory.length > 1) {
-                for (let i = 1; i < localHistory.length; i++) {
-                    let d = getDistance(localHistory[i-1].lat, localHistory[i-1].lng, localHistory[i].lat, localHistory[i].lng);
-                    if (d < 1000) { totalDist += d; } // 嚴格過濾防止GPS瞬移灌水
+        // --- 抽獎機邏輯與倒數計算 ---
+        function updateGiftUI() {
+            let displayTickets = isAdmin ? '無限' : lotteryTickets;
+            document.getElementById('gift-ticket-badge').innerText = displayTickets;
+            if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
+                document.getElementById('slot-tickets-display').innerText = displayTickets;
+            }
+            
+            let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
+            let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('gift-timer').innerText = `${m}:${s}`;
+        }
+        
+        function saveLotteryState() {
+            const data = JSON.stringify({ r: lotteryTimeRemaining, t: lotteryTickets });
+            const hash = btoa(encodeURIComponent(data + "S4lt")).split('').reverse().join('');
+            setPersistentData('dogMap_lottery', data);
+            setPersistentData('dogMap_lottery_hash', hash);
+        }
+        
+        function loadLotteryState() {
+            const data = getPersistentData('dogMap_lottery');
+            const hash = getPersistentData('dogMap_lottery_hash');
+            if (data && hash) {
+                let calcHash = btoa(encodeURIComponent(data + "S4lt")).split('').reverse().join('');
+                if (calcHash === hash) {
+                    try {
+                        let parsed = JSON.parse(data);
+                        lotteryTimeRemaining = typeof parsed.r === 'number' ? parsed.r : 3600;
+                        lotteryTickets = typeof parsed.t === 'number' ? parsed.t : 0;
+                    } catch(e) {}
                 }
             }
-            let earnedTickets = Math.floor(totalDist / 3000); // 每 3公里 = 1抽
-            let usedTickets = parseInt(getPersistentData('dogMap_usedTickets') || '0');
-            return Math.max(0, earnedTickets - usedTickets);
+            updateGiftUI();
         }
 
-        document.getElementById('slot-machine-btn').addEventListener('click', () => {
-            if (isSpectatorMode) { showModal("觀看模式無法累積里程抽獎喔！"); return; }
-            document.getElementById('slot-tickets-display').innerText = getAvailableTickets();
+        setInterval(() => {
+            if (isSpectatorMode || !isTrackingStarted) return;
+            lotteryTimeRemaining--;
+            if (lotteryTimeRemaining <= 0) {
+                lotteryTickets++;
+                lotteryTimeRemaining = 3600;
+                showModal("🎉 累積探索 60 分鐘！\n獲得 1 次抽獎機會！請點擊右上角禮物圖示抽獎。");
+            }
+            saveLotteryState();
+            updateGiftUI();
+        }, 1000);
+
+        document.getElementById('floating-gift-container').addEventListener('click', () => {
+            if (isSpectatorMode) { showModal("觀看模式無法參與抽獎喔！"); return; }
+            updateGiftUI();
             document.getElementById('slot-machine-modal').classList.remove('hidden');
         });
 
@@ -1402,13 +1459,18 @@
         });
 
         document.getElementById('slot-draw-btn').addEventListener('click', () => {
-            if (getAvailableTickets() <= 0) { showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積里程！(每3公里1次)"); return; }
+            if (!isAdmin && lotteryTickets <= 0) { 
+                showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
+                return; 
+            }
             if (!isSystemReady) { showModal("系統目前未連線！"); return; }
             
-            // 先扣除次數
-            let usedTickets = parseInt(getPersistentData('dogMap_usedTickets') || '0');
-            setPersistentData('dogMap_usedTickets', usedTickets + 1);
-            document.getElementById('slot-tickets-display').innerText = getAvailableTickets();
+            // 扣除次數
+            if (!isAdmin) {
+                lotteryTickets--;
+                saveLotteryState();
+                updateGiftUI();
+            }
             
             document.getElementById('slot-draw-btn').innerText = "🎰 抽獎中...";
             document.getElementById('slot-draw-btn').disabled = true;
@@ -1485,9 +1547,9 @@
         }
 
         function finishUIReveal() {
-            startupOverlay.style.opacity = '0'; setTimeout(() => { startupOverlay.style.display = 'none'; }, 300);
+            startupOverlay.style.opacity = '0'; setTimeout(() => { startupOverlay.style.display = 'none'; isTrackingStarted = true; }, 300);
             statusToast.classList.remove('hidden'); locateBtn.classList.remove('hidden'); spectatorBtn.classList.remove('hidden'); toggleFogBtn.classList.remove('hidden'); navPinBtn.classList.remove('hidden'); forceUploadBtn.classList.remove('hidden'); switchProjectBtn.classList.remove('hidden');
-            myRouteBtn.classList.remove('hidden'); evaGridBtn.classList.remove('hidden'); document.getElementById('slot-machine-btn').classList.remove('hidden');
+            myRouteBtn.classList.remove('hidden'); evaGridBtn.classList.remove('hidden'); document.getElementById('floating-gift-container').classList.remove('hidden');
             toastText.innerText = "位置同步成功";
         }
 
@@ -1496,12 +1558,28 @@
             if (localHistory.length === 0) map.setView([lat, lng], 17); 
 
             let shouldUpload = false;
+            
             if (lastSavedPos) {
                 const dist = getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng);
                 const timeElapsed = timestamp - lastSavedPos.timestamp;
                 if (dist >= 50 || timeElapsed >= 3 * 60 * 1000) shouldUpload = true;
-                else return; 
             } else { shouldUpload = true; }
+            
+            // 防掛網檢測：如果距離小於 10m，判斷為原地掛網，將經過的時間加回計時器
+            if (lastLotteryLoc) {
+                const distCheck = getDistance(lastLotteryLoc.lat, lastLotteryLoc.lng, lat, lng);
+                const timeElapsedSec = Math.floor((timestamp - lastLotteryTime) / 1000);
+                if (distCheck < 10) {
+                    lotteryTimeRemaining = Math.min(3600, lotteryTimeRemaining + timeElapsedSec);
+                }
+            }
+            lastLotteryLoc = { lat, lng };
+            lastLotteryTime = timestamp;
+            saveLotteryState();
+            updateGiftUI();
+
+            // 若本次不需要儲存或上傳則離開
+            if (!shouldUpload && lastSavedPos) return;
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             
@@ -1512,7 +1590,7 @@
             
             updateStepsCounter(); 
             
-            renderMap(); if (shouldUpload) saveLocationToServer();
+            renderMap(); saveLocationToServer();
         }
 
         function saveLocationToServer() {
@@ -1645,7 +1723,7 @@
         function handleGeoError(error, isAutoStart) {
             if (isSpectatorMode) return; 
             masterStartBtn.innerText = "START [重新授權]";
-            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); myRouteBtn.classList.add('hidden'); evaGridBtn.classList.add('hidden'); }
+            if (isAutoStart) { startupOverlay.style.display = 'flex'; startupOverlay.style.opacity = '1'; statusToast.classList.add('hidden'); locateBtn.classList.add('hidden'); spectatorBtn.classList.add('hidden'); toggleFogBtn.classList.add('hidden'); navPinBtn.classList.add('hidden'); forceUploadBtn.classList.add('hidden'); switchProjectBtn.classList.add('hidden'); myRouteBtn.classList.add('hidden'); evaGridBtn.classList.add('hidden'); document.getElementById('floating-gift-container').classList.add('hidden'); }
             let msg = "無定位權限。請至手機設定中確認。", isCopyable = false;
             if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; isCopyable = true; } 
             else if (error.code === 2) msg = "無法獲取位置，請確認 GPS 已開啟。"; 
