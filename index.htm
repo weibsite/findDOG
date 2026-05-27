@@ -148,19 +148,25 @@
                 name: "找阿妹",
                 bounds: [ [23.009222, 120.255556], [23.007889, 120.259528] ]
             },
-            "烏泥": {
-                name: "找烏泥",
+            "烏尼": {
+                name: "找烏尼",
                 bounds: [ [25.058413, 121.489253], [25.058575, 121.489066] ] 
             }
         };
         
         let currentProjectKey = localStorage.getItem('dogMap_currentProject');
+        
+        // 相容舊版本的 "烏泥" 設定
+        if (currentProjectKey === '烏泥') {
+            currentProjectKey = '烏尼';
+        }
+
         const searchStr = decodeURIComponent(window.location.search);
         
         if (searchStr.includes('阿妹')) {
             currentProjectKey = '阿妹';
-        } else if (searchStr.includes('烏泥') || searchStr.includes('烏尼')) { 
-            currentProjectKey = '烏泥';
+        } else if (searchStr.includes('烏尼') || searchStr.includes('烏泥')) { 
+            currentProjectKey = '烏尼';
         }
         
         if (!currentProjectKey || !PROJECTS[currentProjectKey]) {
@@ -168,7 +174,7 @@
         }
         localStorage.setItem('dogMap_currentProject', currentProjectKey);
         
-        let allAnnouncements = { "阿妹": "目前無最新公告。", "烏泥": "目前無最新公告。" };
+        let allAnnouncements = { "阿妹": "目前無最新公告。", "烏尼": "目前無最新公告。" };
         let boundsRectangle = null;
         let centerMarker = null;
 
@@ -405,7 +411,7 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            const iconSymbol = currentProjectKey === '烏泥' ? '🐈' : '🐕';
+            const iconSymbol = currentProjectKey === '烏尼' ? '🐈' : '🐕';
 
             const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
@@ -554,7 +560,7 @@
             isMyRouteMode = !isMyRouteMode;
             if (isMyRouteMode) {
                 targetRouteUid = myUid;
-                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n已探索過區域將會 100% 全亮顯示。";
+                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n(為避免運鏡時畫面閃爍，已自動為您暫時關閉迷霧層)";
 
                 if (isAdmin) {
                     let maxLen = 0;
@@ -566,7 +572,7 @@
                         }
                     }
                     if (targetRouteUid !== myUid) {
-                        testMessage = `👑 [管理員模式]\n已鎖定探索資料最豐富的「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！`;
+                        testMessage = `👑 [管理員模式]\n已鎖定探索資料最豐富的「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！\n(為避免運鏡閃爍，已自動為您暫時關閉迷霧層)`;
                     }
                 }
 
@@ -574,6 +580,14 @@
                 myRouteBtn.style.backgroundColor = "#ef4444";
                 myRouteBtn.style.color = "white";
                 playbackControls.classList.remove('hidden');
+
+                // 🌟 自動關閉迷霧，防止閃爍
+                if (isFogVisible) {
+                    isFogVisible = false;
+                    map.getPane('fogPane').style.display = 'none';
+                    toggleFogBtn.innerText = "🌫️ 開啟迷霧"; 
+                    toggleFogBtn.style.backgroundColor = "#9ca3af";
+                }
                 
                 snakeIndex = 1;
                 isPlaybackPaused = false;
@@ -594,6 +608,14 @@
                 myRouteBtn.innerText = "🐍 我的軌跡";
                 myRouteBtn.style.backgroundColor = "#a855f7"; 
                 myRouteBtn.style.color = "white";
+
+                // 🌟 離開時自動恢復迷霧
+                if (!isFogVisible) {
+                    isFogVisible = true;
+                    map.getPane('fogPane').style.display = 'block';
+                    toggleFogBtn.innerText = "👁️ 關閉迷霧";
+                    toggleFogBtn.style.backgroundColor = "#f59e0b";
+                }
             }
             renderMap();
             requestFogRender();
@@ -804,6 +826,11 @@
                 playbackControls.classList.add('hidden');
                 if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
                 myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                if (!isFogVisible) {
+                    isFogVisible = true;
+                    map.getPane('fogPane').style.display = 'block';
+                    toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
+                }
             }
 
             renderMap(); 
@@ -1279,6 +1306,11 @@
                     playbackControls.classList.add('hidden');
                     if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
                     myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                    if (!isFogVisible) {
+                        isFogVisible = true;
+                        map.getPane('fogPane').style.display = 'block';
+                        toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
+                    }
                 }
                 
                 const proj = PROJECTS[currentProjectKey];
