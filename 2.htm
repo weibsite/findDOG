@@ -27,9 +27,9 @@
         @keyframes pulse-square { 0% { transform: scale(0.5); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 1px; } }
         .center-pulse-square { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border: 4px solid #ef4444; box-sizing: border-box; animation: pulse-square 2s infinite linear; pointer-events: none; }
         
-        #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar { width: 8px; }
-        #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
-        #sightings-list-container::-webkit-scrollbar-thumb, #routes-list-container::-webkit-scrollbar-thumb { background: #1a202c; }
+        #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar, #prize-rows-container::-webkit-scrollbar, #admin-prizes-list-container::-webkit-scrollbar { width: 8px; }
+        #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track, #prize-rows-container::-webkit-scrollbar-track, #admin-prizes-list-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
+        #sightings-list-container::-webkit-scrollbar-thumb, #routes-list-container::-webkit-scrollbar-thumb, #prize-rows-container::-webkit-scrollbar-thumb, #admin-prizes-list-container::-webkit-scrollbar-thumb { background: #1a202c; }
     </style>
 </head>
 <body>
@@ -51,6 +51,55 @@
     <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
+
+    <!-- 行動版圖片裁切 Modal -->
+    <div id="image-crop-modal" class="hidden absolute inset-0 z-[10500] bg-black/95 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-4 w-full max-w-sm flex flex-col items-center">
+            <h3 class="text-gray-900 font-bold mb-2 text-lg">✂️ 拖曳縮放與裁切</h3>
+            <p class="text-xs text-red-600 font-bold mb-3 border-b-2 border-black pb-1 w-full text-center">請拖曳圖片對齊中央方框</p>
+            
+            <div class="relative w-[250px] h-[250px] border-4 border-black overflow-hidden bg-gray-200 mb-4 cursor-move touch-none" id="crop-container">
+                <canvas id="crop-canvas" width="250" height="250" class="absolute top-0 left-0"></canvas>
+                <!-- 裁切基準線輔助視覺 -->
+                <div class="absolute inset-0 pointer-events-none border-2 border-dashed border-gray-800 opacity-30 shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]"></div>
+            </div>
+            
+            <input type="range" id="crop-zoom-slider" min="0.1" max="3" step="0.01" value="1" class="w-full mb-4 cursor-pointer">
+            
+            <div class="flex gap-2 w-full">
+                <button id="crop-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="crop-confirm-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定裁切</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理員新增獎池 Modal -->
+    <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col">
+            <h3 class="text-gray-900 font-bold mb-2 text-xl">🎁 新增獎品至獎池</h3>
+            <p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品至伺服器</p>
+            <div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left">
+                <!-- Javascript 動態生成獎品列 -->
+            </div>
+            <button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button>
+            <div class="flex gap-2">
+                <button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 管理員刪除管理獎池 Modal -->
+    <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col">
+            <h3 class="text-gray-900 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">⚙️ 管理現有獎品</h3>
+            <p class="text-[10px] text-red-600 font-bold mb-2 text-center leading-tight">為防範惡意腳本與XSS攻擊<br>此清單僅顯示名稱與機率，不讀取並渲染網址資料</p>
+            <div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left">
+                <!-- 動態生成現有獎項 -->
+            </div>
+            <button id="close-manage-prizes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button>
+        </div>
+    </div>
 
     <!-- 個人設定 Modal -->
     <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
@@ -149,6 +198,8 @@
         <button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
         <button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
         <button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
+        <button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button>
+        <button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
         <button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
         <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
@@ -189,6 +240,12 @@
 
     <script>
         let NGROK_WS_URL = "";
+        
+        // 將 WebSocket 網址轉換為一般的 HTTP 網址基準 (用於讀取本機圖片)
+        function getBaseHttpUrl() {
+            if (!NGROK_WS_URL) return "";
+            return NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
+        }
 
         // ================= 持久化儲存機制 (LocalStorage + 10年 Cookie 備援) =================
         function setPersistentData(key, value) {
@@ -441,6 +498,48 @@
                     return; 
                 }
                 
+                // 【管理員】新增、刪除獎品結果
+                if (response.type === 'admin_action_result') {
+                    showModal(response.msg);
+                    return;
+                }
+                
+                // 【管理員】獲取當前獎池資料供管理
+                if (response.type === 'admin_prizes_data') {
+                    const container = document.getElementById('admin-prizes-list-container');
+                    container.innerHTML = '';
+                    
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'border-4 border-black p-3 bg-white shadow-[4px_4px_0px_#1a202c]';
+                            div.innerHTML = `
+                                <div class="font-bold text-gray-900 mb-2 border-b-2 border-dashed border-gray-400 pb-1">🎁 ${escapeHTML(item.name)}</div>
+                                <div class="flex items-center justify-between mt-2">
+                                    <span class="text-sm font-bold text-blue-600">機率: ${item.prob}%</span>
+                                    <button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 border-2 border-black hover:bg-red-600 active:translate-y-[2px] transition" data-id="${item.id}">🗑️ 刪除</button>
+                                </div>
+                            `;
+                            container.appendChild(div);
+                        });
+
+                        // 綁定刪除事件
+                        container.querySelectorAll('.delete-prize-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                const id = e.target.getAttribute('data-id');
+                                showConfirm("確定要刪除這個獎品嗎？", () => {
+                                    if(isSystemReady) {
+                                        ws.send(JSON.stringify({ type: "delete_prize", id: id, token: adminToken }));
+                                    }
+                                });
+                            });
+                        });
+                    } else {
+                        container.innerHTML = '<p class="text-center text-gray-500 font-bold mt-8">目前獎池中沒有任何獎品。</p>';
+                    }
+                    return;
+                }
+                
                 // 【優化】差分更新 (只更新單一使用者位置)
                 if (response.type === 'user_update') {
                     allUsersData[response.uid] = response.data;
@@ -473,11 +572,18 @@
                             document.getElementById('slot-draw-btn').disabled = false;
                             
                             if (response.success && response.prize) {
+                                let finalUrl = response.prize.url;
+                                let isImage = finalUrl.startsWith('/images/');
+                                if (isImage) {
+                                    finalUrl = getBaseHttpUrl() + finalUrl;
+                                }
+                                let btnText = isImage ? '🖼️ 點擊查看並儲存圖片' : '🔗 點擊領取兌換連結';
+                                
                                 showHTMLModal(`
                                     <div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div>
                                     <div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${response.prize.name}</div>
-                                    <div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>若未截圖導致遺失，系統可能無法補發。</div>
-                                    <a href="${response.prize.url}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">領取兌換連結</a>
+                                    <div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div>
+                                    <a href="${finalUrl}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${btnText}</a>
                                 `);
                             } else {
                                 // 沒抽中，永遠不退還次數！(真抽獎)
@@ -493,9 +599,16 @@
                     listContainer.innerHTML = '';
                     if (response.data && response.data.length > 0) {
                         response.data.forEach(item => {
+                            let finalUrl = item.url;
+                            let isImage = finalUrl.startsWith('/images/');
+                            if (isImage) {
+                                finalUrl = getBaseHttpUrl() + finalUrl;
+                            }
+                            let btnText = isImage ? '🖼️ 查看圖片' : '🔗 前往領取';
+
                             const div = document.createElement('div');
                             div.className = "border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center";
-                            div.innerHTML = `<span>🎁 ${escapeHTML(item.name)}</span><a href="${item.url}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">前往領取</a>`;
+                            div.innerHTML = `<span>🎁 ${escapeHTML(item.name)}</span><a href="${finalUrl}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">${btnText}</a>`;
                             listContainer.appendChild(div);
                         });
                     } else {
@@ -1005,6 +1118,208 @@
                 openPositionMethodSelection(desc);
             });
         });
+
+        // ======== 手動新增與管理獎品 UI 邏輯 (含圖片裁切) ========
+        const addPrizeBtn = document.getElementById('add-prize-btn');
+        const managePrizesBtn = document.getElementById('manage-prizes-btn');
+        const addPrizeModal = document.getElementById('add-prize-modal');
+        const managePrizesModal = document.getElementById('manage-prizes-modal');
+        const prizeRowsContainer = document.getElementById('prize-rows-container');
+
+        // 【手機版圖片拖曳裁切邏輯】
+        const cropModal = document.getElementById('image-crop-modal');
+        const cropCanvas = document.getElementById('crop-canvas');
+        const cropCtx = cropCanvas.getContext('2d');
+        let currentCropImage = new Image();
+        let cropScale = 1, cropX = 0, cropY = 0;
+        let isDraggingCrop = false, startX, startY;
+        let targetB64Input = null, targetPreviewImg = null;
+
+        function drawCrop() {
+            cropCtx.fillStyle = '#e5e7eb'; // 灰底
+            cropCtx.fillRect(0, 0, 250, 250);
+            if(currentCropImage.src) {
+                cropCtx.drawImage(currentCropImage, cropX, cropY, currentCropImage.width * cropScale, currentCropImage.height * cropScale);
+            }
+        }
+
+        function openCropper(file, b64Input, previewImg) {
+            targetB64Input = b64Input;
+            targetPreviewImg = previewImg;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentCropImage.onload = () => {
+                    const minScale = Math.max(250 / currentCropImage.width, 250 / currentCropImage.height);
+                    cropScale = minScale;
+                    cropX = (250 - currentCropImage.width * cropScale) / 2;
+                    cropY = (250 - currentCropImage.height * cropScale) / 2;
+                    
+                    const zoomSlider = document.getElementById('crop-zoom-slider');
+                    zoomSlider.min = minScale;
+                    zoomSlider.max = minScale * 4;
+                    zoomSlider.value = minScale;
+                    
+                    drawCrop();
+                    cropModal.classList.remove('hidden');
+                };
+                currentCropImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 滑鼠與觸控拖曳事件
+        cropCanvas.addEventListener('mousedown', (e) => { isDraggingCrop = true; startX = e.clientX - cropX; startY = e.clientY - cropY; });
+        cropCanvas.addEventListener('mousemove', (e) => { if(isDraggingCrop) { cropX = e.clientX - startX; cropY = e.clientY - startY; drawCrop(); }});
+        window.addEventListener('mouseup', () => isDraggingCrop = false);
+
+        cropCanvas.addEventListener('touchstart', (e) => { isDraggingCrop = true; startX = e.touches[0].clientX - cropX; startY = e.touches[0].clientY - cropY; });
+        cropCanvas.addEventListener('touchmove', (e) => { if(isDraggingCrop) { cropX = e.touches[0].clientX - startX; cropY = e.touches[0].clientY - startY; drawCrop(); e.preventDefault(); }}, {passive: false});
+        window.addEventListener('touchend', () => isDraggingCrop = false);
+
+        document.getElementById('crop-zoom-slider').addEventListener('input', (e) => {
+            const oldScale = cropScale;
+            cropScale = parseFloat(e.target.value);
+            // 盡可能以中心點為基準縮放
+            cropX = 125 - (125 - cropX) * (cropScale / oldScale);
+            cropY = 125 - (125 - cropY) * (cropScale / oldScale);
+            drawCrop();
+        });
+
+        document.getElementById('crop-cancel-btn').addEventListener('click', () => { cropModal.classList.add('hidden'); });
+
+        document.getElementById('crop-confirm-btn').addEventListener('click', () => {
+            const dataUrl = cropCanvas.toDataURL('image/jpeg', 0.85); // 壓縮存為 jpg
+            if (targetB64Input) targetB64Input.value = dataUrl;
+            if (targetPreviewImg) {
+                targetPreviewImg.src = dataUrl;
+                targetPreviewImg.classList.remove('hidden');
+            }
+            cropModal.classList.add('hidden');
+        });
+
+        // 【新增獎品視窗邏輯】
+        function createPrizeRow() {
+            const div = document.createElement('div');
+            div.className = 'border-4 border-black p-3 bg-gray-100 relative mb-3';
+            div.innerHTML = `
+                <button class="absolute top-1 right-1 text-red-600 font-bold text-xs remove-row-btn px-2 py-1 active:translate-y-1">✖</button>
+                <input type="text" class="prize-name-input pixel-input w-full p-2 mb-2 text-sm" placeholder="獎項名稱 (例如: 咖啡一杯)">
+                
+                <select class="prize-type-select pixel-input w-full p-2 mb-2 text-sm bg-white cursor-pointer">
+                    <option value="url">🔗 外部網址</option>
+                    <option value="image">🖼️ 上傳圖片</option>
+                </select>
+                
+                <input type="text" class="prize-url-input pixel-input w-full p-2 mb-2 text-sm" placeholder="兌換網址 (https://...)">
+                
+                <div class="prize-image-upload hidden flex-col gap-2 mb-2 items-center bg-white p-2 border-2 border-dashed border-gray-400">
+                    <input type="file" class="hidden file-input" accept="image/*">
+                    <button class="select-img-btn pixel-btn w-full py-2 text-xs bg-pink-500 text-white">📁 從手機選擇圖片</button>
+                    <img class="img-preview w-24 h-24 border-2 border-black object-cover hidden shadow-[2px_2px_0px_#1a202c]">
+                    <input type="hidden" class="prize-b64-input">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-gray-800">中獎機率(%):</label>
+                    <input type="number" class="prize-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="10.0" min="0.1" step="0.1">
+                </div>
+            `;
+            
+            div.querySelector('.remove-row-btn').addEventListener('click', () => div.remove());
+
+            const typeSelect = div.querySelector('.prize-type-select');
+            const urlInput = div.querySelector('.prize-url-input');
+            const imgUpload = div.querySelector('.prize-image-upload');
+            const fileInput = div.querySelector('.file-input');
+            const selectImgBtn = div.querySelector('.select-img-btn');
+            const imgPreview = div.querySelector('.img-preview');
+            const b64Input = div.querySelector('.prize-b64-input');
+
+            typeSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'url') {
+                    urlInput.classList.remove('hidden'); imgUpload.classList.add('hidden');
+                } else {
+                    urlInput.classList.add('hidden'); imgUpload.classList.remove('hidden');
+                }
+            });
+
+            selectImgBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    openCropper(e.target.files[0], b64Input, imgPreview);
+                }
+            });
+
+            return div;
+        }
+
+        addPrizeBtn.addEventListener('click', () => {
+            if (!isAdmin) return;
+            prizeRowsContainer.innerHTML = ''; 
+            prizeRowsContainer.appendChild(createPrizeRow());
+            addPrizeModal.classList.remove('hidden');
+        });
+
+        document.getElementById('add-prize-row-btn').addEventListener('click', () => {
+            prizeRowsContainer.appendChild(createPrizeRow());
+        });
+
+        document.getElementById('add-prize-cancel-btn').addEventListener('click', () => {
+            addPrizeModal.classList.add('hidden');
+        });
+
+        document.getElementById('add-prize-submit-btn').addEventListener('click', () => {
+            const rows = prizeRowsContainer.children;
+            const prizes = [];
+            
+            for (let i = 0; i < rows.length; i++) {
+                const name = rows[i].querySelector('.prize-name-input').value.trim();
+                const prob = parseFloat(rows[i].querySelector('.prize-prob-input').value);
+                const type = rows[i].querySelector('.prize-type-select').value;
+                
+                let url = "", image_base64 = "";
+                if (type === 'url') {
+                    url = rows[i].querySelector('.prize-url-input').value.trim();
+                } else {
+                    image_base64 = rows[i].querySelector('.prize-b64-input').value;
+                }
+
+                if (name && (url || image_base64) && !isNaN(prob)) {
+                    prizes.push({ name, url, image_base64, prob });
+                }
+            }
+
+            if (prizes.length === 0) {
+                showModal("⚠️ 請至少完整填寫一個獎品的名稱與網址(或圖片)！");
+                return;
+            }
+
+            if (isSystemReady) {
+                ws.send(JSON.stringify({ type: "add_prizes", token: adminToken, data: prizes }));
+                addPrizeModal.classList.add('hidden');
+                showModal("⏳ 獎品新增指令已送出！圖片正在上傳中...");
+            } else {
+                showModal("⚠️ 系統未連線！");
+            }
+        });
+
+        // 【管理獎品視窗邏輯】
+        managePrizesBtn.addEventListener('click', () => {
+            if (!isAdmin) return;
+            if (isSystemReady) {
+                document.getElementById('admin-prizes-list-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>';
+                ws.send(JSON.stringify({ type: "get_admin_prizes", token: adminToken }));
+                managePrizesModal.classList.remove('hidden');
+            } else {
+                showModal("⚠️ 系統未連線！");
+            }
+        });
+
+        document.getElementById('close-manage-prizes-btn').addEventListener('click', () => {
+            managePrizesModal.classList.add('hidden');
+        });
+        // ===================================
 
         function openPositionMethodSelection(desc) {
             positionMethodModal.classList.remove('hidden');
