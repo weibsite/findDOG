@@ -1311,7 +1311,7 @@
             navigator.geolocation.getCurrentPosition((pos) => {
                 const newPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
                 localHistory.push(newPoint); lastSavedPos = newPoint;
-                if (localHistory.length > 2000) localHistory = localHistory.slice(localHistory.length - 2000); // 防止容量超載
+                localHistory = optimizeHistory(localHistory); // 壓縮並限制最大 5000 點
                 try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
                 updateStepsCounter(); 
@@ -1382,7 +1382,7 @@
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             
-            if (localHistory.length > 2000) localHistory = localHistory.slice(localHistory.length - 2000); // 防止容量超載
+            localHistory = optimizeHistory(localHistory); // 壓縮並限制最大 5000 點
             try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
             
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
@@ -1478,6 +1478,45 @@
         function getDistance(lat1, lon1, lat2, lon2) {
             const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180, dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
             const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2); return 6371e3 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        // 新增：軌跡壓縮演算法 (降低舊點位精確度、過濾密集點，上限5000)
+        function optimizeHistory(history) {
+            if (history.length <= 2000) return history;
+            let compressed = [];
+            let lastPt = null;
+            let protectCount = 500; // 保留最新 500 點不壓縮
+            let limitIndex = history.length - protectCount;
+            
+            for (let i = 0; i < history.length; i++) {
+                let pt = history[i];
+                if (i < limitIndex) {
+                    if (!lastPt) {
+                        pt.lat = parseFloat(pt.lat.toFixed(5));
+                        pt.lng = parseFloat(pt.lng.toFixed(5));
+                        compressed.push(pt);
+                        lastPt = pt;
+                    } else {
+                        let d = getDistance(lastPt.lat, lastPt.lng, pt.lat, pt.lng);
+                        let timeDiff = pt.timestamp - lastPt.timestamp;
+                        // 距離大於 15 公尺或時間超過 10 分鐘才保留
+                        if (d > 15 || timeDiff > 10 * 60 * 1000) {
+                            pt.lat = parseFloat(pt.lat.toFixed(5));
+                            pt.lng = parseFloat(pt.lng.toFixed(5));
+                            compressed.push(pt);
+                            lastPt = pt;
+                        }
+                    }
+                } else {
+                    // 最新 500 點完整保留
+                    compressed.push(pt);
+                }
+            }
+            
+            if (compressed.length > 5000) {
+                compressed = compressed.slice(compressed.length - 5000);
+            }
+            return compressed;
         }
 
         function handleGeoError(error, isAutoStart) {
