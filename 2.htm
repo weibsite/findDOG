@@ -39,7 +39,7 @@
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/70 flex items-center justify-center transition-opacity duration-300">
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋狗地圖</h2>
-            <p class="text-gray-700 mb-4 text-sm font-bold">▶ 其他縣市可以按左下觀看模式觀看 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！</p>
+            <p class="text-gray-700 mb-4 text-sm font-bold">▶ 其他縣市可以按左下觀看模式觀看 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
             <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
             <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button>
             <div id="error-msg" class="hidden"></div>
@@ -142,33 +142,64 @@
     <script>
         let NGROK_WS_URL = "";
 
+        // ================= 持久化儲存機制 (LocalStorage + 10年 Cookie 備援) =================
+        function setPersistentData(key, value) {
+            try { localStorage.setItem(key, value); } catch(e) {}
+            try {
+                const d = new Date(); d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000)); // 10 years
+                document.cookie = `${key}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/`;
+            } catch(e) {}
+        }
+
+        function getPersistentData(key) {
+            try { let val = localStorage.getItem(key); if (val) return val; } catch(e) {}
+            try {
+                const name = key + "="; const decodedCookie = decodeURIComponent(document.cookie); const ca = decodedCookie.split(';');
+                for(let i = 0; i < ca.length; i++) {
+                    let c = ca[i]; while (c.charAt(0) == ' ') c = c.substring(1);
+                    if (c.indexOf(name) == 0) {
+                        let val = c.substring(name.length, c.length);
+                        try { localStorage.setItem(key, val); } catch(e){} // 回填至 LocalStorage
+                        return val;
+                    }
+                }
+            } catch(e) {}
+            return null;
+        }
+
         // ================= 目標切換設定 =================
         const PROJECTS = {
             "阿妹": {
                 name: "找阿妹",
                 bounds: [ [23.009222, 120.255556], [23.007889, 120.259528] ]
             },
-            "烏泥": {
-                name: "找烏泥",
+            "烏尼": {
+                name: "找烏尼",
                 bounds: [ [25.058413, 121.489253], [25.058575, 121.489066] ] 
             }
         };
         
-        let currentProjectKey = localStorage.getItem('dogMap_currentProject');
+        let currentProjectKey = getPersistentData('dogMap_currentProject');
+        
+        // 相容舊版本的 "烏泥" 設定
+        if (currentProjectKey === '烏泥') {
+            currentProjectKey = '烏尼';
+        }
+
         const searchStr = decodeURIComponent(window.location.search);
         
         if (searchStr.includes('阿妹')) {
             currentProjectKey = '阿妹';
-        } else if (searchStr.includes('烏泥') || searchStr.includes('烏尼')) { 
-            currentProjectKey = '烏泥';
+        } else if (searchStr.includes('烏尼') || searchStr.includes('烏泥')) { 
+            currentProjectKey = '烏尼';
         }
         
         if (!currentProjectKey || !PROJECTS[currentProjectKey]) {
             currentProjectKey = "阿妹";
         }
-        localStorage.setItem('dogMap_currentProject', currentProjectKey);
+        setPersistentData('dogMap_currentProject', currentProjectKey);
         
-        let allAnnouncements = { "阿妹": "目前無最新公告。", "烏泥": "目前無最新公告。" };
+        let allAnnouncements = { "阿妹": "目前無最新公告。", "烏尼": "目前無最新公告。" };
         let boundsRectangle = null;
         let centerMarker = null;
 
@@ -176,8 +207,8 @@
         let map, markersLayer, sightingsLayer, routesLayer;
         let ws; 
         
-        let myUid = localStorage.getItem('dogMap_UID');
-        if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('dogMap_UID', myUid); }
+        let myUid = getPersistentData('dogMap_UID');
+        if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
         let currentUserName = ""; let dbUserColor = ""; 
         
         let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
@@ -405,7 +436,7 @@
             const proj = PROJECTS[currentProjectKey];
             const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
 
-            const iconSymbol = currentProjectKey === '烏泥' ? '🐈' : '🐕';
+            const iconSymbol = currentProjectKey === '烏尼' ? '🐈' : '🐕';
 
             const centerIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="position: absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom: 12px;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${currentProjectKey}走失中心點</div><div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div></div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
             centerMarker = L.marker(center, { icon: centerIcon, zIndexOffset: 100 }).addTo(map);
@@ -507,8 +538,8 @@
 
             currentUserName = name;
             dbUserColor = hex;
-            localStorage.setItem('dogMap_userName', currentUserName);
-            localStorage.setItem('dogMap_userColor', dbUserColor);
+            setPersistentData('dogMap_userName', currentUserName);
+            setPersistentData('dogMap_userColor', dbUserColor);
             profileEditTrigger.style.backgroundColor = dbUserColor;
             
             if (allUsersData[myUid]) {
@@ -554,7 +585,7 @@
             isMyRouteMode = !isMyRouteMode;
             if (isMyRouteMode) {
                 targetRouteUid = myUid;
-                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n已探索過區域將會 100% 全亮顯示。";
+                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n(為避免運鏡時畫面閃爍，已自動為您暫時關閉迷霧層)";
 
                 if (isAdmin) {
                     let maxLen = 0;
@@ -566,7 +597,7 @@
                         }
                     }
                     if (targetRouteUid !== myUid) {
-                        testMessage = `👑 [管理員模式]\n已鎖定探索資料最豐富的「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！`;
+                        testMessage = `👑 [管理員模式]\n已鎖定探索資料最豐富的「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！\n(為避免運鏡閃爍，已自動為您暫時關閉迷霧層)`;
                     }
                 }
 
@@ -574,6 +605,14 @@
                 myRouteBtn.style.backgroundColor = "#ef4444";
                 myRouteBtn.style.color = "white";
                 playbackControls.classList.remove('hidden');
+
+                // 🌟 自動關閉迷霧，防止閃爍
+                if (isFogVisible) {
+                    isFogVisible = false;
+                    map.getPane('fogPane').style.display = 'none';
+                    toggleFogBtn.innerText = "🌫️ 開啟迷霧"; 
+                    toggleFogBtn.style.backgroundColor = "#9ca3af";
+                }
                 
                 snakeIndex = 1;
                 isPlaybackPaused = false;
@@ -594,6 +633,14 @@
                 myRouteBtn.innerText = "🐍 我的軌跡";
                 myRouteBtn.style.backgroundColor = "#a855f7"; 
                 myRouteBtn.style.color = "white";
+
+                // 🌟 離開時自動恢復迷霧
+                if (!isFogVisible) {
+                    isFogVisible = true;
+                    map.getPane('fogPane').style.display = 'block';
+                    toggleFogBtn.innerText = "👁️ 關閉迷霧";
+                    toggleFogBtn.style.backgroundColor = "#f59e0b";
+                }
             }
             renderMap();
             requestFogRender();
@@ -737,10 +784,11 @@
                     L.marker(cLatLng, { icon: L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] }), zIndexOffset: -100, pane: 'evaPane' }).addTo(evaGridLayer);
                 });
 
-                // 動態運鏡：擴散到特定圈數時，把地圖視角往外拉廣 (避免過度頻繁縮放干擾)
-                const zoomRings = [2, 5, 8, 12];
+                // 動態運鏡：擴散到特定圈數時，把地圖視角往外拉廣，但最多拉到 3 公里 (避免太遠看不清楚)
+                const zoomRings = [2, 5, 8]; // 8 圈大約就是 3 公里多，之後就不再外推鏡頭
                 if (zoomRings.includes(currentRing)) {
-                    const viewRadiusMeters = Math.max(3000, (currentRing + 1.5) * R * 1.5);
+                    // 最大視野半徑限制為 3000 公尺 (3公里)
+                    const viewRadiusMeters = Math.min(3000, (currentRing + 1.5) * R * 1.5);
                     const radiusLat = viewRadiusMeters / 111000;
                     const radiusLng = viewRadiusMeters / (111000 * cosLat);
                     map.flyToBounds([
@@ -755,7 +803,7 @@
                 let nextDelay = 100;           // 0~3圈: 很快 (100毫秒一圈)
                 if (currentRing > 3) nextDelay = 250;  // 4~5圈: 中等
                 if (currentRing > 6) nextDelay = 500;  // 6~8圈: 慢
-                if (currentRing > 9) nextDelay = 1000; // 9~12圈: 極慢 (1秒一圈)
+                if (currentRing > 9) nextDelay = 1000; // 9~12圈: 極慢 (1秒一圈，完全背景執行)
 
                 // 繼續畫下一圈
                 evaAnimationTimeout = setTimeout(processNextRing, nextDelay);
@@ -791,7 +839,7 @@
             idx = (idx + 1) % keys.length;
             currentProjectKey = keys[idx];
             
-            localStorage.setItem('dogMap_currentProject', currentProjectKey);
+            setPersistentData('dogMap_currentProject', currentProjectKey);
             switchProjectBtn.innerText = `🎯 目標: ${PROJECTS[currentProjectKey].name}`;
             
             saveLocationToServer(); 
@@ -803,6 +851,11 @@
                 playbackControls.classList.add('hidden');
                 if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
                 myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                if (!isFogVisible) {
+                    isFogVisible = true;
+                    map.getPane('fogPane').style.display = 'block';
+                    toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
+                }
             }
 
             renderMap(); 
@@ -1212,12 +1265,12 @@
 
         // ================= 本機儲存與啟動 =================
         function checkLocalSetupAndStart() {
-            const savedName = localStorage.getItem('dogMap_userName');
-            const rawColor = localStorage.getItem('dogMap_userColor') || '';
+            const savedName = getPersistentData('dogMap_userName');
+            const rawColor = getPersistentData('dogMap_userColor') || '';
             const savedColor = /^#[0-9a-fA-F]{6}$/i.test(rawColor) ? rawColor : null;
             if (savedName) {
                 currentUserName = escapeHTML(savedName); dbUserColor = savedColor || generateRandomColor();
-                if (!savedColor) localStorage.setItem('dogMap_userColor', dbUserColor);
+                if (!savedColor) setPersistentData('dogMap_userColor', dbUserColor);
                 if (localHistory.length > 0) { 
                     allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now() }; 
                     renderMap(); 
@@ -1232,7 +1285,8 @@
             e.preventDefault(); errorMsg.classList.add('hidden'); masterStartBtn.innerText = "連線中...";
             let name = nameInput.value.trim().replace(/[<>]/g, ''); if (!name) name = `P${Math.floor(100 + Math.random() * 900)}`;
             currentUserName = name; dbUserColor = generateRandomColor();
-            localStorage.setItem('dogMap_userName', currentUserName); localStorage.setItem('dogMap_userColor', dbUserColor); 
+            setPersistentData('dogMap_userName', currentUserName); 
+            setPersistentData('dogMap_userColor', dbUserColor); 
             document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
             startLocationServices(false);
         });
@@ -1257,7 +1311,8 @@
             navigator.geolocation.getCurrentPosition((pos) => {
                 const newPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
                 localHistory.push(newPoint); lastSavedPos = newPoint;
-                localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
+                if (localHistory.length > 2000) localHistory = localHistory.slice(localHistory.length - 2000); // 防止容量超載
+                try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
                 updateStepsCounter(); 
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer();
@@ -1278,6 +1333,11 @@
                     playbackControls.classList.add('hidden');
                     if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
                     myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                    if (!isFogVisible) {
+                        isFogVisible = true;
+                        map.getPane('fogPane').style.display = 'block';
+                        toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
+                    }
                 }
                 
                 const proj = PROJECTS[currentProjectKey];
@@ -1321,7 +1381,10 @@
             } else { shouldUpload = true; }
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
-            localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory));
+            
+            if (localHistory.length > 2000) localHistory = localHistory.slice(localHistory.length - 2000); // 防止容量超載
+            try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
+            
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], lastUpdate: Date.now(), project: currentProjectKey };
             
             updateStepsCounter(); 
@@ -1384,21 +1447,22 @@
             }
 
             let onlineUserCount = 0; const ONE_HOUR = 60 * 60 * 1000; const now = Date.now();
-            const ACTIVE_THRESHOLD = 5 * 60 * 1000; 
 
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const p = userData.project || "阿妹"; if (p !== currentProjectKey) return; 
                 
                 const isSelf = (uid === myUid); 
-                const lastTime = userData.lastUpdate || userData.history[userData.history.length - 1].timestamp;
-                if (now - lastTime < ACTIVE_THRESHOLD) {
-                    if (!(isSpectatorMode && isSelf)) onlineUserCount++;
-                }
 
+                // 觀看模式下不顯示自己
                 if (isSpectatorMode && isSelf) return;
+
                 const lastPoint = userData.history[userData.history.length - 1];
+                
+                // 只要有點顯示在地圖上 (一小時內)，就計入線上人數
                 if (now - lastPoint.timestamp < ONE_HOUR) { 
+                    onlineUserCount++;
+                    
                     const safeUserName = escapeHTML(userData.userName), safeRenderColor = escapeHTML(isSelf ? dbUserColor : (userData.color || '#3b82f6'));
                     const avatarHtml = isSelf ? `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${safeRenderColor};"></div>` : `<div class="user-avatar-pixel" style="background-color: ${safeRenderColor};"></div>`;
                     const nameColor = isSelf ? `color: ${safeRenderColor};` : 'color: #1a202c;';
@@ -1407,7 +1471,7 @@
                 }
             });
 
-            toastText.innerText = isSpectatorMode ? `觀看中: ${onlineUserCount} 人` : `線上探索: ${onlineUserCount} 人`;
+            toastText.innerText = `線上探索: ${onlineUserCount} 人`;
             requestFogRender();
         }
 
