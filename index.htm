@@ -347,11 +347,13 @@
         // --- 抽獎防掛網計時器相關 ---
         let lotteryTimeRemaining = 3600;
         let lotteryTickets = 0;
-        let lastLotteryTime = Date.now();
-        let lastLotteryLoc = null;
         let isTrackingStarted = false;
         let slotSpinning = false;
         let slotTimer = null;
+        
+        // --- 地圖互動偵測 (防自動跟隨打架) ---
+        let isMapInteracting = false;
+        let mapInteractionTimer = null;
 
         // --- DOM 元素 ---
         const startupOverlay = document.getElementById('startup-overlay');
@@ -689,6 +691,16 @@
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             map.createPane('evaPane'); map.getPane('evaPane').style.zIndex = 460; map.getPane('evaPane').style.pointerEvents = 'none';
             
+            // 新增地圖互動偵測，避免自動跟隨與使用者操作打架
+            map.on('dragstart zoomstart mousedown touchstart', () => {
+                isMapInteracting = true;
+                if (mapInteractionTimer) clearTimeout(mapInteractionTimer);
+            });
+            map.on('dragend zoomend mouseup touchend', () => {
+                // 停止操作 15 秒後恢復自動跟隨防呆
+                mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); 
+            });
+
             initFogSystem();
             setInterval(renderMap, 15000);
             
@@ -1742,17 +1754,13 @@
         // ================= UI 按鈕邏輯綁定 =================
         toggleFogBtn.addEventListener('click', () => { isFogVisible = !isFogVisible; map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }});
         
-        // --- 抽獎機邏輯與倒數計算 (無退還機制) ---
+        // --- 抽獎機邏輯與倒數計算 ---
         function updateGiftUI() {
             let displayTickets = isAdmin ? '無限' : lotteryTickets;
             document.getElementById('gift-ticket-badge').innerText = displayTickets;
             if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
                 document.getElementById('slot-tickets-display').innerText = displayTickets;
             }
-            
-            let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
-            let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
-            document.getElementById('gift-timer').innerText = `${m}:${s}`;
         }
         
         function saveLotteryState() {
@@ -1785,9 +1793,80 @@
             updateGiftUI();
         }
 
+        // ================= 重寫的 setInterval：防掛網與距離偵測 =================
         setInterval(() => {
             if (isSpectatorMode || !isTrackingStarted) return;
+
+            let isOutOfRange = false;
+
+            if (localHistory && localHistory.length > 0) {
+                const currentLoc = localHistory[localHistory.length - 1];
+                
+                // 1. 檢查是否超出 50 公里
+                const proj = PROJECTS[currentProjectKey];
+                const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
+                const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
+                const distToCenter = getDistance(currentLoc.lat, currentLoc.lng, centerLat, centerLng);
+                
+                if (distToCenter > 50000) { // 50,000 公尺 = 50 公里
+                    isOutOfRange = true;
+                }
+            }
+
+            const timerUI = document.getElementById('gift-timer');
+
+            // 根據狀態更新計時器 UI 並決定是否暫停
+            if (isOutOfRange) {
+                timerUI.style.color = '#ef4444'; // 紅字
+                timerUI.innerText = "太遠了";
+                return; // 不倒數
+            } else {
+                timerUI.style.color = ''; // 恢復原色，繼續正常倒數
+            }
+
+            // 2. 嚴格防掛網懲罰：剩餘 5 分鐘 (300 秒) 時，檢查前 50 分鐘的軌跡跨度是否小於 50 公尺
+            if (lotteryTimeRemaining === 300) {
+                const now = Date.now();
+                const fiftyMinsAgo = now - 50 * 60 * 1000;
+                let maxDist50Min = 0;
+                let hasValidOldPoints = false;
+                
+                // 回推歷史軌跡，找出過去 50 分鐘內距離現在位置最遠的點
+                if (localHistory && localHistory.length > 0) {
+                    const currentLoc = localHistory[localHistory.length - 1];
+                    for (let i = localHistory.length - 1; i >= 0; i--) {
+                        const pt = localHistory[i];
+                        if (pt.timestamp >= fiftyMinsAgo) {
+                            const d = getDistance(currentLoc.lat, currentLoc.lng, pt.lat, pt.lng);
+                            if (d > maxDist50Min) maxDist50Min = d;
+                            hasValidOldPoints = true;
+                        } else {
+                            break; // 已經超過 50 分鐘，不用再往前找
+                        }
+                    }
+                }
+                
+                // 如果這 50 分鐘內的最大移動距離小於 50 公尺，執行懲罰！
+                if (hasValidOldPoints && maxDist50Min < 50) {
+                    lotteryTimeRemaining = 3599; // 重置為 59:59
+                    showModal("⚠️ 系統偵測到您過去 50 分鐘內的移動範圍小於 50 公尺，疑似掛網。\n為維持公平性，抽獎計時器已重新計時！");
+                    
+                    // 更新 UI 並跳過這秒的倒數
+                    let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
+                    let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
+                    timerUI.innerText = `${m}:${s}`;
+                    saveLotteryState();
+                    return;
+                }
+            }
+
+            // 若正常探索，則將時間扣減 1 秒
             lotteryTimeRemaining--;
+            
+            let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
+            let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
+            timerUI.innerText = `${m}:${s}`;
+
             if (lotteryTimeRemaining <= 0) {
                 lotteryTickets++;
                 lotteryTimeRemaining = 3600;
@@ -1898,7 +1977,12 @@
             }
         });
 
-        locateBtn.addEventListener('click', () => { if (!isSpectatorMode && lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, { animate: true }); });
+        locateBtn.addEventListener('click', () => { 
+            if (!isSpectatorMode && lastSavedPos) {
+                map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, { animate: true }); 
+                isMapInteracting = false; // 按下跟隨按鈕主動重置防打架狀態
+            }
+        });
 
         // ================= 定位服務與伺服器同步 =================
         function startLocationServices(isAutoStart) {
@@ -1924,22 +2008,10 @@
             if (lastSavedPos) {
                 const dist = getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng);
                 const timeElapsed = timestamp - lastSavedPos.timestamp;
+                // 單次更新距離超過 50 公尺，或是已經 3 分鐘沒有強制上傳，才送出新點位給伺服器
                 if (dist >= 50 || timeElapsed >= 3 * 60 * 1000) shouldUpload = true;
             } else { shouldUpload = true; }
             
-            // 防掛網檢測：如果距離小於 10m，判斷為原地掛網，將經過的時間加回計時器
-            if (lastLotteryLoc) {
-                const distCheck = getDistance(lastLotteryLoc.lat, lastLotteryLoc.lng, lat, lng);
-                const timeElapsedSec = Math.floor((timestamp - lastLotteryTime) / 1000);
-                if (distCheck < 10) {
-                    lotteryTimeRemaining = Math.min(3600, lotteryTimeRemaining + timeElapsedSec);
-                }
-            }
-            lastLotteryLoc = { lat, lng };
-            lastLotteryTime = timestamp;
-            saveLotteryState();
-            updateGiftUI();
-
             if (!shouldUpload && lastSavedPos) return;
 
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
@@ -1951,6 +2023,14 @@
             
             updateStepsCounter(); 
             
+            // 【新增】紅點自動跟隨防打架機制
+            // 如果使用者近 15 秒內沒有滑動地圖，且最新的定位點走出了畫面外，則地圖自動平滑置中
+            if (!isMapInteracting && map && !isMyRouteMode) {
+                if (!map.getBounds().contains([lat, lng])) {
+                    map.setView([lat, lng], map.getZoom() || 17, { animate: true });
+                }
+            }
+
             renderMap(); saveLocationToServer();
         }
 
