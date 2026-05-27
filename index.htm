@@ -663,8 +663,8 @@
                 if (ring > max_ring) max_ring = ring;
             });
 
-            // 3. 上限控制：大約最遠 5.4 公里 (12圈)。保證至少顯示 3 圈 (1.3公里) 避免太少。
-            const target_ring = Math.max(3, Math.min(max_ring + 2, 12)); 
+            // 3. 上限控制：大約最遠 3.1 公里 (7圈)。保證至少顯示 3 圈 (1.3公里) 避免太少。
+            const target_ring = Math.max(3, Math.min(max_ring + 2, 7)); 
 
             // 初始動畫，將鏡頭移至中心點，稍微拉近
             map.flyToBounds([
@@ -738,9 +738,9 @@
                 });
 
                 // 動態運鏡：擴散到特定圈數時，把地圖視角往外拉廣 (避免過度頻繁縮放干擾)
-                const zoomRings = [2, 5, 8, 12];
+                const zoomRings = [2, 4, 7];
                 if (zoomRings.includes(currentRing)) {
-                    const viewRadiusMeters = Math.max(3000, (currentRing + 1.5) * R * 1.5);
+                    const viewRadiusMeters = Math.min(3000, Math.max(1500, (currentRing + 1.5) * R * 1.5));
                     const radiusLat = viewRadiusMeters / 111000;
                     const radiusLng = viewRadiusMeters / (111000 * cosLat);
                     map.flyToBounds([
@@ -754,8 +754,7 @@
                 // 隨距離外推放慢速度 (把計算分散在背景執行)
                 let nextDelay = 100;           // 0~3圈: 很快 (100毫秒一圈)
                 if (currentRing > 3) nextDelay = 250;  // 4~5圈: 中等
-                if (currentRing > 6) nextDelay = 500;  // 6~8圈: 慢
-                if (currentRing > 9) nextDelay = 1000; // 9~12圈: 極慢 (1秒一圈)
+                if (currentRing > 5) nextDelay = 500;  // 6~7圈: 慢
 
                 // 繼續畫下一圈
                 evaAnimationTimeout = setTimeout(processNextRing, nextDelay);
