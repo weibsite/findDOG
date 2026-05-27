@@ -124,13 +124,13 @@
         </div>
     </div>
 
-    <!-- 軌跡播放控制面板 (預設隱藏) -->
-    <div id="playback-controls" class="hidden absolute bottom-10 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1.5 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
-        <button id="pb-start" class="pixel-btn px-3 py-1.5 text-sm bg-gray-400 text-white" title="回到最前面">«</button>
-        <button id="pb-prev" class="pixel-btn px-3 py-1.5 text-sm bg-gray-400 text-white" title="回到上一格">‹</button>
-        <button id="pb-pause" class="pixel-btn px-3 py-1.5 text-sm bg-yellow-400 text-black font-black w-10" title="暫停/播放">=</button>
-        <button id="pb-speed" class="pixel-btn px-2 py-1.5 text-xs bg-green-500 text-white w-12" title="加速播放">› x1</button>
-        <button id="pb-end" class="pixel-btn px-3 py-1.5 text-sm bg-blue-500 text-white" title="直接完成">»</button>
+    <!-- 軌跡播放控制面板 (加入客製化按鈕符號) -->
+    <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
+        <button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到最前面">&lt;&lt;</button>
+        <button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到上一格">&lt;</button>
+        <button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black" title="暫停/播放">=</button>
+        <button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white" title="加倍速度前進">&gt;</button>
+        <button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white" title="直接完成">&gt;&gt;</button>
     </div>
 
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold text-gray-900 bg-white/90 text-right pointer-events-auto">
@@ -522,7 +522,7 @@
             showModal("✅ 個人資料已成功更新！");
         });
 
-        // ================= 我的軌跡模式 (播放器系統) =================
+        // ================= 我的軌跡模式 (播放器系統與中心跟隨) =================
         function startPlaybackInterval() {
             if (snakeInterval) clearInterval(snakeInterval);
             if (isPlaybackPaused) return;
@@ -537,34 +537,31 @@
                     clearInterval(snakeInterval);
                     snakeInterval = null;
                     isPlaybackPaused = true;
-                    document.getElementById('pb-pause').innerText = "▶";
+                    document.getElementById('pb-pause').innerText = "=";
                 }
             }, currentPlaybackSpeed);
         }
 
         // 播放控制面板綁定
         document.getElementById('pb-start').addEventListener('click', () => {
-            snakeIndex = 1; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+            snakeIndex = 1; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap();
         });
         document.getElementById('pb-prev').addEventListener('click', () => {
-            snakeIndex = Math.max(1, snakeIndex - 1); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+            snakeIndex = Math.max(1, snakeIndex - 1); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap();
         });
         document.getElementById('pb-pause').addEventListener('click', () => {
             isPlaybackPaused = !isPlaybackPaused;
-            document.getElementById('pb-pause').innerText = isPlaybackPaused ? "▶" : "=";
             startPlaybackInterval();
         });
         document.getElementById('pb-speed').addEventListener('click', () => {
             currentPlaybackSpeed = currentPlaybackSpeed / 2;
             if (currentPlaybackSpeed < 62.5) currentPlaybackSpeed = basePlaybackSpeed;
-            let mult = basePlaybackSpeed / currentPlaybackSpeed;
-            document.getElementById('pb-speed').innerText = `› x${mult}`;
             startPlaybackInterval();
         });
         document.getElementById('pb-end').addEventListener('click', () => {
             const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
             snakeIndex = (tData && tData.history) ? tData.history.length : 0;
-            isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; startPlaybackInterval(); renderMap();
+            isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap();
         });
 
         myRouteBtn.addEventListener('click', () => {
@@ -573,7 +570,7 @@
             isMyRouteMode = !isMyRouteMode;
             if (isMyRouteMode) {
                 targetRouteUid = myUid;
-                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。";
+                let testMessage = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n已探索過區域將會 100% 全亮顯示。";
 
                 // 若為管理員，自動尋找目前資料最齊全的志工作為示範
                 if (isAdmin) {
@@ -600,7 +597,6 @@
                 isPlaybackPaused = false;
                 currentPlaybackSpeed = basePlaybackSpeed;
                 document.getElementById('pb-pause').innerText = "=";
-                document.getElementById('pb-speed').innerText = "› x1";
                 
                 const targetData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
                 if (targetData && targetData.history && targetData.history.length > 0) {
@@ -621,7 +617,7 @@
             requestFogRender();
         });
 
-        // ================= EVA 網格模式 (精準涵蓋率與擴散動畫) =================
+        // ================= EVA 網格模式 (精準涵蓋率、擴散動畫與智能六邊形範圍) =================
         function offsetLatLng(lat, lng, dNorth, dEast) {
             const rEarth = 6378137; const pi = Math.PI;
             const dLat = (dNorth / rEarth) * (180 / pi);
@@ -644,46 +640,79 @@
             if (evaAnimationTimeout) clearTimeout(evaAnimationTimeout);
 
             const R = 300; 
+            const pi = Math.PI;
+            const rEarth = 6378137;
             const proj = PROJECTS[currentProjectKey];
             const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
             const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
+            const cosLat = Math.cos(centerLat * pi / 180);
 
-            // 自動縮放至 3 公里半徑的範圍
-            const radiusLat = 3000 / 111000;
-            const radiusLng = 3000 / (111000 * Math.cos(centerLat * Math.PI/180));
+            // 1. 蒐集當前專案所有的軌跡點位
+            let allValidPts = [];
+            for (const uid in allUsersData) {
+                const u = allUsersData[uid];
+                if ((u.project || "阿妹") === currentProjectKey && u.history) {
+                    allValidPts.push(...u.history);
+                }
+            }
+
+            // 2. 自動判斷最大覆蓋圈數 (Hex Ring)
+            let max_ring = 0;
+            allValidPts.forEach(pt => {
+                const dLat = pt.lat - centerLat;
+                const dLng = pt.lng - centerLng;
+                const y = dLat * (rEarth * pi / 180); // North
+                const x = dLng * (rEarth * cosLat * pi / 180); // East
+                
+                const q_frac = (Math.sqrt(3)/3 * x - 1/3 * y) / R;
+                const r_frac = (2/3 * y) / R;
+                
+                let rq = Math.round(q_frac);
+                let rr = Math.round(r_frac);
+                let rs = Math.round(-q_frac - r_frac);
+                const q_diff = Math.abs(rq - q_frac);
+                const r_diff = Math.abs(rr - r_frac);
+                const s_diff = Math.abs(rs - (-q_frac - r_frac));
+                
+                if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs;
+                else if (r_diff > s_diff) rr = -rq - rs;
+                
+                const ring = Math.max(Math.abs(rq), Math.abs(rr), Math.abs(-rq - rr));
+                if (ring > max_ring) max_ring = ring;
+            });
+
+            // 3. 以最高圈數再外加 2 層作為網格總範圍，最遠不超過 20 圈 (約半徑 6 公里)
+            const target_ring = Math.min(max_ring + 2, 20); 
+
+            // 自動縮放至涵蓋此環數的範圍，最低保障約 3 公里的視野
+            const viewRadiusMeters = Math.max(3000, target_ring * R * 1.5);
+            const radiusLat = viewRadiusMeters / 111000;
+            const radiusLng = viewRadiusMeters / (111000 * Math.cos(centerLat * Math.PI/180));
             map.flyToBounds([
                 [centerLat - radiusLat, centerLng - radiusLng],
                 [centerLat + radiusLat, centerLng + radiusLng]
             ], { animate: true, duration: 1.5 });
-
-            const w = Math.sqrt(3) * R; const h = 2 * R;
-            const dx = w; const dy = h * 0.75;
             
-            // 預先計算所有網格資料並依據距離排序，實現由內而外擴散
+            // 預先計算所有網格資料並依據圈數距離儲存，以實現由內而外的波紋擴散
             let hexDataList = [];
 
-            for (let q = -6; q <= 6; q++) {
-                for (let r = -6; r <= 6; r++) {
-                    const x = dx * (q + r/2.0); const y = dy * r;
+            // 利用標準六邊形網格走訪法，產生完美的巨大六邊形範圍
+            for (let q = -target_ring; q <= target_ring; q++) {
+                let r1 = Math.max(-target_ring, -q - target_ring);
+                let r2 = Math.min(target_ring, -q + target_ring);
+                for (let r = r1; r <= r2; r++) {
+                    const x = Math.sqrt(3) * R * (q + r/2.0); 
+                    const y = 1.5 * R * r;
                     const cLatLng = offsetLatLng(centerLat, centerLng, y, x);
+                    const ring_dist = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q-r));
 
                     let testPoints = [ cLatLng ];
                     for(let i=0; i<6; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 100*Math.sin(i*Math.PI/3), 100*Math.cos(i*Math.PI/3)));
                     for(let i=0; i<12; i++) testPoints.push(offsetLatLng(cLatLng[0], cLatLng[1], 200*Math.sin(i*Math.PI/6), 200*Math.cos(i*Math.PI/6)));
 
-                    let nearPts = [];
-                    for (const uid in allUsersData) {
-                        const u = allUsersData[uid];
-                        if ((u.project || "阿妹") === currentProjectKey && u.history) {
-                            for (const pt of u.history) {
-                                if (Math.abs(pt.lat - cLatLng[0]) < 0.005 && Math.abs(pt.lng - cLatLng[1]) < 0.005) nearPts.push(pt);
-                            }
-                        }
-                    }
-
                     let coveredCount = 0; let hexMaxTs = 0;
                     for(let tp of testPoints) {
-                        for(let pt of nearPts) {
+                        for(let pt of allValidPts) {
                             if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 125) {
                                 coveredCount++;
                                 if (pt.timestamp > hexMaxTs) hexMaxTs = pt.timestamp;
@@ -714,28 +743,36 @@
                         cLatLng: cLatLng,
                         polyOpts: { color: '#39ff14', weight: 2, fillColor: '#39ff14', fillOpacity: 0.05, dashArray: '5, 5', pane: 'evaPane' },
                         markerOpts: { icon: L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] }), zIndexOffset: -100, pane: 'evaPane' },
-                        dist: getDistance(centerLat, centerLng, cLatLng[0], cLatLng[1])
+                        ring: ring_dist
                     });
                 }
             }
 
-            // 依距離由內而外排序
-            hexDataList.sort((a, b) => a.dist - b.dist);
+            // 依據距離圈數(ring)由內而外排序
+            hexDataList.sort((a, b) => a.ring - b.ring);
 
             let drawIdx = 0;
+            let currentRing = 0;
+            
+            // 動畫函式：一圈一圈畫出來
             function animateHex() {
                 if(!isEvaMode || !evaGridLayer) return;
-                let batch = 4; // 每次畫 4 格，製造順暢擴散效果
-                while(batch-- > 0 && drawIdx < hexDataList.length) {
+                let drewAny = false;
+                
+                // 畫出屬於當前這一圈的所有網格
+                while(drawIdx < hexDataList.length && hexDataList[drawIdx].ring <= currentRing) {
                      let d = hexDataList[drawIdx++];
                      L.polygon(d.hexPoints, d.polyOpts).addTo(evaGridLayer);
                      L.marker(d.cLatLng, d.markerOpts).addTo(evaGridLayer);
+                     drewAny = true;
                 }
+                currentRing++;
+                
                 if (drawIdx < hexDataList.length) {
-                    evaAnimationTimeout = setTimeout(animateHex, 20); // 20ms 繪製下一波
+                    evaAnimationTimeout = setTimeout(animateHex, 150); // 每 0.15 秒擴散一圈
                 }
             }
-            // 等待鏡頭飛行動畫啟動後再開始繪製網格
+            // 等待鏡頭飛行動畫啟動後再開始繪製波紋
             evaAnimationTimeout = setTimeout(animateHex, 800); 
         }
 
@@ -1347,6 +1384,11 @@
                         const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${rColor}; animation-duration: 2s;"></div>`;
                         const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel" style="color: ${rColor}; border-color: ${rColor};">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                         L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: 5000 }).addTo(markersLayer);
+                        
+                        // 動態追蹤鏡頭中心平滑移動
+                        if (snakeInterval) {
+                            map.panTo([lastPoint.lat, lastPoint.lng], { animate: true, duration: (currentPlaybackSpeed/1000) });
+                        }
                     }
                 }
                 
