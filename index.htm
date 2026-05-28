@@ -161,10 +161,10 @@
         </div>
     </div>
 
-    <!-- UI 上方置中排版：下拉式選單 (切換目標) -->
-    <div id="project-select-wrapper" class="absolute top-4 left-1/2 transform -translate-x-1/2 z-[2000] hidden w-auto min-w-[200px] max-w-[90vw] flex items-center gap-2">
+    <!-- UI 上方排版：下拉式選單 (手機靠左，電腦置中) -->
+    <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all">
         <div class="relative w-full">
-            <select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-center">
+            <select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate">
                 <!-- JS 動態生成選項 -->
             </select>
             <div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div>
@@ -640,9 +640,6 @@
                 btn.className = "pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white shadow-[2px_2px_0px_#1a202c] no-underline";
                 btn.innerText = `🔗 ${btnText}`;
                 actionContainer.appendChild(btn);
-                actionContainer.classList.remove('hidden');
-            } else {
-                actionContainer.classList.add('hidden');
             }
 
             applyAnnouncePanelCollapseState();
@@ -1973,9 +1970,26 @@
         
         function applyAnnouncePanelCollapseState() {
             const announcementText = document.getElementById('announcement-text');
+            const actionContainer = document.getElementById('announcement-action-container');
             const toggleAnnouncePanelBtn = document.getElementById('toggle-announce-panel-btn');
-            if (isAnnounceCollapsed) { announcementText.classList.add('hidden'); toggleAnnouncePanelBtn.innerText = '➕'; } 
-            else { announcementText.classList.remove('hidden'); toggleAnnouncePanelBtn.innerText = '➖'; }
+            
+            if (isAnnounceCollapsed) { 
+                announcementText.classList.add('hidden'); 
+                actionContainer.classList.add('hidden');
+                toggleAnnouncePanelBtn.innerText = '➕'; 
+            } else { 
+                announcementText.classList.remove('hidden'); 
+                
+                // 檢查是否真的有連結，有的話展開時才顯示
+                const proj = PROJECTS[currentProjectKey];
+                if (proj && proj.actionLink && proj.actionLink.url) {
+                    actionContainer.classList.remove('hidden');
+                } else {
+                    actionContainer.classList.add('hidden');
+                }
+                
+                toggleAnnouncePanelBtn.innerText = '➖'; 
+            }
         }
 
         document.getElementById('toggle-announce-panel-btn').addEventListener('click', (e) => {
