@@ -354,18 +354,16 @@
         let taiwanPolygons = []; 
         let animalInfoCollapseTimer = null;
 
-        // 【修改點 1】：不再寫死預設專案。現在所有的專案都來自後端。
-        // DEFAULT_PROJECTS 被移除了，改用一個空的 PROJECTS 物件。
+        // 全空的專案物件，等待伺服器同步
         let PROJECTS = {};
 
         const projectSelect = document.getElementById('switch-project-select');
-        let currentProjectKey = getPersistentData('dogMap_currentProject') || null; // 預設值改為 null
+        let currentProjectKey = getPersistentData('dogMap_currentProject') || null; 
         
-        // 處理網址參數設定預設專案 (例如 ?Q比 或 ?project=Q比)
+        // 處理網址參數設定預設專案
         const urlParams = new URLSearchParams(window.location.search);
         let urlProject = urlParams.get('project');
         if (!urlProject) {
-            // 如果沒有 project 參數，嘗試解析第一組不帶 = 的字串作為專案名稱
             const queryString = window.location.search.substring(1);
             if (queryString && !queryString.includes('=')) {
                 urlProject = decodeURIComponent(queryString);
@@ -385,7 +383,10 @@
                 opt.innerText = `目前無協尋專案`;
                 projectSelect.appendChild(opt);
                 currentProjectKey = null;
+                document.getElementById('animal-info-section').classList.add('hidden'); // 隱藏動物資訊卡片
                 return;
+            } else {
+                document.getElementById('animal-info-section').classList.remove('hidden'); // 顯示動物資訊卡片
             }
 
             Object.keys(PROJECTS).forEach(key => {
@@ -402,16 +403,8 @@
                 projectSelect.value = currentProjectKey;
             }
         }
-        
-        // 這裡不再預先呼叫 updateProjectDropdown，等收到後端資料再呼叫
-        // updateProjectDropdown();
 
         let allAnnouncements = {};
-        // 這段也移除，等收到資料再處理
-        // Object.keys(PROJECTS).forEach(key => {
-        //     allAnnouncements[key] = PROJECTS[key].announcement || "目前無最新公告。";
-        // });
-        
         let allCenterMarkers = [];
         let activeBoundsRectangle = null;
 
@@ -424,15 +417,9 @@
         let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
         let adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
-        let localHistories = { "阿妹": [], "烏尼": [] };
-        try {
-            ['阿妹', '烏尼'].forEach(k => {
-                const h = localStorage.getItem('dogMap_localHistory_' + k);
-                if (h) localHistories[k] = JSON.parse(h);
-            });
-        } catch(e) {}
-        let localHistory = localHistories[currentProjectKey] || [];
-        let lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
+        let localHistories = {};
+        let localHistory = [];
+        let lastSavedPos = null;
 
         let allUsersData = {}, allSightings = {}, allRoutes = {}; 
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
@@ -459,7 +446,6 @@
         let slotTimer = null;
         let isMapInteracting = false;
         let mapInteractionTimer = null;
-        let viewportFetchTimer = null;
 
         let isAnnounceCollapsed = localStorage.getItem('dogMap_announceCollapsed') === 'true';
 
@@ -531,7 +517,6 @@
 
         async function initSystem() {
             try {
-                // 優先嘗試讀取 config.json
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) {
@@ -541,7 +526,6 @@
                 console.warn("無法讀取 config.json，嘗試使用當前網域作為預設網址", e);
             }
 
-            // 若未讀取到，或者讀取失敗，使用目前的網址反推作為備案 (完美解決硬編碼問題)
             if (!NGROK_WS_URL) {
                 NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
             }
@@ -588,22 +572,9 @@
             
             map.on('moveend zoomend mouseup touchend', () => {
                 mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); 
-                
-                if (viewportFetchTimer) clearTimeout(viewportFetchTimer);
-                viewportFetchTimer = setTimeout(() => {
-                    if (isSystemReady) {
-                        const b = map.getBounds();
-                        ws.send(JSON.stringify({ 
-                            type: "get_viewport_data", 
-                            bounds: { n: b.getNorth(), s: b.getSouth(), e: b.getEast(), w: b.getWest() } 
-                        }));
-                    }
-                    renderMap(); 
-                }, 500);
+                // 移除 viewport 限制，總是請求完整資料或等待定時的同步
+                renderMap(); 
             });
-
-            drawAllProjects(); 
-            updateAnimalInfoCard();
 
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
             map.createPane('evaPane'); map.getPane('evaPane').style.zIndex = 460; map.getPane('evaPane').style.pointerEvents = 'none';
@@ -621,8 +592,13 @@
 
         function updateAnimalInfoCard() {
             const proj = PROJECTS[currentProjectKey];
-            if (!proj) return; 
+            if (!proj) {
+                document.getElementById('animal-info-section').classList.add('hidden');
+                document.getElementById('announcement-panel').classList.add('hidden');
+                return; 
+            }
 
+            document.getElementById('animal-info-section').classList.remove('hidden');
             let mainUrl = proj.mainPhoto;
             if (mainUrl && mainUrl.startsWith('/images/')) {
                 mainUrl = getBaseHttpUrl() + mainUrl;
@@ -632,7 +608,6 @@
             document.getElementById('announcement-panel').classList.remove('hidden');
             document.getElementById('admin-current-proj').innerText = `針對: ${currentProjectKey}`;
             
-            // 核心修正：優先使用飼主自訂的公告。除非有管理員特別指派的新公告。
             let ann = proj.announcement || "目前無最新公告。";
             let serverAnn = allAnnouncements[currentProjectKey];
             if (serverAnn && serverAnn !== "目前無最新公告。") {
@@ -658,7 +633,6 @@
 
             applyAnnouncePanelCollapseState();
 
-            // 照片 5 秒後自動縮小 (僅限手機版寬度)
             if (window.innerWidth <= 640) {
                 const infoSection = document.getElementById('animal-info-section');
                 infoSection.classList.remove('mobile-collapsed');
@@ -670,7 +644,6 @@
         }
 
         document.getElementById('animal-info-section').addEventListener('click', (e) => {
-            // 如果點擊到的是覆蓋在上面的相簿按鈕，則打開相簿；否則展開照片
             if (e.target.classList.contains('gallery-btn-overlay')) {
                 const proj = PROJECTS[currentProjectKey];
                 if(!proj) return;
@@ -809,10 +782,14 @@
             currentProjectKey = e.target.value;
             setPersistentData('dogMap_currentProject', currentProjectKey);
             
-            // 更新網址以反映目前的專案 (不刷新頁面)
             const newUrl = new URL(window.location);
             newUrl.search = `?${encodeURIComponent(currentProjectKey)}`;
             window.history.pushState({}, '', newUrl);
+            
+            try {
+                const h = localStorage.getItem('dogMap_localHistory_' + currentProjectKey);
+                if (h) localHistories[currentProjectKey] = JSON.parse(h);
+            } catch(e) {}
             
             localHistory = localHistories[currentProjectKey] || [];
             lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
@@ -844,16 +821,11 @@
             }
         });
 
-        // 刪除專案按鈕事件
         document.getElementById('delete-project-btn').addEventListener('click', () => {
-            if (!isAdmin) return;
+            if (!isAdmin || !currentProjectKey) return;
             showConfirm(`確定要永久刪除專案「${currentProjectKey}」嗎？這會同時刪除所有相關的申請資料與歷史軌跡！`, () => {
                 if (isSystemReady) {
-                    // 發送兩個刪除請求：一個給地圖資料，一個給申請表資料
                     ws.send(JSON.stringify({ type: "admin_delete_project", token: adminToken, project: currentProjectKey }));
-                    
-                    // 為了架構簡單，我們假設申請表的 id 可能和 project 名字相同，或者後端處理 admin_delete_project 時一併刪除。
-                    // 這裡先送出請求。
                     showModal("✅ 刪除專案指令已送出！");
                 }
             });
@@ -935,12 +907,10 @@
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
                 
-                // 【修改點 2】：處理收到的專案更新，直接覆蓋 PROJECTS
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
                         const newProjects = response.dynamicProjects || response.data.dynamicProjects;
                         
-                        // 直接用後端傳來的資料覆蓋 PROJECTS，不再與 DEFAULT_PROJECTS 合併
                         PROJECTS = newProjects;
                         
                         Object.keys(PROJECTS).forEach(k => {
@@ -965,7 +935,6 @@
                     allRoutes = response.data.routes || {}; 
                     if(response.data.announcements) {
                         Object.keys(response.data.announcements).forEach(k => {
-                            // 不要用預設的「目前無最新公告。」去覆蓋飼主辛苦填寫的公告
                             if (response.data.announcements[k] && response.data.announcements[k] !== "目前無最新公告。") {
                                 allAnnouncements[k] = response.data.announcements[k];
                             }
@@ -983,7 +952,6 @@
                     if (response.data.routes) allRoutes = response.data.routes;
                     if (response.data.announcements) {
                         Object.keys(response.data.announcements).forEach(k => {
-                            // 不要用預設的「目前無最新公告。」去覆蓋飼主辛苦填寫的公告
                             if (response.data.announcements[k] && response.data.announcements[k] !== "目前無最新公告。") {
                                 allAnnouncements[k] = response.data.announcements[k];
                             }
@@ -1028,7 +996,6 @@
                     return;
                 }
 
-                // --- 管理員操作回應 ---
                 if (response.type === 'admin_login_result') {
                     document.getElementById('admin-submit-btn').innerText = "登入";
                     if (response.success) {
@@ -1317,6 +1284,7 @@
             updateStepsCounter();
             
             if (!isMapInteracting && map && !isMyRouteMode) {
+                // 只有當地圖畫面中不包含該點時才置中
                 if (!map.getBounds().contains([lat, lng])) {
                     map.setView([lat, lng], map.getZoom() || 17, { animate: true });
                 }
@@ -1342,7 +1310,8 @@
             if (!markersLayer || !map) return;
             markersLayer.clearLayers(); 
             const now = Date.now();
-            const currentBounds = map.getBounds().pad(0.5); 
+            // 不再使用 pad，改用 getBounds() 來判斷畫面內，但線上人數會計算全伺服器
+            const currentBounds = map.getBounds(); 
             
             if (isMyRouteMode) {
                 const targetData = allUsersData[targetRouteUid];
@@ -1397,19 +1366,24 @@
                 return; 
             }
             
-            let onlineUserCount = 0;
+            let totalOnlineUserCount = 0; // 改為計算全伺服器人數
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 
                 const isSelf = (uid === myUid); 
-                if (isSpectatorMode && isSelf) return;
 
                 const lastPoint = userData.history[userData.history.length - 1];
                 
+                // 只要一小時內有動靜，就算在線人數 (不限地圖範圍)
+                if (now - lastPoint.timestamp < 60 * 60 * 1000) { 
+                    totalOnlineUserCount++;
+                }
+
+                // 只有在地圖範圍內的標記才會被畫出來
+                if (isSpectatorMode && isSelf) return;
                 if (!currentBounds.contains([lastPoint.lat, lastPoint.lng])) return;
 
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) { 
-                    onlineUserCount++;
                     const safeUserName = escapeHTML(userData.userName);
                     const safeRenderColor = escapeHTML(isSelf ? dbUserColor : (userData.color || '#3b82f6'));
                     const avatarHtml = `<div class="user-avatar-pixel ${isSelf?'blinking-red-pixel':''}" style="background-color: ${safeRenderColor};"></div>`;
@@ -1437,7 +1411,7 @@
                 });
             });
 
-            document.getElementById('toast-text').innerText = `線上探索: ${onlineUserCount} 人`;
+            document.getElementById('toast-text').innerText = `線上探索: ${totalOnlineUserCount} 人`;
             requestFogRender();
         }
 
