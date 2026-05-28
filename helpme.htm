@@ -316,7 +316,7 @@
                 SERVER_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
             }
             
-            // 從 WebSocket 網址反推 HTTP 網址 (用於檔案上傳 POST API)
+            // 從 WebSocket 網址反推 HTTP 網址 (用於檔案上傳 POST API 等顯示)
             SERVER_HTTP_URL = SERVER_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
 
             // 取得網址後進行 WS 連線
@@ -578,8 +578,13 @@
             
             document.getElementById('f-main-photo-url').value = pd.mainPhoto;
             if (pd.mainPhoto) {
+                let previewSrc = pd.mainPhoto;
+                // 如果是相對路徑，加上伺服器網址以便在後台中正確顯示
+                if (previewSrc.startsWith('/images/')) {
+                    previewSrc = SERVER_HTTP_URL + previewSrc;
+                }
                 document.getElementById('main-photo-preview').classList.remove('hidden');
-                document.getElementById('main-photo-preview').querySelector('img').src = pd.mainPhoto;
+                document.getElementById('main-photo-preview').querySelector('img').src = previewSrc;
             }
             
             document.getElementById('f-photos-data').value = JSON.stringify(pd.photos || []);
@@ -633,11 +638,16 @@
 
             apps.forEach(app => {
                 const pd = app.projectData;
+                let photoSrc = pd.mainPhoto;
+                // 如果是相對路徑，加上伺服器網址以便正確顯示
+                if (photoSrc && photoSrc.startsWith('/images/')) {
+                    photoSrc = SERVER_HTTP_URL + photoSrc;
+                }
                 const div = document.createElement('div');
                 div.className = "border-4 border-black bg-white p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4";
                 div.innerHTML = `
                     <div class="flex gap-4 items-center w-full sm:w-auto">
-                        <img src="${pd.mainPhoto}" class="w-16 h-16 object-cover border-2 border-black bg-gray-200">
+                        <img src="${photoSrc}" class="w-16 h-16 object-cover border-2 border-black bg-gray-200">
                         <div class="flex-1 cursor-pointer hover:bg-gray-100 p-1 -ml-1 transition-colors" onclick="showAdminDetail('${app.id}')" title="點擊查看詳細內容">
                             <div class="font-black text-lg text-blue-700 underline decoration-blue-300 underline-offset-2">${pd.name} (${pd.animalName})</div>
                             <div class="text-xs font-bold text-gray-600 mt-1">申請人 LINE: ${app.ownerInfo.lineId} | 電話: ${app.ownerInfo.phone}</div>
@@ -671,6 +681,12 @@
                 boundsStr = `[${pd.bounds[0][0].toFixed(4)}, ${pd.bounds[0][1].toFixed(4)}] 至 [${pd.bounds[1][0].toFixed(4)}, ${pd.bounds[1][1].toFixed(4)}]`;
             }
 
+            let photoSrc = pd.mainPhoto;
+            // 如果是相對路徑，加上伺服器網址以便正確顯示
+            if (photoSrc && photoSrc.startsWith('/images/')) {
+                photoSrc = SERVER_HTTP_URL + photoSrc;
+            }
+
             content.innerHTML = `
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-gray-100 p-3 border-2 border-black">
@@ -696,7 +712,7 @@
 
                 <div class="bg-gray-100 p-3 border-2 border-black mt-4">
                     <h4 class="font-bold text-purple-700 border-b-2 border-gray-300 mb-2">主照片與範圍</h4>
-                    <img src="${pd.mainPhoto}" class="w-full max-w-[200px] border-2 border-black mb-2">
+                    <img src="${photoSrc}" class="w-full max-w-[200px] border-2 border-black mb-2">
                     <p class="text-xs font-bold text-gray-600 break-all">範圍座標: ${boundsStr}</p>
                 </div>
             `;
