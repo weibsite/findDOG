@@ -458,16 +458,16 @@
                 } else if (drawState === 2) {
                     drawPoints[1] = e.latlng;
                     
-                    // 【防呆】檢查兩點距離是否超過 100 公尺
+                    // 【防呆】檢查兩點距離是否超過 500 公尺
                     const dist = getDistance(drawPoints[0].lat, drawPoints[0].lng, drawPoints[1].lat, drawPoints[1].lng);
-                    if (dist > 100) {
-                        showModal("⚠️ 圈選範圍過大！系統已自動為您縮小至 100 公尺的合理搜尋範圍。");
-                        // 自動轉為以點 1 為基準的 100x100m 方形 (約略換算 50m = 0.00045 度)
-                        const offsetLat = 50 / 111320;
-                        const offsetLng = 50 / (111320 * Math.cos(drawPoints[0].lat * Math.PI / 180));
+                    if (dist > 500) {
+                        showModal("⚠️ 圈選範圍過大！系統已自動為您縮小至 500 公尺的合理搜尋範圍。");
+                        // 自動轉為以點 1 為基準的 500x500m 方形 (約略換算)
+                        const offsetLat = 250 / 111320;
+                        const offsetLng = 250 / (111320 * Math.cos(drawPoints[0].lat * Math.PI / 180));
                         
                         drawPoints[0] = L.latLng(drawPoints[0].lat - offsetLat, drawPoints[0].lng - offsetLng);
-                        drawPoints[1] = L.latLng(drawPoints[0].lat + offsetLat * 2, drawPoints[0].lng + offsetLng * 2); // To make it ~100m wide
+                        drawPoints[1] = L.latLng(drawPoints[0].lat + offsetLat * 2, drawPoints[0].lng + offsetLng * 2);
                     }
 
                     drawState = 0;
@@ -714,8 +714,10 @@
         function loadFormData(appData) {
             document.getElementById('app-id').value = appData.id;
             document.getElementById('f-account').value = appData.ownerInfo.account;
-            document.getElementById('f-line').value = appData.ownerInfo.lineId;
-            document.getElementById('f-phone').value = appData.ownerInfo.phone;
+            
+            // 安全取值：相容舊的 `line_id` 或新的 `lineId` 格式
+            document.getElementById('f-line').value = appData.ownerInfo.lineId || appData.ownerInfo.line_id || "";
+            document.getElementById('f-phone').value = appData.ownerInfo.phone || "";
             
             const pd = appData.projectData;
             document.getElementById('f-proj-name').value = pd.name;
@@ -802,7 +804,7 @@
                         <img src="${photoSrc}" class="w-16 h-16 object-cover border-2 border-black bg-gray-200">
                         <div class="flex-1 cursor-pointer hover:bg-gray-100 p-1 -ml-1 transition-colors" onclick="showAdminDetail('${app.id}')" title="點擊查看詳細內容">
                             <div class="font-black text-lg text-blue-700 underline decoration-blue-300 underline-offset-2">${pd.name} (${pd.animalName})</div>
-                            <div class="text-xs font-bold text-gray-600 mt-1">申請人 LINE: ${app.ownerInfo.lineId} | 電話: ${app.ownerInfo.phone}</div>
+                            <div class="text-xs font-bold text-gray-600 mt-1">申請人 LINE: ${app.ownerInfo.lineId || app.ownerInfo.line_id || '未提供'} | 電話: ${app.ownerInfo.phone || '未提供'}</div>
                             <div class="text-xs font-bold text-gray-600 mt-1">狀態: <span class="${app.status==='approved'?'text-green-600':'text-orange-500'}">${app.status}</span></div>
                         </div>
                     </div>
@@ -848,8 +850,8 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-gray-100 p-3 border-2 border-black">
                         <h4 class="font-bold text-blue-700 border-b-2 border-gray-300 mb-2">飼主聯絡資訊</h4>
-                        <p class="text-sm font-bold">LINE ID: <span class="text-gray-700">${app.ownerInfo.lineId}</span></p>
-                        <p class="text-sm font-bold">電話: <span class="text-gray-700">${app.ownerInfo.phone}</span></p>
+                        <p class="text-sm font-bold">LINE ID: <span class="text-gray-700">${app.ownerInfo.lineId || app.ownerInfo.line_id || '未提供'}</span></p>
+                        <p class="text-sm font-bold">電話: <span class="text-gray-700">${app.ownerInfo.phone || '未提供'}</span></p>
                         <p class="text-sm font-bold">登入帳號: <span class="text-gray-700">${app.ownerInfo.account || '未設定'}</span></p>
                     </div>
                     <div class="bg-gray-100 p-3 border-2 border-black">
