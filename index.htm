@@ -197,7 +197,7 @@
     </div>
 
     <!-- 右上角：線上狀態與動物卡片 / 公告區 -->
-    <div class="absolute top-[80px] right-4 sm:top-4 sm:right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
+    <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help" title="雙擊可變更伺服器網址">
             <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
             <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
@@ -230,7 +230,7 @@
                <button id="tab-photos" class="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none">📸 相片</button>
                <button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none">🎥 影片</button>
            </div>
-           <div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4">
+           <div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative">
            </div>
            <button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button>
        </div>
@@ -468,6 +468,11 @@
         let currentViewerIndex = 0;
         let touchStartX = 0;
         let touchEndX = 0;
+        
+        // --- 懶加載狀態變數 ---
+        let galleryLoadedCount = 0;
+        const GALLERY_BATCH_SIZE = 2;
+        let currentGalleryType = 'photos';
 
         const customModal = document.getElementById('custom-modal'), customModalText = document.getElementById('custom-modal-text');
         function showModal(msg) { customModalText.innerText = msg; customModal.classList.remove('hidden'); }
@@ -681,76 +686,101 @@
         document.getElementById('tab-videos').addEventListener('click', () => renderGallery('videos'));
 
         function renderGallery(type) {
+            currentGalleryType = type;
+            galleryLoadedCount = 0;
             const content = document.getElementById('gallery-content');
             const btnP = document.getElementById('tab-photos'), btnV = document.getElementById('tab-videos');
             content.innerHTML = '';
-            const proj = PROJECTS[currentProjectKey];
             
             if (type === 'photos') {
-                btnP.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black";
-                btnV.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black";
-                if (!proj.photos || proj.photos.length === 0) {
-                    content.innerHTML = '<div class="text-center text-gray-500 font-bold mt-10">目前沒有相片</div>';
-                } else {
-                    proj.photos.forEach((item, index) => {
-                        const imgObj = typeof item === 'string' ? { url: item } : item;
-                        let pUrl = imgObj.url;
-                        if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-
-                        const container = document.createElement('div');
-                        container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform";
-                        
-                        container.addEventListener('click', () => { openPhotoViewer(index, proj.photos); });
-
-                        const img = document.createElement('img');
-                        img.src = pUrl;
-                        img.className = "w-full object-cover border-b-2 border-black block";
-                        container.appendChild(img);
-
-                        if (imgObj.title && imgObj.title.trim() !== "") {
-                            const titleDiv = document.createElement('div');
-                            titleDiv.className = "p-2 text-sm font-bold text-gray-900 text-center";
-                            titleDiv.innerText = imgObj.title;
-                            container.appendChild(titleDiv);
-                        } else {
-                            img.classList.remove('border-b-2', 'border-black');
-                        }
-
-                        content.appendChild(container);
-                    });
-                }
+                btnP.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none";
+                btnV.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none";
             } else {
-                btnV.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black";
-                btnP.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black";
-                if (!proj.videos || proj.videos.length === 0) {
-                    content.innerHTML = '<div class="text-center text-gray-500 font-bold mt-10">目前沒有影片</div>';
+                btnV.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none";
+                btnP.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none";
+            }
+            
+            const proj = PROJECTS[currentProjectKey];
+            if (!proj || !proj[type] || proj[type].length === 0) {
+                content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有${type === 'photos' ? '相片' : '影片'}</div>`;
+                return;
+            }
+            
+            loadMoreGalleryItems();
+        }
+
+        function loadMoreGalleryItems() {
+            const content = document.getElementById('gallery-content');
+            const proj = PROJECTS[currentProjectKey];
+            if (!proj || !proj[currentGalleryType]) return;
+            
+            const items = proj[currentGalleryType];
+            const start = galleryLoadedCount;
+            const end = Math.min(start + GALLERY_BATCH_SIZE, items.length);
+            
+            if (start >= items.length) return;
+            
+            for (let i = start; i < end; i++) {
+                const item = items[i];
+                if (currentGalleryType === 'photos') {
+                    const imgObj = typeof item === 'string' ? { url: item } : item;
+                    let pUrl = imgObj.url;
+                    if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
+
+                    const container = document.createElement('div');
+                    container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform";
+                    
+                    container.addEventListener('click', () => { openPhotoViewer(i, items); });
+
+                    const img = document.createElement('img');
+                    img.src = pUrl;
+                    img.loading = "lazy";
+                    img.className = "w-full object-cover border-b-2 border-black block";
+                    container.appendChild(img);
+
+                    if (imgObj.title && imgObj.title.trim() !== "") {
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = "p-2 text-sm font-bold text-gray-900 text-center";
+                        titleDiv.innerText = imgObj.title;
+                        container.appendChild(titleDiv);
+                    } else {
+                        img.classList.remove('border-b-2', 'border-black');
+                    }
+
+                    content.appendChild(container);
                 } else {
-                    proj.videos.forEach(item => {
-                        const vidObj = typeof item === 'string' ? { url: item } : item;
-                        let vUrl = vidObj.url;
-                        if(vUrl && vUrl.startsWith('/images/')) vUrl = getBaseHttpUrl() + vUrl;
+                    const vidObj = typeof item === 'string' ? { url: item } : item;
+                    let vUrl = vidObj.url;
+                    if(vUrl && vUrl.startsWith('/images/')) vUrl = getBaseHttpUrl() + vUrl;
 
-                        const container = document.createElement('div');
-                        container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3";
-                        
-                        if (vidObj.title && vidObj.title.trim() !== "") {
-                            const titleDiv = document.createElement('div');
-                            titleDiv.className = "text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1";
-                            titleDiv.innerText = vidObj.title;
-                            container.appendChild(titleDiv);
-                        }
+                    const container = document.createElement('div');
+                    container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3";
+                    
+                    if (vidObj.title && vidObj.title.trim() !== "") {
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = "text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1";
+                        titleDiv.innerText = vidObj.title;
+                        container.appendChild(titleDiv);
+                    }
 
-                        const videoEl = document.createElement('video');
-                        videoEl.src = vUrl;
-                        videoEl.controls = true;
-                        videoEl.className = "w-full border-2 border-black bg-black";
-                        container.appendChild(videoEl);
+                    const videoEl = document.createElement('video');
+                    videoEl.src = vUrl;
+                    videoEl.controls = true;
+                    videoEl.preload = "metadata";
+                    videoEl.className = "w-full border-2 border-black bg-black";
+                    container.appendChild(videoEl);
 
-                        content.appendChild(container);
-                    });
+                    content.appendChild(container);
                 }
             }
+            galleryLoadedCount = end;
         }
+
+        document.getElementById('gallery-content').addEventListener('scroll', function() {
+            if (this.scrollTop + this.clientHeight >= this.scrollHeight - 50) {
+                loadMoreGalleryItems();
+            }
+        });
 
         function openPhotoViewer(index, photos) {
             viewerPhotos = photos; currentViewerIndex = index; updatePhotoViewer();
