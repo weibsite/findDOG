@@ -354,41 +354,12 @@
         let taiwanPolygons = []; 
         let animalInfoCollapseTimer = null;
 
-        // ================= 【核心修正】動態多目標資料結構與重置邏輯 =================
-        // 將系統預設的專案獨立保存，每次收到更新時，一律從這裡「歸零」再合入新資料，
-        // 這樣被下架刪除的專案才會真正消失。
-        const DEFAULT_PROJECTS = {
-            "阿妹": { 
-                name: "找阿妹", 
-                animalName: "阿妹",
-                type: "dog",
-                lostDate: "2023-10-01",
-                bounds: [ [23.009222, 120.255556], [23.007889, 120.259528] ],
-                mainPhoto: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                photos: [
-                    { url: "https://images.unsplash.com/photo-1543466835-00a7907e9de1", title: "剛洗完澡的樣子" }
-                ],
-                videos: [],
-                announcement: "【阿妹協尋】\n請大家在台南地區多加留意，如果有看到疑似阿妹的身影，請不要驚擾，立即聯絡我們！\n重點熱區：台南公園周邊。"
-            },
-            "烏尼": { 
-                name: "找烏尼", 
-                animalName: "烏尼",
-                type: "cat",
-                lostDate: "2024-01-15",
-                bounds: [ [25.058413, 121.489253], [25.058575, 121.489066] ],
-                mainPhoto: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80",
-                photos: [ { url: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba" } ],
-                videos: [],
-                announcement: "【烏尼協尋】\n烏尼生性膽小，請各位志工在三重地區周圍小巷多多留意，如有發現請保持距離並回報，感謝大家的幫忙！"
-            }
-        };
-
-        // 深拷貝預設專案給目前全域變數
-        let PROJECTS = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+        // 【修改點 1】：不再寫死預設專案。現在所有的專案都來自後端。
+        // DEFAULT_PROJECTS 被移除了，改用一個空的 PROJECTS 物件。
+        let PROJECTS = {};
 
         const projectSelect = document.getElementById('switch-project-select');
-        let currentProjectKey = getPersistentData('dogMap_currentProject') || "阿妹";
+        let currentProjectKey = getPersistentData('dogMap_currentProject') || null; // 預設值改為 null
         
         // 處理網址參數設定預設專案 (例如 ?Q比 或 ?project=Q比)
         const urlParams = new URLSearchParams(window.location.search);
@@ -406,6 +377,17 @@
         
         function updateProjectDropdown() {
             projectSelect.innerHTML = '';
+            
+            // 如果沒有任何專案，顯示一個提示選項
+            if (Object.keys(PROJECTS).length === 0) {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.innerText = `目前無協尋專案`;
+                projectSelect.appendChild(opt);
+                currentProjectKey = null;
+                return;
+            }
+
             Object.keys(PROJECTS).forEach(key => {
                 const opt = document.createElement('option');
                 opt.value = key;
@@ -413,20 +395,22 @@
                 projectSelect.appendChild(opt);
             });
 
-            if (PROJECTS[currentProjectKey]) {
+            if (currentProjectKey && PROJECTS[currentProjectKey]) {
                 projectSelect.value = currentProjectKey;
             } else {
-                currentProjectKey = Object.keys(PROJECTS)[0] || "阿妹";
+                currentProjectKey = Object.keys(PROJECTS)[0];
                 projectSelect.value = currentProjectKey;
             }
         }
         
-        updateProjectDropdown();
+        // 這裡不再預先呼叫 updateProjectDropdown，等收到後端資料再呼叫
+        // updateProjectDropdown();
 
         let allAnnouncements = {};
-        Object.keys(PROJECTS).forEach(key => {
-            allAnnouncements[key] = PROJECTS[key].announcement || "目前無最新公告。";
-        });
+        // 這段也移除，等收到資料再處理
+        // Object.keys(PROJECTS).forEach(key => {
+        //     allAnnouncements[key] = PROJECTS[key].announcement || "目前無最新公告。";
+        // });
         
         let allCenterMarkers = [];
         let activeBoundsRectangle = null;
@@ -945,23 +929,21 @@
                 document.getElementById('toast-text').innerText = "連線成功"; 
                 wsReconnectDelay = 3000;
                 
-                ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey }));
+                ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey || "default" }));
                 if(localHistory.length > 0) saveLocationToServer(null, true); 
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
                 
-                // 【核心修正】每次收到專案更新時，強制清除舊資料並載入新資料
+                // 【修改點 2】：處理收到的專案更新，直接覆蓋 PROJECTS
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
                         const newProjects = response.dynamicProjects || response.data.dynamicProjects;
                         
-                        // 強制歸零！避免被下架或刪除的專案還卡在選單裡
-                        PROJECTS = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+                        // 直接用後端傳來的資料覆蓋 PROJECTS，不再與 DEFAULT_PROJECTS 合併
+                        PROJECTS = newProjects;
                         
-                        Object.keys(newProjects).forEach(k => {
-                            PROJECTS[k] = newProjects[k];
-                            // 更新時，若尚未有管理員公告，優先使用飼主公告
+                        Object.keys(PROJECTS).forEach(k => {
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
                                 allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。";
                             }
