@@ -50,10 +50,15 @@
         #animal-info-section.mobile-collapsed #animal-name-date {
             text-align: left;
             padding-left: 8px;
+            padding-right: 65px;
             background: transparent;
             color: #1a202c;
             line-height: 32px;
             font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
         }
         #animal-info-section.mobile-collapsed .gallery-btn-overlay {
             top: 50%;
@@ -851,15 +856,24 @@
                 const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', 'rabbit': '🐇', 'turtle': '🐢' };
                 const iconSymbol = typeMap[proj.type] || '🐾';
                 
+                let ann = allAnnouncements[key] || proj.announcement || "";
+                let rewardHtml = "";
+                const rewardMatch = ann.match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/);
+                if (rewardMatch) {
+                    rewardHtml = `<div class="user-name-tag pixel-panel" style="color: #000; background-color: #fef08a; border-color: #1a202c; z-index: 11; margin-bottom: 2px; padding: 2px 4px;">💰 $${rewardMatch[1]}</div>`;
+                }
+                
                 let markerHtml = '';
                 if (isCurrent) {
                     markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div>
                                   <div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;">
+                                      ${rewardHtml}
                                       <div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${escapeHTML(proj.animalName)}遺失中心</div>
                                       <div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div>
                                   </div>`;
                 } else {
                     markerHtml = `<div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto; opacity: 0.8;">
+                                      ${rewardHtml}
                                       <div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">找 ${escapeHTML(proj.animalName)}</div>
                                       <div style="font-size: 24px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10;">${iconSymbol}</div>
                                   </div>`;
@@ -940,10 +954,11 @@
                     }
                     
                     // 接收獎品狀態與資料庫儲存的票數
-                    currentProjectHasPrize = response.data.has_prize_history || false;
+                    currentProjectHasPrize = response.data.has_prize_history ? (response.data.has_prize_history[currentProjectKey] || false) : false;
                     lotteryTickets = response.data.tickets || 0;
                     
                     updateAnimalInfoCard();
+                    drawAllProjects();
                     renderMap(); renderSightings(); renderRoutes();
                     updateGiftUI();
                     if(!document.getElementById('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList();
@@ -961,6 +976,7 @@
                             }
                         });
                         updateAnimalInfoCard();
+                        drawAllProjects();
                     }
                     if (response.data.has_prize_history && response.data.has_prize_history[currentProjectKey] !== undefined) {
                         currentProjectHasPrize = response.data.has_prize_history[currentProjectKey];
