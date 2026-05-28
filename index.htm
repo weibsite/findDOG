@@ -164,7 +164,6 @@
             </select>
             <div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div>
         </div>
-        <!-- 刪除專案按鈕 (管理員可見) -->
         <button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button>
     </div>
     
@@ -214,7 +213,6 @@
                 <button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button>
             </div>
             <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300 text-[11px] max-h-32 overflow-y-auto">載入中...</div>
-            <!-- 動態新增的動作按鈕區 -->
             <div id="announcement-action-container" class="mt-2 hidden"></div>
         </div>
     </div>
@@ -228,7 +226,6 @@
                <button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none">🎥 影片</button>
            </div>
            <div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4">
-               <!-- 動態生成內容 -->
            </div>
            <button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button>
        </div>
@@ -299,7 +296,7 @@
     <!-- 管理員面板 -->
     <div id="admin-panel" class="absolute top-[80px] left-4 sm:top-4 sm:left-4 z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[6px_6px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]">
         <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
-        <div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj">針對: 阿妹</div>
+        <div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj">針對: 目標</div>
         <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
         <button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
         <button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
@@ -417,6 +414,10 @@
         let isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true';
         let adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
+        // --- 抽獎狀態變數 ---
+        let currentProjectHasPrize = false; // 是否曾經有過獎品紀錄
+        let lotteryTickets = 0;             // 後端傳來的票數
+
         let localHistories = {};
         let localHistory = [];
         let lastSavedPos = null;
@@ -440,7 +441,7 @@
         let isDrawingRoute = false, currentRoutePoints = [], currentRoutePolyline = null, currentRouteMarkers = [];
         let editingRouteId = null;
 
-        let lotteryTimeRemaining = 3600, lotteryTickets = 0, isTrackingStarted = false;
+        let lotteryTimeRemaining = 3600, isTrackingStarted = false;
         let lastFullSyncTime = 0;
         let slotSpinning = false;
         let slotTimer = null;
@@ -572,7 +573,6 @@
             
             map.on('moveend zoomend mouseup touchend', () => {
                 mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); 
-                // 移除 viewport 限制，總是請求完整資料或等待定時的同步
                 renderMap(); 
             });
 
@@ -794,6 +794,8 @@
             localHistory = localHistories[currentProjectKey] || [];
             lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
 
+            loadLotteryState();
+
             updateAnimalInfoCard();
             drawAllProjects();
             
@@ -826,7 +828,6 @@
             showConfirm(`確定要永久刪除專案「${currentProjectKey}」嗎？這會同時刪除所有相關的申請資料與歷史軌跡！`, () => {
                 if (isSystemReady) {
                     ws.send(JSON.stringify({ type: "admin_delete_project", token: adminToken, project: currentProjectKey }));
-                    showModal("✅ 刪除專案指令已送出！");
                 }
             });
         });
@@ -910,7 +911,6 @@
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
                         const newProjects = response.dynamicProjects || response.data.dynamicProjects;
-                        
                         PROJECTS = newProjects;
                         
                         Object.keys(PROJECTS).forEach(k => {
@@ -922,10 +922,6 @@
                         updateProjectDropdown();
                         drawAllProjects();
                         updateAnimalInfoCard();
-
-                        if (response.type === 'projects_updated') {
-                            showModal("✨ 系統地圖專案已更新！下拉選單已重整。");
-                        }
                     }
                 }
 
@@ -940,8 +936,14 @@
                             }
                         });
                     }
+                    
+                    // 接收獎品狀態與資料庫儲存的票數
+                    currentProjectHasPrize = response.data.has_prize_history || false;
+                    lotteryTickets = response.data.tickets || 0;
+                    
                     updateAnimalInfoCard();
                     renderMap(); renderSightings(); renderRoutes();
+                    updateGiftUI();
                     if(!document.getElementById('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList();
                     if(!document.getElementById('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
                     return;
@@ -958,9 +960,22 @@
                         });
                         updateAnimalInfoCard();
                     }
+                    if (response.data.has_prize_history && response.data.has_prize_history[currentProjectKey] !== undefined) {
+                        currentProjectHasPrize = response.data.has_prize_history[currentProjectKey];
+                    }
+                    
                     renderSightings(); renderRoutes();
+                    updateGiftUI();
                     if(!document.getElementById('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList();
                     if(!document.getElementById('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
+                    return;
+                }
+
+                if (response.type === 'ticket_update') {
+                    if (response.project === currentProjectKey) {
+                        lotteryTickets = response.tickets;
+                        updateGiftUI();
+                    }
                     return;
                 }
 
@@ -1254,7 +1269,10 @@
         function finishUIReveal() {
             document.getElementById('startup-overlay').style.display = 'none'; isTrackingStarted = true;
             document.getElementById('status-toast').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden');
-            document.getElementById('floating-gift-container').classList.remove('hidden');
+            
+            // UI 顯示時也檢查一次禮物盒是否該顯示
+            updateGiftUI();
+            
             document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden'); document.getElementById('nav-pin-btn').classList.remove('hidden'); document.getElementById('force-upload-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('eva-grid-btn').classList.remove('hidden');
             document.getElementById('toast-text').innerText = "位置同步成功";
@@ -1284,7 +1302,6 @@
             updateStepsCounter();
             
             if (!isMapInteracting && map && !isMyRouteMode) {
-                // 只有當地圖畫面中不包含該點時才置中
                 if (!map.getBounds().contains([lat, lng])) {
                     map.setView([lat, lng], map.getZoom() || 17, { animate: true });
                 }
@@ -1310,7 +1327,6 @@
             if (!markersLayer || !map) return;
             markersLayer.clearLayers(); 
             const now = Date.now();
-            // 不再使用 pad，改用 getBounds() 來判斷畫面內，但線上人數會計算全伺服器
             const currentBounds = map.getBounds(); 
             
             if (isMyRouteMode) {
@@ -1366,20 +1382,17 @@
                 return; 
             }
             
-            let totalOnlineUserCount = 0; // 改為計算全伺服器人數
+            let totalOnlineUserCount = 0;
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 
                 const isSelf = (uid === myUid); 
-
                 const lastPoint = userData.history[userData.history.length - 1];
                 
-                // 只要一小時內有動靜，就算在線人數 (不限地圖範圍)
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) { 
                     totalOnlineUserCount++;
                 }
 
-                // 只有在地圖範圍內的標記才會被畫出來
                 if (isSpectatorMode && isSelf) return;
                 if (!currentBounds.contains([lastPoint.lat, lastPoint.lng])) return;
 
@@ -1879,7 +1892,10 @@
             dbUserColor = generateRandomColor();
             setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor);
             document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            
+            // 此處載入該專案的剩餘計時器
             loadLotteryState();
+            
             startLocationServices(false);
         });
         
@@ -2089,38 +2105,35 @@
         });
         
         function updateGiftUI() {
-            let displayTickets = isAdmin ? '無限' : lotteryTickets;
-            document.getElementById('gift-ticket-badge').innerText = displayTickets;
-            if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
-                document.getElementById('slot-tickets-display').innerText = displayTickets;
+            const giftContainer = document.getElementById('floating-gift-container');
+            if (!currentProjectHasPrize) {
+                giftContainer.classList.add('hidden');
+            } else {
+                giftContainer.classList.remove('hidden');
+                let displayTickets = isAdmin ? '無限' : lotteryTickets;
+                document.getElementById('gift-ticket-badge').innerText = displayTickets;
+                if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
+                    document.getElementById('slot-tickets-display').innerText = displayTickets;
+                }
             }
         }
         
         function saveLotteryState() {
-            const data = JSON.stringify({ r: lotteryTimeRemaining, t: lotteryTickets });
-            const salt = "S4lt_" + myUid;
-            const hash = btoa(encodeURIComponent(data + salt)).split('').reverse().join('');
-            setPersistentData('dogMap_lottery', data);
-            setPersistentData('dogMap_lottery_hash', hash);
+            const data = JSON.stringify({ r: lotteryTimeRemaining });
+            setPersistentData('dogMap_lottery_time_' + currentProjectKey, data);
         }
         
         function loadLotteryState() {
-            const data = getPersistentData('dogMap_lottery');
-            const hash = getPersistentData('dogMap_lottery_hash');
-            if (data && hash) {
-                const salt = "S4lt_" + myUid;
-                let calcHash = btoa(encodeURIComponent(data + salt)).split('').reverse().join('');
-                if (calcHash === hash) {
-                    try {
-                        let parsed = JSON.parse(data);
-                        lotteryTimeRemaining = typeof parsed.r === 'number' ? parsed.r : 3600;
-                        lotteryTickets = typeof parsed.t === 'number' ? parsed.t : 0;
-                    } catch(e) {}
-                } else {
+            const data = getPersistentData('dogMap_lottery_time_' + currentProjectKey);
+            if (data) {
+                try {
+                    let parsed = JSON.parse(data);
+                    lotteryTimeRemaining = typeof parsed.r === 'number' ? parsed.r : 3600;
+                } catch(e) {
                     lotteryTimeRemaining = 3600;
-                    lotteryTickets = 0;
-                    saveLotteryState();
                 }
+            } else {
+                lotteryTimeRemaining = 3600;
             }
             updateGiftUI();
         }
@@ -2196,8 +2209,13 @@
             timerUI.innerText = `${m}:${s}`;
 
             if (lotteryTimeRemaining <= 0) {
-                lotteryTickets++;
                 lotteryTimeRemaining = 3600;
+                saveLotteryState();
+                
+                // 通知伺服器增加一張此專案的抽獎券
+                if (isSystemReady) {
+                    ws.send(JSON.stringify({ type: "earn_ticket", uid: myUid, project: currentProjectKey }));
+                }
                 
                 const marquee = document.getElementById('lottery-marquee-container');
                 marquee.classList.remove('hidden');
@@ -2209,7 +2227,6 @@
                 setTimeout(() => marquee.classList.add('hidden'), 20000);
             }
             saveLotteryState();
-            updateGiftUI();
         }, 1000);
 
         // 管理員與抽獎按鈕邏輯
@@ -2220,12 +2237,7 @@
             }
             if (!isSystemReady) { showModal("系統目前未連線！"); return; }
             
-            if (!isAdmin) {
-                lotteryTickets--;
-                saveLotteryState();
-                updateGiftUI();
-            }
-            
+            // 先不直接減票數，交給伺服器來扣除並更新，避免防呆
             document.getElementById('slot-draw-btn').innerText = "🎰 抽獎中..."; document.getElementById('slot-draw-btn').disabled = true;
             
             slotSpinning = true;
@@ -2236,7 +2248,7 @@
                 document.getElementById('reel-3').innerText = emojis[Math.floor(Math.random() * 2)];
             }, 100);
             
-            ws.send(JSON.stringify({ type: "draw_gift", uid: myUid, userName: currentUserName, project: currentProjectKey }));
+            ws.send(JSON.stringify({ type: "draw_gift", uid: myUid, userName: currentUserName, project: currentProjectKey, token: adminToken }));
         });
         
         document.getElementById('slot-check-pool-btn').addEventListener('click', () => {
@@ -2408,7 +2420,7 @@
             });
             
             if (ids.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey].name}」沒有任何出沒點紀錄。</p>`;
+                container.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey]?.name || ''}」沒有任何出沒點紀錄。</p>`;
                 return;
             }
             ids.sort((a, b) => allSightings[b].timestamp - allSightings[a].timestamp);
@@ -2459,7 +2471,7 @@
             if(!isAdmin) return;
             isDrawingRoute = true; currentRoutePoints = []; document.getElementById('route-name').value = '';
             document.getElementById('route-drawing-panel').classList.remove('hidden'); document.getElementById('admin-panel').classList.add('hidden'); 
-            showModal(`🗺️ 進入「${PROJECTS[currentProjectKey].name}」路線繪製模式！\n請直接在地圖上「點擊」來新增路線節點。`); updateDrawingRoutePreview();
+            showModal(`🗺️ 進入「${PROJECTS[currentProjectKey]?.name || ''}」路線繪製模式！\n請直接在地圖上「點擊」來新增路線節點。`); updateDrawingRoutePreview();
         });
 
         document.getElementById('route-undo-btn').addEventListener('click', () => {
@@ -2507,7 +2519,7 @@
                 return p === currentProjectKey;
             });
             
-            if (ids.length === 0) { routesListContainer.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey].name}」沒有任何路線紀錄。</p>`; return; }
+            if (ids.length === 0) { routesListContainer.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey]?.name || ''}」沒有任何路線紀錄。</p>`; return; }
             ids.sort((a, b) => allRoutes[b].timestamp - allRoutes[a].timestamp);
 
             ids.forEach(id => {
@@ -2549,8 +2561,8 @@
         
         document.getElementById('update-announce-btn').addEventListener('click', () => {
             if(!isAdmin) return;
-            let currentRawText = allAnnouncements[currentProjectKey] || PROJECTS[currentProjectKey].announcement || "";
-            showInputModal(`📢 更新「${PROJECTS[currentProjectKey].name}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
+            let currentRawText = allAnnouncements[currentProjectKey] || PROJECTS[currentProjectKey]?.announcement || "";
+            showInputModal(`📢 更新「${PROJECTS[currentProjectKey]?.name || ''}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
                 allAnnouncements[currentProjectKey] = text; 
                 if(isSystemReady) {
                     ws.send(JSON.stringify({ type: "update_announcement", token: adminToken, data: text, project: currentProjectKey })); 
@@ -2595,7 +2607,7 @@
 
         addPrizeBtn.addEventListener('click', () => {
             if (!isAdmin) return;
-            document.getElementById('add-prize-title').innerText = `🎁 新增「${PROJECTS[currentProjectKey].name}」獎池`;
+            document.getElementById('add-prize-title').innerText = `🎁 新增「${PROJECTS[currentProjectKey]?.name || ''}」獎池`;
             prizeRowsContainer.innerHTML = ''; 
             prizeRowsContainer.appendChild(createPrizeRow());
             addPrizeModal.classList.remove('hidden');
@@ -2640,7 +2652,7 @@
 
         managePrizesBtn.addEventListener('click', () => {
             if (!isAdmin) return;
-            document.getElementById('manage-prize-title').innerText = `⚙️ 管理「${PROJECTS[currentProjectKey].name}」獎品`;
+            document.getElementById('manage-prize-title').innerText = `⚙️ 管理「${PROJECTS[currentProjectKey]?.name || ''}」獎品`;
             if (isSystemReady) {
                 document.getElementById('admin-prizes-list-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>';
                 ws.send(JSON.stringify({ type: "get_admin_prizes", token: adminToken, project: currentProjectKey }));
@@ -2685,7 +2697,7 @@
         document.getElementById('slot-close-btn').addEventListener('click', () => document.getElementById('slot-machine-modal').classList.add('hidden'));
         document.getElementById('floating-gift-container').addEventListener('click', () => {
             if (isSpectatorMode) { showModal("觀看模式無法參與抽獎喔！"); return; }
-            document.getElementById('slot-machine-title').innerText = `🎰 「${PROJECTS[currentProjectKey].name}」抽獎`;
+            document.getElementById('slot-machine-title').innerText = `🎰 「${PROJECTS[currentProjectKey]?.name || ''}」抽獎`;
             updateGiftUI();
             document.getElementById('slot-machine-modal').classList.remove('hidden');
         });
