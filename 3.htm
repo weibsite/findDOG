@@ -157,10 +157,14 @@
     </div>
 
     <!-- UI 左側排版：下拉式選單 (切換目標) -->
-    <select id="switch-project-select" class="absolute top-[80px] left-4 z-[2000] pixel-btn p-2 text-sm font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none hidden appearance-none pr-8">
-        <!-- JS 動態生成選項 -->
-    </select>
-    <div id="select-arrow" class="absolute top-[88px] left-[135px] z-[2000] pointer-events-none font-black hidden">▼</div>
+    <div id="project-select-wrapper" class="absolute top-[80px] left-4 z-[2000] hidden">
+        <div class="relative inline-block">
+            <select id="switch-project-select" class="pixel-btn p-2 pr-8 text-sm font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none">
+                <!-- JS 動態生成選項 -->
+            </select>
+            <div id="select-arrow" class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div>
+        </div>
+    </div>
     
     <!-- 其他控制按鈕 -->
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
@@ -189,7 +193,7 @@
 
     <!-- 右上角：線上狀態與動物卡片 / 公告區 -->
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
-        <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto">
+        <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help" title="雙擊可變更伺服器網址">
             <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
             <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
             <div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div>
@@ -575,7 +579,8 @@
                 myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
                 if (!isFogVisible) {
                     isFogVisible = true;
-                    map.getPane('fogPane').style.display = 'block';
+                    const fogPane = map.getPane('fogPane');
+                    if(fogPane) fogPane.style.display = 'block';
                     const toggleFogBtn = document.getElementById('toggle-fog-btn');
                     toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
                 }
@@ -950,7 +955,7 @@
         }
         function finishUIReveal() {
             document.getElementById('startup-overlay').style.display = 'none'; isTrackingStarted = true;
-            document.getElementById('status-toast').classList.remove('hidden'); document.getElementById('switch-project-select').classList.remove('hidden'); document.getElementById('select-arrow').classList.remove('hidden');
+            document.getElementById('status-toast').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden');
             document.getElementById('floating-gift-container').classList.remove('hidden');
             document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden'); document.getElementById('nav-pin-btn').classList.remove('hidden'); document.getElementById('force-upload-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('eva-grid-btn').classList.remove('hidden');
@@ -1290,7 +1295,8 @@
 
                 if (isFogVisible) {
                     isFogVisible = false;
-                    map.getPane('fogPane').style.display = 'none';
+                    const fogPane = map ? map.getPane('fogPane') : null;
+                    if(fogPane) fogPane.style.display = 'none';
                     const toggleFogBtn = document.getElementById('toggle-fog-btn');
                     toggleFogBtn.innerText = "🌫️ 開啟迷霧"; 
                     toggleFogBtn.style.backgroundColor = "#9ca3af";
@@ -1318,7 +1324,8 @@
 
                 if (!isFogVisible) {
                     isFogVisible = true;
-                    map.getPane('fogPane').style.display = 'block';
+                    const fogPane = map ? map.getPane('fogPane') : null;
+                    if(fogPane) fogPane.style.display = 'block';
                     const toggleFogBtn = document.getElementById('toggle-fog-btn');
                     toggleFogBtn.innerText = "👁️ 關閉迷霧";
                     toggleFogBtn.style.backgroundColor = "#f59e0b";
@@ -1345,8 +1352,12 @@
         }
 
         function drawEvaGrid() {
-            if (evaGridLayer) map.removeLayer(evaGridLayer);
-            evaGridLayer = L.layerGroup().addTo(map);
+            if (!evaGridLayer) {
+                evaGridLayer = L.layerGroup().addTo(map);
+            } else {
+                evaGridLayer.clearLayers();
+            }
+            
             if (evaAnimationTimeout) clearTimeout(evaAnimationTimeout);
 
             const R = 300; 
@@ -1498,6 +1509,7 @@
                 evaGridBtn.style.color = "#1a202c";
                 if (evaAnimationTimeout) clearTimeout(evaAnimationTimeout);
                 if (evaGridLayer) {
+                    evaGridLayer.clearLayers();
                     map.removeLayer(evaGridLayer);
                     evaGridLayer = null;
                 }
@@ -1530,8 +1542,7 @@
                 document.getElementById('toggle-fog-btn').classList.add('hidden'); 
                 document.getElementById('nav-pin-btn').classList.add('hidden'); 
                 document.getElementById('force-upload-btn').classList.add('hidden'); 
-                document.getElementById('switch-project-select').classList.add('hidden'); 
-                document.getElementById('select-arrow').classList.add('hidden');
+                document.getElementById('project-select-wrapper').classList.add('hidden'); 
                 document.getElementById('my-route-btn').classList.add('hidden'); 
                 document.getElementById('eva-grid-btn').classList.add('hidden'); 
                 document.getElementById('floating-gift-container').classList.add('hidden'); 
@@ -1636,7 +1647,8 @@
         
         document.getElementById('toggle-fog-btn').addEventListener('click', () => { 
             isFogVisible = !isFogVisible; 
-            map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none'; 
+            const fogPane = map ? map.getPane('fogPane') : null;
+            if(fogPane) fogPane.style.display = isFogVisible ? 'block' : 'none'; 
             const toggleFogBtn = document.getElementById('toggle-fog-btn');
             if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } 
             else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }
@@ -1695,7 +1707,8 @@
                     myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
                     if (!isFogVisible) {
                         isFogVisible = true;
-                        map.getPane('fogPane').style.display = 'block';
+                        const fogPane = map ? map.getPane('fogPane') : null;
+                        if(fogPane) fogPane.style.display = 'block';
                         const toggleFogBtn = document.getElementById('toggle-fog-btn');
                         toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b";
                     }
@@ -1940,6 +1953,17 @@
 
         document.getElementById('set-ws-btn').addEventListener('click', () => {
             if(!isAdmin) return;
+            showInputModal("🔗 設定伺服器連線網址", "請輸入 wss:// 開頭的網址...", NGROK_WS_URL, (newUrl) => {
+                if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
+                    NGROK_WS_URL = newUrl;
+                    if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); }
+                    showModal("✅ 伺服器網址已更新，系統將自動重新連線！");
+                } else { showModal("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
+            });
+        });
+        
+        // 雙擊狀態列可強制變更伺服器位址 (救援用)
+        document.getElementById('status-toast').addEventListener('dblclick', () => {
             showInputModal("🔗 設定伺服器連線網址", "請輸入 wss:// 開頭的網址...", NGROK_WS_URL, (newUrl) => {
                 if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
                     NGROK_WS_URL = newUrl;
