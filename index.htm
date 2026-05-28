@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>尋寵地圖</title>
+    <title>尋寵地圖 - 線上部署版</title>
     <!--不請求icon-->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,9 +29,11 @@
         @keyframes blink-pixel { 0% { background-color: #ef4444; transform: scale(1); } 100% { background-color: #fca5a5; transform: scale(1.3); } }
         @keyframes pulse-square { 0% { transform: scale(0.5); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 1px; } }
         @keyframes marquee-scroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+        @keyframes bounce-short { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         
         .center-pulse-square { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border: 4px solid #ef4444; box-sizing: border-box; animation: pulse-square 2s infinite linear; pointer-events: none; }
         .animate-marquee-text { display: inline-block; white-space: nowrap; animation: marquee-scroll 20s linear infinite; }
+        .animate-bounce-short { animation: bounce-short 1s ease-in-out 3; }
         
         #sightings-list-container::-webkit-scrollbar, #routes-list-container::-webkit-scrollbar, #prize-rows-container::-webkit-scrollbar, #admin-prizes-list-container::-webkit-scrollbar, #blacklist-container::-webkit-scrollbar { width: 8px; }
         #sightings-list-container::-webkit-scrollbar-track, #routes-list-container::-webkit-scrollbar-track, #prize-rows-container::-webkit-scrollbar-track, #admin-prizes-list-container::-webkit-scrollbar-track, #blacklist-container::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
@@ -49,6 +51,24 @@
             <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
             <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button>
             <div id="error-msg" class="hidden"></div>
+        </div>
+    </div>
+
+    <!-- 慶祝阿妹找到 Modal -->
+    <div id="amei-celebration" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 hidden">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm mx-4 border-4 border-yellow-400 relative overflow-hidden animate-bounce-short">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300"></div>
+            <h2 class="text-2xl font-black text-red-600 mb-4 tracking-wider">🎉 慶祝找到阿妹 🎉</h2>
+            <p class="text-xl text-gray-800 font-bold leading-relaxed mb-6">
+                大家辛苦了！<br>請到抽獎區域領取飲料謝謝！
+            </p>
+            <div class="text-sm text-gray-600 mb-6 bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-left">
+                📍 <b>感謝大家：</b><br>
+                如果沒辦法抽獎可能代表您是新帳號或探索太短時間
+            </div>
+            <button onclick="document.getElementById('amei-celebration').classList.add('hidden')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-all active:scale-95 shadow-md">
+                我知道了！去抽獎 🎁
+            </button>
         </div>
     </div>
 
@@ -381,7 +401,6 @@
         try {
             const oldHistory = localStorage.getItem('dogMap_localHistory');
             if (oldHistory) {
-                // 為了向下相容，將舊版的共用歷史直接繼承給阿妹
                 localHistories["阿妹"] = JSON.parse(oldHistory);
                 localStorage.removeItem('dogMap_localHistory');
                 localStorage.setItem('dogMap_localHistory_阿妹', JSON.stringify(localHistories["阿妹"]));
@@ -433,6 +452,8 @@
         let isTrackingStarted = false;
         let slotSpinning = false;
         let slotTimer = null;
+        let totalStepsCount = 0;
+        let hasWonPrize = false; // 追蹤是否中過獎
         
         let isMapInteracting = false;
         let mapInteractionTimer = null;
@@ -565,6 +586,10 @@
                 isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
                 toastText.innerText = "連線成功"; 
                 wsReconnectDelay = 3000; // 連線成功後重置重連延遲時間
+                
+                // 初次連線成功時，請求自己的中獎紀錄以判斷 hasWonPrize
+                ws.send(JSON.stringify({ type: 'get_my_prizes', uid: myUid }));
+                
                 if(localHistory.length > 0) saveLocationToServer(); 
             };
             ws.onmessage = (event) => {
@@ -782,16 +807,12 @@
                     const uid = response.uid;
                     const incomingData = response.data;
                     
-                    // 【修正】合併軌跡，避免近 2 小時的廣播覆蓋掉好幾天的舊軌跡
                     if (allUsersData[uid] && allUsersData[uid].history) {
                         const mergedDict = {};
-                        // 1. 保留本地已有的舊軌跡
                         allUsersData[uid].history.forEach(pt => mergedDict[pt.timestamp] = pt);
-                        // 2. 覆蓋/加入伺服器傳來的新軌跡
                         if (incomingData.history) {
                             incomingData.history.forEach(pt => mergedDict[pt.timestamp] = pt);
                         }
-                        // 3. 轉回陣列並按時間重新排序
                         incomingData.history = Object.values(mergedDict).sort((a, b) => a.timestamp - b.timestamp);
                     }
                     
@@ -806,6 +827,7 @@
                         slotSpinning = false;
                         
                         if (response.success && response.prize) {
+                            hasWonPrize = true; // 抽中獎品，設定標記
                             let symbol = Math.random() > 0.5 ? '🐶' : '🐱';
                             document.getElementById('reel-1').innerText = symbol;
                             document.getElementById('reel-2').innerText = symbol;
@@ -846,6 +868,7 @@
                     const listContainer = document.getElementById('prize-pool-list');
                     listContainer.innerHTML = '';
                     if (response.data && response.data.length > 0) {
+                        hasWonPrize = true;
                         response.data.forEach(item => {
                             let finalUrl = item.url;
                             let isImage = finalUrl.startsWith('/images/');
@@ -860,9 +883,14 @@
                             listContainer.appendChild(div);
                         });
                     } else {
+                        hasWonPrize = false;
                         listContainer.innerHTML = '<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>';
                     }
-                    document.getElementById('prize-pool-modal').classList.remove('hidden');
+                    
+                    // 若這不是初始化背景呼叫，而是玩家主動點開，就顯示模態框
+                    if (!response.isBackground) {
+                        document.getElementById('prize-pool-modal').classList.remove('hidden');
+                    }
                     return;
                 }
                 
@@ -886,13 +914,19 @@
                     renderMap(); renderSightings(); renderRoutes();
                     if(!manageSightingsModal.classList.contains('hidden')) renderManageSightingsList();
                     if(!manageRoutesModal.classList.contains('hidden')) renderManageRoutesList();
+                    
+                    // 顯示阿妹慶祝畫面 (只顯示一次)
+                    if (!window.ameiCelebrationShown) {
+                        document.getElementById('amei-celebration').classList.remove('hidden');
+                        window.ameiCelebrationShown = true;
+                    }
                 }
             };
             ws.onclose = () => {
                 isSystemReady = false; document.getElementById('sync-ping').style.backgroundColor = '#ef4444';
                 toastText.innerText = `斷線重連中...(${wsReconnectDelay/1000}s)`; 
                 setTimeout(connectWebSocket, wsReconnectDelay); 
-                wsReconnectDelay = Math.min(wsReconnectDelay * 2, MAX_WS_RECONNECT_DELAY); // 指數退避算法 (最大 60 秒)
+                wsReconnectDelay = Math.min(wsReconnectDelay * 2, MAX_WS_RECONNECT_DELAY);
             };
         }
 
@@ -1011,8 +1045,8 @@
                     if (d < 1000) { totalDist += d; }
                 }
             }
-            const steps = Math.floor(totalDist / 0.6);
-            document.getElementById('step-counter-value').innerText = steps.toLocaleString();
+            totalStepsCount = Math.floor(totalDist / 0.6);
+            document.getElementById('step-counter-value').innerText = totalStepsCount.toLocaleString();
         }
 
         // ================= 個人資料設定 (Profile Edit) =================
@@ -1261,7 +1295,6 @@
                     let coveredCount = 0; 
                     let hexMaxTs = 0;
                     
-                    // 真實迷霧的覆蓋半徑約 40~80 公尺，將判定標準設為嚴格的 60 公尺
                     for(let tp of testPoints) {
                         for(let pt of allValidPts) {
                             if (getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 60) {
@@ -1282,7 +1315,7 @@
 
                         let densityColor = '#39ff14'; 
                         if (density <= 50) densityColor = '#ef4444'; 
-                        else if (density <= 98) densityColor = '#f97316'; // 必須完美 100% 才會顯示綠色
+                        else if (density <= 98) densityColor = '#f97316'; 
 
                         textHtml = `<div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;"><div class="text-xl tracking-wider">${density}%</div><div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div></div>`;
                     } else {
@@ -1338,9 +1371,7 @@
 
         // ================= 目標切換邏輯 =================
         switchProjectBtn.addEventListener('click', () => {
-            // 切換前，先將當下的歷史紀錄妥善存入對應專案 (沙盒化)
             localHistories[currentProjectKey] = localHistory;
-
             const keys = Object.keys(PROJECTS);
             let idx = keys.indexOf(currentProjectKey);
             idx = (idx + 1) % keys.length;
@@ -1349,7 +1380,6 @@
             setPersistentData('dogMap_currentProject', currentProjectKey);
             switchProjectBtn.innerHTML = `🎯 目標: ${PROJECTS[currentProjectKey].name} <span class="ml-1 font-black text-lg leading-none">🔄</span>`;
             
-            // 讀取新專案的專屬歷史紀錄
             localHistory = localHistories[currentProjectKey] || [];
             lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
 
@@ -1436,7 +1466,7 @@
             });
         });
 
-        // ======== 手動新增與管理獎品 UI 邏輯 (含圖片裁切) ========
+        // ======== 手動新增與管理獎品 UI 邏輯 ========
         const addPrizeBtn = document.getElementById('add-prize-btn');
         const managePrizesBtn = document.getElementById('manage-prizes-btn');
         const addPrizeModal = document.getElementById('add-prize-modal');
@@ -1661,7 +1691,6 @@
             managePrizesModal.classList.add('hidden');
         });
         
-        // 綁定儲存修改機率按鈕事件 (全域事件)
         document.getElementById('save-prizes-btn').addEventListener('click', () => {
             const updates = [];
             const availableItems = document.querySelectorAll('.edit-prob-input');
@@ -1689,7 +1718,6 @@
                 ws.send(JSON.stringify({ type: "update_prize_probs", token: adminToken, data: updates }));
             }
         });
-        // ===================================
 
         function openPositionMethodSelection(desc) {
             positionMethodModal.classList.remove('hidden');
@@ -2217,13 +2245,37 @@
         });
 
         document.getElementById('slot-draw-btn').addEventListener('click', () => {
-            if (!isAdmin && lotteryTickets <= 0) { 
-                showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
-                return; 
+            // --- 阿妹活動資格判定 ---
+            let eligibleForAmei = false;
+            let ameiSighting = Object.values(allSightings).find(s => (s.description && s.description.includes("阿妹")) || (s.title && s.title.includes("阿妹")));
+            
+            let currentLat = null;
+            let currentLng = null;
+            if (localHistory && localHistory.length > 0) {
+                currentLat = localHistory[localHistory.length - 1].lat;
+                currentLng = localHistory[localHistory.length - 1].lng;
             }
+            
+            if (ameiSighting && currentLat && currentLng) {
+                const dist = getDistance(currentLat, currentLng, ameiSighting.lat, ameiSighting.lng);
+                // 條件：距離 <= 10 公里 (10000公尺)，步數 >= 3000，且未曾中獎
+                if (dist <= 10000 && totalStepsCount >= 3000 && !hasWonPrize) {
+                    eligibleForAmei = true;
+                }
+            }
+
+            if (!isAdmin) {
+                if (eligibleForAmei) {
+                    console.log("🎉 觸發阿妹活動：無限免費抽獎！");
+                } else if (lotteryTickets <= 0) {
+                    showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
+                    return; 
+                }
+            }
+
             if (!isSystemReady) { showModal("系統目前未連線！"); return; }
             
-            if (!isAdmin) {
+            if (!isAdmin && !eligibleForAmei) {
                 lotteryTickets--;
                 saveLotteryState();
                 updateGiftUI();
