@@ -6,6 +6,10 @@
     <title>尋寵地圖 - 申請與管理後台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- 引入 Cropper.js 供照片裁剪使用 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; }
         
@@ -16,9 +20,6 @@
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; width: 100%; padding: 8px; }
         .pixel-input:focus { background-color: #fef3c7; }
         
-        .tab-btn { background-color: #e5e7eb; color: #4b5563; border-bottom: none; box-shadow: none; }
-        .tab-btn.active { background-color: white; color: #1a202c; box-shadow: 4px -4px 0px #1a202c; border-bottom: 4px solid white; position: relative; z-index: 10; transform: translateY(4px); }
-
         #map-container { width: 100%; height: 300px; background-color: #e5e7eb; border: 4px solid #1a202c; position: relative; }
         #map { width: 100%; height: 100%; }
 
@@ -94,9 +95,10 @@
                         <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">1. 飼主聯絡與帳號資訊</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div><label class="font-bold text-sm">自訂登入帳號 (必填)</label><input type="text" id="f-account" class="pixel-input" required placeholder="日後登入修改用"></div>
-                            <div><label class="font-bold text-sm">自訂登入密碼 (必填)</label><input type="text" id="f-password" class="pixel-input" required placeholder="日後登入修改用"></div>
                             <div><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required></div>
-                            <div><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required></div>
+                            <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="password" id="f-password" class="pixel-input border-red-500" required placeholder="日後登入修改用"></div>
+                            <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="password" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
+                            <div class="sm:col-span-2"><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required placeholder="0912-345-678"></div>
                         </div>
                     </div>
 
@@ -104,8 +106,8 @@
                     <div class="bg-gray-100 p-4 border-4 border-black">
                         <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">2. 寵物基本資訊</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="font-bold text-sm">專案顯示名稱 (例如: 找阿妹)</label><input type="text" id="f-proj-name" class="pixel-input" required></div>
-                            <div><label class="font-bold text-sm">動物稱呼</label><input type="text" id="f-animal-name" class="pixel-input" required></div>
+                            <div><label class="font-bold text-sm">專案顯示名稱</label><input type="text" id="f-proj-name" class="pixel-input" required placeholder="例如: 找Q比"></div>
+                            <div><label class="font-bold text-sm">動物稱呼</label><input type="text" id="f-animal-name" class="pixel-input" required placeholder="例如: Q比"></div>
                             <div>
                                 <label class="font-bold text-sm">動物類別</label>
                                 <select id="f-type" class="pixel-input bg-white cursor-pointer" required>
@@ -117,7 +119,6 @@
                                     <option value="other">🐾 其他</option>
                                 </select>
                             </div>
-                            <!-- 修改後的走失日期 (加上月曆按鈕) -->
                             <div>
                                 <label class="font-bold text-sm block mb-1">走失日期 (必填)</label>
                                 <div class="flex gap-2">
@@ -134,7 +135,7 @@
                     <!-- 地圖範圍選擇 -->
                     <div class="bg-gray-100 p-4 border-4 border-black">
                         <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">3. 走失範圍圈選</h3>
-                        <p class="text-xs font-bold text-red-600 mb-2">請先輸入地址讓地圖定位，接著點擊「開始圈選」，在地圖上點擊兩次以畫出方形邊界。</p>
+                        <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，在地圖上點擊兩次以畫出方形邊界。<br>(若不小心圈選太大，系統將自動為您縮小至 500 公尺以內的範圍)</p>
                         
                         <div class="flex gap-2 mb-2">
                             <input type="text" id="map-search-input" class="pixel-input flex-1" placeholder="輸入地址或地標...">
@@ -156,15 +157,17 @@
                     <!-- 影音與相片上傳 -->
                     <div class="bg-gray-100 p-4 border-4 border-black">
                         <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">4. 無損照片與影片上傳</h3>
-                        <p class="text-xs font-bold text-gray-700 mb-4">系統將直接上傳原始檔案至伺服器以保留最佳畫質。</p>
                         
                         <div class="space-y-4">
                             <!-- 主要照片 -->
                             <div class="border-2 border-black p-3 bg-white">
                                 <label class="font-bold text-red-600 block mb-1">📸 代表主照片 (必填，顯示於首頁)</label>
+                                <p class="text-xs font-bold text-gray-500 mb-2">選擇照片後，您可以進行預覽與範圍裁剪。</p>
                                 <input type="file" id="f-main-photo" accept="image/*" class="w-full text-sm font-bold">
                                 <input type="hidden" id="f-main-photo-url">
-                                <div id="main-photo-preview" class="mt-2 hidden"><img src="" class="h-24 border-2 border-black"></div>
+                                <div id="main-photo-preview" class="mt-2 hidden">
+                                    <img src="" class="h-32 border-2 border-black object-cover aspect-square">
+                                </div>
                             </div>
 
                             <!-- 額外相簿 -->
@@ -172,13 +175,14 @@
                                 <label class="font-bold text-blue-700 block mb-1">🖼️ 額外相片集 (可選多張)</label>
                                 <input type="file" id="f-photos" accept="image/*" multiple class="w-full text-sm font-bold mb-2">
                                 <div id="photos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
-                                <input type="hidden" id="f-photos-data"> <!-- 儲存已上傳的 URL 陣列 -->
+                                <input type="hidden" id="f-photos-data">
                             </div>
 
                             <!-- 影片上傳 -->
                             <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-purple-700 block mb-1">🎥 影片上傳 (可選多部，建議100MB內)</label>
-                                <input type="file" id="f-videos" accept="video/*" multiple class="w-full text-sm font-bold mb-2">
+                                <label class="font-bold text-purple-700 block mb-1">🎥 影片上傳 (可選，建議100MB內)</label>
+                                <p class="text-xs font-bold text-gray-500 mb-2">選擇影片後，可設定特定播放區段 (秒數)。</p>
+                                <input type="file" id="f-videos" accept="video/*" class="w-full text-sm font-bold mb-2">
                                 <div id="videos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
                                 <input type="hidden" id="f-videos-data">
                             </div>
@@ -187,17 +191,20 @@
 
                     <!-- 公告與連結 -->
                     <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">5. 最新公告與按鈕</h3>
+                        <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">5. 懸賞金額與公告</h3>
                         
                         <div class="space-y-4">
                             <div>
-                                <label class="font-bold text-sm block mb-1">最新公告文字</label>
-                                <textarea id="f-announcement" class="pixel-input h-32" placeholder="您可以打寵物特徵、聯絡方式、出沒熱區等詳細資訊..."></textarea>
+                                <label class="font-bold text-sm text-red-600 block mb-1">懸賞金額 (必填，若無請填 0)</label>
+                                <input type="number" id="f-reward" class="pixel-input border-red-500" required placeholder="例如: 30000">
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div><label class="font-bold text-sm">懸賞金額 (選填)</label><input type="text" id="f-reward" class="pixel-input" placeholder="例如: 30000"></div>
-                                <div><label class="font-bold text-sm">自訂按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 聯絡主人"></div>
-                                <div class="sm:col-span-2"><label class="font-bold text-sm">自訂按鈕連結 (選填)</label><input type="text" id="f-btn-url" class="pixel-input" placeholder="https://..."></div>
+                            <div>
+                                <label class="font-bold text-sm block mb-1">最新公告文字</label>
+                                <textarea id="f-announcement" class="pixel-input h-32" placeholder="您可以打寵物特徵、聯絡方式、懸賞細節等詳細資訊..."></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t-2 border-dashed border-gray-400 pt-4 mt-4">
+                                <div><label class="font-bold text-sm">群組連結按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 加入搜救LINE群"></div>
+                                <div><label class="font-bold text-sm">群組連結網址 (選填)</label><input type="text" id="f-btn-url" class="pixel-input" placeholder="https://line.me/..."></div>
                             </div>
                         </div>
                     </div>
@@ -269,6 +276,45 @@
         </div>
     </div>
 
+    <!-- 圖片裁剪 Modal -->
+    <div id="crop-modal" class="hidden fixed inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white p-4 pixel-panel">
+            <h3 class="font-bold mb-2">✂️ 裁剪主照片</h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-2">請將寵物置於框內，可滾動滑鼠縮放。</p>
+            <div class="w-full h-64 bg-gray-200 mb-4 border-2 border-black">
+                <img id="crop-image-target" src="" class="max-w-full max-h-full block">
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="cancelCrop()" class="flex-1 pixel-btn bg-gray-400 py-2">取消</button>
+                <button type="button" onclick="confirmCrop()" class="flex-1 pixel-btn bg-blue-500 text-white py-2">確認裁剪</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 影片範圍選取 Modal -->
+    <div id="video-trim-modal" class="hidden fixed inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white p-4 pixel-panel">
+            <h3 class="font-bold mb-2 text-xl">✂️ 簡易影片範圍選取</h3>
+            <video id="trim-video-target" controls class="w-full h-48 bg-black border-2 border-black mb-2"></video>
+            <div class="flex items-center justify-center gap-4 mb-2 bg-gray-100 p-2 border-2 border-black">
+                <div class="flex flex-col">
+                    <label class="text-xs font-bold text-gray-800">開始 (秒):</label>
+                    <input type="number" id="trim-start" class="pixel-input w-20 text-center" value="0" min="0">
+                </div>
+                <div class="font-black text-xl">~</div>
+                <div class="flex flex-col">
+                    <label class="text-xs font-bold text-gray-800">結束 (秒):</label>
+                    <input type="number" id="trim-end" class="pixel-input w-20 text-center" placeholder="到底" min="1">
+                </div>
+            </div>
+            <p class="text-[10px] text-gray-500 font-bold mb-4 leading-relaxed">提示: 由於瀏覽器限制，此處僅標記播放區間。志工觀看時會自動只播放這一段。若影片檔案過大(>100MB)，強烈建議您先使用手機內建相簿剪輯後再上傳！</p>
+            <div class="flex gap-2">
+                <button type="button" onclick="cancelVideoTrim()" class="flex-1 pixel-btn bg-gray-400 py-2">取消選取</button>
+                <button type="button" onclick="confirmVideoTrim()" class="flex-1 pixel-btn bg-blue-500 text-white py-2">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ======= 基礎設定與 UI =======
@@ -277,11 +323,16 @@
         
         let ws;
         let map, drawRectangle, boundsData = null;
-        let drawState = 0; // 0: off, 1: wait for first click, 2: wait for second click
+        let drawState = 0; 
         let drawPoints = [];
         let currentOwnerAcc = null;
         let adminToken = null;
-        let allAdminApps = []; // 暫存管理員取得的列表資料，用於顯示詳情
+        let allAdminApps = []; 
+
+        // 裁剪與影片相關變數
+        let cropperInstance = null;
+        let croppedMainPhotoBlob = null;
+        let videoTrimData = { start: 0, end: null };
 
         function showModal(text) {
             document.getElementById('modal-text').innerText = text;
@@ -301,7 +352,6 @@
         // ======= 初始化與讀取 config.json =======
         async function initConfigAndConnect() {
             try {
-                // 優先嘗試讀取 config.json
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) {
@@ -311,15 +361,11 @@
                 console.warn("無法讀取 config.json，嘗試使用當前網域作為預設網址", e);
             }
 
-            // 若未讀取到，或者讀取失敗，使用目前的網址反推作為備案
             if (!SERVER_WS_URL) {
                 SERVER_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
             }
             
-            // 從 WebSocket 網址反推 HTTP 網址 (用於檔案上傳 POST API 等顯示)
             SERVER_HTTP_URL = SERVER_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
-
-            // 取得網址後進行 WS 連線
             connectWS();
         }
 
@@ -334,6 +380,9 @@
                         loadFormData(res.data);
                         switchView('apply');
                         document.getElementById('form-title').innerText = "📝 編輯協尋專案資料";
+                        // 密碼帶入原設定
+                        document.getElementById('f-password').value = res.data.ownerInfo.password;
+                        document.getElementById('f-password-confirm').value = res.data.ownerInfo.password;
                         showModal("✅ 登入成功，可修改您的資料。\n(飼主修改資料後送出，不需再次審核即會立刻更新於系統上)");
                     } else { showModal("❌ 帳號或密碼錯誤！"); }
                 }
@@ -361,12 +410,11 @@
                     } else { showModal("❌ 密碼錯誤！"); }
                 }
                 else if (res.type === 'admin_apps_data') {
-                    allAdminApps = res.data; // 儲存起來供詳情 Modal 使用
+                    allAdminApps = res.data; 
                     renderAdminList(res.data);
                 }
                 else if (res.type === 'admin_action_result') {
                     showModal("✅ " + res.msg);
-                    // 重新載入目前所在的頁籤 (待審核或已上架)
                     const activeTabBtn = document.querySelector('#view-admin .bg-yellow-400');
                     if(activeTabBtn && activeTabBtn.innerText === "待審核") {
                         loadAdminApps('pending');
@@ -377,18 +425,26 @@
             };
         }
         
-        // 將原本的 window.onload = connectWS 改為先執行 initConfigAndConnect
         window.addEventListener('DOMContentLoaded', initConfigAndConnect);
 
         // ======= 地圖與範圍圈選 =======
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const p1 = lat1 * Math.PI / 180;
+            const p2 = lat2 * Math.PI / 180;
+            const dp = (lat2 - lat1) * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
         function initMap() {
             map = L.map('map').setView([23.5, 121], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            // 預設嘗試獲取使用者目前定位
             if (navigator.geolocation && !boundsData) {
                 navigator.geolocation.getCurrentPosition((pos) => {
-                    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 16);
                 }, (err) => {
                     console.log("無法獲取預設定位", err);
                 });
@@ -401,6 +457,19 @@
                     document.getElementById('draw-hint').innerText = "請點擊右下角完成範圍...";
                 } else if (drawState === 2) {
                     drawPoints[1] = e.latlng;
+                    
+                    // 【防呆】檢查兩點距離是否超過 100 公尺
+                    const dist = getDistance(drawPoints[0].lat, drawPoints[0].lng, drawPoints[1].lat, drawPoints[1].lng);
+                    if (dist > 100) {
+                        showModal("⚠️ 圈選範圍過大！系統已自動為您縮小至 100 公尺的合理搜尋範圍。");
+                        // 自動轉為以點 1 為基準的 100x100m 方形 (約略換算 50m = 0.00045 度)
+                        const offsetLat = 50 / 111320;
+                        const offsetLng = 50 / (111320 * Math.cos(drawPoints[0].lat * Math.PI / 180));
+                        
+                        drawPoints[0] = L.latLng(drawPoints[0].lat - offsetLat, drawPoints[0].lng - offsetLng);
+                        drawPoints[1] = L.latLng(drawPoints[0].lat + offsetLat * 2, drawPoints[0].lng + offsetLng * 2); // To make it ~100m wide
+                    }
+
                     drawState = 0;
                     document.getElementById('draw-hint').classList.add('hidden');
                     document.getElementById('start-draw-btn').innerText = "重新圈選";
@@ -424,7 +493,7 @@
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
                 const data = await res.json();
                 if (data && data.length > 0) {
-                    map.setView([data[0].lat, data[0].lon], 15);
+                    map.setView([data[0].lat, data[0].lon], 16);
                 } else {
                     showModal("找不到該地址，您可以嘗試輸入更簡短的範圍（例如只輸入到區、路、街）再手動拖曳地圖定位。");
                 }
@@ -444,24 +513,97 @@
             document.getElementById('draw-hint').classList.remove('hidden');
         }
 
-        // ======= 檔案上傳 (無損) =======
+        // ======= 圖片裁剪 UI =======
+        document.getElementById('f-main-photo').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                document.getElementById('crop-image-target').src = url;
+                document.getElementById('crop-modal').classList.remove('hidden');
+                
+                if (cropperInstance) cropperInstance.destroy();
+                cropperInstance = new Cropper(document.getElementById('crop-image-target'), {
+                    aspectRatio: 1, // 正方形裁切
+                    viewMode: 1,
+                    autoCropArea: 0.8
+                });
+            }
+        });
+
+        function confirmCrop() {
+            if (cropperInstance) {
+                cropperInstance.getCroppedCanvas({
+                    maxWidth: 1024,
+                    maxHeight: 1024
+                }).toBlob((blob) => {
+                    croppedMainPhotoBlob = blob;
+                    document.getElementById('main-photo-preview').classList.remove('hidden');
+                    document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
+                    document.getElementById('crop-modal').classList.add('hidden');
+                }, 'image/jpeg', 0.85);
+            }
+        }
+
+        function cancelCrop() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            document.getElementById('f-main-photo').value = "";
+            croppedMainPhotoBlob = null;
+        }
+
+        // ======= 影片剪輯 UI =======
+        document.getElementById('f-videos').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                document.getElementById('trim-video-target').src = url;
+                document.getElementById('video-trim-modal').classList.remove('hidden');
+                
+                // 等待影片載入以獲取總長度
+                document.getElementById('trim-video-target').onloadedmetadata = function() {
+                    document.getElementById('trim-end').placeholder = Math.floor(this.duration);
+                    videoTrimData.end = null; // 重置
+                };
+            }
+        });
+
+        function confirmVideoTrim() {
+            const s = parseInt(document.getElementById('trim-start').value) || 0;
+            const eVal = document.getElementById('trim-end').value;
+            const e = eVal ? parseInt(eVal) : null;
+            videoTrimData = { start: s, end: e };
+            document.getElementById('video-trim-modal').classList.add('hidden');
+            document.getElementById('videos-list').innerHTML = `<div class="text-blue-700 bg-blue-100 p-2 border-2 border-blue-400">✅ 影片已準備好上傳<br>設定播放區間: ${s}秒 ~ ${e ? e+'秒' : '結尾'}</div>`;
+        }
+
+        function cancelVideoTrim() {
+            document.getElementById('video-trim-modal').classList.add('hidden');
+            document.getElementById('f-videos').value = "";
+            videoTrimData = { start: 0, end: null };
+            document.getElementById('videos-list').innerHTML = '';
+        }
+
+        // ======= 檔案上傳 =======
         async function uploadFiles(inputElement) {
             const files = inputElement.files;
             if (files.length === 0) return [];
-            
-            const uploadedUrls = [];
             const formData = new FormData();
-            for (let i = 0; i < files.length; i++) {
-                formData.append('files', files[i]);
-            }
+            for (let i = 0; i < files.length; i++) { formData.append('files', files[i]); }
+            return await doUploadFetch(formData);
+        }
 
+        async function uploadBlobFile(blob, filename) {
+            const formData = new FormData();
+            formData.append('files', blob, filename);
+            const urls = await doUploadFetch(formData);
+            return urls.length > 0 ? urls[0] : "";
+        }
+
+        async function doUploadFetch(formData) {
             try {
-                // 呼叫後端 API 儲存實體檔案
                 const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.success) {
-                    return data.urls; // 回傳網址陣列
-                } else { throw new Error(data.msg); }
+                if (data.success) { return data.urls; } 
+                else { throw new Error(data.msg); }
             } catch (err) {
                 showModal("上傳失敗: " + err.message);
                 return [];
@@ -471,17 +613,28 @@
         // ======= 提交申請 =======
         async function submitApplication(e) {
             e.preventDefault();
+            
+            // 雙重密碼檢查
+            const pwd1 = document.getElementById('f-password').value;
+            const pwd2 = document.getElementById('f-password-confirm').value;
+            if (pwd1 !== pwd2) {
+                showModal("⚠️ 兩次輸入的密碼不一致，請重新確認！");
+                return;
+            }
+
             if (!boundsData) { showModal("⚠️ 請先在地圖上圈選走失範圍！"); return; }
             
             document.getElementById('submit-form-btn').disabled = true;
             document.getElementById('upload-status').classList.remove('hidden');
 
             try {
-                // 1. 處理主照片上傳
+                // 1. 處理主照片上傳 (優先使用裁剪後的 Blob)
                 let mainPhotoUrl = document.getElementById('f-main-photo-url').value;
-                const mainPhotoInput = document.getElementById('f-main-photo');
-                if (mainPhotoInput.files.length > 0) {
-                    const urls = await uploadFiles(mainPhotoInput);
+                if (croppedMainPhotoBlob) {
+                    mainPhotoUrl = await uploadBlobFile(croppedMainPhotoBlob, 'main_photo.jpg');
+                } else if (document.getElementById('f-main-photo').files.length > 0) {
+                    // 若使用者有選檔案但放棄裁剪，仍上傳原檔
+                    const urls = await uploadFiles(document.getElementById('f-main-photo'));
                     if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
                 if (!mainPhotoUrl && !currentOwnerAcc) { throw new Error("請上傳主照片！"); }
@@ -496,13 +649,20 @@
                 let videosData = JSON.parse(document.getElementById('f-videos-data').value || '[]');
                 if (document.getElementById('f-videos').files.length > 0) {
                     const newVideoUrls = await uploadFiles(document.getElementById('f-videos'));
-                    videosData = videosData.concat(newVideoUrls.map(u => ({ url: u, title: "" })));
+                    // 將裁剪設定套用到上傳的第一個影片 URL 上
+                    let videoUrl = newVideoUrls[0];
+                    if (videoTrimData.end !== null) {
+                        videoUrl += `#t=${videoTrimData.start},${videoTrimData.end}`;
+                    } else if (videoTrimData.start > 0) {
+                        videoUrl += `#t=${videoTrimData.start}`;
+                    }
+                    videosData.push({ url: videoUrl, title: "" });
                 }
 
-                // 3. 處理懸賞金額 (如果有填寫，就加進公告裡)
+                // 3. 處理懸賞金額 (加進公告裡)
                 let finalAnnouncement = document.getElementById('f-announcement').value;
                 const reward = document.getElementById('f-reward').value.trim();
-                if (reward) {
+                if (reward && reward !== "0") {
                     finalAnnouncement = `【懸賞金額：${reward}元】\n` + finalAnnouncement;
                 }
 
@@ -510,11 +670,11 @@
                 const payload = {
                     type: "submit_application",
                     id: document.getElementById('app-id').value || null,
-                    // 若是飼主修改，直接帶入 approved 狀態 (後端需配合接收，或在前端送出時標記)
+                    // 若是飼主修改，直接帶入 approved 狀態
                     forceStatus: currentOwnerAcc ? "approved" : "pending", 
                     ownerInfo: {
                         account: document.getElementById('f-account').value,
-                        password: document.getElementById('f-password').value,
+                        password: pwd1,
                         lineId: document.getElementById('f-line').value,
                         phone: document.getElementById('f-phone').value
                     },
@@ -554,7 +714,6 @@
         function loadFormData(appData) {
             document.getElementById('app-id').value = appData.id;
             document.getElementById('f-account').value = appData.ownerInfo.account;
-            document.getElementById('f-password').value = appData.ownerInfo.password;
             document.getElementById('f-line').value = appData.ownerInfo.lineId;
             document.getElementById('f-phone').value = appData.ownerInfo.phone;
             
@@ -565,7 +724,6 @@
             
             document.getElementById('f-lost-date').value = pd.lostDate || "";
             if(pd.lostDate) {
-                // 將 2024/05/20 轉回 input[type="date"] 需要的 2024-05-20 格式以同步顯示
                 document.getElementById('f-lost-date-picker').value = pd.lostDate.replace(/\//g, '-');
             }
             
@@ -579,10 +737,7 @@
             document.getElementById('f-main-photo-url').value = pd.mainPhoto;
             if (pd.mainPhoto) {
                 let previewSrc = pd.mainPhoto;
-                // 如果是相對路徑，加上伺服器網址以便在後台中正確顯示
-                if (previewSrc.startsWith('/images/')) {
-                    previewSrc = SERVER_HTTP_URL + previewSrc;
-                }
+                if (previewSrc.startsWith('/images/')) { previewSrc = SERVER_HTTP_URL + previewSrc; }
                 document.getElementById('main-photo-preview').classList.remove('hidden');
                 document.getElementById('main-photo-preview').querySelector('img').src = previewSrc;
             }
@@ -616,7 +771,6 @@
         }
 
         function loadAdminApps(status) {
-            // 切換按鈕樣式
             const btnPending = document.querySelector('button[onclick="loadAdminApps(\'pending\')"]');
             const btnApproved = document.querySelector('button[onclick="loadAdminApps(\'approved\')"]');
             
@@ -624,7 +778,7 @@
                 btnPending.className = "pixel-btn px-4 py-2 bg-yellow-400";
                 btnApproved.className = "pixel-btn px-4 py-2 bg-green-500 text-white";
             } else {
-                btnPending.className = "pixel-btn px-4 py-2 bg-yellow-400 text-black bg-gray-300"; // 暫時的未選中樣式
+                btnPending.className = "pixel-btn px-4 py-2 bg-yellow-400 text-black bg-gray-300"; 
                 btnApproved.className = "pixel-btn px-4 py-2 bg-green-500 text-white border-white";
             }
             
@@ -639,10 +793,8 @@
             apps.forEach(app => {
                 const pd = app.projectData;
                 let photoSrc = pd.mainPhoto;
-                // 如果是相對路徑，加上伺服器網址以便正確顯示
-                if (photoSrc && photoSrc.startsWith('/images/')) {
-                    photoSrc = SERVER_HTTP_URL + photoSrc;
-                }
+                if (photoSrc && photoSrc.startsWith('/images/')) { photoSrc = SERVER_HTTP_URL + photoSrc; }
+                
                 const div = document.createElement('div');
                 div.className = "border-4 border-black bg-white p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4";
                 div.innerHTML = `
@@ -671,10 +823,18 @@
             const pd = app.projectData;
             const content = document.getElementById('admin-detail-content');
             
-            // 安全處理未填寫的欄位
             const typeStr = pd.type || '未知';
             const lostDateStr = pd.lostDate || '未知';
-            const annStr = pd.announcement ? pd.announcement.replace(/\n/g, '<br>') : '無公告';
+            
+            // 將解析好的懸賞與公告分開顯示
+            let announcementStr = pd.announcement || "";
+            let rewardAmount = "無";
+            let rewardMatch = announcementStr.match(/^【懸賞金額：(.*?)元】\n/);
+            if (rewardMatch) {
+                rewardAmount = rewardMatch[1] + " 元";
+                announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, '');
+            }
+            const annStr = announcementStr ? announcementStr.replace(/\n/g, '<br>') : '無公告';
             
             let boundsStr = "未設定";
             if (pd.bounds && pd.bounds.length === 2) {
@@ -682,10 +842,7 @@
             }
 
             let photoSrc = pd.mainPhoto;
-            // 如果是相對路徑，加上伺服器網址以便正確顯示
-            if (photoSrc && photoSrc.startsWith('/images/')) {
-                photoSrc = SERVER_HTTP_URL + photoSrc;
-            }
+            if (photoSrc && photoSrc.startsWith('/images/')) { photoSrc = SERVER_HTTP_URL + photoSrc; }
 
             content.innerHTML = `
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -705,15 +862,17 @@
                 </div>
                 
                 <div class="bg-gray-100 p-3 border-2 border-black mt-4">
-                    <h4 class="font-bold text-green-700 border-b-2 border-gray-300 mb-2">公告與按鈕</h4>
+                    <h4 class="font-bold text-green-700 border-b-2 border-gray-300 mb-2">懸賞與公告</h4>
+                    <p class="text-sm font-bold text-red-600 mb-2">懸賞金額: ${rewardAmount}</p>
                     <div class="text-sm font-bold text-gray-700 mb-2 leading-relaxed bg-white p-2 border border-gray-300">${annStr}</div>
-                    ${pd.actionLink && pd.actionLink.url ? `<p class="text-sm font-bold">按鈕: <a href="${pd.actionLink.url}" target="_blank" class="text-blue-500 underline">${pd.actionLink.text || '前往連結'}</a></p>` : '<p class="text-sm text-gray-500 font-bold">無自訂按鈕</p>'}
+                    ${pd.actionLink && pd.actionLink.url ? `<p class="text-sm font-bold">群組連結: <a href="${pd.actionLink.url}" target="_blank" class="text-blue-500 underline">${pd.actionLink.text || '前往連結'}</a></p>` : '<p class="text-sm text-gray-500 font-bold">無自訂群組連結</p>'}
                 </div>
 
                 <div class="bg-gray-100 p-3 border-2 border-black mt-4">
                     <h4 class="font-bold text-purple-700 border-b-2 border-gray-300 mb-2">主照片與範圍</h4>
-                    <img src="${photoSrc}" class="w-full max-w-[200px] border-2 border-black mb-2">
+                    <img src="${photoSrc}" class="w-full max-w-[200px] border-2 border-black mb-2 aspect-square object-cover">
                     <p class="text-xs font-bold text-gray-600 break-all">範圍座標: ${boundsStr}</p>
+                    ${pd.videos && pd.videos.length > 0 ? `<p class="text-xs font-bold text-blue-600 mt-2">包含 ${pd.videos.length} 部影片，請至地圖端查看。</p>` : ''}
                 </div>
             `;
             
