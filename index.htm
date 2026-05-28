@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>尋寵地圖</title>
+    <title>尋寵地圖 - 線上部署版</title>
     <!--不請求icon-->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -64,7 +64,7 @@
             </p>
             <div class="text-sm text-gray-600 mb-6 bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-left">
                 📍 <b>感謝大家：</b><br>
-                如果沒辦法抽獎可能代表您是新帳號或探索太短時間，還是感謝你的協助 謝謝
+                如果沒辦法抽獎可能代表您是新帳號或探索太短時間
             </div>
             <button onclick="document.getElementById('amei-celebration').classList.add('hidden')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-all active:scale-95 shadow-md">
                 我知道了！去抽獎 🎁
@@ -618,36 +618,8 @@
                         sessionStorage.setItem('dogMap_adminToken', adminToken);
                         document.getElementById('admin-login-modal').classList.add('hidden');
                         adminPanel.classList.remove('hidden');
-                        
-                        // --- 模擬阿妹活動測試環境 ---
-                        const proj = PROJECTS["阿妹"];
-                        const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
-                        const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
-                        
-                        // 1. 強制切換專案
-                        if (currentProjectKey !== "阿妹") {
-                            currentProjectKey = "阿妹";
-                            setPersistentData('dogMap_currentProject', currentProjectKey);
-                            switchProjectBtn.innerHTML = `🎯 目標: ${proj.name} <span class="ml-1 font-black text-lg leading-none">🔄</span>`;
-                            drawProjectBounds();
-                        }
-
-                        // 2. 模擬步數 3001
-                        totalStepsCount = 3001;
-                        document.getElementById('step-counter-value').innerText = totalStepsCount.toLocaleString();
-
-                        // 3. 模擬定位至中心點與重置中獎狀態
-                        const mockPoint = { lat: centerLat, lng: centerLng, timestamp: Date.now() };
-                        localHistory.push(mockPoint);
-                        lastSavedPos = mockPoint;
-                        map.setView([centerLat, centerLng], 17, { animate: true });
-                        hasWonPrize = false; // 重置中獎狀態以利重複測試
-                        
-                        renderMap();
-                        saveLocationToServer();
                         updateGiftUI(); 
-                        
-                        showModal("登入成功！已為您開啟管理權限。\n\n⚠️ 【活動測試模式已啟動】\n已為您模擬：步數 3001 步、重置中獎狀態，並將位置移至阿妹走失中心。\n您可以直接點開右下角禮物盒測試一般使用者的無限抽獎邏輯！");
+                        showModal("登入成功！您現在擁有伺服器管理權限。");
                     } else { showModal("密碼錯誤，請重試！"); }
                     return; 
                 }
@@ -887,9 +859,6 @@
                             } else {
                                 showModal(response.msg || "💨 銘謝惠顧，下次再來！");
                             }
-                            
-                            updateGiftUI(); // 抽完必定更新 UI 以判斷活動券是否消失
-
                         }, 800);
                     }, 1500); 
                     return;
@@ -917,8 +886,6 @@
                         hasWonPrize = false;
                         listContainer.innerHTML = '<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>';
                     }
-                    
-                    updateGiftUI(); // 確保背景同步完也能立即反映有無資格
                     
                     // 若這不是初始化背景呼叫，而是玩家主動點開，就顯示模態框
                     if (!response.isBackground) {
@@ -2141,42 +2108,11 @@
         // ================= UI 按鈕邏輯綁定 =================
         toggleFogBtn.addEventListener('click', () => { isFogVisible = !isFogVisible; map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }});
         
-        // ================= 抽獎相關 =================
         function updateGiftUI() {
-            lotteryTickets = Math.floor(totalStepsCount / 100) - usedTickets;
-            if (lotteryTickets < 0) lotteryTickets = 0;
-
-            // --- 判斷是否符合阿妹活動資格 (無限抽) ---
-            let eligibleForAmei = false;
-            let currentLat = null, currentLng = null;
-
-            if (localHistory && localHistory.length > 0) {
-                currentLat = localHistory[localHistory.length - 1].lat;
-                currentLng = localHistory[localHistory.length - 1].lng;
-            }
-
-            if (currentLat && currentLng) {
-                const proj = PROJECTS["阿妹"];
-                const ameiCenterLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
-                const ameiCenterLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
-                const dist = getDistance(currentLat, currentLng, ameiCenterLat, ameiCenterLng);
-
-                // 條件：距離阿妹中心點 <= 10 公里，步數 >= 3000，且未曾中獎
-                if (dist <= 10000 && totalStepsCount >= 3000 && !hasWonPrize) {
-                    eligibleForAmei = true;
-                }
-            }
-
-            // 視覺優化：如果符合活動資格，強制顯示為 1 (活動券)
-            let displayTickets = eligibleForAmei ? "1" : lotteryTickets.toString();
-            let displaySlotText = eligibleForAmei ? "1 (活動資格)" : displayTickets;
-
+            let displayTickets = isAdmin ? '無限' : lotteryTickets;
             document.getElementById('gift-ticket-badge').innerText = displayTickets;
-            if (document.getElementById('slot-tickets-display')) {
-                document.getElementById('slot-tickets-display').innerText = displaySlotText;
-            }
-            if (document.getElementById('slot-steps-display')) {
-                document.getElementById('slot-steps-display').innerText = totalStepsCount.toLocaleString();
+            if (!document.getElementById('slot-machine-modal').classList.contains('hidden')) {
+                document.getElementById('slot-tickets-display').innerText = displayTickets;
             }
         }
         
@@ -2311,43 +2247,42 @@
         document.getElementById('slot-draw-btn').addEventListener('click', () => {
             // --- 阿妹活動資格判定 ---
             let eligibleForAmei = false;
-            let currentLat = null, currentLng = null;
+            let ameiSighting = Object.values(allSightings).find(s => (s.description && s.description.includes("阿妹")) || (s.title && s.title.includes("阿妹")));
+            
+            let currentLat = null;
+            let currentLng = null;
             if (localHistory && localHistory.length > 0) {
                 currentLat = localHistory[localHistory.length - 1].lat;
                 currentLng = localHistory[localHistory.length - 1].lng;
             }
             
-            if (currentLat && currentLng) {
-                const proj = PROJECTS["阿妹"];
-                const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2;
-                const centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
-                const dist = getDistance(currentLat, currentLng, centerLat, centerLng);
-                
+            if (ameiSighting && currentLat && currentLng) {
+                const dist = getDistance(currentLat, currentLng, ameiSighting.lat, ameiSighting.lng);
                 // 條件：距離 <= 10 公里 (10000公尺)，步數 >= 3000，且未曾中獎
                 if (dist <= 10000 && totalStepsCount >= 3000 && !hasWonPrize) {
                     eligibleForAmei = true;
                 }
             }
 
-            if (eligibleForAmei) {
-                console.log("🎉 觸發阿妹活動：無限免費抽獎！");
-            } else if (lotteryTickets <= 0) {
-                showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
-                return; 
+            if (!isAdmin) {
+                if (eligibleForAmei) {
+                    console.log("🎉 觸發阿妹活動：無限免費抽獎！");
+                } else if (lotteryTickets <= 0) {
+                    showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
+                    return; 
+                }
             }
 
             if (!isSystemReady) { showModal("系統目前未連線！"); return; }
             
-            if (!eligibleForAmei) {
-                usedTickets++;
-                saveLocalData();
+            if (!isAdmin && !eligibleForAmei) {
+                lotteryTickets--;
+                saveLotteryState();
+                updateGiftUI();
             }
             
-            updateGiftUI();
-            
-            const btn = document.getElementById('slot-draw-btn');
-            btn.innerText = "🎰 抽獎中...";
-            btn.disabled = true;
+            document.getElementById('slot-draw-btn').innerText = "🎰 抽獎中...";
+            document.getElementById('slot-draw-btn').disabled = true;
             
             slotSpinning = true;
             slotTimer = setInterval(() => {
