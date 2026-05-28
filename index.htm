@@ -415,12 +415,21 @@
         let adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
         // --- 抽獎狀態變數 ---
-        let currentProjectHasPrize = false; // 是否曾經有過獎品紀錄
-        let lotteryTickets = 0;             // 後端傳來的票數
+        let currentProjectHasPrize = false; 
+        let lotteryTickets = 0;             
 
-        let localHistories = {};
+        // --- 【重大修正】全域共用同一條軌跡，不再因切換專案而歸零 ---
         let localHistory = [];
-        let lastSavedPos = null;
+        let savedH = localStorage.getItem('dogMap_localHistory');
+        if (!savedH) {
+            // 平滑兼容：若沒有全域記錄，嘗試讀取以前存在特定專案名下的記錄
+            let currentProj = getPersistentData('dogMap_currentProject');
+            if (currentProj) savedH = localStorage.getItem('dogMap_localHistory_' + currentProj);
+        }
+        if (savedH) {
+            try { localHistory = JSON.parse(savedH); } catch(e){}
+        }
+        let lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
 
         let allUsersData = {}, allSightings = {}, allRoutes = {}; 
         let watchId = null; let isSystemReady = false; let isSpectatorMode = false; 
@@ -483,7 +492,7 @@
         function generateRandomColor() { const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return colors[Math.floor(Math.random() * colors.length)]; }
 
         function getDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // 地球半徑 (公尺)
+            const R = 6371e3; 
             const p1 = lat1 * Math.PI / 180;
             const p2 = lat2 * Math.PI / 180;
             const dp = (lat2 - lat1) * Math.PI / 180;
@@ -778,7 +787,6 @@
         }
 
         projectSelect.addEventListener('change', (e) => {
-            localHistories[currentProjectKey] = localHistory;
             currentProjectKey = e.target.value;
             setPersistentData('dogMap_currentProject', currentProjectKey);
             
@@ -786,14 +794,8 @@
             newUrl.search = `?${encodeURIComponent(currentProjectKey)}`;
             window.history.pushState({}, '', newUrl);
             
-            try {
-                const h = localStorage.getItem('dogMap_localHistory_' + currentProjectKey);
-                if (h) localHistories[currentProjectKey] = JSON.parse(h);
-            } catch(e) {}
+            // 注意：我們不再切換 localHistory 的內容，讓歷史軌跡全域延續
             
-            localHistory = localHistories[currentProjectKey] || [];
-            lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
-
             loadLotteryState();
 
             updateAnimalInfoCard();
@@ -825,7 +827,7 @@
 
         document.getElementById('delete-project-btn').addEventListener('click', () => {
             if (!isAdmin || !currentProjectKey) return;
-            showConfirm(`確定要永久刪除專案「${currentProjectKey}」嗎？這會同時刪除所有相關的申請資料與歷史軌跡！`, () => {
+            showConfirm(`確定要永久刪除專案「${currentProjectKey}」嗎？\n不用擔心，志工的心血(軌跡)與獎品將會被保留！`, () => {
                 if (isSystemReady) {
                     ws.send(JSON.stringify({ type: "admin_delete_project", token: adminToken, project: currentProjectKey }));
                 }
@@ -1294,8 +1296,8 @@
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             localHistory = optimizeHistory(localHistory); 
             
-            localHistories[currentProjectKey] = localHistory;
-            try { localStorage.setItem('dogMap_localHistory_' + currentProjectKey, JSON.stringify(localHistory)); } catch(e) {}
+            // 統一存至單一的全域 localHistory
+            try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
             
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey };
             
@@ -1738,7 +1740,8 @@
             let allValidPts = [];
             for (const uid in allUsersData) {
                 const u = allUsersData[uid];
-                if (u.project === currentProjectKey && u.history) {
+                // 【修改】移除專案限制，讓所有跨專案軌跡都參與計算
+                if (u.history) {
                     allValidPts.push(...u.history);
                 }
             }
@@ -2045,8 +2048,7 @@
                 localHistory.push(newPoint); lastSavedPos = newPoint;
                 localHistory = optimizeHistory(localHistory); 
                 
-                localHistories[currentProjectKey] = localHistory;
-                try { localStorage.setItem('dogMap_localHistory_' + currentProjectKey, JSON.stringify(localHistory)); } catch(e) {}
+                try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
                 
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey };
                 updateStepsCounter(); 
