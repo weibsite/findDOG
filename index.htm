@@ -213,9 +213,9 @@
         </div>
 
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <!-- 動物資訊卡片 (移除hover，改為點擊放大) -->
+            <!-- 動物資訊卡片 (移除hover，改為點擊放大，加入 draggable="false" 防止拖曳圖片) -->
             <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
-                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer" title="點擊放大目標照片">
+                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" title="點擊放大目標照片" draggable="false">
                 <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none" id="animal-name-date">載入中...</div>
                 <div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700">📸 看相簿</div>
             </div>
@@ -775,8 +775,101 @@
             }
         });
 
-        // 點擊主照片開啟放大/比對視窗
-        document.getElementById('animal-info-section').addEventListener('click', (e) => {
+        // ================= 專案卡片滑動與點擊邏輯 =================
+        let cardTouchStartX = 0;
+        let cardTouchStartY = 0;
+        let cardTouchEndX = 0;
+        let cardTouchEndY = 0;
+        let isCardSwiping = false;
+
+        const animalInfoSection = document.getElementById('animal-info-section');
+
+        // 手機觸控事件
+        animalInfoSection.addEventListener('touchstart', (e) => {
+            cardTouchStartX = e.changedTouches[0].screenX;
+            cardTouchStartY = e.changedTouches[0].screenY;
+            isCardSwiping = false;
+        }, {passive: true});
+
+        animalInfoSection.addEventListener('touchmove', (e) => {
+            const currentX = e.changedTouches[0].screenX;
+            const currentY = e.changedTouches[0].screenY;
+            // 滑動超過 15px 視為正在滑動
+            if (Math.abs(currentX - cardTouchStartX) > 15 || Math.abs(currentY - cardTouchStartY) > 15) {
+                isCardSwiping = true;
+            }
+        }, {passive: true});
+
+        animalInfoSection.addEventListener('touchend', (e) => {
+            cardTouchEndX = e.changedTouches[0].screenX;
+            cardTouchEndY = e.changedTouches[0].screenY;
+            handleCardSwipe();
+        });
+
+        // 電腦滑鼠事件 (模擬滑動)
+        animalInfoSection.addEventListener('mousedown', (e) => {
+            cardTouchStartX = e.screenX;
+            cardTouchStartY = e.screenY;
+            isCardSwiping = false;
+        });
+
+        animalInfoSection.addEventListener('mousemove', (e) => {
+            if (e.buttons === 1) { // 左鍵按住
+                const currentX = e.screenX;
+                const currentY = e.screenY;
+                if (Math.abs(currentX - cardTouchStartX) > 15 || Math.abs(currentY - cardTouchStartY) > 15) {
+                    isCardSwiping = true;
+                }
+            }
+        });
+
+        animalInfoSection.addEventListener('mouseup', (e) => {
+            if (isCardSwiping) {
+                cardTouchEndX = e.screenX;
+                cardTouchEndY = e.screenY;
+                handleCardSwipe();
+            }
+        });
+
+        function handleCardSwipe() {
+            const SWIPE_THRESHOLD = 40;
+            const keys = Object.keys(PROJECTS);
+            if (keys.length <= 1) return; // 如果只有一個專案就不用切換
+
+            const deltaX = cardTouchEndX - cardTouchStartX;
+            const deltaY = cardTouchEndY - cardTouchStartY;
+
+            // 確認是水平滑動為主
+            if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+                let currentIndex = keys.indexOf(currentProjectKey);
+                
+                if (deltaX < 0) {
+                    // 向左滑動 -> 下一個專案
+                    currentIndex = (currentIndex + 1) % keys.length;
+                } else {
+                    // 向右滑動 -> 上一個專案
+                    currentIndex = (currentIndex - 1 + keys.length) % keys.length;
+                }
+                
+                const newKey = keys[currentIndex];
+                const selectEl = document.getElementById('switch-project-select');
+                if(selectEl) {
+                    selectEl.value = newKey;
+                    // 手動觸發 change 事件讓地圖資料更新
+                    selectEl.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+
+        // 點擊主照片開啟放大/比對視窗 (防呆機制)
+        animalInfoSection.addEventListener('click', (e) => {
+            // 如果剛剛是滑動，就阻擋原本的點擊動作
+            if (isCardSwiping) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
             if (e.target.classList.contains('gallery-btn-overlay')) {
                 const proj = PROJECTS[currentProjectKey];
                 if(!proj) return;
@@ -787,12 +880,11 @@
                 // 不分電腦或手機，皆改為點擊放大
                 openCompareModal();
             } else {
-                const infoSection = document.getElementById('animal-info-section');
-                if (infoSection.classList.contains('mobile-collapsed')) {
-                    infoSection.classList.remove('mobile-collapsed');
+                if (animalInfoSection.classList.contains('mobile-collapsed')) {
+                    animalInfoSection.classList.remove('mobile-collapsed');
                     if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
                     animalInfoCollapseTimer = setTimeout(() => {
-                        infoSection.classList.add('mobile-collapsed');
+                        animalInfoSection.classList.add('mobile-collapsed');
                     }, 5000);
                 }
             }
@@ -2404,7 +2496,8 @@
                 
                 if (hasValidOldPoints && maxDist50Min < 50) {
                     lotteryTimeRemaining = 3599; 
-                    showModal("⚠️ 系統偵測到您過去 50 分鐘內的移動範圍小於 50 公尺，疑似掛網。\n為維持公平性，抽獎計時器已重新計時！");
+                    // 移除 showModal 彈跳視窗，讓它只在背景默默重置
+                    console.log("背景處理：偵測到掛網，重新計時");
                     
                     let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
                     let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
