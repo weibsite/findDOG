@@ -6,10 +6,6 @@
     <title>尋寵地圖 - 申請與管理後台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- 引入 Cropper.js 供照片裁剪使用 -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; }
         
@@ -20,6 +16,9 @@
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; width: 100%; padding: 8px; }
         .pixel-input:focus { background-color: #fef3c7; }
         
+        .tab-btn { background-color: #e5e7eb; color: #4b5563; border-bottom: none; box-shadow: none; }
+        .tab-btn.active { background-color: white; color: #1a202c; box-shadow: 4px -4px 0px #1a202c; border-bottom: 4px solid white; position: relative; z-index: 10; transform: translateY(4px); }
+
         #map-container { width: 100%; height: 300px; background-color: #e5e7eb; border: 4px solid #1a202c; position: relative; }
         #map { width: 100%; height: 100%; }
 
@@ -37,11 +36,12 @@
 
     <!-- 頂部導航 -->
     <div class="bg-yellow-400 border-b-4 border-black p-4 sticky top-0 z-50 shadow-[0_4px_0_#1a202c]">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-black tracking-widest text-gray-900 cursor-pointer" onclick="switchView('home')">🐾 尋寵地圖申請中心</h1>
-            <div class="flex gap-2">
-                <button onclick="switchView('apply')" class="pixel-btn px-4 py-2 bg-blue-500 text-white text-sm">新增協尋申請</button>
-                <button onclick="switchView('owner-login')" class="pixel-btn px-4 py-2 bg-purple-500 text-white text-sm">管理後台</button>
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-black tracking-widest text-gray-900 cursor-pointer text-center sm:text-left" onclick="switchView('home')">🐾 尋寵地圖申請中心</h1>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button onclick="window.location.href='index.html'" class="pixel-btn px-4 py-2 bg-green-500 text-white text-sm">🌍 回到地圖</button>
+                <button onclick="switchView('apply')" class="pixel-btn px-4 py-2 bg-blue-500 text-white text-sm">📝 新增協尋</button>
+                <button onclick="switchView('owner-login')" class="pixel-btn px-4 py-2 bg-purple-500 text-white text-sm">⚙️ 管理後台</button>
             </div>
         </div>
     </div>
@@ -64,10 +64,10 @@
             </div>
         </div>
 
-        <!-- 飼主登入區 -->
+        <!-- 管理後台登入區 -->
         <div id="view-owner-login" class="view-section">
             <div class="pixel-panel p-8 max-w-md mx-auto">
-                <h2 class="text-2xl font-black text-center mb-6 border-b-4 border-black pb-4">👤 飼主登入</h2>
+                <h2 class="text-2xl font-black text-center mb-6 border-b-4 border-black pb-4">⚙️ 專案管理登入</h2>
                 <div class="space-y-4">
                     <div>
                         <label class="block font-bold mb-1">登入帳號</label>
@@ -95,10 +95,10 @@
                         <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">1. 飼主聯絡與帳號資訊</h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div><label class="font-bold text-sm">自訂登入帳號 (必填)</label><input type="text" id="f-account" class="pixel-input" required placeholder="日後登入修改用"></div>
-                            <div><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required></div>
                             <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="password" id="f-password" class="pixel-input border-red-500" required placeholder="日後登入修改用"></div>
                             <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="password" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
                             <div class="sm:col-span-2"><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required placeholder="0912-345-678"></div>
+                            <div class="sm:col-span-2"><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required placeholder="請輸入 LINE ID"></div>
                         </div>
                     </div>
 
@@ -203,7 +203,7 @@
                                 <textarea id="f-announcement" class="pixel-input h-32" placeholder="您可以打寵物特徵、聯絡方式、懸賞細節等詳細資訊..."></textarea>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t-2 border-dashed border-gray-400 pt-4 mt-4">
-                                <div><label class="font-bold text-sm">群組連結按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 加入搜救LINE群"></div>
+                                <div><label class="font-bold text-sm">群組連結按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 加入搜救LINE群" value="加入搜救LINE群"></div>
                                 <div><label class="font-bold text-sm">群組連結網址 (選填)</label><input type="text" id="f-btn-url" class="pixel-input" placeholder="https://line.me/..."></div>
                             </div>
                         </div>
@@ -250,6 +250,28 @@
         <div class="pixel-panel p-6 w-full max-w-sm text-center">
             <p id="modal-text" class="text-gray-900 font-bold mb-6 text-base leading-relaxed whitespace-pre-wrap"></p>
             <button onclick="closeModal()" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button>
+        </div>
+    </div>
+
+    <!-- 儀式感成功視窗 Modal -->
+    <div id="success-ceremony-modal" class="hidden fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4">
+        <div class="pixel-panel p-8 w-full max-w-lg text-center animate-bounce border-8 border-yellow-400">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-black text-red-600 mb-6 border-b-4 border-black pb-4 tracking-widest">申請已送出！</h2>
+            <div class="text-left space-y-4 font-bold text-gray-800 leading-relaxed mb-8">
+                <p>辛苦了！您的尋寵專案已成功進入系統。我們**完全不會收取任何費用**，只希望能盡一份心力。</p>
+                <p>這個網站能夠讓熱心的志工們像玩「開圖遊戲」一樣，即時看到彼此的位置，凝聚大家的力量！</p>
+                <div class="bg-yellow-100 p-4 border-4 border-black text-red-700">
+                    <p class="mb-2 text-center text-lg">⚠️ 接下來，我們需要您的全力配合：</p>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-900">
+                        <li>**全力宣傳：** 請盡可能將這個地圖連結分享至各大社團與群組，將這裡作為我們行動的**大本營**。</li>
+                        <li>**授權與信任：** 我需要您提供協尋群組的管理權限。這就像「阿妹媽媽」當初完全授權給我一樣，讓我能如魚得水地運作。</li>
+                        <li>**協力合作：** 我會負責設定自動歡迎訊息、過濾詐騙、維持秩序。讓我們彼此信任，攜手找回您的寶貝！</li>
+                    </ul>
+                </div>
+                <p class="text-center text-xl mt-4">👉 <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-blue-600 underline hover:text-blue-800">點此加入阿偉的 LINE</a> 👈</p>
+            </div>
+            <button onclick="closeCeremonyModal()" class="pixel-btn w-full py-4 bg-green-500 text-white text-xl">我了解了，前往首頁！</button>
         </div>
     </div>
 
@@ -315,6 +337,9 @@
         </div>
     </div>
 
+    <!-- 引入 Cropper.js 供照片裁剪使用 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ======= 基礎設定與 UI =======
@@ -339,6 +364,18 @@
             document.getElementById('modal-overlay').classList.remove('hidden');
         }
         function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+
+        function showCeremonyModal(animalName) {
+            // 動態替換動物名稱
+            const content = document.querySelector('#success-ceremony-modal .text-left');
+            content.innerHTML = content.innerHTML.replace('找到XX', `找到${escapeHTML(animalName)}`);
+            document.getElementById('success-ceremony-modal').classList.remove('hidden');
+        }
+
+        function closeCeremonyModal() {
+            document.getElementById('success-ceremony-modal').classList.add('hidden');
+            switchView('home');
+        }
 
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
@@ -369,6 +406,8 @@
             connectWS();
         }
 
+        function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
+
         // ======= WebSocket 連線 =======
         function connectWS() {
             ws = new WebSocket(SERVER_WS_URL);
@@ -394,8 +433,9 @@
                         if (currentOwnerAcc) {
                              showModal("✅ 資料已成功修改並即時更新至系統！");
                         } else {
-                             showModal("✅ 資料已成功送出！請等待管理員審核。");
-                             switchView('home');
+                             // 顯示儀式感視窗
+                             const animalName = document.getElementById('f-animal-name').value;
+                             showCeremonyModal(animalName);
                         }
                     } else {
                         showModal("❌ 儲存失敗：" + res.msg);
