@@ -9,73 +9,34 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; }
         
-        /* 像素風 UI 樣式 */
         .pixel-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; font-weight: 900; cursor: pointer; text-align: center; }
-        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:disabled { opacity: 0.7; cursor: not-allowed; }
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; width: 100%; padding: 8px; }
         .pixel-input:focus { background-color: #fef3c7; }
         
-        .tab-btn { background-color: #e5e7eb; color: #4b5563; border-bottom: none; box-shadow: none; }
-        .tab-btn.active { background-color: white; color: #1a202c; box-shadow: 4px -4px 0px #1a202c; border-bottom: 4px solid white; position: relative; z-index: 10; transform: translateY(4px); }
-
-        #map-container { width: 100%; height: 300px; background-color: #e5e7eb; border: 4px solid #1a202c; position: relative; }
-        #map { width: 100%; height: 100%; }
-
-        /* 隱藏/顯示區塊 */
         .view-section { display: none; }
         .view-section.active { display: block; }
         
-        /* 捲軸美化 */
+        #map-container { width: 100%; height: 300px; background-color: #e5e7eb; border: 4px solid #1a202c; position: relative; }
+        #map { width: 100%; height: 100%; }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 2px solid #1a202c; }
         ::-webkit-scrollbar-thumb { background: #1a202c; }
 
-        /* ======== 背景留言牆動畫 ======== */
         .comments-wrapper {
-            position: absolute;
-            inset: 0;
-            overflow: hidden;
-            z-index: 0;
-            display: flex;
-            gap: 1rem;
-            opacity: 0.35; /* 透明度降低，避免干擾主要視覺 */
-            pointer-events: none;
-            /* 上下邊緣漸層淡出效果 */
+            position: absolute; inset: 0; overflow: hidden; z-index: 0; display: flex; gap: 1rem;
+            opacity: 0.35; pointer-events: none;
             mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             padding: 0 1rem;
         }
-        .comment-col {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            animation: scroll-up linear infinite;
-        }
-        @keyframes scroll-up {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-50%); } 
-        }
-        .comment-bubble {
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid #1a202c;
-            padding: 10px 14px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #4b5563;
-            box-shadow: 3px 3px 0px #1a202c;
-            border-radius: 8px;
-            border-bottom-left-radius: 0;
-            width: fit-content;
-            max-width: 100%;
-        }
-        .comment-user {
-            font-size: 11px;
-            color: #2563eb;
-            margin-bottom: 3px;
-            font-weight: 900;
-        }
+        .comment-col { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; animation: scroll-up linear infinite; }
+        @keyframes scroll-up { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+        .comment-bubble { background: rgba(255, 255, 255, 0.95); border: 2px solid #1a202c; padding: 10px 14px; font-size: 13px; font-weight: bold; color: #4b5563; box-shadow: 3px 3px 0px #1a202c; border-radius: 8px; border-bottom-left-radius: 0; width: fit-content; max-width: 100%; }
+        .comment-user { font-size: 11px; color: #2563eb; margin-bottom: 3px; font-weight: 900; }
     </style>
 </head>
 <body class="overflow-y-auto pb-16">
@@ -97,13 +58,7 @@
 
         <!-- 首頁大廳 -->
         <div id="view-home" class="view-section active relative min-h-[500px]">
-            
-            <!-- 背景滑動留言牆 -->
-            <div id="bg-comments-container" class="comments-wrapper hidden sm:flex">
-                <!-- Javascript 動態生成 -->
-            </div>
-
-            <!-- 主面板 -->
+            <div id="bg-comments-container" class="comments-wrapper hidden sm:flex"></div>
             <div class="pixel-panel p-8 text-center space-y-6 relative z-10 bg-white/95 backdrop-blur-sm max-w-xl mx-auto shadow-[8px_8px_0_#1a202c] mt-8">
                 <div class="text-6xl animate-bounce">🗺️</div>
                 <h2 class="text-3xl font-black text-gray-900">發布您的尋寵任務</h2>
@@ -122,14 +77,8 @@
             <div class="pixel-panel p-8 max-w-md mx-auto mt-8">
                 <h2 class="text-2xl font-black text-center mb-6 border-b-4 border-black pb-4">⚙️ 專案管理登入</h2>
                 <div class="space-y-4">
-                    <div>
-                        <label class="block font-bold mb-1">登入帳號</label>
-                        <input type="text" id="login-acc" class="pixel-input" placeholder="請輸入申請時設定的帳號">
-                    </div>
-                    <div>
-                        <label class="block font-bold mb-1">登入密碼</label>
-                        <input type="password" id="login-pwd" class="pixel-input" placeholder="請輸入密碼">
-                    </div>
+                    <div><label class="block font-bold mb-1">登入帳號</label><input type="text" id="login-acc" class="pixel-input" placeholder="請輸入申請時設定的帳號"></div>
+                    <div><label class="block font-bold mb-1">登入密碼</label><input type="password" id="login-pwd" class="pixel-input" placeholder="請輸入密碼"></div>
                     <button onclick="handleOwnerLogin()" class="pixel-btn w-full py-3 bg-purple-500 text-white mt-4">登入管理</button>
                 </div>
             </div>
@@ -138,137 +87,143 @@
         <!-- 申請/編輯表單區 -->
         <div id="view-apply" class="view-section">
             <div class="pixel-panel p-6 sm:p-8">
-                <h2 id="form-title" class="text-2xl font-black mb-6 border-b-4 border-black pb-2 text-blue-700">📝 協尋專案資料填寫</h2>
+                <div class="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
+                    <h2 id="form-title" class="text-2xl font-black text-blue-700">📝 協尋專案資料填寫</h2>
+                    <span id="wizard-step-indicator" class="font-black bg-gray-200 px-3 py-1 border-2 border-black text-sm">步驟 1 / 2</span>
+                </div>
                 
                 <form id="application-form" onsubmit="submitApplication(event)" class="space-y-8">
                     <input type="hidden" id="app-id" value="">
                     
-                    <!-- 帳號與聯絡資訊 -->
-                    <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">1. 飼主聯絡與帳號資訊</h3>
-                        <p class="text-xs font-bold text-red-600 mb-4">注意：帳號與密碼不得包含空格，且所有欄位嚴禁輸入特殊符號如 &lt; 或 &gt; 避免系統錯誤。</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="font-bold text-sm">自訂登入帳號 (必填)</label><input type="text" id="f-account" class="pixel-input" required placeholder="不可有空格，日後登入用"></div>
-                            <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="password" id="f-password" class="pixel-input border-red-500" required placeholder="不可有空格，日後登入用"></div>
-                            <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="password" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
-                            <div class="sm:col-span-2"><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required placeholder="0912-345-678"></div>
-                            <div class="sm:col-span-2"><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required placeholder="請輸入 LINE ID"></div>
-                        </div>
-                    </div>
-
-                    <!-- 寵物基本資訊 -->
-                    <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">2. 寵物基本資訊</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div><label class="font-bold text-sm">專案顯示名稱</label><input type="text" id="f-proj-name" class="pixel-input" required placeholder="例如: 找Q比"></div>
-                            <div><label class="font-bold text-sm">動物稱呼</label><input type="text" id="f-animal-name" class="pixel-input" required placeholder="例如: Q比"></div>
-                            <div>
-                                <label class="font-bold text-sm">動物類別</label>
-                                <select id="f-type" class="pixel-input bg-white cursor-pointer" required>
-                                    <option value="dog">🐕 狗 (dog)</option>
-                                    <option value="cat">🐈 貓 (cat)</option>
-                                    <option value="bird">🦜 鳥 (bird)</option>
-                                    <option value="rabbit">🐇 兔 (rabbit)</option>
-                                    <option value="turtle">🐢 龜 (turtle)</option>
-                                    <option value="other">🐾 其他</option>
-                                </select>
+                    <!-- 第 1 頁 (步驟 1~3) -->
+                    <div id="wizard-step-1">
+                        <!-- 1. 帳號與聯絡資訊 -->
+                        <div class="bg-gray-100 p-4 border-4 border-black mb-8">
+                            <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">1. 飼主聯絡與帳號資訊</h3>
+                            <p class="text-xs font-bold text-red-600 mb-4">注意：帳號與密碼不得包含空格，且所有欄位嚴禁輸入特殊符號如 &lt; 或 &gt; 避免系統錯誤。</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div><label class="font-bold text-sm">自訂登入帳號 (必填)</label><input type="text" id="f-account" class="pixel-input" required placeholder="不可有空格，日後登入用"></div>
+                                <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="password" id="f-password" class="pixel-input border-red-500" required placeholder="不可有空格，日後登入用"></div>
+                                <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="password" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
+                                <div class="sm:col-span-2"><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required placeholder="0912-345-678"></div>
+                                <div class="sm:col-span-2"><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required placeholder="請輸入 LINE ID"></div>
                             </div>
-                            <div>
-                                <label class="font-bold text-sm block mb-1">走失日期 (必填)</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="f-lost-date" class="pixel-input flex-1" required placeholder="例如: 2024/05/20">
-                                    <div class="relative w-14 flex-shrink-0">
-                                        <button type="button" class="pixel-btn w-full h-full bg-blue-300 flex items-center justify-center p-0 m-0 text-xl pointer-events-none">📅</button>
-                                        <input type="date" id="f-lost-date-picker" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" onchange="if(this.value) document.getElementById('f-lost-date').value = this.value.replace(/-/g, '/');">
+                        </div>
+
+                        <!-- 2. 寵物基本資訊 -->
+                        <div class="bg-gray-100 p-4 border-4 border-black mb-8">
+                            <h3 class="font-black text-lg mb-4 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">2. 寵物基本資訊</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div><label class="font-bold text-sm">專案顯示名稱</label><input type="text" id="f-proj-name" class="pixel-input" required placeholder="例如: 找Q比"></div>
+                                <div><label class="font-bold text-sm">動物稱呼</label><input type="text" id="f-animal-name" class="pixel-input" required placeholder="例如: Q比"></div>
+                                <div>
+                                    <label class="font-bold text-sm">動物類別</label>
+                                    <select id="f-type" class="pixel-input bg-white cursor-pointer" required>
+                                        <option value="dog">🐕 狗 (dog)</option>
+                                        <option value="cat">🐈 貓 (cat)</option>
+                                        <option value="bird">🦜 鳥 (bird)</option>
+                                        <option value="rabbit">🐇 兔 (rabbit)</option>
+                                        <option value="turtle">🐢 龜 (turtle)</option>
+                                        <option value="other">🐾 其他</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="font-bold text-sm block mb-1">走失日期 (必填)</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="f-lost-date" class="pixel-input flex-1" required placeholder="例如: 2024/05/20">
+                                        <div class="relative w-14 flex-shrink-0">
+                                            <button type="button" class="pixel-btn w-full h-full bg-blue-300 flex items-center justify-center p-0 m-0 text-xl pointer-events-none">📅</button>
+                                            <input type="date" id="f-lost-date-picker" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" onchange="if(this.value) document.getElementById('f-lost-date').value = this.value.replace(/-/g, '/');">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 3. 地圖範圍選擇 -->
+                        <div class="bg-gray-100 p-4 border-4 border-black">
+                            <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">3. 走失範圍圈選</h3>
+                            <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，在地圖上點擊兩次以畫出方形邊界。<br>(若不小心圈選太大，系統將自動為您縮小至 500 公尺以內的範圍)</p>
+                            
+                            <div class="flex gap-2 mb-2">
+                                <input type="text" id="map-search-input" class="pixel-input flex-1" placeholder="輸入地址或地標...">
+                                <button type="button" onclick="searchAddress()" class="pixel-btn bg-blue-500 text-white px-4 py-2">🔍 搜尋定位</button>
+                            </div>
+
+                            <div id="map-container" class="mb-2">
+                                <div id="map"></div>
+                                <div id="draw-hint" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-1 border-2 border-black z-[1000] hidden">請點擊地圖設定左上角...</div>
+                            </div>
+                            
+                            <div class="flex items-center gap-4">
+                                <button type="button" id="start-draw-btn" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-2">📐 開始圈選</button>
+                                <span id="bounds-status" class="text-sm font-bold text-gray-600">❌ 尚未圈選範圍</span>
+                                <input type="hidden" id="f-bounds" required>
+                            </div>
+                        </div>
+
+                        <div class="text-center pt-6 border-t-4 border-black border-dashed mt-8">
+                            <button type="button" id="step1-next-btn" onclick="nextStep()" class="pixel-btn bg-blue-600 text-white px-12 py-4 text-xl w-full sm:w-auto hover:bg-blue-500">下一步 👉 (完成初步註冊)</button>
+                        </div>
                     </div>
 
-                    <!-- 地圖範圍選擇 -->
-                    <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">3. 走失範圍圈選</h3>
-                        <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，在地圖上點擊兩次以畫出方形邊界。<br>(若不小心圈選太大，系統將自動為您縮小至 500 公尺以內的範圍)</p>
-                        
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" id="map-search-input" class="pixel-input flex-1" placeholder="輸入地址或地標...">
-                            <button type="button" onclick="searchAddress()" class="pixel-btn bg-blue-500 text-white px-4 py-2">🔍 搜尋定位</button>
-                        </div>
-
-                        <div id="map-container" class="mb-2">
-                            <div id="map"></div>
-                            <div id="draw-hint" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-1 border-2 border-black z-[1000] hidden">請點擊地圖設定左上角...</div>
-                        </div>
-                        
-                        <div class="flex items-center gap-4">
-                            <button type="button" id="start-draw-btn" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-2">📐 開始圈選</button>
-                            <span id="bounds-status" class="text-sm font-bold text-gray-600">❌ 尚未圈選範圍</span>
-                            <input type="hidden" id="f-bounds" required>
-                        </div>
-                    </div>
-
-                    <!-- 影音與相片上傳 -->
-                    <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">4. 無損照片與影片上傳</h3>
-                        
-                        <div class="space-y-4">
-                            <!-- 主要照片 -->
-                            <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-red-600 block mb-1">📸 代表主照片 (必填，顯示於首頁)</label>
-                                <p class="text-xs font-bold text-gray-500 mb-2">選擇照片後，您可以進行預覽與範圍裁剪。</p>
-                                <input type="file" id="f-main-photo" accept="image/*" class="w-full text-sm font-bold">
-                                <input type="hidden" id="f-main-photo-url">
-                                <div id="main-photo-preview" class="mt-2 hidden">
-                                    <img src="" class="h-32 border-2 border-black object-cover aspect-square">
+                    <!-- 第 2 頁 (步驟 4~5) -->
+                    <div id="wizard-step-2" class="hidden">
+                        <!-- 4. 影音與相片上傳 -->
+                        <div class="bg-gray-100 p-4 border-4 border-black mb-8">
+                            <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">4. 無損照片與影片上傳</h3>
+                            <div class="space-y-4">
+                                <div class="border-2 border-black p-3 bg-white">
+                                    <label class="font-bold text-red-600 block mb-1">📸 代表主照片 (必填，顯示於首頁)</label>
+                                    <p class="text-xs font-bold text-gray-500 mb-2">選擇照片後，您可以進行預覽與範圍裁剪。</p>
+                                    <input type="file" id="f-main-photo" accept="image/*" class="w-full text-sm font-bold">
+                                    <input type="hidden" id="f-main-photo-url">
+                                    <div id="main-photo-preview" class="mt-2 hidden">
+                                        <img src="" class="h-32 border-2 border-black object-cover aspect-square">
+                                    </div>
+                                </div>
+                                <div class="border-2 border-black p-3 bg-white">
+                                    <label class="font-bold text-blue-700 block mb-1">🖼️ 額外相片集 (可拖曳排序，點擊 X 刪除)</label>
+                                    <div id="existing-photos-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
+                                    <p class="text-[10px] font-bold text-gray-500 mb-1">選擇的新照片將會在儲存後加入到相簿最後方。</p>
+                                    <input type="file" id="f-photos" accept="image/*" multiple class="w-full text-sm font-bold mb-2">
+                                    <div id="photos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
+                                    <input type="hidden" id="f-photos-data">
+                                </div>
+                                <div class="border-2 border-black p-3 bg-white">
+                                    <label class="font-bold text-purple-700 block mb-1">🎥 影片管理 (點擊預覽，可拖曳排序，點擊 X 刪除)</label>
+                                    <div id="existing-videos-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2 empty:hidden"></div>
+                                    <p class="text-[10px] font-bold text-gray-500 mb-1">上傳新影片 (建議100MB內)，可設定特定播放區段 (秒數)。</p>
+                                    <input type="file" id="f-videos" accept="video/*" class="w-full text-sm font-bold mb-2">
+                                    <div id="videos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
+                                    <input type="hidden" id="f-videos-data">
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- 額外相簿 -->
-                            <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-blue-700 block mb-1">🖼️ 額外相片集 (可拖曳排序，點擊 X 刪除)</label>
-                                <div id="existing-photos-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
-                                <p class="text-[10px] font-bold text-gray-500 mb-1">選擇的新照片將會在儲存後加入到相簿最後方。</p>
-                                <input type="file" id="f-photos" accept="image/*" multiple class="w-full text-sm font-bold mb-2">
-                                <div id="photos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
-                                <input type="hidden" id="f-photos-data">
-                            </div>
-
-                            <!-- 影片上傳 -->
-                            <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-purple-700 block mb-1">🎥 影片管理 (點擊播放預覽，可拖曳排序，點擊 X 刪除)</label>
-                                <div id="existing-videos-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2 empty:hidden"></div>
-                                <p class="text-[10px] font-bold text-gray-500 mb-1">上傳新影片 (建議100MB內)，可設定特定播放區段 (秒數)。</p>
-                                <input type="file" id="f-videos" accept="video/*" class="w-full text-sm font-bold mb-2">
-                                <div id="videos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
-                                <input type="hidden" id="f-videos-data">
+                        <!-- 5. 公告與連結 -->
+                        <div class="bg-gray-100 p-4 border-4 border-black">
+                            <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">5. 懸賞金額與公告</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="font-bold text-sm text-red-600 block mb-1">懸賞金額 (必填，若無請填 0)</label>
+                                    <input type="number" id="f-reward" class="pixel-input border-red-500" placeholder="例如: 30000">
+                                </div>
+                                <div>
+                                    <label class="font-bold text-sm block mb-1">最新公告文字</label>
+                                    <textarea id="f-announcement" class="pixel-input h-32" placeholder="您可以打寵物特徵、聯絡方式、懸賞細節等詳細資訊..."></textarea>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t-2 border-dashed border-gray-400 pt-4 mt-4">
+                                    <div><label class="font-bold text-sm">群組連結按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 加入搜救LINE群" value="加入搜救LINE群"></div>
+                                    <div><label class="font-bold text-sm">群組連結網址 (選填)</label><input type="text" id="f-btn-url" class="pixel-input" placeholder="https://line.me/..."></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 公告與連結 -->
-                    <div class="bg-gray-100 p-4 border-4 border-black">
-                        <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">5. 懸賞金額與公告</h3>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="font-bold text-sm text-red-600 block mb-1">懸賞金額 (必填，若無請填 0)</label>
-                                <input type="number" id="f-reward" class="pixel-input border-red-500" required placeholder="例如: 30000">
-                            </div>
-                            <div>
-                                <label class="font-bold text-sm block mb-1">最新公告文字</label>
-                                <textarea id="f-announcement" class="pixel-input h-32" placeholder="您可以打寵物特徵、聯絡方式、懸賞細節等詳細資訊..."></textarea>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t-2 border-dashed border-gray-400 pt-4 mt-4">
-                                <div><label class="font-bold text-sm">群組連結按鈕文字 (選填)</label><input type="text" id="f-btn-text" class="pixel-input" placeholder="例如: 加入搜救LINE群" value="加入搜救LINE群"></div>
-                                <div><label class="font-bold text-sm">群組連結網址 (選填)</label><input type="text" id="f-btn-url" class="pixel-input" placeholder="https://line.me/..."></div>
-                            </div>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t-4 border-black border-dashed mt-8">
+                            <button type="button" onclick="prevStep()" class="pixel-btn bg-gray-400 text-gray-900 px-6 py-4 text-lg w-full sm:w-auto">👈 上一步</button>
+                            <button type="submit" id="submit-form-btn" class="pixel-btn bg-red-600 text-white px-12 py-4 text-xl w-full sm:w-auto">📤 儲存並送出</button>
                         </div>
-                    </div>
-
-                    <div class="text-center pt-4 border-t-4 border-black border-dashed">
-                        <button type="submit" id="submit-form-btn" class="pixel-btn bg-red-600 text-white px-12 py-4 text-xl w-full sm:w-auto">📤 儲存並送出</button>
-                        <p id="upload-status" class="text-red-600 font-bold mt-2 hidden text-sm blink">上傳中，請勿關閉視窗...</p>
                     </div>
                 </form>
             </div>
@@ -310,9 +265,22 @@
         </div>
     </div>
 
+    <!-- 檔案上傳真實進度框 -->
+    <div id="upload-progress-modal" class="hidden fixed inset-0 z-[10000] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-6 sm:p-8 w-full max-w-sm text-center">
+            <h3 class="text-xl font-black mb-4 border-b-4 border-black pb-2 text-blue-700">📤 儲存與上傳進度</h3>
+            <div class="space-y-4 text-left font-bold text-sm">
+                <div id="prog-1" class="text-gray-400">⏳ 1. 處理主照片...</div>
+                <div id="prog-2" class="text-gray-400">⏳ 2. 處理額外相片...</div>
+                <div id="prog-3" class="text-gray-400">⏳ 3. 處理影片...</div>
+                <div id="prog-4" class="text-gray-400">⏳ 4. 同步資料至伺服器...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 儀式感成功視窗 Modal -->
     <div id="success-ceremony-modal" class="hidden fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4">
-        <div class="pixel-panel p-6 sm:p-8 w-full max-w-xl text-center animate-bounce border-8 border-yellow-400 max-h-[95vh] overflow-y-auto">
+        <div class="pixel-panel p-6 sm:p-8 w-full max-w-xl text-center border-8 border-yellow-400 max-h-[95vh] overflow-y-auto">
             <div class="text-6xl mb-4">🎉</div>
             <h2 class="text-2xl sm:text-3xl font-black text-red-600 mb-4 border-b-4 border-black pb-4 tracking-widest">尋寵專案已成功啟動！</h2>
             <div class="text-left space-y-4 font-bold text-gray-800 leading-relaxed mb-6 text-sm sm:text-base">
@@ -427,8 +395,8 @@
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
         let videoTrimData = { start: 0, end: null };
+        let isPartialSave = false; // 用於區分步驟 1 註冊與最後送出
 
-        // 真實網友留言資料庫 (排除原作者 westie.qbee)
         const mockComments = [
             { user: "ffenchen", text: "作者是個有技術又善良的人\n正在尋狗的人可以免費使用\n找自己的狗也能順道找他人的狗\n推推推！" },
             { user: "vvn_c.mei", text: "感謝作者！作者真的幫了我們很大的忙，媽媽對他的熱心非常讚賞也非常欽佩！希望大家可以多利用這個地圖，讓毛小孩跟家人團圓！" },
@@ -448,19 +416,14 @@
             const container = document.getElementById('bg-comments-container');
             if (!container) return;
 
-            // 建立三道捲動欄
             for(let i=0; i<3; i++) {
                 const col = document.createElement('div');
-                // 給予不同的動畫秒數以產生錯落感
                 const duration = 30 + Math.random() * 20; 
                 col.className = 'comment-col';
                 col.style.animationDuration = `${duration}s`;
-                // 起始位置也錯開
                 col.style.animationDelay = `-${Math.random() * 20}s`;
 
-                // 隨機選取一些留言
                 let shuffled = [...mockComments].sort(() => 0.5 - Math.random()).slice(0, 8);
-                // 重複兩次以達到無限無縫捲動的視覺效果
                 let displayComments = [...shuffled, ...shuffled];
 
                 displayComments.forEach(data => {
@@ -472,7 +435,6 @@
                     user.innerText = "@" + data.user;
                     
                     const p = document.createElement('span');
-                    // 處理換行符號
                     p.innerHTML = data.text.replace(/\n/g, '<br>');
                     
                     bubble.appendChild(user);
@@ -497,7 +459,6 @@
             document.getElementById('ceremony-animal-name').innerText = animalName;
             document.getElementById('ceremony-animal-name-2').innerText = animalName;
             
-            // 產生專屬網址 (目前網域 + ?寵物名)
             let baseUrl = window.location.href.split('?')[0].replace(/[^/]*$/, '');
             let shareUrl = baseUrl + '?' + encodeURIComponent(animalName);
             document.getElementById('ceremony-share-url').value = shareUrl;
@@ -508,24 +469,19 @@
         function copyShareUrl(btn) {
             const urlInput = document.getElementById('ceremony-share-url');
             urlInput.select();
-            urlInput.setSelectionRange(0, 99999); // 手機相容性
-            
+            urlInput.setSelectionRange(0, 99999); 
             try {
                 document.execCommand('copy');
                 const originalText = btn.innerText;
                 btn.innerText = "✅ 已複製";
                 btn.classList.add('bg-green-500');
                 btn.classList.remove('bg-blue-500');
-                
-                // 2秒後恢復原狀
                 setTimeout(() => {
                     btn.innerText = originalText;
                     btn.classList.remove('bg-green-500');
                     btn.classList.add('bg-blue-500');
                 }, 2000);
-            } catch(e) {
-                // 防呆
-            }
+            } catch(e) {}
         }
 
         function closeCeremonyModal() {
@@ -560,32 +516,29 @@
             
             SERVER_HTTP_URL = SERVER_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
             connectWS();
-            
-            // 啟動首頁背景的跑馬燈留言
             initBackgroundComments();
         }
 
         function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
+        function hasSpace(str) { return /\s/.test(str); }
+        function hasXSSChars(str) { return /[<>]/.test(str); }
 
-        // 表單檢查：是否包含空白
-        function hasSpace(str) {
-            return /\s/.test(str);
-        }
-
-        // 表單檢查：是否包含潛在 XSS 的符號
-        function hasXSSChars(str) {
-            return /[<>]/.test(str);
-        }
-
-        // 檢查所有的表單輸入，防呆/防駭
         function validateInputs() {
             const inputs = document.querySelectorAll('#application-form input[type="text"], #application-form textarea, #application-form input[type="password"]');
             for (let input of inputs) {
-                if (hasXSSChars(input.value)) {
-                    return false;
-                }
+                if (hasXSSChars(input.value)) { return false; }
             }
             return true;
+        }
+
+        // ======= 進度 UI =======
+        function updateProgress(step, status, text) {
+            const el = document.getElementById(`prog-${step}`);
+            if (!el) return;
+            if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; }
+            else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; }
+            else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; }
+            else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; }
         }
 
         // ======= WebSocket 連線 =======
@@ -614,26 +567,40 @@
                         loadFormData(res.data);
                         switchView('apply');
                         document.getElementById('form-title').innerText = "📝 編輯協尋專案資料";
-                        // 密碼帶入原設定
                         document.getElementById('f-password').value = res.data.ownerInfo.password;
                         document.getElementById('f-password-confirm').value = res.data.ownerInfo.password;
                         showModal("✅ 登入成功，可修改您的資料。\n(飼主修改資料後送出，不需再次審核即會立刻更新於系統上)");
                     } else { showModal("❌ 帳號或密碼錯誤！"); }
                 }
                 else if (res.type === 'submit_app_result') {
-                    document.getElementById('upload-status').classList.add('hidden');
-                    document.getElementById('submit-form-btn').disabled = false;
-                    
-                    if (res.success) {
-                        if (currentOwnerAcc) {
-                             showModal("✅ 資料已成功修改並即時更新至系統！");
+                    if (isPartialSave) {
+                        document.getElementById('step1-next-btn').innerText = "下一步 👉 (完成初步註冊)";
+                        document.getElementById('step1-next-btn').disabled = false;
+                        if (res.success) {
+                            document.getElementById('wizard-step-1').classList.add('hidden');
+                            document.getElementById('wizard-step-2').classList.remove('hidden');
+                            document.getElementById('wizard-step-indicator').innerText = "步驟 2 / 2";
                         } else {
-                             // 顯示儀式感視窗
-                             const animalName = document.getElementById('f-animal-name').value;
-                             showCeremonyModal(animalName);
+                            showModal("❌ 錯誤：" + res.msg);
                         }
                     } else {
-                        showModal("❌ 儲存失敗：" + res.msg);
+                        document.getElementById('submit-form-btn').disabled = false;
+                        if (res.success) {
+                            updateProgress(4, 'done', '資料同步完成！');
+                            setTimeout(() => {
+                                document.getElementById('upload-progress-modal').classList.add('hidden');
+                                if (currentOwnerAcc) {
+                                     showModal("✅ 資料已成功修改並即時更新至系統！");
+                                } else {
+                                     const animalName = document.getElementById('f-animal-name').value;
+                                     showCeremonyModal(animalName);
+                                }
+                            }, 500);
+                        } else {
+                            updateProgress(4, 'error', '同步失敗');
+                            setTimeout(() => document.getElementById('upload-progress-modal').classList.add('hidden'), 2000);
+                            showModal("❌ 儲存失敗：" + res.msg);
+                        }
                     }
                 }
                 else if (res.type === 'admin_login_result') {
@@ -693,14 +660,11 @@
                 } else if (drawState === 2) {
                     drawPoints[1] = e.latlng;
                     
-                    // 【防呆】檢查兩點距離是否超過 500 公尺
                     const dist = getDistance(drawPoints[0].lat, drawPoints[0].lng, drawPoints[1].lat, drawPoints[1].lng);
                     if (dist > 500) {
                         showModal("⚠️ 圈選範圍過大！系統已自動為您縮小至 500 公尺的合理搜尋範圍。");
-                        // 自動轉為以點 1 為基準的 500x500m 方形 (約略換算)
                         const offsetLat = 250 / 111320;
                         const offsetLng = 250 / (111320 * Math.cos(drawPoints[0].lat * Math.PI / 180));
-                        
                         drawPoints[0] = L.latLng(drawPoints[0].lat - offsetLat, drawPoints[0].lng - offsetLng);
                         drawPoints[1] = L.latLng(drawPoints[0].lat + offsetLat * 2, drawPoints[0].lng + offsetLng * 2);
                     }
@@ -732,14 +696,11 @@
                 } else {
                     showModal("找不到該地址，您可以嘗試輸入更簡短的範圍（例如只輸入到區、路、街）再手動拖曳地圖定位。");
                 }
-            } catch (err) {
-                 showModal("搜尋地址時發生錯誤，請稍後再試。");
-            }
+            } catch (err) { showModal("搜尋地址時發生錯誤，請稍後再試。"); }
         }
 
         function startDrawing() {
-            drawState = 1;
-            drawPoints = [];
+            drawState = 1; drawPoints = [];
             if (drawRectangle) map.removeLayer(drawRectangle);
             boundsData = null;
             document.getElementById('f-bounds').value = "";
@@ -757,20 +718,13 @@
                 document.getElementById('crop-modal').classList.remove('hidden');
                 
                 if (cropperInstance) cropperInstance.destroy();
-                cropperInstance = new Cropper(document.getElementById('crop-image-target'), {
-                    aspectRatio: 1, // 正方形裁切
-                    viewMode: 1,
-                    autoCropArea: 0.8
-                });
+                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
             }
         });
 
         function confirmCrop() {
             if (cropperInstance) {
-                cropperInstance.getCroppedCanvas({
-                    maxWidth: 1024,
-                    maxHeight: 1024
-                }).toBlob((blob) => {
+                cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob((blob) => {
                     croppedMainPhotoBlob = blob;
                     document.getElementById('main-photo-preview').classList.remove('hidden');
                     document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
@@ -793,11 +747,9 @@
                 document.getElementById('trim-video-target').src = url;
                 document.getElementById('video-trim-modal').classList.remove('hidden');
                 
-                // 等待影片載入以獲取總長度
                 document.getElementById('trim-video-target').onloadedmetadata = function() {
                     document.getElementById('trim-end').placeholder = Math.floor(this.duration);
-                    videoTrimData.end = null; // 重置
-                    // 自動跳過全黑開頭畫面，作為裁切預覽封面
+                    videoTrimData.end = null; 
                     if(this.currentTime === 0) { this.currentTime = 0.5; }
                 };
             }
@@ -836,22 +788,52 @@
         }
 
         async function doUploadFetch(formData) {
-            try {
-                const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.success) { return data.urls; } 
-                else { throw new Error(data.msg); }
-            } catch (err) {
-                showModal("上傳失敗: " + err.message);
-                return [];
-            }
+            const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) { return data.urls; } 
+            else { throw new Error(data.msg); }
         }
 
-        // ======= 提交申請 =======
-        async function submitApplication(e) {
-            e.preventDefault();
-            
-            // XSS 檢查
+        // ======= 表單步驟管理 =======
+        function getBasePayload() {
+            let finalAnnouncement = document.getElementById('f-announcement').value;
+            const reward = document.getElementById('f-reward').value.trim();
+            if (reward && reward !== "0") {
+                finalAnnouncement = `【懸賞金額：${reward}元】\n` + finalAnnouncement;
+            }
+
+            return {
+                type: "submit_application",
+                id: document.getElementById('app-id').value || crypto.randomUUID(),
+                forceStatus: currentOwnerAcc ? "approved" : "pending", 
+                ownerInfo: {
+                    account: document.getElementById('f-account').value,
+                    password: document.getElementById('f-password').value,
+                    lineId: document.getElementById('f-line').value,
+                    phone: document.getElementById('f-phone').value
+                },
+                projectData: {
+                    name: document.getElementById('f-proj-name').value,
+                    animalName: document.getElementById('f-animal-name').value,
+                    type: document.getElementById('f-type').value,
+                    lostDate: document.getElementById('f-lost-date').value,
+                    bounds: boundsData,
+                    mainPhoto: document.getElementById('f-main-photo-url').value || "",
+                    photos: JSON.parse(document.getElementById('f-photos-data').value || '[]'),
+                    videos: JSON.parse(document.getElementById('f-videos-data').value || '[]'),
+                    announcement: finalAnnouncement,
+                    actionLink: {
+                        text: document.getElementById('f-btn-text').value,
+                        url: document.getElementById('f-btn-url').value
+                    }
+                }
+            };
+        }
+
+        function nextStep() {
+            const form = document.getElementById('application-form');
+            if (!form.reportValidity()) return;
+
             if (!validateInputs()) {
                 showModal("⚠️ 欄位中含有不合法的字元 (< 或 >)！為防止惡意攻擊，請移除這些符號後再送出。");
                 return;
@@ -861,96 +843,87 @@
             const pwd1 = document.getElementById('f-password').value;
             const pwd2 = document.getElementById('f-password-confirm').value;
 
-            // 空白字元檢查防呆
-            if (hasSpace(acc) || hasSpace(pwd1)) {
-                showModal("⚠️ 帳號與密碼不能包含任何空白字元！");
-                return;
-            }
+            if (hasSpace(acc) || hasSpace(pwd1)) { showModal("⚠️ 帳號與密碼不能包含任何空白字元！"); return; }
+            if (pwd1 !== pwd2) { showModal("⚠️ 兩次輸入的密碼不一致，請重新確認！"); return; }
+            if (!boundsData) { showModal("⚠️ 請先在地圖上圈選走失範圍！"); return; }
 
-            // 雙重密碼檢查
-            if (pwd1 !== pwd2) {
-                showModal("⚠️ 兩次輸入的密碼不一致，請重新確認！");
-                return;
-            }
+            const payload = getBasePayload();
+            document.getElementById('app-id').value = payload.id; // 保存產生的 UUID
 
+            document.getElementById('step1-next-btn').innerText = "⏳ 註冊同步中...";
+            document.getElementById('step1-next-btn').disabled = true;
+
+            isPartialSave = true;
+            ws.send(JSON.stringify(payload));
+        }
+
+        function prevStep() {
+            document.getElementById('wizard-step-2').classList.add('hidden');
+            document.getElementById('wizard-step-1').classList.remove('hidden');
+            document.getElementById('wizard-step-indicator').innerText = "步驟 1 / 2";
+        }
+
+        async function submitApplication(e) {
+            e.preventDefault();
+            if (!validateInputs()) { showModal("⚠️ 欄位中含有不合法的字元 (< 或 >)！"); return; }
             if (!boundsData) { showModal("⚠️ 請先在地圖上圈選走失範圍！"); return; }
             
             document.getElementById('submit-form-btn').disabled = true;
-            document.getElementById('upload-status').classList.remove('hidden');
+            
+            // 初始化進度面板
+            updateProgress(1, 'pending', '處理主照片...');
+            updateProgress(2, 'pending', '處理額外相片...');
+            updateProgress(3, 'pending', '處理影片...');
+            updateProgress(4, 'pending', '同步資料至伺服器...');
+            document.getElementById('upload-progress-modal').classList.remove('hidden');
 
             try {
-                // 1. 處理主照片上傳 (優先使用裁剪後的 Blob)
+                // 1. 主照片
+                updateProgress(1, 'active', '正在處理主照片...');
                 let mainPhotoUrl = document.getElementById('f-main-photo-url').value;
                 if (croppedMainPhotoBlob) {
                     mainPhotoUrl = await uploadBlobFile(croppedMainPhotoBlob, 'main_photo.jpg');
                 } else if (document.getElementById('f-main-photo').files.length > 0) {
-                    // 若使用者有選檔案但放棄裁剪，仍上傳原檔
                     const urls = await uploadFiles(document.getElementById('f-main-photo'));
                     if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
                 if (!mainPhotoUrl && !currentOwnerAcc) { throw new Error("請上傳主照片！"); }
+                document.getElementById('f-main-photo-url').value = mainPhotoUrl;
+                updateProgress(1, 'done', '主照片處理完成');
 
-                // 2. 處理額外相片與影片
+                // 2. 額外相片
+                updateProgress(2, 'active', '正在上傳額外相片...');
                 let photosData = JSON.parse(document.getElementById('f-photos-data').value || '[]');
                 if (document.getElementById('f-photos').files.length > 0) {
                     const newPhotoUrls = await uploadFiles(document.getElementById('f-photos'));
                     photosData = photosData.concat(newPhotoUrls.map(u => ({ url: u, title: "" })));
                 }
+                document.getElementById('f-photos-data').value = JSON.stringify(photosData);
+                updateProgress(2, 'done', '額外相片上傳完成');
 
+                // 3. 影片
+                updateProgress(3, 'active', '正在處理與上傳影片...');
                 let videosData = JSON.parse(document.getElementById('f-videos-data').value || '[]');
                 if (document.getElementById('f-videos').files.length > 0) {
                     const newVideoUrls = await uploadFiles(document.getElementById('f-videos'));
-                    // 將裁剪設定套用到上傳的第一個影片 URL 上
                     let videoUrl = newVideoUrls[0];
-                    if (videoTrimData.end !== null) {
-                        videoUrl += `#t=${videoTrimData.start},${videoTrimData.end}`;
-                    } else if (videoTrimData.start > 0) {
-                        videoUrl += `#t=${videoTrimData.start}`;
-                    }
+                    if (videoTrimData.end !== null) { videoUrl += `#t=${videoTrimData.start},${videoTrimData.end}`; } 
+                    else if (videoTrimData.start > 0) { videoUrl += `#t=${videoTrimData.start}`; }
                     videosData.push({ url: videoUrl, title: "" });
                 }
+                document.getElementById('f-videos-data').value = JSON.stringify(videosData);
+                updateProgress(3, 'done', '影片處理完成');
 
-                // 3. 處理懸賞金額 (加進公告裡)
-                let finalAnnouncement = document.getElementById('f-announcement').value;
-                const reward = document.getElementById('f-reward').value.trim();
-                if (reward && reward !== "0") {
-                    finalAnnouncement = `【懸賞金額：${reward}元】\n` + finalAnnouncement;
-                }
-
-                // 4. 組裝 JSON 格式
-                const payload = {
-                    type: "submit_application",
-                    id: document.getElementById('app-id').value || null,
-                    // 若是飼主修改，直接帶入 approved 狀態
-                    forceStatus: currentOwnerAcc ? "approved" : "pending", 
-                    ownerInfo: {
-                        account: acc,
-                        password: pwd1,
-                        lineId: document.getElementById('f-line').value,
-                        phone: document.getElementById('f-phone').value
-                    },
-                    projectData: {
-                        name: document.getElementById('f-proj-name').value,
-                        animalName: document.getElementById('f-animal-name').value,
-                        type: document.getElementById('f-type').value,
-                        lostDate: document.getElementById('f-lost-date').value,
-                        bounds: boundsData,
-                        mainPhoto: mainPhotoUrl,
-                        photos: photosData,
-                        videos: videosData,
-                        announcement: finalAnnouncement,
-                        actionLink: {
-                            text: document.getElementById('f-btn-text').value,
-                            url: document.getElementById('f-btn-url').value
-                        }
-                    }
-                };
-
-                // 5. 透過 WS 發送給後端儲存
+                // 4. 同步至伺服器
+                updateProgress(4, 'active', '正在將最終資料同步至伺服器...');
+                const payload = getBasePayload();
+                isPartialSave = false;
                 ws.send(JSON.stringify(payload));
+
             } catch (err) {
+                updateProgress(4, 'error', '發生錯誤: ' + err.message);
                 document.getElementById('submit-form-btn').disabled = false;
-                document.getElementById('upload-status').classList.add('hidden');
+                setTimeout(() => document.getElementById('upload-progress-modal').classList.add('hidden'), 3000);
                 showModal("錯誤: " + err.message);
             }
         }
@@ -960,14 +933,8 @@
             const acc = document.getElementById('login-acc').value;
             const pwd = document.getElementById('login-pwd').value;
             
-            if (hasSpace(acc) || hasSpace(pwd)) {
-                showModal("⚠️ 帳號或密碼格式錯誤，不得包含空白字元！");
-                return;
-            }
-            if (hasXSSChars(acc) || hasXSSChars(pwd)) {
-                showModal("⚠️ 帳號或密碼包含無效字元！");
-                return;
-            }
+            if (hasSpace(acc) || hasSpace(pwd)) { showModal("⚠️ 帳號或密碼格式錯誤，不得包含空白字元！"); return; }
+            if (hasXSSChars(acc) || hasXSSChars(pwd)) { showModal("⚠️ 帳號或密碼包含無效字元！"); return; }
             
             ws.send(JSON.stringify({ type: "owner_login", account: acc, password: pwd }));
         }
@@ -978,33 +945,21 @@
         let dragType = null;
 
         function handleDragStart(e, index, type) {
-            dragSrcIndex = index;
-            dragType = type;
+            dragSrcIndex = index; dragType = type;
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
 
         function handleDragEnd(e) { e.target.classList.remove('opacity-50'); }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
-
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
         function handleDrop(e, targetIndex, type) {
             e.stopPropagation();
             if (dragSrcIndex === null || dragType !== type || dragSrcIndex === targetIndex) return false;
-
             const list = type === 'photo' ? existingPhotos : existingVideos;
             const draggedItem = list[dragSrcIndex];
-
             list.splice(dragSrcIndex, 1);
             list.splice(targetIndex, 0, draggedItem);
-
-            if (type === 'photo') renderPhotos();
-            else renderVideos();
-
+            if (type === 'photo') renderPhotos(); else renderVideos();
             return false;
         }
 
@@ -1014,24 +969,14 @@
             existingPhotos.forEach((photo, index) => {
                 let url = photo.url.startsWith('/images/') ? SERVER_HTTP_URL + photo.url : photo.url;
                 grid.innerHTML += `
-                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95"
-                         draggable="true"
-                         ondragstart="handleDragStart(event, ${index}, 'photo')"
-                         ondragend="handleDragEnd(event)"
-                         ondragover="handleDragOver(event)"
-                         ondrop="handleDrop(event, ${index}, 'photo')">
+                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95" draggable="true" ondragstart="handleDragStart(event, ${index}, 'photo')" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index}, 'photo')">
                         <img src="${url}" class="w-full h-full object-cover pointer-events-none">
                         <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removePhoto(${index})">✕</button>
-                    </div>
-                `;
+                    </div>`;
             });
             document.getElementById('f-photos-data').value = JSON.stringify(existingPhotos);
         }
-
-        function removePhoto(index) {
-            existingPhotos.splice(index, 1);
-            renderPhotos();
-        }
+        function removePhoto(index) { existingPhotos.splice(index, 1); renderPhotos(); }
 
         function renderVideos() {
             const grid = document.getElementById('existing-videos-grid');
@@ -1039,52 +984,30 @@
             existingVideos.forEach((video, index) => {
                 let url = video.url.startsWith('/images/') ? SERVER_HTTP_URL + video.url : video.url;
                 grid.innerHTML += `
-                    <div class="relative border-2 border-black bg-black aspect-video cursor-move flex items-center justify-center transition-transform"
-                         draggable="true"
-                         ondragstart="handleDragStart(event, ${index}, 'video')"
-                         ondragend="handleDragEnd(event)"
-                         ondragover="handleDragOver(event)"
-                         ondrop="handleDrop(event, ${index}, 'video')">
+                    <div class="relative border-2 border-black bg-black aspect-video cursor-move flex items-center justify-center transition-transform" draggable="true" ondragstart="handleDragStart(event, ${index}, 'video')" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index}, 'video')">
                         <video id="admin-video-${index}" src="${url}" class="w-full h-full object-cover opacity-80 cursor-pointer" preload="metadata" onclick="toggleVideoPlay(${index})" onended="resetVideoIcon(${index})" onloadedmetadata="if(this.currentTime === 0) { this.currentTime = 0.5; }"></video>
                         <div id="admin-video-icon-${index}" class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>
                         <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeVideo(${index})">✕</button>
-                    </div>
-                `;
+                    </div>`;
             });
             document.getElementById('f-videos-data').value = JSON.stringify(existingVideos);
         }
-
         function toggleVideoPlay(index) {
             const video = document.getElementById(`admin-video-${index}`);
             const icon = document.getElementById(`admin-video-icon-${index}`);
-            if (video.paused) {
-                video.play();
-                icon.classList.add('hidden');
-                video.classList.remove('opacity-80');
-            } else {
-                video.pause();
-                icon.classList.remove('hidden');
-                video.classList.add('opacity-80');
-            }
+            if (video.paused) { video.play(); icon.classList.add('hidden'); video.classList.remove('opacity-80'); } 
+            else { video.pause(); icon.classList.remove('hidden'); video.classList.add('opacity-80'); }
         }
-
         function resetVideoIcon(index) {
             const video = document.getElementById(`admin-video-${index}`);
             const icon = document.getElementById(`admin-video-icon-${index}`);
-            icon.classList.remove('hidden');
-            video.classList.add('opacity-80');
+            icon.classList.remove('hidden'); video.classList.add('opacity-80');
         }
-
-        function removeVideo(index) {
-            existingVideos.splice(index, 1);
-            renderVideos();
-        }
+        function removeVideo(index) { existingVideos.splice(index, 1); renderVideos(); }
 
         function loadFormData(appData) {
             document.getElementById('app-id').value = appData.id;
             document.getElementById('f-account').value = appData.ownerInfo.account;
-            
-            // 安全取值：相容舊的 `line_id` 或新的 `lineId` 格式
             document.getElementById('f-line').value = appData.ownerInfo.lineId || appData.ownerInfo.line_id || "";
             document.getElementById('f-phone').value = appData.ownerInfo.phone || "";
             
@@ -1094,9 +1017,7 @@
             document.getElementById('f-type').value = pd.type;
             
             document.getElementById('f-lost-date').value = pd.lostDate || "";
-            if(pd.lostDate) {
-                document.getElementById('f-lost-date-picker').value = pd.lostDate.replace(/\//g, '-');
-            }
+            if(pd.lostDate) { document.getElementById('f-lost-date-picker').value = pd.lostDate.replace(/\//g, '-'); }
             
             boundsData = pd.bounds;
             if(boundsData && boundsData.length === 2) {
@@ -1118,15 +1039,10 @@
             renderPhotos();
             renderVideos();
             
-            // 解析公告中的懸賞金額
             let announcementStr = pd.announcement || "";
             let rewardMatch = announcementStr.match(/^【懸賞金額：(.*?)元】\n/);
-            if (rewardMatch) {
-                document.getElementById('f-reward').value = rewardMatch[1];
-                announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, '');
-            } else {
-                document.getElementById('f-reward').value = "";
-            }
+            if (rewardMatch) { document.getElementById('f-reward').value = rewardMatch[1]; announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, ''); } 
+            else { document.getElementById('f-reward').value = ""; }
             document.getElementById('f-announcement').value = announcementStr;
             
             if (pd.actionLink) {
@@ -1137,7 +1053,6 @@
 
         // ======= 管理員後台 =======
         function triggerAdminLogin() { document.getElementById('admin-login-modal').classList.remove('hidden'); }
-        
         function handleAdminLogin() {
             const pwd = document.getElementById('admin-pwd').value;
             ws.send(JSON.stringify({ type: "admin_login", data: { password: pwd } }));
@@ -1146,7 +1061,6 @@
         function loadAdminApps(status) {
             const btnPending = document.querySelector('button[onclick="loadAdminApps(\'pending\')"]');
             const btnApproved = document.querySelector('button[onclick="loadAdminApps(\'approved\')"]');
-            
             if (status === 'pending') {
                 btnPending.className = "pixel-btn px-4 py-2 bg-yellow-400";
                 btnApproved.className = "pixel-btn px-4 py-2 bg-green-500 text-white";
@@ -1154,7 +1068,6 @@
                 btnPending.className = "pixel-btn px-4 py-2 bg-yellow-400 text-black bg-gray-300"; 
                 btnApproved.className = "pixel-btn px-4 py-2 bg-green-500 text-white border-white";
             }
-            
             ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: status }));
         }
 
@@ -1192,27 +1105,20 @@
         function showAdminDetail(appId) {
             const app = allAdminApps.find(a => a.id === appId);
             if (!app) return;
-            
             const pd = app.projectData;
             const content = document.getElementById('admin-detail-content');
             
             const typeStr = pd.type || '未知';
             const lostDateStr = pd.lostDate || '未知';
             
-            // 將解析好的懸賞與公告分開顯示
             let announcementStr = pd.announcement || "";
             let rewardAmount = "無";
             let rewardMatch = announcementStr.match(/^【懸賞金額：(.*?)元】\n/);
-            if (rewardMatch) {
-                rewardAmount = rewardMatch[1] + " 元";
-                announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, '');
-            }
+            if (rewardMatch) { rewardAmount = rewardMatch[1] + " 元"; announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, ''); }
             const annStr = announcementStr ? announcementStr.replace(/\n/g, '<br>') : '無公告';
             
             let boundsStr = "未設定";
-            if (pd.bounds && pd.bounds.length === 2) {
-                boundsStr = `[${pd.bounds[0][0].toFixed(4)}, ${pd.bounds[0][1].toFixed(4)}] 至 [${pd.bounds[1][0].toFixed(4)}, ${pd.bounds[1][1].toFixed(4)}]`;
-            }
+            if (pd.bounds && pd.bounds.length === 2) { boundsStr = `[${pd.bounds[0][0].toFixed(4)}, ${pd.bounds[0][1].toFixed(4)}] 至 [${pd.bounds[1][0].toFixed(4)}, ${pd.bounds[1][1].toFixed(4)}]`; }
 
             let photoSrc = pd.mainPhoto;
             if (photoSrc && photoSrc.startsWith('/images/')) { photoSrc = SERVER_HTTP_URL + photoSrc; }
@@ -1233,14 +1139,12 @@
                         <p class="text-sm font-bold">走失日期: <span class="text-gray-700">${lostDateStr}</span></p>
                     </div>
                 </div>
-                
                 <div class="bg-gray-100 p-3 border-2 border-black mt-4">
                     <h4 class="font-bold text-green-700 border-b-2 border-gray-300 mb-2">懸賞與公告</h4>
                     <p class="text-sm font-bold text-red-600 mb-2">懸賞金額: ${rewardAmount}</p>
                     <div class="text-sm font-bold text-gray-700 mb-2 leading-relaxed bg-white p-2 border border-gray-300">${annStr}</div>
                     ${pd.actionLink && pd.actionLink.url ? `<p class="text-sm font-bold">群組連結: <a href="${pd.actionLink.url}" target="_blank" class="text-blue-500 underline">${pd.actionLink.text || '前往連結'}</a></p>` : '<p class="text-sm text-gray-500 font-bold">無自訂群組連結</p>'}
                 </div>
-
                 <div class="bg-gray-100 p-3 border-2 border-black mt-4">
                     <h4 class="font-bold text-purple-700 border-b-2 border-gray-300 mb-2">主照片與範圍</h4>
                     <img src="${photoSrc}" class="w-full max-w-[200px] border-2 border-black mb-2 aspect-square object-cover">
@@ -1248,19 +1152,10 @@
                     ${pd.videos && pd.videos.length > 0 ? `<p class="text-xs font-bold text-blue-600 mt-2">包含 ${pd.videos.length} 部影片，請至地圖端查看。</p>` : ''}
                 </div>
             `;
-            
             document.getElementById('admin-detail-modal').classList.remove('hidden');
         }
-
-        function closeAdminDetailModal() {
-            document.getElementById('admin-detail-modal').classList.add('hidden');
-        }
-
-        function adminReview(appId, newStatus) {
-            if (confirm(`確定要將此專案設為 ${newStatus} 嗎？`)) {
-                ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: appId, status: newStatus }));
-            }
-        }
+        function closeAdminDetailModal() { document.getElementById('admin-detail-modal').classList.add('hidden'); }
+        function adminReview(appId, newStatus) { if (confirm(`確定要將此專案設為 ${newStatus} 嗎？`)) { ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: appId, status: newStatus })); } }
     </script>
 </body>
 </html>
