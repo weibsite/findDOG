@@ -226,7 +226,9 @@
 
                             <!-- 額外相簿 -->
                             <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-blue-700 block mb-1">🖼️ 額外相片集 (可選多張)</label>
+                                <label class="font-bold text-blue-700 block mb-1">🖼️ 額外相片集 (可拖曳排序，點擊 X 刪除)</label>
+                                <div id="existing-photos-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
+                                <p class="text-[10px] font-bold text-gray-500 mb-1">選擇的新照片將會在儲存後加入到相簿最後方。</p>
                                 <input type="file" id="f-photos" accept="image/*" multiple class="w-full text-sm font-bold mb-2">
                                 <div id="photos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
                                 <input type="hidden" id="f-photos-data">
@@ -234,8 +236,9 @@
 
                             <!-- 影片上傳 -->
                             <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-purple-700 block mb-1">🎥 影片上傳 (可選，建議100MB內)</label>
-                                <p class="text-xs font-bold text-gray-500 mb-2">選擇影片後，可設定特定播放區段 (秒數)。</p>
+                                <label class="font-bold text-purple-700 block mb-1">🎥 影片管理 (可拖曳排序，點擊 X 刪除)</label>
+                                <div id="existing-videos-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2 empty:hidden"></div>
+                                <p class="text-[10px] font-bold text-gray-500 mb-1">上傳新影片 (建議100MB內)，可設定特定播放區段 (秒數)。</p>
                                 <input type="file" id="f-videos" accept="video/*" class="w-full text-sm font-bold mb-2">
                                 <div id="videos-list" class="space-y-2 text-xs font-bold text-gray-600"></div>
                                 <input type="hidden" id="f-videos-data">
@@ -302,7 +305,7 @@
     <!-- 通用提示框 -->
     <div id="modal-overlay" class="hidden fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-6 w-full max-w-sm text-center">
-            <p id="modal-text" class="text-gray-900 font-bold mb-6 text-base leading-relaxed whitespace-pre-wrap"></p>
+            <div id="modal-text" class="text-gray-900 font-bold mb-6 text-base leading-relaxed whitespace-pre-wrap"></div>
             <button onclick="closeModal()" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button>
         </div>
     </div>
@@ -484,6 +487,10 @@
             document.getElementById('modal-text').innerText = text;
             document.getElementById('modal-overlay').classList.remove('hidden');
         }
+        function showHTMLModal(htmlContent) {
+            document.getElementById('modal-text').innerHTML = htmlContent;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
         function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
 
         function showCeremonyModal(animalName) {
@@ -588,6 +595,21 @@
                 const res = JSON.parse(event.data);
                 if (res.type === 'owner_login_result') {
                     if (res.success) {
+                        if (res.data.status === 'pending') {
+                            showHTMLModal(`
+                                <div class="text-4xl mb-3 animate-bounce">⏳</div>
+                                <h3 class="text-xl font-black text-gray-900 mb-2">專案待審核中</h3>
+                                <p class="text-sm font-bold text-gray-700 mb-5 leading-relaxed">
+                                    您的協尋專案已經送出，目前正在等待管理員審核。<br>
+                                    在審核通過前，暫時無法進入管理後台修改資料。
+                                </p>
+                                <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="pixel-btn block w-full py-3 bg-green-500 text-white no-underline text-lg">
+                                    💬 聯繫阿偉 (LINE)
+                                </a>
+                            `);
+                            return;
+                        }
+
                         currentOwnerAcc = document.getElementById('login-acc').value;
                         loadFormData(res.data);
                         switchView('apply');
@@ -948,6 +970,93 @@
             ws.send(JSON.stringify({ type: "owner_login", account: acc, password: pwd }));
         }
 
+        let existingPhotos = [];
+        let existingVideos = [];
+        let dragSrcIndex = null;
+        let dragType = null;
+
+        function handleDragStart(e, index, type) {
+            dragSrcIndex = index;
+            dragType = type;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => e.target.classList.add('opacity-50'), 0);
+        }
+
+        function handleDragEnd(e) { e.target.classList.remove('opacity-50'); }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e, targetIndex, type) {
+            e.stopPropagation();
+            if (dragSrcIndex === null || dragType !== type || dragSrcIndex === targetIndex) return false;
+
+            const list = type === 'photo' ? existingPhotos : existingVideos;
+            const draggedItem = list[dragSrcIndex];
+
+            list.splice(dragSrcIndex, 1);
+            list.splice(targetIndex, 0, draggedItem);
+
+            if (type === 'photo') renderPhotos();
+            else renderVideos();
+
+            return false;
+        }
+
+        function renderPhotos() {
+            const grid = document.getElementById('existing-photos-grid');
+            grid.innerHTML = '';
+            existingPhotos.forEach((photo, index) => {
+                let url = photo.url.startsWith('/images/') ? SERVER_HTTP_URL + photo.url : photo.url;
+                grid.innerHTML += `
+                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95"
+                         draggable="true"
+                         ondragstart="handleDragStart(event, ${index}, 'photo')"
+                         ondragend="handleDragEnd(event)"
+                         ondragover="handleDragOver(event)"
+                         ondrop="handleDrop(event, ${index}, 'photo')">
+                        <img src="${url}" class="w-full h-full object-cover pointer-events-none">
+                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removePhoto(${index})">✕</button>
+                    </div>
+                `;
+            });
+            document.getElementById('f-photos-data').value = JSON.stringify(existingPhotos);
+        }
+
+        function removePhoto(index) {
+            existingPhotos.splice(index, 1);
+            renderPhotos();
+        }
+
+        function renderVideos() {
+            const grid = document.getElementById('existing-videos-grid');
+            grid.innerHTML = '';
+            existingVideos.forEach((video, index) => {
+                let url = video.url.startsWith('/images/') ? SERVER_HTTP_URL + video.url : video.url;
+                grid.innerHTML += `
+                    <div class="relative border-2 border-black bg-black aspect-video cursor-move flex items-center justify-center transition-transform active:scale-95"
+                         draggable="true"
+                         ondragstart="handleDragStart(event, ${index}, 'video')"
+                         ondragend="handleDragEnd(event)"
+                         ondragover="handleDragOver(event)"
+                         ondrop="handleDrop(event, ${index}, 'video')">
+                        <video src="${url}" class="w-full h-full object-cover pointer-events-none opacity-80" preload="metadata"></video>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>
+                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeVideo(${index})">✕</button>
+                    </div>
+                `;
+            });
+            document.getElementById('f-videos-data').value = JSON.stringify(existingVideos);
+        }
+
+        function removeVideo(index) {
+            existingVideos.splice(index, 1);
+            renderVideos();
+        }
+
         function loadFormData(appData) {
             document.getElementById('app-id').value = appData.id;
             document.getElementById('f-account').value = appData.ownerInfo.account;
@@ -981,8 +1090,10 @@
                 document.getElementById('main-photo-preview').querySelector('img').src = previewSrc;
             }
             
-            document.getElementById('f-photos-data').value = JSON.stringify(pd.photos || []);
-            document.getElementById('f-videos-data').value = JSON.stringify(pd.videos || []);
+            existingPhotos = pd.photos || [];
+            existingVideos = pd.videos || [];
+            renderPhotos();
+            renderVideos();
             
             // 解析公告中的懸賞金額
             let announcementStr = pd.announcement || "";
