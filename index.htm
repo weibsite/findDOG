@@ -343,7 +343,7 @@
     </div>
 
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3">
-        <a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋</a>
+        <a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a>
         <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a>
     </div>
 
@@ -395,11 +395,27 @@
             Object.keys(PROJECTS).forEach(key => {
                 const opt = document.createElement('option');
                 opt.value = key;
-                opt.innerText = `🎯 ${PROJECTS[key].name}`;
+                opt.innerText = `🎯 ${PROJECTS[key].animalName || PROJECTS[key].name}`;
                 projectSelect.appendChild(opt);
             });
 
+            // 尋找匹配的 key (直接對應 UUID，或是比對動物名字)
+            let foundKey = null;
             if (currentProjectKey && PROJECTS[currentProjectKey]) {
+                foundKey = currentProjectKey;
+            } else if (currentProjectKey) {
+                // 嘗試用動物名字反查 UUID
+                for (const key in PROJECTS) {
+                    const p = PROJECTS[key];
+                    if (p.animalName === currentProjectKey || p.name === currentProjectKey) {
+                        foundKey = key;
+                        break;
+                    }
+                }
+            }
+
+            if (foundKey) {
+                currentProjectKey = foundKey;
                 projectSelect.value = currentProjectKey;
             } else {
                 currentProjectKey = Object.keys(PROJECTS)[0];
@@ -824,7 +840,8 @@
             setPersistentData('dogMap_currentProject', currentProjectKey);
             
             const newUrl = new URL(window.location);
-            newUrl.search = `?${encodeURIComponent(currentProjectKey)}`;
+            const projName = PROJECTS[currentProjectKey] ? (PROJECTS[currentProjectKey].animalName || PROJECTS[currentProjectKey].name || currentProjectKey) : currentProjectKey;
+            newUrl.search = `?${encodeURIComponent(projName)}`;
             window.history.pushState({}, '', newUrl);
             
             // 注意：我們不再切換 localHistory 的內容，讓歷史軌跡全域延續
@@ -921,7 +938,7 @@
 
                 if (isCurrent) {
                     activeBoundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.1, dashArray: '5, 10'}).addTo(map)
-                     .bindPopup(`<div class="font-bold text-center">📍 ${proj.name} 搜尋範圍</div>`, {className: 'pixel-popup'});
+                     .bindPopup(`<div class="font-bold text-center">📍 ${escapeHTML(proj.animalName)}從這裡範圍遺失</div>`, {className: 'pixel-popup'});
                 }
             });
         }
