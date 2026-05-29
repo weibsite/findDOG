@@ -797,6 +797,8 @@
                 document.getElementById('trim-video-target').onloadedmetadata = function() {
                     document.getElementById('trim-end').placeholder = Math.floor(this.duration);
                     videoTrimData.end = null; // 重置
+                    // 自動跳過全黑開頭畫面，作為裁切預覽封面
+                    if(this.currentTime === 0) { this.currentTime = 0.5; }
                 };
             }
         });
@@ -1043,7 +1045,7 @@
                          ondragend="handleDragEnd(event)"
                          ondragover="handleDragOver(event)"
                          ondrop="handleDrop(event, ${index}, 'video')">
-                        <video id="admin-video-${index}" src="${url}" class="w-full h-full object-cover opacity-80 cursor-pointer" preload="metadata" onclick="toggleVideoPlay(${index})" onended="resetVideoIcon(${index})"></video>
+                        <video id="admin-video-${index}" src="${url}" class="w-full h-full object-cover opacity-80 cursor-pointer" preload="metadata" onclick="toggleVideoPlay(${index})" onended="resetVideoIcon(${index})" onloadedmetadata="if(this.currentTime === 0) { this.currentTime = 0.5; }"></video>
                         <div id="admin-video-icon-${index}" class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>
                         <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeVideo(${index})">✕</button>
                     </div>
