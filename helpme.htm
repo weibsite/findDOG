@@ -30,6 +30,52 @@
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 2px solid #1a202c; }
         ::-webkit-scrollbar-thumb { background: #1a202c; }
+
+        /* ======== 背景留言牆動畫 ======== */
+        .comments-wrapper {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: 0;
+            display: flex;
+            gap: 1rem;
+            opacity: 0.35; /* 透明度降低，避免干擾主要視覺 */
+            pointer-events: none;
+            /* 上下邊緣漸層淡出效果 */
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            padding: 0 1rem;
+        }
+        .comment-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: scroll-up linear infinite;
+        }
+        @keyframes scroll-up {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); } 
+        }
+        .comment-bubble {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #1a202c;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #4b5563;
+            box-shadow: 3px 3px 0px #1a202c;
+            border-radius: 8px;
+            border-bottom-left-radius: 0;
+            width: fit-content;
+            max-width: 100%;
+        }
+        .comment-user {
+            font-size: 11px;
+            color: #2563eb;
+            margin-bottom: 3px;
+            font-weight: 900;
+        }
     </style>
 </head>
 <body class="overflow-y-auto pb-16">
@@ -50,23 +96,30 @@
     <div class="max-w-4xl mx-auto mt-8 px-4 relative z-10">
 
         <!-- 首頁大廳 -->
-        <div id="view-home" class="view-section active">
-            <div class="pixel-panel p-8 text-center space-y-6">
+        <div id="view-home" class="view-section active relative min-h-[500px]">
+            
+            <!-- 背景滑動留言牆 -->
+            <div id="bg-comments-container" class="comments-wrapper hidden sm:flex">
+                <!-- Javascript 動態生成 -->
+            </div>
+
+            <!-- 主面板 -->
+            <div class="pixel-panel p-8 text-center space-y-6 relative z-10 bg-white/95 backdrop-blur-sm max-w-xl mx-auto shadow-[8px_8px_0_#1a202c] mt-8">
                 <div class="text-6xl animate-bounce">🗺️</div>
                 <h2 class="text-3xl font-black text-gray-900">發布您的尋寵任務</h2>
-                <p class="text-gray-700 font-bold leading-relaxed max-w-xl mx-auto">
+                <p class="text-gray-700 font-bold leading-relaxed">
                     透過尋寵地圖，讓周遭的熱心志工一起幫忙尋找您的寶貝！<br>
                     填寫詳細資料、圈選走失範圍，經管理員審核後即可上架至系統。
                 </p>
                 <div class="flex justify-center gap-4 mt-8">
-                    <button onclick="switchView('apply')" class="pixel-btn px-8 py-4 bg-green-500 text-white text-xl w-64">立即申請</button>
+                    <button onclick="switchView('apply')" class="pixel-btn px-8 py-4 bg-green-500 text-white text-xl w-64 hover:bg-green-400">立即申請</button>
                 </div>
             </div>
         </div>
 
         <!-- 管理後台登入區 -->
         <div id="view-owner-login" class="view-section">
-            <div class="pixel-panel p-8 max-w-md mx-auto">
+            <div class="pixel-panel p-8 max-w-md mx-auto mt-8">
                 <h2 class="text-2xl font-black text-center mb-6 border-b-4 border-black pb-4">⚙️ 專案管理登入</h2>
                 <div class="space-y-4">
                     <div>
@@ -220,7 +273,7 @@
 
         <!-- 管理員後台 -->
         <div id="view-admin" class="view-section">
-            <div class="pixel-panel p-6 sm:p-8">
+            <div class="pixel-panel p-6 sm:p-8 mt-8">
                 <div class="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
                     <h2 class="text-2xl font-black text-red-600">👑 總管理員後台</h2>
                     <button onclick="switchView('home')" class="pixel-btn px-4 py-2 bg-gray-500 text-white">登出</button>
@@ -372,6 +425,61 @@
         let croppedMainPhotoBlob = null;
         let videoTrimData = { start: 0, end: null };
 
+        // 真實網友留言資料庫 (排除原作者 westie.qbee)
+        const mockComments = [
+            { user: "ffenchen", text: "作者是個有技術又善良的人\n正在尋狗的人可以免費使用\n找自己的狗也能順道找他人的狗\n推推推！" },
+            { user: "vvn_c.mei", text: "感謝作者！作者真的幫了我們很大的忙，媽媽對他的熱心非常讚賞也非常欽佩！希望大家可以多利用這個地圖，讓毛小孩跟家人團圓！" },
+            { user: "annchen0909", text: "好棒的程式\n讓大家可以更快的收集資訊\n黃金時間可以讓孩子回家😭😭😭" },
+            { user: "art944", text: "謝謝你" },
+            { user: "meowraerae0w0", text: "好可愛噢 這很厲害 感謝分享\n好奇也能尋貓嗎@_@？" },
+            { user: "funnyco_0830", text: "推推！超厲害的偉哥！" },
+            { user: "yungchen3", text: "留友看，讓他無聊時就去找狗。" },
+            { user: "dog_venus2026", text: "第一天就加入阿妹群組，因為離我家蠻近的，真的很厲害，這個地圖串連，是找到阿妹很重要的因素之一！" },
+            { user: "nonamepeople222", text: "🥺🥺" },
+            { user: "una_nene_1118", text: "好棒👍" },
+            { user: "giesele0723", text: "謝謝妳" },
+            { user: "zhu.258", text: "推" }
+        ];
+
+        function initBackgroundComments() {
+            const container = document.getElementById('bg-comments-container');
+            if (!container) return;
+
+            // 建立三道捲動欄
+            for(let i=0; i<3; i++) {
+                const col = document.createElement('div');
+                // 給予不同的動畫秒數以產生錯落感
+                const duration = 30 + Math.random() * 20; 
+                col.className = 'comment-col';
+                col.style.animationDuration = `${duration}s`;
+                // 起始位置也錯開
+                col.style.animationDelay = `-${Math.random() * 20}s`;
+
+                // 隨機選取一些留言
+                let shuffled = [...mockComments].sort(() => 0.5 - Math.random()).slice(0, 8);
+                // 重複兩次以達到無限無縫捲動的視覺效果
+                let displayComments = [...shuffled, ...shuffled];
+
+                displayComments.forEach(data => {
+                    const bubble = document.createElement('div');
+                    bubble.className = "comment-bubble";
+                    
+                    const user = document.createElement('div');
+                    user.className = "comment-user";
+                    user.innerText = "@" + data.user;
+                    
+                    const p = document.createElement('span');
+                    // 處理換行符號
+                    p.innerHTML = data.text.replace(/\n/g, '<br>');
+                    
+                    bubble.appendChild(user);
+                    bubble.appendChild(p);
+                    col.appendChild(bubble);
+                });
+                container.appendChild(col);
+            }
+        }
+
         function showModal(text) {
             document.getElementById('modal-text').innerText = text;
             document.getElementById('modal-overlay').classList.remove('hidden');
@@ -382,7 +490,7 @@
             document.getElementById('ceremony-animal-name').innerText = animalName;
             document.getElementById('ceremony-animal-name-2').innerText = animalName;
             
-            // 產生專屬網址 (目前網域所在目錄 + ?寵物名)
+            // 產生專屬網址 (目前網域 + ?寵物名)
             let baseUrl = window.location.href.split('?')[0].replace(/[^/]*$/, '');
             let shareUrl = baseUrl + '?' + encodeURIComponent(animalName);
             document.getElementById('ceremony-share-url').value = shareUrl;
@@ -409,7 +517,7 @@
                     btn.classList.add('bg-blue-500');
                 }, 2000);
             } catch(e) {
-                // 防呆，若複製失敗則不動作，讓使用者手動複製
+                // 防呆
             }
         }
 
@@ -445,6 +553,9 @@
             
             SERVER_HTTP_URL = SERVER_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
             connectWS();
+            
+            // 啟動首頁背景的跑馬燈留言
+            initBackgroundComments();
         }
 
         function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
