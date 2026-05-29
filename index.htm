@@ -213,10 +213,10 @@
         </div>
 
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <!-- 動物資訊卡片 -->
+            <!-- 動物資訊卡片 (移除hover，改為點擊放大) -->
             <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
-                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 hover:scale-105">
-                <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500" id="animal-name-date">載入中...</div>
+                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer" title="點擊放大目標照片">
+                <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none" id="animal-name-date">載入中...</div>
                 <div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700">📸 看相簿</div>
             </div>
             
@@ -232,11 +232,11 @@
     
     <!-- 寵物照片放大與對照 Modal -->
     <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4">
-        <button id="compare-close-btn" class="absolute top-2 right-2 z-50 text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] active:translate-y-1 active:shadow-none cursor-pointer">✕</button>
+        <button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] active:translate-y-1 active:shadow-none cursor-pointer">✕</button>
         
         <div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2">
-            <!-- 左側：本機上傳對照區 -->
-            <div class="flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex flex-col items-center justify-center relative overflow-hidden rounded-lg">
+            <!-- 左側：本機上傳對照區 (預設隱藏) -->
+            <div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg">
                 <input type="file" id="compare-file-input" accept="image/*" class="hidden">
                 
                 <div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors" onclick="document.getElementById('compare-file-input').click()">
@@ -254,13 +254,16 @@
             </div>
             
             <!-- 右側：目標放大照片 -->
-            <div class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg">
-                <div class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap tracking-widest border border-gray-500">放大的目標照片</div>
+            <div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg">
+                <div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap tracking-widest border border-gray-500">放大的目標照片</div>
                 <div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center">
                     <img id="compare-main-img" src="">
                 </div>
             </div>
         </div>
+        
+        <!-- 開啟比對模式按鈕 -->
+        <button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 pixel-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button>
     </div>
 
     <!-- 動物相簿 Modal -->
@@ -729,15 +732,29 @@
             
             document.getElementById('compare-main-img').src = mainUrl || "";
             
-            // 重置左側上傳區
+            // 重置左側上傳區並隱藏
             document.getElementById('compare-file-input').value = "";
             document.getElementById('compare-local-img').src = "";
             document.getElementById('compare-local-container').classList.add('hidden');
             document.getElementById('compare-upload-prompt').classList.remove('hidden');
             document.getElementById('compare-reselect-btn').classList.add('hidden');
             
+            // 隱藏左側比對區塊，顯示開啟比對按鈕
+            document.getElementById('compare-left-pane').classList.remove('flex');
+            document.getElementById('compare-left-pane').classList.add('hidden');
+            document.getElementById('compare-right-label').classList.add('hidden');
+            document.getElementById('enable-compare-btn').classList.remove('hidden');
+            
             document.getElementById('photo-compare-modal').classList.remove('hidden');
         }
+
+        // 點擊「開啟比對模式」按鈕
+        document.getElementById('enable-compare-btn').addEventListener('click', () => {
+            document.getElementById('compare-left-pane').classList.remove('hidden');
+            document.getElementById('compare-left-pane').classList.add('flex');
+            document.getElementById('compare-right-label').classList.remove('hidden');
+            document.getElementById('enable-compare-btn').classList.add('hidden');
+        });
 
         document.getElementById('compare-close-btn').addEventListener('click', () => {
             document.getElementById('photo-compare-modal').classList.add('hidden');
@@ -758,14 +775,7 @@
             }
         });
 
-        // 電腦版滑鼠靠近(hover)放大
-        document.getElementById('animal-main-photo').addEventListener('mouseenter', () => {
-            if (window.innerWidth > 640) { 
-                openCompareModal();
-            }
-        });
-
-        // 點擊事件處理
+        // 點擊主照片開啟放大/比對視窗
         document.getElementById('animal-info-section').addEventListener('click', (e) => {
             if (e.target.classList.contains('gallery-btn-overlay')) {
                 const proj = PROJECTS[currentProjectKey];
@@ -774,7 +784,7 @@
                 renderGallery('photos');
                 document.getElementById('gallery-modal').classList.remove('hidden');
             } else if (e.target.id === 'animal-main-photo') {
-                // 手機版觸碰(點擊)放大
+                // 不分電腦或手機，皆改為點擊放大
                 openCompareModal();
             } else {
                 const infoSection = document.getElementById('animal-info-section');
