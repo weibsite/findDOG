@@ -1071,6 +1071,7 @@
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
+                let needReInit = false; // 新增：用來追蹤是否需要重新請求真實 UUID 資料
                 
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
@@ -1083,13 +1084,25 @@
                             }
                         });
 
+                        // 記下轉換前的 Key，如果從名稱轉成 UUID，代表剛剛要錯資料了
+                        const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
+                        if (oldProjectKey !== currentProjectKey) {
+                            needReInit = true;
+                        }
+
                         drawAllProjects();
                         updateAnimalInfoCard();
                     }
                 }
 
                 if (response.type === 'sync') {
+                    // 如果發現剛剛用名字要資料失敗（已轉換為 UUID），立刻重新請求！
+                    if (needReInit && isSystemReady) {
+                        ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey }));
+                        return; // 中斷這次渲染，等待馬上回傳的正確 UUID 資料
+                    }
+
                     allUsersData = response.data.locations || {};
                     allSightings = response.data.sightings || {};
                     allRoutes = response.data.routes || {}; 
