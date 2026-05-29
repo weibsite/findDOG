@@ -2542,7 +2542,7 @@
                     showModal("📍 請在地圖上【點擊】發生該事件的精確位置！");
                     map.once('click', (e) => {
                         if(isSystemReady) {
-                            ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
+                            ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
                             showModal("✅ 成功新增事件點！");
                         }
                     });
@@ -2575,7 +2575,7 @@
                         if (parsed) {
                             coordinateInputModal.classList.add('hidden');
                             if(isSystemReady) {
-                                ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
+                                ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
                                 showModal(`✅ 成功新增事件點！\n座標：[${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}]`);
                                 map.setView([parsed.lat, parsed.lng], 16, { animate: true }); 
                             } else { showModal("⚠️ 系統未連線，無法送出指令！"); }
@@ -2667,7 +2667,7 @@
             if (currentRoutePoints.length < 2) { showModal("⚠️ 路線至少需要兩個節點才能成線！"); return; }
             const name = document.getElementById('route-name').value.trim() || '未命名路線';
             const color = document.getElementById('route-color').value; const weight = parseInt(document.getElementById('route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
+            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, project: currentProjectKey, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
             } else { showModal("⚠️ 系統未連線！"); }
         });
 
