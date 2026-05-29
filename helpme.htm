@@ -236,7 +236,7 @@
 
                             <!-- 影片上傳 -->
                             <div class="border-2 border-black p-3 bg-white">
-                                <label class="font-bold text-purple-700 block mb-1">🎥 影片管理 (可拖曳排序，點擊 X 刪除)</label>
+                                <label class="font-bold text-purple-700 block mb-1">🎥 影片管理 (點擊播放預覽，可拖曳排序，點擊 X 刪除)</label>
                                 <div id="existing-videos-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2 empty:hidden"></div>
                                 <p class="text-[10px] font-bold text-gray-500 mb-1">上傳新影片 (建議100MB內)，可設定特定播放區段 (秒數)。</p>
                                 <input type="file" id="f-videos" accept="video/*" class="w-full text-sm font-bold mb-2">
@@ -1037,19 +1037,40 @@
             existingVideos.forEach((video, index) => {
                 let url = video.url.startsWith('/images/') ? SERVER_HTTP_URL + video.url : video.url;
                 grid.innerHTML += `
-                    <div class="relative border-2 border-black bg-black aspect-video cursor-move flex items-center justify-center transition-transform active:scale-95"
+                    <div class="relative border-2 border-black bg-black aspect-video cursor-move flex items-center justify-center transition-transform"
                          draggable="true"
                          ondragstart="handleDragStart(event, ${index}, 'video')"
                          ondragend="handleDragEnd(event)"
                          ondragover="handleDragOver(event)"
                          ondrop="handleDrop(event, ${index}, 'video')">
-                        <video src="${url}" class="w-full h-full object-cover pointer-events-none opacity-80" preload="metadata"></video>
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>
+                        <video id="admin-video-${index}" src="${url}" class="w-full h-full object-cover opacity-80 cursor-pointer" preload="metadata" onclick="toggleVideoPlay(${index})" onended="resetVideoIcon(${index})"></video>
+                        <div id="admin-video-icon-${index}" class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>
                         <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeVideo(${index})">✕</button>
                     </div>
                 `;
             });
             document.getElementById('f-videos-data').value = JSON.stringify(existingVideos);
+        }
+
+        function toggleVideoPlay(index) {
+            const video = document.getElementById(`admin-video-${index}`);
+            const icon = document.getElementById(`admin-video-icon-${index}`);
+            if (video.paused) {
+                video.play();
+                icon.classList.add('hidden');
+                video.classList.remove('opacity-80');
+            } else {
+                video.pause();
+                icon.classList.remove('hidden');
+                video.classList.add('opacity-80');
+            }
+        }
+
+        function resetVideoIcon(index) {
+            const video = document.getElementById(`admin-video-${index}`);
+            const icon = document.getElementById(`admin-video-icon-${index}`);
+            icon.classList.remove('hidden');
+            video.classList.add('opacity-80');
         }
 
         function removeVideo(index) {
