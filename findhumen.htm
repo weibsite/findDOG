@@ -397,6 +397,79 @@
             return compressed;
         }
 
+        // ====== 補回遺失的核心定位與存檔功能 ======
+        function saveLocationToServer(newPoint, forceUpdate = false) {
+            if (!isSystemReady) return;
+            const uData = {
+                userName: currentUserName,
+                color: dbUserColor,
+                history: localHistory,
+                project: currentProjectKey || "default"
+            };
+            if (forceUpdate) {
+                ws.send(JSON.stringify({ type: "update_location", uid: myUid, project: currentProjectKey || "default", data: uData }));
+            } else if (newPoint) {
+                uData.point = newPoint;
+                ws.send(JSON.stringify({ type: "append_location", uid: myUid, project: currentProjectKey || "default", data: uData }));
+            }
+        }
+
+        function startLocationServices(autoStart) {
+            if(!navigator.geolocation) { showModal("瀏覽器不支援定位功能"); return; }
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            
+            watchId = navigator.geolocation.watchPosition(pos => {
+                const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                if(!isReportingMode && !isSpectatorMode && !isMyRouteMode && localHistory.length === 0) {
+                    map.setView([lat, lng], 17);
+                }
+                
+                const now = Date.now();
+                const newPoint = { lat, lng, timestamp: now };
+                
+                if (localHistory.length > 0) {
+                    const lastPt = localHistory[localHistory.length - 1];
+                    const d = getDistance(lastPt.lat, lastPt.lng, lat, lng);
+                    if (d < 5) return; // 距離變動太小不記錄
+                }
+
+                localHistory.push(newPoint);
+                localHistory = optimizeHistory(localHistory);
+                lastSavedPos = newPoint;
+                setPersistentData('dogMap_localHistory', JSON.stringify(localHistory));
+                
+                if (!allUsersData[myUid]) allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [], project: currentProjectKey };
+                allUsersData[myUid].history.push(newPoint);
+                allUsersData[myUid].userName = currentUserName;
+                allUsersData[myUid].color = dbUserColor;
+                
+                saveLocationToServer(newPoint, false);
+                renderMap();
+            }, err => { 
+                if(!autoStart) showModal("定位失敗，請確認 GPS 開啟並允許網頁存取位置權限"); 
+            }, { enableHighAccuracy: true });
+
+            document.getElementById('startup-overlay').style.display = 'none';
+            document.getElementById('status-toast').classList.remove('hidden');
+            document.getElementById('project-select-wrapper').classList.remove('hidden');
+            document.getElementById('report-stray-btn').classList.remove('hidden');
+            document.getElementById('toggle-fog-btn').classList.remove('hidden');
+            document.getElementById('spectator-btn').classList.remove('hidden');
+            document.getElementById('locate-btn').classList.remove('hidden');
+            document.getElementById('my-route-btn').classList.remove('hidden');
+        }
+
+        function checkLocalSetupAndStart() {
+            const savedName = getPersistentData('dogMap_userName');
+            if(savedName) {
+                currentUserName = savedName; 
+                dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
+                document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+                startLocationServices(true);
+            }
+        }
+        // ===========================================
+
         async function initSystem() {
             try {
                 const configRes = await fetch('config.json?t=' + Date.now());
@@ -596,6 +669,85 @@
                 submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
             }
         });
+
+        // ======= 補回遺失的介面互動監聽器 =======
+        document.getElementById('master-start-btn').addEventListener('click', () => {
+            currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
+            dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
+            setPersistentData('dogMap_userName', currentUserName);
+            setPersistentData('dogMap_userColor', dbUserColor);
+            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            startLocationServices(false);
+        });
+
+        document.getElementById('toggle-fog-btn').addEventListener('click', () => {
+            isFogVisible = !isFogVisible;
+            map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none';
+            document.getElementById('toggle-fog-btn').innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
+            if(isFogVisible) requestFogRender();
+        });
+
+        document.getElementById('locate-btn').addEventListener('click', () => { 
+            if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true}); 
+            else showModal("目前尚未取得您的定位！");
+        });
+
+        document.getElementById('spectator-btn').addEventListener('click', () => {
+            isSpectatorMode = !isSpectatorMode;
+            document.getElementById('spectator-btn').innerText = isSpectatorMode ? "退出觀看" : "觀看模式";
+            document.getElementById('spectator-btn').style.backgroundColor = isSpectatorMode ? "#ef4444" : "#f59e0b";
+            document.getElementById('spectator-btn').style.color = isSpectatorMode ? "white" : "#1a202c";
+            const hint = document.getElementById('spectator-hint');
+            if (isSpectatorMode) hint.classList.remove('hidden'); else hint.classList.add('hidden');
+            renderMap();
+        });
+
+        document.getElementById('my-route-btn').addEventListener('click', () => {
+            isMyRouteMode = !isMyRouteMode;
+            if(isMyRouteMode) {
+                targetRouteUid = myUid; 
+                document.getElementById('my-route-btn').innerText = "🔙 退出軌跡";
+                document.getElementById('playback-controls').classList.remove('hidden');
+                snakeIndex = 0; snakeInterval = null; isPlaybackPaused = false;
+                document.getElementById('pb-pause').innerText = "=";
+            } else {
+                document.getElementById('my-route-btn').innerText = "🐍 我的軌跡";
+                document.getElementById('playback-controls').classList.add('hidden');
+                if(snakeInterval) clearInterval(snakeInterval);
+            }
+            renderMap();
+        });
+
+        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
+        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 10); renderMap(); });
+        document.getElementById('pb-pause').addEventListener('click', (e) => { 
+            isPlaybackPaused = !isPlaybackPaused; 
+            e.target.innerText = isPlaybackPaused ? "▶" : "="; 
+            const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+            if(!isPlaybackPaused && snakeIndex >= hLen) snakeIndex = 0;
+            if(!isPlaybackPaused) startSnakePlayback();
+            else if(snakeInterval) clearInterval(snakeInterval);
+        });
+        document.getElementById('pb-speed').addEventListener('click', () => { 
+            currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 50 : 500);
+            if(!isPlaybackPaused) startSnakePlayback();
+        });
+        document.getElementById('pb-end').addEventListener('click', () => { 
+            snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+            if(snakeInterval) clearInterval(snakeInterval);
+            renderMap();
+        });
+
+        function startSnakePlayback() {
+            if(snakeInterval) clearInterval(snakeInterval);
+            snakeInterval = setInterval(() => {
+                if(isPlaybackPaused) return;
+                const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+                if(snakeIndex < hLen) { snakeIndex += Math.max(1, Math.ceil(hLen / 200)); renderMap(); }
+                else { clearInterval(snakeInterval); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; }
+            }, currentPlaybackSpeed);
+        }
+        // ===========================================
 
         document.getElementById('admin-login-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.remove('hidden'));
         document.getElementById('admin-cancel-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.add('hidden'));
