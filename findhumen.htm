@@ -187,6 +187,7 @@
     <!-- 圖片放大檢視 Modal -->
     <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none">
         <div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container">
+            <div id="viewer-title" class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded"></div>
             <img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-transform duration-300 pointer-events-none">
             <button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer active:scale-95 shadow-[2px_2px_0px_#000]">關閉 ✕</button>
             <div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4">
@@ -804,13 +805,20 @@
                 }
                 updateProgress(1, 'done', '主照片上傳完成');
 
-                // 2. 上傳額外相片/影片 (依序)
+                // 2. 上傳額外相片/影片 (依序，並且自動分類到 Photos 還是 Videos 陣列)
                 updateProgress(2, 'active', '正在逐一上傳額外媒體...');
                 let mediaUrls = [];
+                let videoUrls = [];
                 for (let i = 0; i < existingPhotos.length; i++) {
                     const file = existingPhotos[i];
                     const url = await uploadFileObj(file);
-                    if (url) mediaUrls.push(url);
+                    if (url) {
+                        if (file.type.startsWith('video/')) {
+                            videoUrls.push(url);
+                        } else {
+                            mediaUrls.push(url);
+                        }
+                    }
                 }
                 updateProgress(2, 'done', '額外媒體上傳完成');
 
@@ -824,7 +832,8 @@
                     lostDate: timeVal.replace('T', ' '),
                     bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
                     mainPhoto: mainPhotoUrl,
-                    photos: mediaUrls, // 尋寵地圖後端直接接受一維字串陣列
+                    photos: mediaUrls,
+                    videos: videoUrls,
                     announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
                 };
 
@@ -1275,6 +1284,22 @@
                         PROJECTS = strayProjs;
                         
                         Object.keys(PROJECTS).forEach(k => {
+                            // 自動修復：將舊資料中被放到 photos 的影片轉移到 videos 陣列
+                            if (PROJECTS[k].photos) {
+                                let actualPhotos = [];
+                                let actualVideos = PROJECTS[k].videos || [];
+                                PROJECTS[k].photos.forEach(p => {
+                                    let urlStr = typeof p === 'string' ? p : p.url;
+                                    if (urlStr && urlStr.match(/\.(mp4|webm|mov|ogg)$/i)) {
+                                        actualVideos.push(p);
+                                    } else {
+                                        actualPhotos.push(p);
+                                    }
+                                });
+                                PROJECTS[k].photos = actualPhotos;
+                                PROJECTS[k].videos = actualVideos;
+                            }
+
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
                                 allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。";
                             }
@@ -1454,7 +1479,9 @@
             if (viewerPhotos.length === 0) return;
             const imgObj = typeof viewerPhotos[currentViewerIndex] === 'string' ? { url: viewerPhotos[currentViewerIndex], title: "" } : viewerPhotos[currentViewerIndex];
             let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-            document.getElementById('viewer-img').src = pUrl; document.getElementById('viewer-title').innerText = imgObj.title || "";
+            document.getElementById('viewer-img').src = pUrl; 
+            const titleEl = document.getElementById('viewer-title');
+            if (titleEl) titleEl.innerText = imgObj.title || "";
             document.getElementById('viewer-prev-btn').style.opacity = currentViewerIndex > 0 ? "1" : "0.5"; document.getElementById('viewer-next-btn').style.opacity = currentViewerIndex < viewerPhotos.length - 1 ? "1" : "0.5";
         }
         document.getElementById('viewer-close-btn').addEventListener('click', () => document.getElementById('photo-viewer-modal').classList.add('hidden') );
