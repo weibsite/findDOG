@@ -720,7 +720,7 @@
                 document.getElementById('delete-project-btn').classList.remove('hidden');
             }
             
-            connectWebSocket(); checkLocalSetupAndStart();
+            checkLocalSetupAndStart();
         }
 
         function updateAnimalInfoCard() {
@@ -1232,6 +1232,8 @@
 
         // ================= WebSockets 與 增量更新 =================
         function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+            
             ws = new WebSocket(NGROK_WS_URL);
             ws.onopen = () => {
                 isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
@@ -1243,7 +1245,7 @@
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
-                let needReInit = false; // 新增：用來追蹤是否需要重新請求真實 UUID 資料
+                let needReInit = false; 
                 
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
@@ -1256,10 +1258,9 @@
                             }
                         });
 
-                        // 觸發：分階段背景讀入專案主照片
+                        // 觸發：分階段背景讀入專案主照片 (只有在按鈕點擊後才會開始載入)
                         populateStartupBackground();
 
-                        // 記下轉換前的 Key，如果從名稱轉成 UUID 或隨機分配，代表剛剛要錯資料了
                         const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
                         if (oldProjectKey !== currentProjectKey) {
@@ -1272,10 +1273,9 @@
                 }
 
                 if (response.type === 'sync') {
-                    // 如果發現剛剛用名字要資料失敗（已轉換為 UUID），立刻重新請求！
                     if (needReInit && isSystemReady) {
                         ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey }));
-                        return; // 中斷這次渲染，等待馬上回傳的正確 UUID 資料
+                        return; 
                     }
 
                     allUsersData = response.data.locations || {};
@@ -2267,6 +2267,8 @@
             // 此處載入該專案的剩餘計時器
             loadLotteryState();
             
+            connectWebSocket(); // <--- 初次使用的玩家，在這裡才開始連線 WS
+            
             startLocationServices(false);
         });
         
@@ -2318,6 +2320,8 @@
                 document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
                 
                 loadLotteryState();
+                
+                connectWebSocket(); // <--- 曾經連線過的老玩家，直接在這裡連線 WS
                 
                 finishUIReveal(); document.getElementById('toast-text').innerText = "自動定位..."; startLocationServices(true);
             } else { document.getElementById('startup-overlay').style.display = 'flex'; document.getElementById('startup-overlay').style.opacity = '1'; }
