@@ -8,6 +8,9 @@
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- 引入 Cropper.js 供照片裁剪使用 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; }
         #map-container { position: relative; width: 100vw; height: 100vh; }
@@ -16,6 +19,7 @@
         .pixel-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
         .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
         .pixel-input:focus { background-color: #fef3c7; }
         .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
@@ -195,7 +199,7 @@
         </div>
     </div>
 
-    <!-- 步驟1：回報浪浪位置面板 -->
+    <!-- ================= 修改過的多頁表單 Modal ================= -->
     <div id="report-location-panel" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm flex flex-col gap-3">
         <h3 class="text-center font-bold text-lg text-blue-700 border-b-2 border-black pb-1">📍 步驟 1/2：標記發現位置</h3>
         <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址/座標來快速移動</p>
@@ -209,38 +213,90 @@
         </div>
     </div>
 
-    <!-- 步驟2：填寫回報表單 Modal -->
     <div id="report-form-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
-        <div class="pixel-panel p-5 w-full max-w-md bg-white max-h-[90vh] overflow-y-auto flex flex-col gap-3 text-left">
-            <h3 class="text-center font-bold text-xl text-green-700 border-b-2 border-black pb-2">📝 步驟 2/2：填寫浪浪資訊</h3>
-            <div>
-                <label class="block text-sm font-bold mb-1">⏰ 發現時間 (可修改)</label>
-                <input type="datetime-local" id="report-time" class="pixel-input w-full p-2 text-sm">
+        <div class="pixel-panel p-5 w-full max-w-lg bg-white max-h-[90vh] overflow-y-auto flex flex-col text-left">
+            <h3 class="text-center font-bold text-xl text-green-700 border-b-2 border-black pb-2 mb-4">📝 步驟 2/2：填寫浪浪資訊</h3>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-1">⏰ 發現時間 (可修改)</label>
+                        <input type="datetime-local" id="report-time" class="pixel-input w-full p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1">🐾 動物種類</label>
+                        <select id="report-type" class="pixel-input w-full p-2 text-sm bg-white cursor-pointer">
+                            <option value="狗">🐕 狗</option>
+                            <option value="貓">🐈 貓</option>
+                            <option value="鳥">🦜 鳥</option>
+                            <option value="其他">❓ 其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 借鏡申請後台的無損上傳與預覽區塊 -->
+                <div class="bg-gray-100 p-3 border-2 border-black space-y-3">
+                    <h4 class="font-bold text-gray-900 border-b-2 border-gray-300 pb-1">📸 上傳照片與影片</h4>
+                    
+                    <div class="bg-white p-2 border border-black">
+                        <label class="font-bold text-red-600 block mb-1 text-sm">主照片 (必填，將顯示在地圖封面)</label>
+                        <p class="text-xs font-bold text-gray-500 mb-2">可點擊下方選擇照片後進行裁剪。</p>
+                        <input type="file" id="report-main-photo" accept="image/*" class="w-full text-xs font-bold cursor-pointer">
+                        <input type="hidden" id="report-main-photo-url">
+                        <div id="main-photo-preview" class="mt-2 hidden">
+                            <img src="" class="h-32 border-2 border-black object-cover aspect-square cursor-pointer" onclick="document.getElementById('report-main-photo').click()" title="點擊重新選擇">
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-2 border border-black">
+                        <label class="font-bold text-blue-700 block mb-1 text-sm">額外相片與影片 (可拖曳排序，點擊 X 刪除)</label>
+                        <div id="existing-media-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
+                        <p class="text-[10px] font-bold text-gray-500 mb-1">選擇的新媒體將會在儲存後加入到相簿最後方。</p>
+                        <input type="file" id="report-extra-media" accept="image/*,video/*" multiple class="w-full text-xs font-bold mb-2 cursor-pointer">
+                        <input type="hidden" id="report-media-data" value="[]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-1">📝 備註特徵 (選填，將顯示為公告)</label>
+                    <textarea id="report-notes" class="pixel-input w-full p-2 h-20 text-sm" placeholder="例如：毛色、是否有項圈、發現時的狀況..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">📞 聯絡方式 (選填)</label>
+                    <input type="text" id="report-contact" class="pixel-input w-full p-2 text-sm" placeholder="LINE ID 或 手機號碼">
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-bold mb-1">🐾 動物種類</label>
-                <select id="report-type" class="pixel-input w-full p-2 text-sm bg-white cursor-pointer">
-                    <option value="狗">🐕 狗</option>
-                    <option value="貓">🐈 貓</option>
-                    <option value="鳥">🦜 鳥</option>
-                    <option value="其他">❓ 其他</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-bold mb-1">📸 上傳照片/影片 (多選)</label>
-                <input type="file" id="report-media" class="pixel-input w-full p-1 text-sm bg-white cursor-pointer" accept="image/*,video/*" multiple>
-            </div>
-            <div>
-                <label class="block text-sm font-bold mb-1">📝 備註特徵 (將顯示為公告)</label>
-                <textarea id="report-notes" class="pixel-input w-full p-2 h-20 text-sm" placeholder="例如：毛色、是否有項圈、發現時的狀況..."></textarea>
-            </div>
-            <div>
-                <label class="block text-sm font-bold mb-1">📞 聯絡方式 (選填)</label>
-                <input type="text" id="report-contact" class="pixel-input w-full p-2 text-sm" placeholder="LINE ID 或 手機號碼">
-            </div>
-            <div class="flex gap-2 mt-4">
+
+            <div class="flex gap-2 mt-6">
                 <button id="report-form-back-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white">⬅️ 上一步</button>
                 <button id="report-submit-btn" class="pixel-btn flex-[2] py-3 bg-green-500 text-white text-lg">🚀 確認送出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 檔案上傳真實進度框 -->
+    <div id="upload-progress-modal" class="hidden fixed inset-0 z-[10000] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-6 sm:p-8 w-full max-w-sm text-center">
+            <h3 class="text-xl font-black mb-4 border-b-4 border-black pb-2 text-blue-700">📤 儲存與上傳進度</h3>
+            <div class="space-y-4 text-left font-bold text-sm">
+                <div id="prog-1" class="text-gray-400">⏳ 1. 處理主照片...</div>
+                <div id="prog-2" class="text-gray-400">⏳ 2. 處理額外媒體...</div>
+                <div id="prog-3" class="text-gray-400">⏳ 3. 同步資料至伺服器...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 圖片裁剪 Modal -->
+    <div id="crop-modal" class="hidden fixed inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white p-4 pixel-panel">
+            <h3 class="font-bold mb-2">✂️ 裁剪主照片</h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-2">請將動物置於框內，可滾動滑鼠縮放。</p>
+            <div class="w-full h-64 bg-gray-200 mb-4 border-2 border-black">
+                <img id="crop-image-target" src="" class="max-w-full max-h-full block">
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="cancelCrop()" class="flex-1 pixel-btn bg-gray-400 py-2">取消</button>
+                <button type="button" onclick="confirmCrop()" class="flex-1 pixel-btn bg-blue-500 text-white py-2">確認裁剪</button>
             </div>
         </div>
     </div>
@@ -291,10 +347,10 @@
         <a href="/" target="_self" class="text-blue-600 hover:text-blue-800 no-underline font-black">切換至尋寵地圖</a>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let ws; 
         let NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
+        let SERVER_HTTP_URL = "";
         function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
         function setPersistentData(key, value) { try { localStorage.setItem(key, value); } catch(e) {} }
         function getPersistentData(key) { try { return localStorage.getItem(key); } catch(e) {} return null; }
@@ -346,7 +402,13 @@
         let galleryLoadedCount = 0, currentGalleryType = 'photos';
         const GALLERY_BATCH_SIZE = 2;
 
-        let adminCachedApps = []; // 用來儲存從伺服器抓到的原始專案資料供審核修改用
+        let adminCachedApps = []; 
+
+        // 上傳與裁剪相關
+        let cropperInstance = null;
+        let croppedMainPhotoBlob = null;
+        let existingMedia = [];
+        let dragSrcIndex = null;
 
         const customModal = document.getElementById('custom-modal'), customModalText = document.getElementById('custom-modal-text');
         function showModal(msg) { customModalText.innerText = msg; customModal.classList.remove('hidden'); }
@@ -362,6 +424,16 @@
         }
         function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
         function generateRandomColor() { const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return colors[Math.floor(Math.random() * colors.length)]; }
+
+        // ======= 進度 UI =======
+        function updateProgress(step, status, text) {
+            const el = document.getElementById(`prog-${step}`);
+            if (!el) return;
+            if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; }
+            else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; }
+            else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; }
+            else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; }
+        }
 
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; 
@@ -430,7 +502,7 @@
                 if (localHistory.length > 0) {
                     const lastPt = localHistory[localHistory.length - 1];
                     const d = getDistance(lastPt.lat, lastPt.lng, lat, lng);
-                    if (d < 5) return; // 距離變動太小不記錄
+                    if (d < 5) return; 
                 }
 
                 localHistory.push(newPoint);
@@ -476,6 +548,8 @@
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url;
             } catch (e) {}
+
+            SERVER_HTTP_URL = getBaseHttpUrl();
 
             fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json')
                 .then(res => res.json())
@@ -526,6 +600,78 @@
             
             connectWebSocket(); checkLocalSetupAndStart();
         }
+
+        // ================= 照片裁剪與拖曳上傳模組 =================
+        document.getElementById('report-main-photo').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                document.getElementById('crop-image-target').src = url;
+                document.getElementById('crop-modal').classList.remove('hidden');
+                
+                if (cropperInstance) cropperInstance.destroy();
+                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
+            }
+        });
+
+        function confirmCrop() {
+            if (cropperInstance) {
+                cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob((blob) => {
+                    croppedMainPhotoBlob = blob;
+                    document.getElementById('main-photo-preview').classList.remove('hidden');
+                    document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
+                    document.getElementById('crop-modal').classList.add('hidden');
+                }, 'image/jpeg', 0.85);
+            }
+        }
+
+        function cancelCrop() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            document.getElementById('report-main-photo').value = "";
+            croppedMainPhotoBlob = null;
+        }
+
+        // 額外媒體拖曳排序
+        function handleDragStart(e, index) {
+            dragSrcIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => e.target.classList.add('opacity-50'), 0);
+        }
+
+        function handleDragEnd(e) { e.target.classList.remove('opacity-50'); }
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
+        function handleDrop(e, targetIndex) {
+            e.stopPropagation();
+            if (dragSrcIndex === null || dragSrcIndex === targetIndex) return false;
+            const draggedItem = existingMedia[dragSrcIndex];
+            existingMedia.splice(dragSrcIndex, 1);
+            existingMedia.splice(targetIndex, 0, draggedItem);
+            renderMediaGrid();
+            return false;
+        }
+
+        function renderMediaGrid() {
+            const grid = document.getElementById('existing-media-grid');
+            grid.innerHTML = '';
+            existingMedia.forEach((media, index) => {
+                let url = media.url.startsWith('/images/') ? SERVER_HTTP_URL + media.url : media.url;
+                let isVideo = url.match(/\.(mp4|webm|ogg)$/i) || media.type === 'video';
+                
+                let mediaHtml = isVideo 
+                    ? `<video src="${url}" class="w-full h-full object-cover pointer-events-none bg-black" preload="metadata"></video><div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>`
+                    : `<img src="${url}" class="w-full h-full object-cover pointer-events-none">`;
+
+                grid.innerHTML += `
+                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95" draggable="true" ondragstart="handleDragStart(event, ${index})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})">
+                        ${mediaHtml}
+                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeMedia(${index})">✕</button>
+                    </div>`;
+            });
+            document.getElementById('report-media-data').value = JSON.stringify(existingMedia);
+        }
+        function removeMedia(index) { existingMedia.splice(index, 1); renderMediaGrid(); }
+
+        // ========================================================
 
         document.getElementById('report-stray-btn').addEventListener('click', () => {
             isReportingMode = true;
@@ -592,6 +738,17 @@
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('report-time').value = now.toISOString().slice(0, 16);
+            
+            // 重置表單狀態
+            document.getElementById('report-main-photo').value = "";
+            document.getElementById('main-photo-preview').classList.add('hidden');
+            croppedMainPhotoBlob = null;
+            document.getElementById('report-main-photo-url').value = "";
+            
+            document.getElementById('report-extra-media').value = "";
+            existingMedia = [];
+            renderMediaGrid();
+
             document.getElementById('report-form-modal').classList.remove('hidden');
         });
 
@@ -601,153 +758,121 @@
             document.getElementById('report-crosshair').style.display = 'block';
         });
 
+        // 獨立的上傳函式
+        async function uploadBlobFile(blob, filename) {
+            const formData = new FormData();
+            formData.append('files', blob, filename);
+            const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) return data.urls[0];
+            throw new Error("上傳失敗");
+        }
+
+        async function uploadFiles(inputElement) {
+            const files = inputElement.files;
+            if (files.length === 0) return [];
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) { formData.append('files', files[i]); }
+            const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) return data.urls;
+            throw new Error("上傳失敗");
+        }
+
         document.getElementById('report-submit-btn').addEventListener('click', async () => {
             const timeVal = document.getElementById('report-time').value;
             if(!timeVal) { showModal("請填寫發現時間！"); return; }
             
-            const files = document.getElementById('report-media').files;
-            let mediaUrls = [];
             const submitBtn = document.getElementById('report-submit-btn');
+            submitBtn.disabled = true;
             
-            submitBtn.innerText = "⏳ 上傳中..."; submitBtn.disabled = true;
+            // 開啟進度框
+            updateProgress(1, 'pending', '處理主照片...');
+            updateProgress(2, 'pending', '處理額外媒體...');
+            updateProgress(3, 'pending', '同步資料至伺服器...');
+            document.getElementById('upload-progress-modal').classList.remove('hidden');
 
-            if(files.length > 0) {
-                const formData = new FormData();
-                for(let i=0; i<files.length; i++) formData.append("files", files[i]);
-                try {
-                    const res = await fetch('/api/upload_media', { method: 'POST', body: formData });
-                    const data = await res.json();
-                    if(data.success) mediaUrls = data.urls;
-                } catch(e) {
-                    showModal("照片上傳失敗，請稍後再試！");
-                    submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
-                    return;
+            try {
+                // 1. 處理主相片
+                updateProgress(1, 'active', '正在處理主照片...');
+                let mainPhotoUrl = document.getElementById('report-main-photo-url').value;
+                if (croppedMainPhotoBlob) {
+                    mainPhotoUrl = await uploadBlobFile(croppedMainPhotoBlob, 'main_photo.jpg');
+                } else if (document.getElementById('report-main-photo').files.length > 0) {
+                    const urls = await uploadFiles(document.getElementById('report-main-photo'));
+                    if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
-            }
+                if (!mainPhotoUrl) { throw new Error("請務必上傳並設定一張主照片！"); }
+                updateProgress(1, 'done', '主照片處理完成');
 
-            const payload = {
-                isStray: true, // 核心：使用 isStray 標記區分尋寵與浪浪資料庫
-                animalName: "浪浪 (" + document.getElementById('report-type').value + ")",
-                type: document.getElementById('report-type').value === '狗' ? 'dog' : (document.getElementById('report-type').value === '貓' ? 'cat' : 'other'),
-                lostDate: timeVal.replace('T', ' '),
-                bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
-                mainPhoto: mediaUrls.length > 0 ? mediaUrls[0] : "",
-                photos: mediaUrls,
-                announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
-            };
-
-            const strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
-
-            if(isSystemReady) {
-                ws.send(JSON.stringify({ 
-                    type: "submit_application", 
-                    id: strayId,
-                    ownerInfo: { account: "stray_user_" + myUid, password: "123" },
-                    projectData: payload,
-                    forceStatus: "pending" 
-                }));
-                // 因為 submit_application 本身沒有針對發送者專屬的成功回傳事件，我們這裡直接重置介面
-                setTimeout(() => {
-                    document.getElementById('report-form-modal').classList.add('hidden');
-                    isReportingMode = false;
-                    document.getElementById('report-stray-btn').classList.remove('hidden');
-                    document.getElementById('project-select-wrapper').classList.remove('hidden');
-                    submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
-                    document.getElementById('report-notes').value = ''; document.getElementById('report-media').value = '';
-                    
-                    if (preReportFogState) {
-                        isFogVisible = true;
-                        const fogPane = map ? map.getPane('fogPane') : null;
-                        if(fogPane) fogPane.style.display = 'block';
-                        requestFogRender();
+                // 2. 處理額外相片與影片
+                updateProgress(2, 'active', '正在上傳額外媒體...');
+                let mediaData = JSON.parse(document.getElementById('report-media-data').value || '[]');
+                if (document.getElementById('report-extra-media').files.length > 0) {
+                    const files = document.getElementById('report-extra-media').files;
+                    const newMediaUrls = await uploadFiles(document.getElementById('report-extra-media'));
+                    for(let i=0; i<newMediaUrls.length; i++) {
+                        let type = files[i].type.startsWith('video/') ? 'video' : 'photo';
+                        mediaData.push({ url: newMediaUrls[i], type: type });
                     }
-                    showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
-                }, 1000);
+                }
+                // 將整理好的媒體全部統一當作 photos 陣列儲存，後端統一解析
+                let finalMediaUrls = [mainPhotoUrl];
+                mediaData.forEach(m => finalMediaUrls.push(m.url));
+                updateProgress(2, 'done', '額外媒體上傳完成');
 
-            } else {
-                showModal("系統未連線！");
-                submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
+                updateProgress(3, 'active', '正在傳送回報資料...');
+                const payload = {
+                    isStray: true, 
+                    animalName: "浪浪 (" + document.getElementById('report-type').value + ")",
+                    type: document.getElementById('report-type').value === '狗' ? 'dog' : (document.getElementById('report-type').value === '貓' ? 'cat' : 'other'),
+                    lostDate: timeVal.replace('T', ' '),
+                    bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
+                    mainPhoto: mainPhotoUrl,
+                    photos: finalMediaUrls,
+                    announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
+                };
+
+                const strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+
+                if(isSystemReady) {
+                    ws.send(JSON.stringify({ 
+                        type: "submit_application", 
+                        id: strayId,
+                        ownerInfo: { account: "stray_user_" + myUid, password: "123" },
+                        projectData: payload,
+                        forceStatus: "pending" 
+                    }));
+                    
+                    updateProgress(3, 'done', '資料同步完成！');
+                    setTimeout(() => {
+                        document.getElementById('upload-progress-modal').classList.add('hidden');
+                        document.getElementById('report-form-modal').classList.add('hidden');
+                        isReportingMode = false;
+                        document.getElementById('report-stray-btn').classList.remove('hidden');
+                        document.getElementById('project-select-wrapper').classList.remove('hidden');
+                        submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
+                        document.getElementById('report-notes').value = '';
+                        
+                        if (preReportFogState) {
+                            isFogVisible = true;
+                            const fogPane = map ? map.getPane('fogPane') : null;
+                            if(fogPane) fogPane.style.display = 'block';
+                            requestFogRender();
+                        }
+                        showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
+                    }, 500);
+
+                } else {
+                    throw new Error("系統未連線！");
+                }
+            } catch (err) {
+                updateProgress(3, 'error', '發生錯誤: ' + err.message);
+                submitBtn.disabled = false;
+                setTimeout(() => document.getElementById('upload-progress-modal').classList.add('hidden'), 3000);
+                showModal("錯誤: " + err.message);
             }
         });
-
-        // ======= 介面互動監聽器 =======
-        document.getElementById('master-start-btn').addEventListener('click', () => {
-            currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
-            dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
-            setPersistentData('dogMap_userName', currentUserName);
-            setPersistentData('dogMap_userColor', dbUserColor);
-            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
-            startLocationServices(false);
-        });
-
-        document.getElementById('toggle-fog-btn').addEventListener('click', () => {
-            isFogVisible = !isFogVisible;
-            map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none';
-            document.getElementById('toggle-fog-btn').innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
-            if(isFogVisible) requestFogRender();
-        });
-
-        document.getElementById('locate-btn').addEventListener('click', () => { 
-            if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true}); 
-            else showModal("目前尚未取得您的定位！");
-        });
-
-        document.getElementById('spectator-btn').addEventListener('click', () => {
-            isSpectatorMode = !isSpectatorMode;
-            document.getElementById('spectator-btn').innerText = isSpectatorMode ? "退出觀看" : "觀看模式";
-            document.getElementById('spectator-btn').style.backgroundColor = isSpectatorMode ? "#ef4444" : "#f59e0b";
-            document.getElementById('spectator-btn').style.color = isSpectatorMode ? "white" : "#1a202c";
-            const hint = document.getElementById('spectator-hint');
-            if (isSpectatorMode) hint.classList.remove('hidden'); else hint.classList.add('hidden');
-            renderMap();
-        });
-
-        document.getElementById('my-route-btn').addEventListener('click', () => {
-            isMyRouteMode = !isMyRouteMode;
-            if(isMyRouteMode) {
-                targetRouteUid = myUid; 
-                document.getElementById('my-route-btn').innerText = "🔙 退出軌跡";
-                document.getElementById('playback-controls').classList.remove('hidden');
-                snakeIndex = 0; snakeInterval = null; isPlaybackPaused = false;
-                document.getElementById('pb-pause').innerText = "=";
-            } else {
-                document.getElementById('my-route-btn').innerText = "🐍 我的軌跡";
-                document.getElementById('playback-controls').classList.add('hidden');
-                if(snakeInterval) clearInterval(snakeInterval);
-            }
-            renderMap();
-        });
-
-        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
-        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 10); renderMap(); });
-        document.getElementById('pb-pause').addEventListener('click', (e) => { 
-            isPlaybackPaused = !isPlaybackPaused; 
-            e.target.innerText = isPlaybackPaused ? "▶" : "="; 
-            const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
-            if(!isPlaybackPaused && snakeIndex >= hLen) snakeIndex = 0;
-            if(!isPlaybackPaused) startSnakePlayback();
-            else if(snakeInterval) clearInterval(snakeInterval);
-        });
-        document.getElementById('pb-speed').addEventListener('click', () => { 
-            currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 50 : 500);
-            if(!isPlaybackPaused) startSnakePlayback();
-        });
-        document.getElementById('pb-end').addEventListener('click', () => { 
-            snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
-            if(snakeInterval) clearInterval(snakeInterval);
-            renderMap();
-        });
-
-        function startSnakePlayback() {
-            if(snakeInterval) clearInterval(snakeInterval);
-            snakeInterval = setInterval(() => {
-                if(isPlaybackPaused) return;
-                const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
-                if(snakeIndex < hLen) { snakeIndex += Math.max(1, Math.ceil(hLen / 200)); renderMap(); }
-                else { clearInterval(snakeInterval); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; }
-            }, currentPlaybackSpeed);
-        }
-        // ===========================================
 
         document.getElementById('admin-login-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.remove('hidden'));
         document.getElementById('admin-cancel-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.add('hidden'));
@@ -961,7 +1086,6 @@
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const isSelf = (uid === myUid);
                 
-                // 本機自己的歷史如果本地有更完整的，就不依賴伺服器回傳的
                 const historyToUse = isSelf && localHistory.length > 0 ? localHistory : userData.history;
                 const lastPoint = historyToUse[historyToUse.length - 1];
 
@@ -1035,6 +1159,7 @@
                         lowResCtx.fillRect(0, 0, w, h);
                     }
                 } catch(e) {
+                    console.error("台灣輪廓繪製失敗，退回全版迷霧", e);
                     lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
                     lowResCtx.fillRect(0, 0, w, h);
                 }
@@ -1072,7 +1197,6 @@
                 if (myPts.length > 0) allHistoryToDraw.push(myPts);
             }
 
-            // 擦除超過一小時的軌跡
             tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
             allHistoryToDraw.forEach(historyPts => {
                 historyPts.forEach((point, i) => {
@@ -1085,7 +1209,6 @@
             });
             lowResCtx.globalCompositeOperation = 'destination-out'; lowResCtx.globalAlpha = 0.4; lowResCtx.drawImage(tempCanvas, 0, 0);
             
-            // 擦除一小時內的軌跡
             tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
             allHistoryToDraw.forEach(historyPts => {
                 historyPts.forEach((point, i) => {
@@ -1101,8 +1224,7 @@
             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
             fogCtx.imageSmoothingEnabled = false; 
             fogCtx.drawImage(lowResCanvas, 0, 0, w, h, 0, 0, fogCanvas.width, fogCanvas.height);
-            
-            // 繪製彩色半透明歷史軌跡 (超過一小時未消失的部分)
+
             const maxFadeTime = 30 * 60 * 1000; 
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
@@ -1135,20 +1257,17 @@
             ws.onopen = () => {
                 isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
                 document.getElementById('toast-text').innerText = "連線成功"; 
-                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" }));
+                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" })); 
                 if(localHistory.length > 0) saveLocationToServer(null, true); 
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
+                let needReInit = false; 
                 
-                if (response.type === 'sync' || response.type === 'projects_updated') {
-                    if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
-                        const allProjs = response.dynamicProjects || response.data.dynamicProjects;
-                        const strayProjs = {};
-                        Object.keys(allProjs).forEach(k => {
-                            if (allProjs[k].isStray === true) strayProjs[k] = allProjs[k];
-                        });
-                        PROJECTS = strayProjs;
+                if (response.type === 'sync' || response.type === 'stray_projects_updated') {
+                    if (response.strayProjects || (response.data && response.data.strayProjects)) {
+                        const newProjects = response.strayProjects || response.data.strayProjects;
+                        PROJECTS = newProjects;
                         
                         Object.keys(PROJECTS).forEach(k => {
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
@@ -1158,12 +1277,21 @@
 
                         const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
+                        if (oldProjectKey !== currentProjectKey) {
+                            needReInit = true;
+                        }
+
                         drawAllProjects();
                         updateAnimalInfoCard();
                     }
                 }
 
                 if (response.type === 'sync') {
+                    if (needReInit && isSystemReady) {
+                        ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey }));
+                        return;
+                    }
+
                     allUsersData = response.data.locations || {};
                     renderMap();
                 }
@@ -1184,7 +1312,9 @@
                             
                             let mediaHtml = '';
                             if(item.projectData && item.projectData.photos && item.projectData.photos.length > 0) {
-                                mediaHtml = `<img src="${item.projectData.photos[0]}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
+                                let firstUrl = item.projectData.photos[0];
+                                if(firstUrl.startsWith('/images/')) firstUrl = SERVER_HTTP_URL + firstUrl;
+                                mediaHtml = `<img src="${firstUrl}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
                             }
 
                             div.innerHTML = `
@@ -1280,28 +1410,52 @@
             if (type === 'photos') { btnP.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnV.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; } 
             else { btnV.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnP.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; }
             const proj = PROJECTS[currentProjectKey];
-            if (!proj || !proj[type] || proj[type].length === 0) { content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有${type === 'photos' ? '相片' : '影片'}</div>`; return; }
+            if (!proj || !proj.photos || proj.photos.length === 0) { content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有相片或影片</div>`; return; }
+            
+            // 將 photos 陣列分類
+            const photosOnly = [];
+            const videosOnly = [];
+            proj.photos.forEach(url => {
+                let checkUrl = url.toLowerCase();
+                if(checkUrl.includes('.mp4') || checkUrl.includes('.webm') || checkUrl.includes('.mov')) {
+                    videosOnly.push(url);
+                } else {
+                    photosOnly.push(url);
+                }
+            });
+
+            // 為了不更動太多原本的架構，暫時把分類好的陣列塞回專案中供載入
+            proj._tempPhotos = photosOnly;
+            proj._tempVideos = videosOnly;
+
             loadMoreGalleryItems();
         }
         function loadMoreGalleryItems() {
             const content = document.getElementById('gallery-content'); const proj = PROJECTS[currentProjectKey];
-            if (!proj || !proj[currentGalleryType]) return;
-            const items = proj[currentGalleryType]; const start = galleryLoadedCount; const end = Math.min(start + GALLERY_BATCH_SIZE, items.length);
+            if (!proj) return;
+            const items = currentGalleryType === 'photos' ? proj._tempPhotos : proj._tempVideos;
+            if (!items) return;
+
+            const start = galleryLoadedCount; const end = Math.min(start + GALLERY_BATCH_SIZE, items.length);
             if (start >= items.length) return;
+            
+            if (items.length === 0) {
+                 content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有${currentGalleryType === 'photos' ? '相片' : '影片'}</div>`;
+                 return;
+            }
+
             for (let i = start; i < end; i++) {
-                const item = items[i];
+                const url = items[i];
+                let pUrl = url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
+
                 if (currentGalleryType === 'photos') {
-                    const imgObj = typeof item === 'string' ? { url: item } : item; let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
                     const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform";
                     container.addEventListener('click', () => { openPhotoViewer(i, items); });
                     const img = document.createElement('img'); img.src = pUrl; img.loading = "lazy"; img.className = "w-full object-cover border-b-2 border-black block"; container.appendChild(img);
-                    if (imgObj.title && imgObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "p-2 text-sm font-bold text-gray-900 text-center"; titleDiv.innerText = imgObj.title; container.appendChild(titleDiv); } else { img.classList.remove('border-b-2', 'border-black'); }
                     content.appendChild(container);
                 } else {
-                    const vidObj = typeof item === 'string' ? { url: item } : item; let vUrl = vidObj.url; if(vUrl && vUrl.startsWith('/images/')) vUrl = getBaseHttpUrl() + vUrl;
                     const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3";
-                    if (vidObj.title && vidObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1"; titleDiv.innerText = vidObj.title; container.appendChild(titleDiv); }
-                    const videoEl = document.createElement('video'); videoEl.src = vUrl; videoEl.controls = true; videoEl.preload = "metadata"; videoEl.className = "w-full border-2 border-black bg-black"; container.appendChild(videoEl); content.appendChild(container);
+                    const videoEl = document.createElement('video'); videoEl.src = pUrl; videoEl.controls = true; videoEl.preload = "metadata"; videoEl.className = "w-full border-2 border-black bg-black"; container.appendChild(videoEl); content.appendChild(container);
                 }
             }
             galleryLoadedCount = end;
@@ -1311,9 +1465,8 @@
         function openPhotoViewer(index, photos) { viewerPhotos = photos; currentViewerIndex = index; updatePhotoViewer(); document.getElementById('photo-viewer-modal').classList.remove('hidden'); }
         function updatePhotoViewer() {
             if (viewerPhotos.length === 0) return;
-            const imgObj = typeof viewerPhotos[currentViewerIndex] === 'string' ? { url: viewerPhotos[currentViewerIndex], title: "" } : viewerPhotos[currentViewerIndex];
-            let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-            document.getElementById('viewer-img').src = pUrl; document.getElementById('viewer-title').innerText = imgObj.title || "";
+            let pUrl = viewerPhotos[currentViewerIndex]; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
+            document.getElementById('viewer-img').src = pUrl;
             document.getElementById('viewer-prev-btn').style.opacity = currentViewerIndex > 0 ? "1" : "0.5"; document.getElementById('viewer-next-btn').style.opacity = currentViewerIndex < viewerPhotos.length - 1 ? "1" : "0.5";
         }
         document.getElementById('viewer-close-btn').addEventListener('click', () => document.getElementById('photo-viewer-modal').classList.add('hidden') );
