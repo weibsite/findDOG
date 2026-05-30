@@ -79,9 +79,6 @@
     <div id="map-container"><div id="map"></div></div>
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
-        <!-- 背景輪播牆容器 (分階段載入用) -->
-        <div id="startup-bg-container" class="absolute inset-0 z-0 flex flex-wrap content-start pointer-events-none"></div>
-        
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
@@ -89,6 +86,14 @@
             <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button>
             <div id="error-msg" class="hidden"></div>
         </div>
+    </div>
+    
+    <!-- 省電模式全黑遮罩 -->
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black flex flex-col items-center justify-center text-gray-500 touch-none select-none cursor-pointer">
+        <div class="text-6xl mb-6 animate-pulse">🔋</div>
+        <div class="text-xl font-bold tracking-widest text-gray-400 mb-2">省電模式運行中</div>
+        <div class="text-xs text-gray-600 font-bold">軌跡記錄將持續運作</div>
+        <div class="text-sm mt-8 text-gray-500 animate-bounce">輕觸螢幕即可喚醒</div>
     </div>
 
     <!-- 跑馬燈提示 (抽獎資格) -->
@@ -317,9 +322,15 @@
             <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
 
-        <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
-            👣 累積步數<br>
-            <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+        <div class="flex gap-2 pointer-events-auto">
+            <div id="power-save-btn" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-gray-300 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col justify-center items-center">
+                🔋 省電模式<br>
+                <span class="text-xs sm:text-sm text-gray-600 font-black tracking-wider mt-0.5">ON/OFF</span>
+            </div>
+            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col justify-center items-center">
+                👣 累積步數<br>
+                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider leading-none">0</span>
+            </div>
         </div>
     </div>
 
@@ -435,38 +446,62 @@
             currentProjectKey = urlProject; // 網址參數優先級最高
         }
 
-        let hasPopulatedBg = false;
-        function populateStartupBackground() {
-            if (hasPopulatedBg) return;
-            const bgContainer = document.getElementById('startup-bg-container');
-            if (!bgContainer) return;
-            const keys = Object.keys(PROJECTS);
-            if (keys.length === 0) return;
-            hasPopulatedBg = true;
-            
-            const shuffled = [...keys].sort(() => 0.5 - Math.random()).slice(0, 15);
-            shuffled.forEach((key, index) => {
-                const proj = PROJECTS[key];
-                if (proj && proj.mainPhoto) {
-                    let pUrl = proj.mainPhoto;
-                    if(pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-                    
-                    const img = document.createElement('img');
-                    img.src = pUrl;
-                    img.className = "flex-grow h-24 sm:h-32 object-cover opacity-0 transition-opacity duration-1000 ease-in-out";
-                    img.style.minWidth = "25%";
-                    img.style.filter = "grayscale(60%) blur(2px) contrast(0.8) brightness(0.5)";
-                    bgContainer.appendChild(img);
-                    
-                    // 分階段交錯淡入
-                    setTimeout(() => {
-                        img.classList.remove('opacity-0');
-                        img.classList.add('opacity-50');
-                    }, 300 + index * 150);
+        // ================= 省電模式與螢幕常亮 =================
+        let wakeLock = null;
+        let powerSaveTimer = null;
+        let isPowerSaving = false;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released');
+                    });
+                    console.log('Screen Wake Lock active');
+                }
+            } catch (err) {
+                console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+        }
+
+        function enterPowerSaving() {
+            if (isPowerSaving) return;
+            isPowerSaving = true;
+            document.getElementById('power-saving-overlay').classList.remove('hidden');
+            requestWakeLock();
+        }
+
+        function exitPowerSaving() {
+            if (!isPowerSaving) return;
+            isPowerSaving = false;
+            document.getElementById('power-saving-overlay').classList.add('hidden');
+            resetPowerSaveTimer();
+        }
+
+        function resetPowerSaveTimer() {
+            if (powerSaveTimer) clearTimeout(powerSaveTimer);
+            if (isTrackingStarted && !isPowerSaving) {
+                powerSaveTimer = setTimeout(enterPowerSaving, 30000);
+            }
+        }
+
+        document.getElementById('power-save-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            enterPowerSaving();
+        });
+
+        // 任何互動都重置計時器或是喚醒
+        ['touchstart', 'mousedown', 'mousemove', 'click'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                if (isPowerSaving) {
+                    exitPowerSaving();
+                } else {
+                    resetPowerSaveTimer();
                 }
             });
-        }
-        
+        });
+
         function updateProjectDropdown() {
             projectSelect.innerHTML = '';
             
@@ -1258,9 +1293,6 @@
                             }
                         });
 
-                        // 觸發：分階段背景讀入專案主照片 (只有在按鈕點擊後才會開始載入)
-                        populateStartupBackground();
-
                         const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
                         if (oldProjectKey !== currentProjectKey) {
@@ -1644,6 +1676,14 @@
             document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden'); document.getElementById('nav-pin-btn').classList.remove('hidden'); document.getElementById('force-upload-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('eva-grid-btn').classList.remove('hidden');
             document.getElementById('toast-text').innerText = "位置同步成功";
+
+            resetPowerSaveTimer(); // 開始計時省電模式
+
+            // 第一次登入提示
+            if (!getPersistentData('dogMap_hasSeenStepPrompt')) {
+                showModal("⚠️ 重要提示：\n您的移動軌跡與累積步數僅在網頁開啟時記錄，如果關閉手機螢幕或跳出網頁將中斷記錄！\n\n(系統將於畫面靜止30秒後自動進入黑畫面「省電模式」，請安心使用)");
+                setPersistentData('dogMap_hasSeenStepPrompt', 'true');
+            }
         }
 
         function handleValidPosition(lat, lng, timestamp) {
