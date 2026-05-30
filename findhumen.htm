@@ -1282,35 +1282,32 @@
                     allUsersData = response.data.locations || {};
                     renderMap();
                 }
-                if(response.type === 'admin_strays_data') {
-                    const strays = response.data || [];
+                if(response.type === 'admin_apps_data') {
+                    adminCachedApps = response.data || [];
                     const container = document.getElementById('admin-list-container');
                     container.innerHTML = '';
                     
-                    if(strays.length === 0) {
+                    const strayApps = adminCachedApps.filter(app => app.projectData && app.projectData.isStray === true);
+                    
+                    if(strayApps.length === 0) {
                         container.innerHTML = '<p class="text-center font-bold text-gray-500 mt-10">目前沒有待處理的資料</p>';
                     } else {
-                        strays.forEach(item => {
+                        strayApps.forEach(item => {
                             const div = document.createElement('div');
                             div.className = "border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]";
                             
                             let mediaHtml = '';
-                            let mediaUrls = [];
-                            try { mediaUrls = JSON.parse(item.media_urls); } catch(e){}
-                            
-                            if(mediaUrls && mediaUrls.length > 0) {
-                                let firstUrl = mediaUrls[0];
-                                if(firstUrl.startsWith('/images/')) firstUrl = getBaseHttpUrl() + firstUrl;
-                                mediaHtml = `<img src="${firstUrl}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
+                            if(item.projectData && item.projectData.photos && item.projectData.photos.length > 0) {
+                                mediaHtml = `<img src="${item.projectData.photos[0]}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
                             }
 
                             div.innerHTML = `
                                 ${mediaHtml}
-                                <div class="font-bold text-sm mb-1">【${escapeHTML(item.animal_type)}】${escapeHTML(item.discover_time)}</div>
-                                <div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(item.notes) || '無備註'}</div>
+                                <div class="font-bold text-sm mb-1">【${escapeHTML(item.projectData.type === 'dog' ? '狗' : (item.projectData.type === 'cat' ? '貓' : '其他'))}】${escapeHTML(item.projectData.lostDate)}</div>
+                                <div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(item.projectData.announcement) || '無備註'}</div>
                                 <button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">審核 / 編輯</button>
                             `;
-                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item));
+                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item.id));
                             container.appendChild(div);
                         });
                     }
