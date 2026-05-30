@@ -79,6 +79,9 @@
     <div id="map-container"><div id="map"></div></div>
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
+        <!-- 背景輪播牆容器 (分階段載入用) -->
+        <div id="startup-bg-container" class="absolute inset-0 z-0 flex flex-wrap content-start pointer-events-none"></div>
+        
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
@@ -88,12 +91,8 @@
         </div>
     </div>
     
-    <!-- 省電模式全黑遮罩 -->
-    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black flex flex-col items-center justify-center text-gray-500 touch-none select-none cursor-pointer">
-        <div class="text-6xl mb-6 animate-pulse">🔋</div>
-        <div class="text-xl font-bold tracking-widest text-gray-400 mb-2">省電模式運行中</div>
-        <div class="text-xs text-gray-600 font-bold">軌跡記錄將持續運作</div>
-        <div class="text-sm mt-8 text-gray-500 animate-bounce">輕觸螢幕即可喚醒</div>
+    <!-- 省電模式全黑遮罩 (改為純黑98%透明度，無文字) -->
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-[rgba(0,0,0,0.98)] touch-none select-none cursor-pointer">
     </div>
 
     <!-- 跑馬燈提示 (抽獎資格) -->
@@ -111,6 +110,14 @@
 
     <!-- 基礎 Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
+    
+    <!-- 暫時半透明提示視窗 (Toast) -->
+    <div id="temp-toast-modal" class="hidden fixed inset-0 z-[16000] flex items-center justify-center pointer-events-none p-4">
+        <div id="temp-toast-box" class="bg-black/75 border border-gray-600 text-white px-6 py-4 rounded-lg text-center text-sm font-bold shadow-lg transition-opacity duration-500 opacity-0 pointer-events-none">
+            <span id="temp-toast-text"></span>
+        </div>
+    </div>
+
     <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
@@ -323,7 +330,8 @@
         </div>
 
         <div class="flex gap-2 pointer-events-auto">
-            <div id="power-save-btn" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-gray-300 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col justify-center items-center">
+            <!-- 預設隱藏，若判定為手機則在 js 移除 hidden 並加入 flex -->
+            <div id="power-save-btn" class="hidden pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-gray-300 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex-col justify-center items-center">
                 🔋 省電模式<br>
                 <span class="text-xs sm:text-sm text-gray-600 font-black tracking-wider mt-0.5">ON/OFF</span>
             </div>
@@ -418,6 +426,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
         let NGROK_WS_URL = "";
         function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
         function setPersistentData(key, value) { try { localStorage.setItem(key, value); } catch(e) {} }
@@ -480,6 +490,7 @@
         }
 
         function resetPowerSaveTimer() {
+            if (!isMobileDevice) return; // 非手機不啟用
             if (powerSaveTimer) clearTimeout(powerSaveTimer);
             if (isTrackingStarted && !isPowerSaving) {
                 powerSaveTimer = setTimeout(enterPowerSaving, 30000);
@@ -628,6 +639,24 @@
         function showHTMLModal(htmlContent) { customModalText.innerHTML = htmlContent; customModal.classList.remove('hidden'); }
         document.getElementById('custom-modal-btn').addEventListener('click', () => customModal.classList.add('hidden'));
         
+        // 暫時半透明提示視窗
+        function showTempToast(msg, duration = 4000) {
+            const modal = document.getElementById('temp-toast-modal');
+            const box = document.getElementById('temp-toast-box');
+            document.getElementById('temp-toast-text').innerText = msg;
+            modal.classList.remove('hidden');
+            
+            void box.offsetWidth; 
+            box.classList.remove('opacity-0');
+            box.classList.add('opacity-100');
+
+            setTimeout(() => {
+                box.classList.remove('opacity-100');
+                box.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 500);
+            }, duration);
+        }
+
         function showInputModal(title, placeholder, defaultValue, onSubmit) {
             document.getElementById('input-modal-title').innerText = title;
             const input = document.getElementById('input-modal-text'); input.placeholder = placeholder; input.value = defaultValue;
@@ -1679,9 +1708,9 @@
 
             resetPowerSaveTimer(); // 開始計時省電模式
 
-            // 第一次登入提示
+            // 第一次登入提示 (使用 Toast 無確認按鈕的模式)
             if (!getPersistentData('dogMap_hasSeenStepPrompt')) {
-                showModal("⚠️ 重要提示：\n您的移動軌跡與累積步數僅在網頁開啟時記錄，如果關閉手機螢幕或跳出網頁將中斷記錄！\n\n(系統將於畫面靜止30秒後自動進入黑畫面「省電模式」，請安心使用)");
+                showTempToast("如果你一直看到這個訊息，請使用瀏覽器打開這個網頁。");
                 setPersistentData('dogMap_hasSeenStepPrompt', 'true');
             }
         }
@@ -2292,6 +2321,15 @@
                     evaGridLayer = null;
                 }
             }
+        });
+
+        // 初始化時如果為手機裝置，顯示省電按鈕
+        window.addEventListener('DOMContentLoaded', () => {
+            if (isMobileDevice) {
+                document.getElementById('power-save-btn').classList.remove('hidden');
+                document.getElementById('power-save-btn').classList.add('flex');
+            }
+            initSystem();
         });
 
         // ================= 綁定事件 =================
