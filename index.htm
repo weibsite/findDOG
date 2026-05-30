@@ -1273,7 +1273,14 @@
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
                         const newProjects = response.dynamicProjects || response.data.dynamicProjects;
-                        PROJECTS = newProjects;
+                        
+                        // 【關鍵修正】過濾邏輯：排除浪浪 (isStray === true)
+                        PROJECTS = {};
+                        Object.keys(newProjects).forEach(key => {
+                            if (newProjects[key].isStray !== true) {
+                                PROJECTS[key] = newProjects[key];
+                            }
+                        });
                         
                         Object.keys(PROJECTS).forEach(k => {
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
