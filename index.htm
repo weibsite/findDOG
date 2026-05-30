@@ -1921,6 +1921,7 @@
             window.addEventListener('resize', resizeCanvas); 
             map.on('zoomend', resizeCanvas); 
             map.on('move', updateCanvasPosition);
+            map.on('resize', resizeCanvas); // 防止 Leaflet 容器尺寸變化時沒抓到
             resizeCanvas();
         }
         function requestFogRender() { if (!fogRenderPending) { fogRenderPending = true; requestAnimationFrame(() => { if(isFogVisible) renderFog(); fogRenderPending = false; }); } }
@@ -1928,18 +1929,19 @@
         function renderFog() {
             if (!map || !fogCtx || !isFogVisible) return;
             const w = Math.ceil(fogCanvas.width * FOG_SCALE), h = Math.ceil(fogCanvas.height * FOG_SCALE);
+            if (w <= 0 || h <= 0) return;
             
             lowResCanvas.width = w; lowResCanvas.height = h; tempCanvas.width = w; tempCanvas.height = h;
             
             const mapBounds = map.getBounds().pad(0.1);
             const center = map.getCenter();
-            const distToTw = getDistance(center.lat, center.lng, 23.5, 121.0);
             
+            // ✅ 修正迷霧消失 Bug：確保無論如何都有迷霧底圖
             if (taiwanPolygons.length > 0) {
                 let visiblePolygons = taiwanPolygons.filter(p => mapBounds.intersects(p.bounds));
                 
+                lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
                 if (visiblePolygons.length > 0) {
-                    lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
                     lowResCtx.beginPath();
                     visiblePolygons.forEach(p => {
                         p.coordinates.forEach(ring => {
@@ -1951,8 +1953,7 @@
                         });
                     });
                     lowResCtx.fill('evenodd');
-                } else if (distToTw > 500000) {
-                    lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+                } else {
                     lowResCtx.fillRect(0, 0, w, h);
                 }
             } else {
@@ -1985,7 +1986,9 @@
                     if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { 
                         const dynRadiusPx = getDynamicRadiusPx(historyPts, i);
                         const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
-                        if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); }
+                        if (!isNaN(sx) && !isNaN(sy) && dynRadiusPx > 0 && sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { 
+                            tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); 
+                        }
                     }
                 });
             });
@@ -2005,7 +2008,9 @@
                     if (now - point.timestamp < ONE_HOUR || isMyRouteMode) {
                         const dynRadiusPx = getDynamicRadiusPx(historyPts, i);
                         const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
-                        if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); }
+                        if (!isNaN(sx) && !isNaN(sy) && dynRadiusPx > 0 && sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { 
+                            tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); 
+                        }
                     }
                 });
             });
@@ -2752,428 +2757,4 @@
             sessionStorage.removeItem('dogMap_isAdmin');
             sessionStorage.removeItem('dogMap_adminToken');
             updateGiftUI();
-            showModal("已退出管理員模式。");
-        });
-        
-        document.getElementById('au-close-btn').addEventListener('click', () => {
-            document.getElementById('admin-user-info-modal').classList.add('hidden');
-        });
-
-        document.getElementById('au-restrict-btn').addEventListener('click', (e) => {
-            const uid = e.target.getAttribute('data-uid');
-            if (isSystemReady && uid) {
-                ws.send(JSON.stringify({ type: "admin_toggle_restriction", token: adminToken, uid: uid }));
-                e.target.innerText = "⏳ 處理中...";
-            }
-        });
-
-        document.getElementById('manage-blacklist-btn').addEventListener('click', () => {
-            if (!isAdmin) return;
-            if (isSystemReady) {
-                document.getElementById('blacklist-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>';
-                ws.send(JSON.stringify({ type: "admin_get_blacklist", token: adminToken }));
-                document.getElementById('manage-blacklist-modal').classList.remove('hidden');
-            } else {
-                showModal("⚠️ 系統未連線！");
-            }
-        });
-
-        document.getElementById('close-blacklist-btn').addEventListener('click', () => {
-            document.getElementById('manage-blacklist-modal').classList.add('hidden');
-        });
-
-        document.getElementById('save-restrict-prob-btn').addEventListener('click', () => {
-            if (!isAdmin) return;
-            const newProb = document.getElementById('restrict-prob-input').value;
-            if (isSystemReady) {
-                ws.send(JSON.stringify({ type: "admin_update_restrict_prob", token: adminToken, prob: newProb }));
-                document.getElementById('save-restrict-prob-btn').innerText = "⏳";
-                setTimeout(()=> document.getElementById('save-restrict-prob-btn').innerText = "儲存", 1000);
-            }
-        });
-
-        document.getElementById('set-ws-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            showInputModal("🔗 設定伺服器連線網址", "請輸入 wss:// 開頭的網址...", NGROK_WS_URL, (newUrl) => {
-                if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
-                    NGROK_WS_URL = newUrl;
-                    if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); }
-                    showModal("✅ 伺服器網址已更新，系統將自動重新連線！");
-                } else { showModal("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
-            });
-        });
-        
-        document.getElementById('status-toast').addEventListener('dblclick', () => {
-            showInputModal("🔗 設定伺服器連線網址", "請輸入 wss:// 開頭的網址...", NGROK_WS_URL, (newUrl) => {
-                if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
-                    NGROK_WS_URL = newUrl;
-                    if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); }
-                    showModal("✅ 伺服器網址已更新，系統將自動重新連線！");
-                } else { showModal("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
-            });
-        });
-        
-        document.getElementById('add-sighting-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            showInputModal(`📍 新增「${PROJECTS[currentProjectKey].name}」出沒點`, "請詳細描述此事件點...", "", (desc) => {
-                const positionMethodModal = document.getElementById('position-method-modal');
-                positionMethodModal.classList.remove('hidden');
-                const mapBtn = document.getElementById('pos-method-map-btn');
-                const inputBtn = document.getElementById('pos-method-input-btn');
-                const cancelBtn = document.getElementById('pos-method-cancel-btn');
-                const newMapBtn = mapBtn.cloneNode(true), newInputBtn = inputBtn.cloneNode(true), newCancelBtn = cancelBtn.cloneNode(true);
-                mapBtn.parentNode.replaceChild(newMapBtn, mapBtn); inputBtn.parentNode.replaceChild(newInputBtn, inputBtn); cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-                newMapBtn.addEventListener('click', () => {
-                    positionMethodModal.classList.add('hidden');
-                    showModal("📍 請在地圖上【點擊】發生該事件的精確位置！");
-                    map.once('click', (e) => {
-                        if(isSystemReady) {
-                            ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
-                            showModal("✅ 成功新增事件點！");
-                        }
-                    });
-                });
-
-                newInputBtn.addEventListener('click', () => {
-                    positionMethodModal.classList.add('hidden');
-                    const inputField = document.getElementById('coord-input-value'); inputField.value = "";
-                    const coordinateInputModal = document.getElementById('coordinate-input-modal');
-                    coordinateInputModal.classList.remove('hidden');
-                    const submitBtn = document.getElementById('coord-submit-btn'); const cancelBtn = document.getElementById('coord-cancel-btn');
-                    const newSubmitBtn = submitBtn.cloneNode(true), newCancelBtn = cancelBtn.cloneNode(true);
-                    submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn); cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-                    newSubmitBtn.addEventListener('click', () => {
-                        const val = inputField.value.trim();
-                        if (!val) { showModal("⚠️ 請輸入座標內容！"); return; }
-                        
-                        function parseCoordinatesInput(inputStr) {
-                            inputStr = inputStr.trim();
-                            let parts = inputStr.split(/[,;\s]+/);
-                            if (parts.length >= 2) {
-                                let lat = parseFloat(parts[0]); let lng = parseFloat(parts[1]);
-                                if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
-                            }
-                            return null;
-                        }
-                        
-                        const parsed = parseCoordinatesInput(val);
-                        if (parsed) {
-                            coordinateInputModal.classList.add('hidden');
-                            if(isSystemReady) {
-                                ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
-                                showModal(`✅ 成功新增事件點！\n座標：[${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}]`);
-                                map.setView([parsed.lat, parsed.lng], 16, { animate: true }); 
-                            } else { showModal("⚠️ 系統未連線，無法送出指令！"); }
-                        } else { showModal("⚠️ 無法解析您的座標格式！\n範例: 23.75288, 120.39444"); }
-                    });
-                    newCancelBtn.addEventListener('click', () => { coordinateInputModal.classList.add('hidden'); });
-                });
-                newCancelBtn.addEventListener('click', () => { positionMethodModal.classList.add('hidden'); });
-            });
-        });
-        
-        document.getElementById('manage-sightings-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            renderManageSightingsList(); document.getElementById('manage-sightings-modal').classList.remove('hidden');
-        });
-        document.getElementById('close-manage-modal-btn').addEventListener('click', () => document.getElementById('manage-sightings-modal').classList.add('hidden') );
-
-        function renderManageSightingsList() {
-            const container = document.getElementById('sightings-list-container');
-            container.innerHTML = '';
-            
-            const ids = Object.keys(allSightings).filter(id => {
-                const p = allSightings[id].project || "阿妹";
-                return p === currentProjectKey;
-            });
-            
-            if (ids.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey]?.name || ''}」沒有任何出沒點紀錄。</p>`;
-                return;
-            }
-            ids.sort((a, b) => allSightings[b].timestamp - allSightings[a].timestamp);
-
-            ids.forEach(id => {
-                const data = allSightings[id];
-                const d = new Date(data.timestamp); 
-                const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                const safeDesc = escapeHTML(data.description);
-                
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'border-4 border-black p-3 bg-white shadow-[4px_4px_0px_#1a202c]';
-                itemDiv.innerHTML = `
-                    <div class="font-bold text-blue-700 mb-1 border-b-2 border-dashed border-gray-400 pb-1 text-sm">🕒 ${dateStr}</div>
-                    <div class="mb-3 text-gray-800 text-sm leading-relaxed">${safeDesc}</div>
-                    <div class="flex gap-2">
-                        <button class="edit-sighting-btn flex-1 bg-blue-500 text-white font-bold py-1 border-2 border-black hover:bg-blue-600 transition" data-id="${id}">📝 編輯</button>
-                        <button class="delete-sighting-btn flex-1 bg-red-500 text-white font-bold py-1 border-2 border-black hover:bg-red-600 transition" data-id="${id}">🗑️ 刪除</button>
-                    </div>
-                `;
-                container.appendChild(itemDiv);
-            });
-
-            container.querySelectorAll('.edit-sighting-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    const data = allSightings[id];
-                    showInputModal("📝 編輯出沒點", "請修改描述...", data.description, (newDesc) => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_sighting", id: id, token: adminToken, project: currentProjectKey, data: { description: newDesc } })); showModal("✅ 編輯指令已送出！"); }
-                    });
-                });
-            });
-
-            container.querySelectorAll('.delete-sighting-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    showConfirm("確定要永久刪除這個出沒紀錄嗎？", () => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_sighting", id: id, token: adminToken, project: currentProjectKey })); showModal("✅ 刪除指令已送出！"); }
-                    });
-                });
-            });
-        }
-        
-        document.getElementById('route-weight').addEventListener('input', (e) => { document.getElementById('route-weight-val').innerText = e.target.value; updateDrawingRoutePreview(); });
-        document.getElementById('route-color').addEventListener('input', updateDrawingRoutePreview);
-
-        document.getElementById('add-route-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            isDrawingRoute = true; currentRoutePoints = []; document.getElementById('route-name').value = '';
-            document.getElementById('route-drawing-panel').classList.remove('hidden'); document.getElementById('admin-panel').classList.add('hidden'); 
-            showModal(`🗺️ 進入「${PROJECTS[currentProjectKey]?.name || ''}」路線繪製模式！\n請直接在地圖上「點擊」來新增路線節點。`); updateDrawingRoutePreview();
-        });
-
-        document.getElementById('route-undo-btn').addEventListener('click', () => {
-            if (currentRoutePoints.length > 0) { currentRoutePoints.pop(); updateDrawingRoutePreview(); }
-        });
-
-        document.getElementById('route-cancel-btn').addEventListener('click', () => exitRouteDrawingMode());
-
-        document.getElementById('route-finish-btn').addEventListener('click', () => {
-            if (currentRoutePoints.length < 2) { showModal("⚠️ 路線至少需要兩個節點才能成線！"); return; }
-            const name = document.getElementById('route-name').value.trim() || '未命名路線';
-            const color = document.getElementById('route-color').value; const weight = parseInt(document.getElementById('route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, project: currentProjectKey, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
-            } else { showModal("⚠️ 系統未連線！"); }
-        });
-
-        function exitRouteDrawingMode() {
-            isDrawingRoute = false; document.getElementById('route-drawing-panel').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden');
-            if (currentRoutePolyline) map.removeLayer(currentRoutePolyline);
-            currentRouteMarkers.forEach(m => map.removeLayer(m));
-            currentRoutePolyline = null; currentRouteMarkers = [];
-        }
-
-        function updateDrawingRoutePreview() {
-            if (currentRoutePolyline) map.removeLayer(currentRoutePolyline);
-            currentRouteMarkers.forEach(m => map.removeLayer(m)); currentRouteMarkers = [];
-            const color = document.getElementById('route-color').value; const weight = parseInt(document.getElementById('route-weight').value);
-            if (currentRoutePoints.length > 0) {
-                currentRoutePolyline = L.polyline(currentRoutePoints, { color, weight, dashArray: '5, 10' }).addTo(map);
-                currentRoutePoints.forEach(pt => { const marker = L.circleMarker(pt, { radius: 5, color: '#1a202c', weight: 2, fillColor: color, fillOpacity: 1 }).addTo(map); currentRouteMarkers.push(marker); });
-            }
-        }
-        
-        document.getElementById('manage-routes-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            renderManageRoutesList(); document.getElementById('manage-routes-modal').classList.remove('hidden');
-        });
-        document.getElementById('close-manage-routes-btn').addEventListener('click', () => document.getElementById('manage-routes-modal').classList.add('hidden') );
-
-        function renderManageRoutesList() {
-            const routesListContainer = document.getElementById('routes-list-container');
-            routesListContainer.innerHTML = ''; 
-            const ids = Object.keys(allRoutes).filter(id => {
-                const p = allRoutes[id].project || "阿妹";
-                return p === currentProjectKey;
-            });
-            
-            if (ids.length === 0) { routesListContainer.innerHTML = `<p class="text-center text-gray-500 font-bold mt-8">目前「${PROJECTS[currentProjectKey]?.name || ''}」沒有任何路線紀錄。</p>`; return; }
-            ids.sort((a, b) => allRoutes[b].timestamp - allRoutes[a].timestamp);
-
-            ids.forEach(id => {
-                const data = allRoutes[id]; const safeName = escapeHTML(data.name);
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'border-4 border-black p-3 bg-white shadow-[4px_4px_0px_#1a202c]';
-                itemDiv.innerHTML = `
-                    <div class="font-bold text-gray-900 mb-2 flex items-center gap-2"><div class="w-4 h-4 border-2 border-black" style="background-color: ${data.color}"></div>${safeName} (粗細: ${data.weight})</div>
-                    <div class="flex gap-2"><button class="edit-route-btn flex-1 bg-blue-500 text-white font-bold py-1 border-2 border-black hover:bg-blue-600 transition" data-id="${id}">📝 屬性</button><button class="delete-route-btn flex-1 bg-red-500 text-white font-bold py-1 border-2 border-black hover:bg-red-600 transition" data-id="${id}">🗑️ 刪除</button></div>
-                `;
-                routesListContainer.appendChild(itemDiv);
-            });
-
-            routesListContainer.querySelectorAll('.edit-route-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    editingRouteId = e.target.getAttribute('data-id'); const data = allRoutes[editingRouteId];
-                    document.getElementById('edit-route-name').value = data.name; document.getElementById('edit-route-color').value = data.color;
-                    document.getElementById('edit-route-weight').value = data.weight; document.getElementById('edit-route-weight-val').innerText = data.weight;
-                    document.getElementById('edit-route-modal').classList.remove('hidden');
-                });
-            });
-
-            routesListContainer.querySelectorAll('.delete-route-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    showConfirm("確定要永久刪除這條路線嗎？", () => { if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_route", id: id, token: adminToken, project: currentProjectKey })); showModal("✅ 刪除指令已送出！"); } });
-                });
-            });
-        }
-        
-        document.getElementById('edit-route-weight').addEventListener('input', (e) => { document.getElementById('edit-route-weight-val').innerText = e.target.value; });
-        document.getElementById('edit-route-cancel').addEventListener('click', () => { document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; });
-        document.getElementById('edit-route-save').addEventListener('click', () => {
-            if (!editingRouteId) return;
-            const newName = document.getElementById('edit-route-name').value.trim() || '未命名路線';
-            const newColor = document.getElementById('edit-route-color').value; const newWeight = parseInt(document.getElementById('edit-route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_route", id: editingRouteId, token: adminToken, project: currentProjectKey, data: { name: newName, color: newColor, weight: newWeight } })); showModal("✅ 屬性已更新！"); document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; }
-        });
-        
-        document.getElementById('update-announce-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            let currentRawText = allAnnouncements[currentProjectKey] || PROJECTS[currentProjectKey]?.announcement || "";
-            showInputModal(`📢 更新「${PROJECTS[currentProjectKey]?.name || ''}」公告`, "請輸入最新的公告內容...", currentRawText, (text) => {
-                allAnnouncements[currentProjectKey] = text; 
-                if(isSystemReady) {
-                    ws.send(JSON.stringify({ type: "update_announcement", token: adminToken, data: text, project: currentProjectKey })); 
-                    showModal("✅ 公告更新指令已送出！"); 
-                }
-            });
-        });
-        
-        const addPrizeBtn = document.getElementById('add-prize-btn');
-        const managePrizesBtn = document.getElementById('manage-prizes-btn');
-        const addPrizeModal = document.getElementById('add-prize-modal');
-        const managePrizesModal = document.getElementById('manage-prizes-modal');
-        const prizeRowsContainer = document.getElementById('prize-rows-container');
-
-        function createPrizeRow() {
-            const div = document.createElement('div');
-            div.className = 'border-4 border-black p-3 bg-gray-100 relative mb-3';
-            div.innerHTML = `
-                <button class="absolute top-1 right-1 text-red-600 font-bold text-xs remove-row-btn px-2 py-1 active:translate-y-1">✖</button>
-                <input type="text" class="prize-name-input pixel-input w-full p-2 mb-2 text-sm" placeholder="獎項名稱 (例如: 咖啡一杯)">
-                
-                <select class="prize-type-select pixel-input w-full p-2 mb-2 text-sm bg-white cursor-pointer">
-                    <option value="url">🔗 外部網址</option>
-                </select>
-                
-                <input type="text" class="prize-url-input pixel-input w-full p-2 mb-2 text-sm" placeholder="兌換網址 (https://...)">
-
-                <div class="flex items-center gap-2 mb-2 bg-blue-50 p-1 border-2 border-blue-200">
-                    <label class="text-xs font-bold text-gray-800 whitespace-nowrap">一般機率(%):</label>
-                    <input type="number" class="prize-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="1.0" min="0.001" step="0.1">
-                </div>
-                
-                <div class="flex items-center gap-2 bg-red-50 p-1 border-2 border-red-200">
-                    <label class="text-xs font-bold text-gray-800 whitespace-nowrap">首抽機率(%):</label>
-                    <input type="number" class="prize-first-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="70.0" min="0.001" step="0.1">
-                </div>
-            `;
-            
-            div.querySelector('.remove-row-btn').addEventListener('click', () => div.remove());
-            return div;
-        }
-
-        addPrizeBtn.addEventListener('click', () => {
-            if (!isAdmin) return;
-            document.getElementById('add-prize-title').innerText = `🎁 新增「${PROJECTS[currentProjectKey]?.name || ''}」獎池`;
-            prizeRowsContainer.innerHTML = ''; 
-            prizeRowsContainer.appendChild(createPrizeRow());
-            addPrizeModal.classList.remove('hidden');
-        });
-
-        document.getElementById('add-prize-row-btn').addEventListener('click', () => {
-            prizeRowsContainer.appendChild(createPrizeRow());
-        });
-
-        document.getElementById('add-prize-cancel-btn').addEventListener('click', () => {
-            addPrizeModal.classList.add('hidden');
-        });
-
-        document.getElementById('add-prize-submit-btn').addEventListener('click', () => {
-            const rows = prizeRowsContainer.children;
-            const prizes = [];
-            
-            for (let i = 0; i < rows.length; i++) {
-                const name = rows[i].querySelector('.prize-name-input').value.trim();
-                const prob = parseFloat(rows[i].querySelector('.prize-prob-input').value);
-                const first_prob = parseFloat(rows[i].querySelector('.prize-first-prob-input').value);
-                const url = rows[i].querySelector('.prize-url-input').value.trim();
-
-                if (name && url && !isNaN(prob) && !isNaN(first_prob)) {
-                    prizes.push({ name, url, prob, first_prob });
-                }
-            }
-
-            if (prizes.length === 0) {
-                showModal("⚠️ 請至少完整填寫一個獎品的名稱與網址！");
-                return;
-            }
-
-            if (isSystemReady) {
-                ws.send(JSON.stringify({ type: "add_prizes", token: adminToken, project: currentProjectKey, data: prizes }));
-                addPrizeModal.classList.add('hidden');
-                showModal("⏳ 獎品新增指令已送出！系統將自動比對重複項目...");
-            } else {
-                showModal("⚠️ 系統未連線！");
-            }
-        });
-
-        managePrizesBtn.addEventListener('click', () => {
-            if (!isAdmin) return;
-            document.getElementById('manage-prize-title').innerText = `⚙️ 管理「${PROJECTS[currentProjectKey]?.name || ''}」獎品`;
-            if (isSystemReady) {
-                document.getElementById('admin-prizes-list-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>';
-                ws.send(JSON.stringify({ type: "get_admin_prizes", token: adminToken, project: currentProjectKey }));
-                managePrizesModal.classList.remove('hidden');
-            } else {
-                showModal("⚠️ 系統未連線！");
-            }
-        });
-
-        document.getElementById('close-manage-prizes-btn').addEventListener('click', () => {
-            managePrizesModal.classList.add('hidden');
-        });
-        
-        document.getElementById('save-prizes-btn').addEventListener('click', () => {
-            const updates = [];
-            const availableItems = document.querySelectorAll('.edit-prob-input');
-            
-            availableItems.forEach(probInp => {
-                const id = probInp.getAttribute('data-id');
-                const firstProbInp = document.querySelector(`.edit-first-prob-input[data-id="${id}"]`);
-                
-                if (firstProbInp && (probInp.value !== probInp.getAttribute('data-original') || 
-                    firstProbInp.value !== firstProbInp.getAttribute('data-original'))) {
-                    updates.push({
-                        id: id,
-                        prob: parseFloat(probInp.value),
-                        first_prob: parseFloat(firstProbInp.value)
-                    });
-                }
-            });
-            
-            if (updates.length > 0 && isSystemReady) {
-                const btn = document.getElementById('save-prizes-btn');
-                btn.innerText = "儲存中...";
-                btn.className = "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed";
-                btn.disabled = true;
-                
-                ws.send(JSON.stringify({ type: "update_prize_probs", token: adminToken, data: updates }));
-            }
-        });
-
-        document.getElementById('slot-close-btn').addEventListener('click', () => document.getElementById('slot-machine-modal').classList.add('hidden'));
-        document.getElementById('floating-gift-container').addEventListener('click', () => {
-            if (isSpectatorMode) { showModal("觀看模式無法參與抽獎喔！"); return; }
-            document.getElementById('slot-machine-title').innerText = `🎰 「${PROJECTS[currentProjectKey]?.name || ''}」抽獎`;
-            updateGiftUI();
-            document.getElementById('slot-machine-modal').classList.remove('hidden');
-        });
-        document.getElementById('prize-pool-close-btn').addEventListener('click', () => { document.getElementById('prize-pool-modal').classList.add('hidden'); });
-
-        window.addEventListener('DOMContentLoaded', initSystem);
-    </script>
-</body>
-</html>
+            showModal("已
