@@ -90,10 +90,6 @@
             <div id="error-msg" class="hidden"></div>
         </div>
     </div>
-    
-    <!-- 省電模式全黑遮罩 (純黑，無文字，不與迷霧衝突) -->
-    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black touch-none select-none cursor-pointer">
-    </div>
 
     <!-- 跑馬燈提示 (抽獎資格) -->
     <div id="lottery-marquee-container" class="hidden absolute top-1/3 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-red-600/90 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]">
@@ -110,14 +106,6 @@
 
     <!-- 基礎 Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
-    
-    <!-- 暫時半透明提示視窗 (Toast) -->
-    <div id="temp-toast-modal" class="hidden fixed inset-0 z-[16000] flex items-center justify-center pointer-events-none p-4">
-        <div id="temp-toast-box" class="bg-black/75 border border-gray-600 text-white px-6 py-4 rounded-lg text-center text-sm font-bold shadow-lg transition-opacity duration-500 opacity-0 pointer-events-none">
-            <span id="temp-toast-text"></span>
-        </div>
-    </div>
-
     <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
@@ -329,16 +317,9 @@
             <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
 
-        <div class="flex gap-2 pointer-events-auto">
-            <!-- 預設隱藏，若判定為手機則在 js 移除 hidden 並加入 flex -->
-            <div id="power-save-btn" class="hidden pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-gray-300 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex-col justify-center items-center">
-                🔋 省電模式<br>
-                <span class="text-xs sm:text-sm text-gray-600 font-black tracking-wider mt-0.5">ON/OFF</span>
-            </div>
-            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col justify-center items-center">
-                👣 累積步數<br>
-                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider leading-none">0</span>
-            </div>
+        <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
+            👣 累積步數<br>
+            <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
         </div>
     </div>
 
@@ -426,8 +407,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
         let NGROK_WS_URL = "";
         function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
         function setPersistentData(key, value) { try { localStorage.setItem(key, value); } catch(e) {} }
@@ -455,63 +434,6 @@
         if (urlProject) {
             currentProjectKey = urlProject; // 網址參數優先級最高
         }
-
-        // ================= 省電模式與螢幕常亮 =================
-        let wakeLock = null;
-        let powerSaveTimer = null;
-        let isPowerSaving = false;
-
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Screen Wake Lock released');
-                    });
-                    console.log('Screen Wake Lock active');
-                }
-            } catch (err) {
-                console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
-            }
-        }
-
-        function enterPowerSaving() {
-            if (isPowerSaving) return;
-            isPowerSaving = true;
-            document.getElementById('power-saving-overlay').classList.remove('hidden');
-            requestWakeLock();
-        }
-
-        function exitPowerSaving() {
-            if (!isPowerSaving) return;
-            isPowerSaving = false;
-            document.getElementById('power-saving-overlay').classList.add('hidden');
-            resetPowerSaveTimer();
-        }
-
-        function resetPowerSaveTimer() {
-            if (!isMobileDevice) return; // 非手機不啟用
-            if (powerSaveTimer) clearTimeout(powerSaveTimer);
-            if (isTrackingStarted && !isPowerSaving) {
-                powerSaveTimer = setTimeout(enterPowerSaving, 30000);
-            }
-        }
-
-        document.getElementById('power-save-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            enterPowerSaving();
-        });
-
-        // 任何互動都重置計時器或是喚醒
-        ['touchstart', 'mousedown', 'mousemove', 'click'].forEach(evt => {
-            window.addEventListener(evt, () => {
-                if (isPowerSaving) {
-                    exitPowerSaving();
-                } else {
-                    resetPowerSaveTimer();
-                }
-            });
-        });
 
         let hasPopulatedBg = false;
         function populateStartupBackground() {
@@ -544,7 +466,7 @@
                 }
             });
         }
-
+        
         function updateProjectDropdown() {
             projectSelect.innerHTML = '';
             
@@ -671,24 +593,6 @@
         function showHTMLModal(htmlContent) { customModalText.innerHTML = htmlContent; customModal.classList.remove('hidden'); }
         document.getElementById('custom-modal-btn').addEventListener('click', () => customModal.classList.add('hidden'));
         
-        // 暫時半透明提示視窗
-        function showTempToast(msg, duration = 4000) {
-            const modal = document.getElementById('temp-toast-modal');
-            const box = document.getElementById('temp-toast-box');
-            document.getElementById('temp-toast-text').innerText = msg;
-            modal.classList.remove('hidden');
-            
-            void box.offsetWidth; 
-            box.classList.remove('opacity-0');
-            box.classList.add('opacity-100');
-
-            setTimeout(() => {
-                box.classList.remove('opacity-100');
-                box.classList.add('opacity-0');
-                setTimeout(() => modal.classList.add('hidden'), 500);
-            }, duration);
-        }
-
         function showInputModal(title, placeholder, defaultValue, onSubmit) {
             document.getElementById('input-modal-title').innerText = title;
             const input = document.getElementById('input-modal-text'); input.placeholder = placeholder; input.value = defaultValue;
@@ -1740,14 +1644,6 @@
             document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden'); document.getElementById('nav-pin-btn').classList.remove('hidden'); document.getElementById('force-upload-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('eva-grid-btn').classList.remove('hidden');
             document.getElementById('toast-text').innerText = "位置同步成功";
-
-            resetPowerSaveTimer(); // 開始計時省電模式
-
-            // 第一次登入提示 (使用 Toast 無確認按鈕的模式)
-            if (!getPersistentData('dogMap_hasSeenStepPrompt')) {
-                showTempToast("如果你一直看到這個訊息，請使用瀏覽器打開這個網頁。");
-                setPersistentData('dogMap_hasSeenStepPrompt', 'true');
-            }
         }
 
         function handleValidPosition(lat, lng, timestamp) {
@@ -2358,15 +2254,6 @@
             }
         });
 
-        // 初始化時如果為手機裝置，顯示省電按鈕
-        window.addEventListener('DOMContentLoaded', () => {
-            if (isMobileDevice) {
-                document.getElementById('power-save-btn').classList.remove('hidden');
-                document.getElementById('power-save-btn').classList.add('flex');
-            }
-            initSystem();
-        });
-
         // ================= 綁定事件 =================
         document.getElementById('master-start-btn').addEventListener('click', (e) => {
             e.preventDefault();
@@ -2850,7 +2737,7 @@
         
         document.getElementById('add-sighting-btn').addEventListener('click', () => {
             if(!isAdmin) return;
-            showInputModal(`📍 新增「${PROJECTS[currentProjectKey]?.name || ''}」出沒點`, "請詳細描述此事件點...", "", (desc) => {
+            showInputModal(`📍 新增「${PROJECTS[currentProjectKey].name}」出沒點`, "請詳細描述此事件點...", "", (desc) => {
                 const positionMethodModal = document.getElementById('position-method-modal');
                 positionMethodModal.classList.remove('hidden');
                 const mapBtn = document.getElementById('pos-method-map-btn');
@@ -3208,14 +3095,7 @@
         });
         document.getElementById('prize-pool-close-btn').addEventListener('click', () => { document.getElementById('prize-pool-modal').classList.add('hidden'); });
 
-        // 初始化時如果為手機裝置，顯示省電按鈕
-        window.addEventListener('DOMContentLoaded', () => {
-            if (isMobileDevice) {
-                document.getElementById('power-save-btn').classList.remove('hidden');
-                document.getElementById('power-save-btn').classList.add('flex');
-            }
-            initSystem();
-        });
+        window.addEventListener('DOMContentLoaded', initSystem);
     </script>
 </body>
 </html>
