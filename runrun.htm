@@ -15,7 +15,8 @@
         
         .pixel-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
-        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:disabled { opacity: 0.7; cursor: not-allowed; }
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
         .pixel-input:focus { background-color: #fef3c7; }
         .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
@@ -78,7 +79,9 @@
     <!-- 3. 基礎 Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[12000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[12000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
-    <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
+    
+    <!-- 後台管理員登入 Modal -->
+    <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 系統管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
 
     <!-- 個人設定 Modal -->
     <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
@@ -108,13 +111,15 @@
         </div>
     </div>
     
-    <!-- 5. 主功能按鈕 -->
-    <button id="report-stray-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-3 text-sm bg-green-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">📢 回報浪浪</button>
-    <button id="my-route-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
-    <button id="toggle-fog-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
-    <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
-    <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 觀看模式</div>
-    <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
+    <!-- 5. 主功能按鈕 (位置重新編排) -->
+    <button id="report-stray-btn" class="absolute bottom-[14rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-green-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">📢 回報浪浪</button>
+    <button id="user-manage-trigger-btn-left" class="absolute bottom-[11rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-blue-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🐾 管理浪浪</button>
+    <button id="my-route-btn" class="absolute bottom-[8.5rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
+    <button id="toggle-fog-btn" class="absolute bottom-[6.5rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
+    
+    <button id="spectator-btn" class="absolute bottom-16 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
+    <div id="spectator-hint" class="hidden absolute bottom-16 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 觀看模式</div>
+    <button id="locate-btn" class="absolute bottom-4 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
     <!-- 軌跡播放控制面板 -->
     <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
@@ -127,10 +132,13 @@
 
     <!-- 6. 右上角：線上狀態與動物卡片 / 公告區 -->
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
-        <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help">
-            <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
-            <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
-            <div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div>
+        <div class="pointer-events-auto flex gap-2">
+            <button id="top-user-manage-btn" class="pixel-btn p-2 text-xs bg-blue-500 text-white shadow-[2px_2px_0px_#1a202c]">🐾 登入管理</button>
+            <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 cursor-help">
+                <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
+                <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
+                <div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div>
+            </div>
         </div>
 
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
@@ -214,7 +222,7 @@
     <!-- 8. 步驟2：包含 Cropper.js 與拖曳排序的進階表單 Modal -->
     <div id="report-form-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-5 w-full max-w-md bg-white max-h-[90vh] overflow-y-auto flex flex-col gap-4 text-left">
-            <h3 class="text-center font-bold text-xl text-green-700 border-b-2 border-black pb-2">📝 步驟 2/2：填寫浪浪資訊</h3>
+            <h3 id="report-form-title" class="text-center font-bold text-xl text-green-700 border-b-2 border-black pb-2">📝 步驟 2/2：填寫浪浪資訊</h3>
             
             <div>
                 <label class="block text-sm font-bold mb-1 text-red-600">📸 主照片 (必填，將顯示為封面)</label>
@@ -234,7 +242,6 @@
                     <div id="existing-photos-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
                     <input type="file" id="f-photos" accept="image/*,video/*" multiple class="w-full text-sm font-bold bg-white mb-1">
                     <p class="text-[10px] text-gray-500 font-bold">選擇檔案後會自動加到列表後方。</p>
-                    <input type="hidden" id="f-photos-data">
                 </div>
             </div>
 
@@ -264,7 +271,7 @@
             </div>
 
             <div class="flex gap-2 mt-2 border-t-2 border-dashed border-gray-400 pt-4">
-                <button id="report-form-back-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white">⬅️ 上一步</button>
+                <button id="report-form-back-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white">⬅️ 關閉</button>
                 <button id="report-submit-btn" class="pixel-btn flex-[2] py-3 bg-green-500 text-white text-lg">🚀 確認送出</button>
             </div>
         </div>
@@ -285,6 +292,33 @@
         </div>
     </div>
 
+    <!-- 設定專屬管理密碼 Modal -->
+    <div id="pwd-setup-modal" class="hidden fixed inset-0 z-[12000] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white p-6 pixel-panel text-center">
+            <h3 class="font-bold text-xl text-blue-700 mb-2">🎉 感謝您的回報！</h3>
+            <p class="text-sm font-bold text-gray-700 mb-4 leading-relaxed">請截圖保存下方為您生成的密碼。<br>您也可以<span class="text-red-500">直接修改此密碼</span>（若有多隻浪浪，請使用相同的密碼，未來即可統一登入管理！）</p>
+            <input type="text" id="setup-pwd-input" class="pixel-input w-full p-3 text-center text-2xl tracking-widest font-black mb-4 uppercase" maxlength="6">
+            <button id="setup-pwd-confirm" class="pixel-btn w-full py-3 bg-red-500 text-white text-lg">確認並建立浪浪檔案</button>
+        </div>
+    </div>
+
+    <!-- 用戶個人浪浪管理中心 Modal -->
+    <div id="user-manage-modal" class="hidden fixed inset-0 z-[11500] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white p-4 pixel-panel max-h-[90vh] flex flex-col">
+            <h3 class="font-bold text-xl text-blue-700 mb-3 text-center border-b-2 border-black pb-2">🐾 浪浪管理中心</h3>
+            <div class="flex gap-2 mb-2">
+                <input type="text" id="user-manage-pwd-input" class="pixel-input flex-1 p-2 uppercase text-center tracking-widest font-bold" placeholder="輸入 6 位數密碼" maxlength="6">
+                <button id="user-manage-load-btn" class="pixel-btn px-4 bg-yellow-400 text-sm">手動載入</button>
+            </div>
+            <p class="text-[10px] text-gray-500 font-bold mb-3">系統會自動嘗試載入您在此裝置建立的浪浪。</p>
+            
+            <div id="user-manage-list-container" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                <!-- 動態生成的管理清單 -->
+            </div>
+            <button id="user-manage-close-btn" class="pixel-btn w-full py-2 mt-4 bg-gray-400 text-white">關閉管理中心</button>
+        </div>
+    </div>
+
     <!-- 檔案上傳真實進度框 -->
     <div id="upload-progress-modal" class="hidden fixed inset-0 z-[11000] bg-black/90 flex flex-col items-center justify-center p-4">
         <div class="pixel-panel p-6 sm:p-8 w-full max-w-sm text-center">
@@ -297,14 +331,13 @@
         </div>
     </div>
 
-    <!-- 9. 管理員按鈕與面板 -->
+    <!-- 9. 管理員後台按鈕與面板 (隱藏，由左下角獨立觸發) -->
     <div class="absolute bottom-10 right-4 z-[2000] flex flex-col gap-2 pointer-events-none">
         <button id="admin-login-btn" class="pixel-btn p-2 text-[10px] sm:text-xs pointer-events-auto bg-gray-200">👑 管理員</button>
         <div id="admin-panel" class="hidden flex flex-col gap-2 pointer-events-auto border-4 border-red-600 bg-red-100 p-2 shadow-[4px_4px_0px_rgba(220,38,38,1)]">
-            <div class="text-red-700 font-bold text-center text-xs border-b-2 border-red-400 pb-1 mb-1">後台管理</div>
+            <div class="text-red-700 font-bold text-center text-xs border-b-2 border-red-400 pb-1 mb-1">系統後台管理</div>
             <button id="admin-pending-btn" class="pixel-btn p-2 text-xs bg-orange-500 text-white">📋 審核浪浪</button>
             <button id="admin-approved-btn" class="pixel-btn p-2 text-xs bg-blue-500 text-white">🐾 管理已上架</button>
-            <button id="set-ws-btn" class="pixel-btn p-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button>
             <button id="admin-logout-btn" class="pixel-btn p-1 text-[10px] bg-gray-500 text-white mt-1">退出管理</button>
         </div>
     </div>
@@ -402,23 +435,226 @@
         const GALLERY_BATCH_SIZE = 2;
 
         let adminCachedApps = []; 
-
-        // 宣告 allAnnouncements
         let allAnnouncements = {};
 
         // --- Cropper 與媒體變數 ---
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
-        let existingPhotos = []; // 存放 File 物件 (額外媒體)
+        let currentMediaList = []; // Array of { type: 'url'|'file', data: string|File }
         let dragSrcIndex = null;
+
+        // --- 使用者管理變數 ---
+        let loadedManageStrays = [];
+        let editingMyStray = null; // 儲存目前正在編輯的物件
 
         const customModal = document.getElementById('custom-modal'), customModalText = document.getElementById('custom-modal-text');
         function showModal(msg) { customModalText.innerText = msg; customModal.classList.remove('hidden'); }
         document.getElementById('custom-modal-btn').addEventListener('click', () => customModal.classList.add('hidden'));
 
+        function showConfirm(msg, onConfirm) {
+            document.getElementById('confirm-modal-text').innerText = msg; document.getElementById('confirm-modal').classList.remove('hidden');
+            const okBtn = document.getElementById('confirm-ok-btn'), cancelBtn = document.getElementById('confirm-cancel-btn');
+            const newOk = okBtn.cloneNode(true), newCancel = cancelBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOk, okBtn); cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            newOk.addEventListener('click', () => { document.getElementById('confirm-modal').classList.add('hidden'); onConfirm(); });
+            newCancel.addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+        }
+
         function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
         function generateRandomColor() { const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return colors[Math.floor(Math.random() * colors.length)]; }
 
+        // ================= WS Promise 工具 (供管理載入使用) =================
+        function waitWsResponse(targetType, timeout = 2000) {
+            return new Promise((resolve) => {
+                const timer = setTimeout(() => {
+                    ws.removeEventListener('message', handler);
+                    resolve(null);
+                }, timeout);
+                const handler = (e) => {
+                    const res = JSON.parse(e.data);
+                    if (res.type === targetType) {
+                        clearTimeout(timer);
+                        ws.removeEventListener('message', handler);
+                        resolve(res);
+                    }
+                };
+                ws.addEventListener('message', handler);
+            });
+        }
+
+        async function getFreeIndexAndLogin(pwd) {
+            // 嘗試 0~19 的編號，找到還沒被使用的。避免無限迴圈。
+            for (let i = 0; i < 20; i++) {
+                const testAcc = `stray_${pwd}_${i}`;
+                ws.send(JSON.stringify({ type: "owner_login", account: testAcc, password: pwd }));
+                const res = await waitWsResponse('owner_login_result', 1500);
+                if (!res || !res.success) {
+                    return i; // 找不到該帳號代表此 index 可用
+                }
+            }
+            return 99; // 防呆
+        }
+
+        async function fetchStraysByPassword(pwd) {
+            let results = [];
+            for (let i = 0; i < 20; i++) {
+                const testAcc = `stray_${pwd}_${i}`;
+                ws.send(JSON.stringify({ type: "owner_login", account: testAcc, password: pwd }));
+                const res = await waitWsResponse('owner_login_result', 1500);
+                if (res && res.success) {
+                    // 只過濾屬於浪浪的回報
+                    if (res.data.projectData && res.data.projectData.isStray) {
+                        results.push(res.data);
+                    }
+                } else {
+                    break; // 只要遇到不成功的，代表後面的 index 也還沒用到，直接中斷
+                }
+            }
+            return results;
+        }
+
+        // ================= 浪浪管理中心邏輯 =================
+        async function openUserManageModal() {
+            document.getElementById('user-manage-modal').classList.remove('hidden');
+            const btn = document.getElementById('user-manage-load-btn');
+            btn.innerText = "讀取中..."; btn.disabled = true;
+            document.getElementById('user-manage-list-container').innerHTML = '<p class="text-center text-sm font-bold text-gray-500 mt-4">正在自動連線尋找您的紀錄...</p>';
+
+            loadedManageStrays = [];
+            let myPwds = JSON.parse(localStorage.getItem('strayMap_myPasswords') || '[]');
+            for (let pwd of myPwds) {
+                const strays = await fetchStraysByPassword(pwd);
+                strays.forEach(s => {
+                    if (!loadedManageStrays.find(x => x.id === s.id)) loadedManageStrays.push(s);
+                });
+            }
+            renderUserManageList();
+            btn.innerText = "手動載入"; btn.disabled = false;
+        }
+
+        document.getElementById('top-user-manage-btn').addEventListener('click', openUserManageModal);
+        document.getElementById('user-manage-trigger-btn-left').addEventListener('click', openUserManageModal);
+        document.getElementById('user-manage-close-btn').addEventListener('click', () => { document.getElementById('user-manage-modal').classList.add('hidden'); });
+
+        document.getElementById('user-manage-load-btn').addEventListener('click', async () => {
+            const pwdInput = document.getElementById('user-manage-pwd-input');
+            const pwd = pwdInput.value.trim().toUpperCase();
+            if (pwd.length < 1) return;
+            pwdInput.value = "";
+
+            const btn = document.getElementById('user-manage-load-btn');
+            btn.innerText = "讀取中..."; btn.disabled = true;
+
+            const strays = await fetchStraysByPassword(pwd);
+            if (strays.length > 0) {
+                strays.forEach(s => {
+                    if (!loadedManageStrays.find(x => x.id === s.id)) loadedManageStrays.push(s);
+                });
+                renderUserManageList();
+                
+                let myPwds = JSON.parse(localStorage.getItem('strayMap_myPasswords') || '[]');
+                if (!myPwds.includes(pwd)) {
+                    myPwds.push(pwd);
+                    localStorage.setItem('strayMap_myPasswords', JSON.stringify(myPwds));
+                }
+            } else {
+                showModal("找不到對應密碼的浪浪！請確認密碼是否正確。");
+            }
+            btn.innerText = "手動載入"; btn.disabled = false;
+        });
+
+        function renderUserManageList() {
+            const container = document.getElementById('user-manage-list-container');
+            container.innerHTML = '';
+            if (loadedManageStrays.length === 0) {
+                container.innerHTML = '<p class="text-center text-sm font-bold text-gray-500 mt-4">尚未建立或找不到任何資料</p>';
+                return;
+            }
+
+            // 依時間反向排序
+            loadedManageStrays.sort((a, b) => new Date(b.projectData.lostDate) - new Date(a.projectData.lostDate));
+
+            loadedManageStrays.forEach(app => {
+                const pd = app.projectData;
+                const div = document.createElement('div');
+                div.className = `border-2 border-black p-2 shadow-[2px_2px_0px_#1a202c] ${app.status === 'deleted' || app.status === 'found_owner' ? 'bg-gray-300 opacity-70' : 'bg-white'}`;
+                
+                let statusTag = app.status === 'pending' ? '<span class="bg-orange-500 text-white px-1 ml-1 text-[10px]">審核中</span>' :
+                                app.status === 'approved' ? '<span class="bg-green-500 text-white px-1 ml-1 text-[10px]">展示中</span>' :
+                                '<span class="bg-gray-600 text-white px-1 ml-1 text-[10px]">已結案/下架</span>';
+
+                let firstUrl = pd.mainPhoto;
+                if(firstUrl && firstUrl.startsWith('/images/')) firstUrl = getBaseHttpUrl() + firstUrl;
+
+                div.innerHTML = `
+                    <div class="flex gap-2 items-center">
+                        <img src="${firstUrl}" class="w-16 h-16 object-cover border border-black bg-gray-200">
+                        <div class="flex-1 overflow-hidden">
+                            <div class="font-bold text-sm truncate flex items-center">${escapeHTML(pd.animalName)} ${statusTag}</div>
+                            <div class="text-xs text-gray-600 truncate mt-1">時間: ${escapeHTML(pd.lostDate)}</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        ${(app.status !== 'found_owner' && app.status !== 'deleted') ? 
+                        `<button class="pixel-btn flex-1 py-1 text-xs bg-blue-500 text-white edit-my-stray" data-id="${app.id}">✏️ 編輯資料</button>
+                         <button class="pixel-btn flex-1 py-1 text-xs bg-green-600 text-white found-my-stray" data-id="${app.id}">✅ 已找到(下架)</button>` : 
+                         `<button class="pixel-btn w-full py-1 text-xs bg-gray-400 text-white" disabled>本案已結案關閉</button>`}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.querySelectorAll('.edit-my-stray').forEach(btn => btn.addEventListener('click', (e) => openMyStrayEditor(e.target.getAttribute('data-id'))));
+            document.querySelectorAll('.found-my-stray').forEach(btn => btn.addEventListener('click', (e) => markMyStrayFound(e.target.getAttribute('data-id'))));
+        }
+
+        function openMyStrayEditor(appId) {
+            editingMyStray = loadedManageStrays.find(a => a.id === appId);
+            if (!editingMyStray) return;
+            const pd = editingMyStray.projectData;
+
+            document.getElementById('user-manage-modal').classList.add('hidden');
+            
+            document.getElementById('report-form-title').innerText = "📝 浪浪管理 (編輯模式)";
+            document.getElementById('report-time').value = pd.lostDate.replace(' ', 'T');
+            document.getElementById('report-type').value = pd.type === 'dog' ? '狗' : pd.type === 'cat' ? '貓' : pd.type === 'bird' ? '鳥' : '其他';
+
+            let notes = pd.announcement || "";
+            let contact = "";
+            const contactSplit = notes.split("\n\n聯絡方式: ");
+            if (contactSplit.length > 1) { notes = contactSplit[0]; contact = contactSplit[1]; }
+            document.getElementById('report-notes').value = notes;
+            document.getElementById('report-contact').value = contact;
+
+            document.getElementById('f-main-photo').value = "";
+            croppedMainPhotoBlob = null;
+            let mUrl = pd.mainPhoto;
+            if (mUrl && mUrl.startsWith('/images/')) mUrl = getBaseHttpUrl() + mUrl;
+            document.getElementById('main-photo-preview').classList.remove('hidden');
+            document.getElementById('main-photo-preview').querySelector('img').src = mUrl;
+
+            currentMediaList = [];
+            if (pd.photos) pd.photos.forEach(p => currentMediaList.push({ type: 'url', data: p }));
+            if (pd.videos) pd.videos.forEach(p => currentMediaList.push({ type: 'url', data: p }));
+            renderPhotos();
+
+            document.getElementById('report-form-modal').classList.remove('hidden');
+        }
+
+        function markMyStrayFound(appId) {
+            const app = loadedManageStrays.find(a => a.id === appId);
+            if (!app) return;
+            showConfirm("確定這隻浪浪已找到，或要將其下架嗎？\n(下架後將從地圖上移除)", () => {
+                if(!isSystemReady) { showModal("連線中斷"); return; }
+                ws.send(JSON.stringify({
+                    type: "submit_application", id: app.id, ownerInfo: app.ownerInfo, projectData: app.projectData, forceStatus: "found_owner"
+                }));
+                app.status = 'found_owner';
+                renderUserManageList();
+            });
+        }
+
+        // ================= 地圖核心與軌跡 =================
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; 
             const p1 = lat1 * Math.PI / 180;
@@ -508,6 +744,7 @@
             document.getElementById('project-select-wrapper').classList.remove('hidden');
             document.getElementById('report-stray-btn').classList.remove('hidden');
             document.getElementById('toggle-fog-btn').classList.remove('hidden');
+            document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
             document.getElementById('spectator-btn').classList.remove('hidden');
             document.getElementById('locate-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden');
@@ -609,6 +846,28 @@
             else { throw new Error("上傳失敗"); }
         }
 
+        // ======= 密碼設定 Modal 封裝 =======
+        function promptForPasswordSetup() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('pwd-setup-modal');
+                const input = document.getElementById('setup-pwd-input');
+                const confirmBtn = document.getElementById('setup-pwd-confirm');
+
+                // 自動生成 6 碼英數亂數
+                input.value = Math.random().toString(36).substring(2, 8).toUpperCase();
+                modal.classList.remove('hidden');
+
+                const onClick = () => {
+                    const pwd = input.value.trim().toUpperCase();
+                    if(pwd.length < 3) { alert("密碼太短，請至少輸入3個字元"); return; }
+                    confirmBtn.removeEventListener('click', onClick);
+                    modal.classList.add('hidden');
+                    resolve(pwd);
+                };
+                confirmBtn.addEventListener('click', onClick);
+            });
+        }
+
         // ======= 回報流程：步驟 1 =======
         document.getElementById('report-stray-btn').addEventListener('click', () => {
             isReportingMode = true;
@@ -623,6 +882,7 @@
             document.getElementById('report-crosshair').style.display = 'block';
             document.getElementById('report-location-panel').classList.remove('hidden');
             document.getElementById('report-stray-btn').classList.add('hidden');
+            document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
             document.getElementById('project-select-wrapper').classList.add('hidden');
             
             if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
@@ -633,6 +893,7 @@
             document.getElementById('report-crosshair').style.display = 'none';
             document.getElementById('report-location-panel').classList.add('hidden');
             document.getElementById('report-stray-btn').classList.remove('hidden');
+            document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
             document.getElementById('project-select-wrapper').classList.remove('hidden');
             
             if (preReportFogState) {
@@ -676,12 +937,16 @@
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('report-time').value = now.toISOString().slice(0, 16);
             
-            // 清空表單
+            // 清空表單並將狀態切換為新增
+            editingMyStray = null;
+            document.getElementById('report-form-title').innerText = "📝 步驟 2/2：填寫浪浪資訊";
             document.getElementById('f-main-photo').value = "";
             document.getElementById('f-main-photo-url').value = "";
             document.getElementById('main-photo-preview').classList.add('hidden');
+            document.getElementById('report-notes').value = "";
+            document.getElementById('report-contact').value = "";
             croppedMainPhotoBlob = null;
-            existingPhotos = [];
+            currentMediaList = [];
             renderPhotos();
             
             document.getElementById('report-form-modal').classList.remove('hidden');
@@ -689,8 +954,13 @@
 
         document.getElementById('report-form-back-btn').addEventListener('click', () => {
             document.getElementById('report-form-modal').classList.add('hidden');
-            document.getElementById('report-location-panel').classList.remove('hidden');
-            document.getElementById('report-crosshair').style.display = 'block';
+            // 如果是從管理介面編輯進來的，關閉時就不回報位置，直接結束
+            if (editingMyStray) {
+                editingMyStray = null;
+            } else {
+                document.getElementById('report-location-panel').classList.remove('hidden');
+                document.getElementById('report-crosshair').style.display = 'block';
+            }
         });
 
         // ======= 圖片裁剪 UI =======
@@ -727,10 +997,10 @@
         document.getElementById('f-photos').addEventListener('change', function(e) {
             if (e.target.files && e.target.files.length > 0) {
                 for (let i = 0; i < e.target.files.length; i++) {
-                    existingPhotos.push(e.target.files[i]);
+                    currentMediaList.push({ type: 'file', data: e.target.files[i] });
                 }
                 renderPhotos();
-                this.value = ""; // 清空 input 以便重複選擇同一個檔案
+                this.value = ""; 
             }
         });
 
@@ -745,9 +1015,9 @@
         function handleDrop(e, targetIndex) {
             e.stopPropagation();
             if (dragSrcIndex === null || dragSrcIndex === targetIndex) return false;
-            const draggedItem = existingPhotos[dragSrcIndex];
-            existingPhotos.splice(dragSrcIndex, 1);
-            existingPhotos.splice(targetIndex, 0, draggedItem);
+            const draggedItem = currentMediaList[dragSrcIndex];
+            currentMediaList.splice(dragSrcIndex, 1);
+            currentMediaList.splice(targetIndex, 0, draggedItem);
             renderPhotos();
             return false;
         }
@@ -755,9 +1025,18 @@
         function renderPhotos() {
             const grid = document.getElementById('existing-photos-grid');
             grid.innerHTML = '';
-            existingPhotos.forEach((file, index) => {
-                const url = URL.createObjectURL(file);
-                const isVideo = file.type.startsWith('video/');
+            currentMediaList.forEach((item, index) => {
+                let url = "";
+                let isVideo = false;
+                
+                if (item.type === 'file') {
+                    url = URL.createObjectURL(item.data);
+                    isVideo = item.data.type.startsWith('video/');
+                } else {
+                    url = item.data;
+                    if(url && url.startsWith('/images/')) url = getBaseHttpUrl() + url;
+                    isVideo = url.match(/\.(mp4|webm|mov|ogg)$/i) != null;
+                }
                 
                 let innerHtml = '';
                 if (isVideo) {
@@ -776,20 +1055,19 @@
                     </div>`;
             });
         }
-        function removePhoto(index) { existingPhotos.splice(index, 1); renderPhotos(); }
+        function removePhoto(index) { currentMediaList.splice(index, 1); renderPhotos(); }
 
 
         // ======= 最終送出回報 =======
         document.getElementById('report-submit-btn').addEventListener('click', async () => {
             const timeVal = document.getElementById('report-time').value;
             if(!timeVal) { showModal("請填寫發現時間！"); return; }
-            if(!croppedMainPhotoBlob && document.getElementById('f-main-photo').files.length === 0) {
+            if(!croppedMainPhotoBlob && document.getElementById('f-main-photo').files.length === 0 && !editingMyStray) {
                 showModal("請務必上傳並裁剪主照片！"); return;
             }
             
             document.getElementById('report-submit-btn').disabled = true;
 
-            // 顯示進度
             updateProgress(1, 'pending', '處理主照片...');
             updateProgress(2, 'pending', '處理額外媒體...');
             updateProgress(3, 'pending', '同步資料至伺服器...');
@@ -798,77 +1076,112 @@
             try {
                 // 1. 上傳主照片
                 updateProgress(1, 'active', '正在上傳裁切後的主封面...');
-                let mainPhotoUrl = "";
+                let mainPhotoUrl = editingMyStray ? editingMyStray.projectData.mainPhoto : "";
+                
                 if (croppedMainPhotoBlob) {
                     mainPhotoUrl = await uploadBlobFile(croppedMainPhotoBlob, 'main_photo.jpg');
-                } else {
+                } else if (document.getElementById('f-main-photo').files.length > 0) {
                     const urls = await uploadFiles(document.getElementById('f-main-photo'));
                     if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
-                updateProgress(1, 'done', '主照片上傳完成');
+                updateProgress(1, 'done', '主照片處理完成');
 
-                // 2. 上傳額外相片/影片 (依序，並且自動分類到 Photos 還是 Videos 陣列)
-                updateProgress(2, 'active', '正在逐一上傳額外媒體...');
+                // 2. 上傳額外相片/影片 
+                updateProgress(2, 'active', '正在逐一處理與上傳額外媒體...');
                 let mediaUrls = [];
                 let videoUrls = [];
-                for (let i = 0; i < existingPhotos.length; i++) {
-                    const file = existingPhotos[i];
-                    const url = await uploadFileObj(file);
+                for (let i = 0; i < currentMediaList.length; i++) {
+                    const item = currentMediaList[i];
+                    let url = "";
+                    let isVideo = false;
+                    
+                    if (item.type === 'file') {
+                        url = await uploadFileObj(item.data);
+                        isVideo = item.data.type.startsWith('video/');
+                    } else {
+                        url = item.data;
+                        isVideo = url.match(/\.(mp4|webm|mov|ogg)$/i) != null;
+                    }
+                    
                     if (url) {
-                        if (file.type.startsWith('video/')) {
-                            videoUrls.push(url);
-                        } else {
-                            mediaUrls.push(url);
-                        }
+                        if (isVideo) videoUrls.push(url); else mediaUrls.push(url);
                     }
                 }
-                updateProgress(2, 'done', '額外媒體上傳完成');
+                updateProgress(2, 'done', '額外媒體處理完成');
 
                 // 3. 送出 WS API
-                updateProgress(3, 'active', '準備建立浪浪通報檔案...');
+                let ownerInfo, strayId, forceStatus;
+
+                // 如果是全新回報，跳出密碼設定
+                if (!editingMyStray) {
+                    document.getElementById('upload-progress-modal').classList.add('hidden');
+                    const finalPwd = await promptForPasswordSetup();
+                    document.getElementById('upload-progress-modal').classList.remove('hidden');
+                    
+                    updateProgress(3, 'active', '正在為您分配專屬雲端空間...');
+                    const freeIdx = await getFreeIndexAndLogin(finalPwd);
+                    ownerInfo = { account: `stray_${finalPwd}_${freeIdx}`, password: finalPwd };
+                    strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+                    forceStatus = "pending";
+                    
+                    let myPwds = JSON.parse(localStorage.getItem('strayMap_myPasswords') || '[]');
+                    if (!myPwds.includes(finalPwd)) {
+                        myPwds.push(finalPwd);
+                        localStorage.setItem('strayMap_myPasswords', JSON.stringify(myPwds));
+                    }
+                } else {
+                    updateProgress(3, 'active', '正在更新雲端檔案...');
+                    ownerInfo = editingMyStray.ownerInfo;
+                    strayId = editingMyStray.id;
+                    forceStatus = editingMyStray.status; // 保持原有狀態
+                }
 
                 const payload = {
                     isStray: true, 
                     animalName: "浪浪 (" + document.getElementById('report-type').value + ")",
                     type: document.getElementById('report-type').value === '狗' ? 'dog' : (document.getElementById('report-type').value === '貓' ? 'cat' : 'other'),
                     lostDate: timeVal.replace('T', ' '),
-                    bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
+                    bounds: editingMyStray ? editingMyStray.projectData.bounds : [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
                     mainPhoto: mainPhotoUrl,
                     photos: mediaUrls,
                     videos: videoUrls,
                     announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
                 };
 
-                const strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
-
                 if(isSystemReady) {
                     ws.send(JSON.stringify({ 
                         type: "submit_application", 
                         id: strayId,
-                        ownerInfo: { account: "stray_user_" + myUid, password: "123" },
+                        ownerInfo: ownerInfo,
                         projectData: payload,
-                        forceStatus: "pending" 
+                        forceStatus: forceStatus 
                     }));
                     
                     setTimeout(() => {
-                        updateProgress(3, 'done', '回報已成功送出！');
+                        updateProgress(3, 'done', '作業已成功完成！');
                         setTimeout(() => {
                             document.getElementById('upload-progress-modal').classList.add('hidden');
                             document.getElementById('report-form-modal').classList.add('hidden');
                             isReportingMode = false;
-                            document.getElementById('report-stray-btn').classList.remove('hidden');
-                            document.getElementById('project-select-wrapper').classList.remove('hidden');
-                            document.getElementById('report-submit-btn').disabled = false;
-                            document.getElementById('report-notes').value = ''; 
-                            document.getElementById('report-contact').value = '';
                             
-                            if (preReportFogState) {
-                                isFogVisible = true;
-                                const fogPane = map ? map.getPane('fogPane') : null;
-                                if(fogPane) fogPane.style.display = 'block';
-                                requestFogRender();
+                            document.getElementById('report-stray-btn').classList.remove('hidden');
+                            document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
+                            document.getElementById('project-select-wrapper').classList.remove('hidden');
+                            
+                            document.getElementById('report-submit-btn').disabled = false;
+                            
+                            if (editingMyStray) {
+                                showModal("✅ 修改已成功儲存！");
+                                editingMyStray = null; // 重置
+                            } else {
+                                if (preReportFogState) {
+                                    isFogVisible = true;
+                                    const fogPane = map ? map.getPane('fogPane') : null;
+                                    if(fogPane) fogPane.style.display = 'block';
+                                    requestFogRender();
+                                }
+                                showModal("✅ 非常感謝您的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家追蹤。");
                             }
-                            showModal("✅ 非常感謝您的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家追蹤。");
                         }, 1000);
                     }, 500);
                 } else {
@@ -1100,8 +1413,6 @@
 
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) totalOnlineUserCount++;
                 if (isSpectatorMode && isSelf) return;
-
-                // 已經移除了專案過濾限制！所有參與尋寵或浪浪地圖的志工都會顯示！
 
                 if (!currentBounds.contains([lastPoint.lat, lastPoint.lng])) return;
 
@@ -1349,7 +1660,7 @@
                     document.getElementById('admin-list-modal').classList.remove('hidden');
                 }
 
-                if(response.type === 'admin_login_result') {
+                if(response.type === 'admin_login_result' && document.getElementById('admin-login-modal').classList.contains('hidden') === false) {
                     document.getElementById('admin-submit-btn').innerText = "登入";
                     if(response.success) {
                         isAdmin = true; adminToken = response.token;
@@ -1358,7 +1669,7 @@
                         document.getElementById('admin-login-modal').classList.add('hidden');
                         document.getElementById('admin-login-btn').classList.add('hidden');
                         document.getElementById('admin-panel').classList.remove('hidden');
-                        showModal("✅ 登入成功！");
+                        showModal("✅ 系統管理員登入成功！");
                     } else { showModal("❌ 密碼錯誤！"); }
                 }
 
