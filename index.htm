@@ -385,7 +385,7 @@
     </div>
 
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3">
-        <a href="runrun.htm" target="_blank" class="text-orange-600 hover:text-orange-800 no-underline font-black">回報浪浪</a>
+        <a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">回報浪浪</a>
         <a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a>
         <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a>
     </div>
@@ -787,13 +787,30 @@
             const actionContainer = document.getElementById('announcement-action-container');
             actionContainer.innerHTML = '';
             if (proj.actionLink && proj.actionLink.url) {
-                const btnText = proj.actionLink.text || "前往連結";
-                const btn = document.createElement('a');
-                btn.href = proj.actionLink.url;
-                btn.target = "_blank";
-                btn.className = "pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white shadow-[2px_2px_0px_#1a202c] no-underline";
-                btn.innerText = `🔗 ${btnText}`;
-                actionContainer.appendChild(btn);
+                // 自動過濾雜訊，確保取出絕對網址
+                let rawUrl = String(proj.actionLink.url);
+                let extractedUrl = "";
+                let httpMatch = rawUrl.match(/https?:\/\/[^\s"'>]+/);
+                
+                if (httpMatch) {
+                    extractedUrl = httpMatch[0];
+                } else {
+                    extractedUrl = rawUrl.replace(/[\u4e00-\u9fa5\s]/g, '');
+                    if (extractedUrl && !extractedUrl.startsWith('http')) {
+                        extractedUrl = 'https://' + extractedUrl;
+                    }
+                }
+
+                if (extractedUrl && extractedUrl !== 'https://') {
+                    const btnText = proj.actionLink.text || "前往連結";
+                    const btn = document.createElement('a');
+                    btn.href = extractedUrl;
+                    btn.target = "_blank";
+                    btn.rel = "noopener noreferrer";
+                    btn.className = "pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white shadow-[2px_2px_0px_#1a202c] no-underline";
+                    btn.innerText = `🔗 ${btnText}`;
+                    actionContainer.appendChild(btn);
+                }
             }
 
             applyAnnouncePanelCollapseState();
