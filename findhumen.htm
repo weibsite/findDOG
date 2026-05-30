@@ -7,10 +7,15 @@
     <!--不請求icon-->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 核心：地圖樣式與腳本 (修復 L is not defined) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <!-- 引入 Cropper.js 供照片裁剪使用 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; }
         #map-container { position: relative; width: 100vw; height: 100vh; }
@@ -18,7 +23,7 @@
         
         .pixel-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
-        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .pixel-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
         .pixel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
         .pixel-input:focus { background-color: #fef3c7; }
@@ -48,9 +53,6 @@
             line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
         }
         #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
-
-        /* 照片比對容器 */
-        .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
 
         /* 標靶中心游標 (回報用) */
         .crosshair-target { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; pointer-events: none; z-index: 1000; display: none; }
@@ -200,6 +202,7 @@
     </div>
 
     <!-- ================= 修改過的多頁表單 Modal ================= -->
+    <!-- 步驟1：回報浪浪位置面板 -->
     <div id="report-location-panel" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm flex flex-col gap-3">
         <h3 class="text-center font-bold text-lg text-blue-700 border-b-2 border-black pb-1">📍 步驟 1/2：標記發現位置</h3>
         <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址/座標來快速移動</p>
@@ -213,6 +216,7 @@
         </div>
     </div>
 
+    <!-- 步驟2：填寫回報表單 Modal -->
     <div id="report-form-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-5 w-full max-w-lg bg-white max-h-[90vh] overflow-y-auto flex flex-col text-left">
             <h3 class="text-center font-bold text-xl text-green-700 border-b-2 border-black pb-2 mb-4">📝 步驟 2/2：填寫浪浪資訊</h3>
@@ -238,6 +242,7 @@
                 <div class="bg-gray-100 p-3 border-2 border-black space-y-3">
                     <h4 class="font-bold text-gray-900 border-b-2 border-gray-300 pb-1">📸 上傳照片與影片</h4>
                     
+                    <!-- 1. 主照片 (支援 Cropper) -->
                     <div class="bg-white p-2 border border-black">
                         <label class="font-bold text-red-600 block mb-1 text-sm">主照片 (必填，將顯示在地圖封面)</label>
                         <p class="text-xs font-bold text-gray-500 mb-2">可點擊下方選擇照片後進行裁剪。</p>
@@ -248,12 +253,12 @@
                         </div>
                     </div>
 
+                    <!-- 2. 額外影音 (支援拖曳) -->
                     <div class="bg-white p-2 border border-black">
                         <label class="font-bold text-blue-700 block mb-1 text-sm">額外相片與影片 (可拖曳排序，點擊 X 刪除)</label>
                         <div id="existing-media-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2 empty:hidden"></div>
                         <p class="text-[10px] font-bold text-gray-500 mb-1">選擇的新媒體將會在儲存後加入到相簿最後方。</p>
                         <input type="file" id="report-extra-media" accept="image/*,video/*" multiple class="w-full text-xs font-bold mb-2 cursor-pointer">
-                        <input type="hidden" id="report-media-data" value="[]">
                     </div>
                 </div>
 
@@ -347,6 +352,7 @@
         <a href="/" target="_self" class="text-blue-600 hover:text-blue-800 no-underline font-black">切換至尋寵地圖</a>
     </div>
 
+    <!-- 內聯腳本 -->
     <script>
         let ws; 
         let NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
@@ -404,11 +410,101 @@
 
         let adminCachedApps = []; 
 
-        // 上傳與裁剪相關
+        // ================= 照片裁剪與拖曳上傳模組 =================
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
-        let existingMedia = [];
+        let existingMedia = []; // 存放所有選擇的額外檔案
         let dragSrcIndex = null;
+
+        // 進度 UI
+        function updateProgress(step, status, text) {
+            const el = document.getElementById(`prog-${step}`);
+            if (!el) return;
+            if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; }
+            else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; }
+            else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; }
+            else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; }
+        }
+
+        // 1. 主照片裁剪邏輯
+        document.getElementById('report-main-photo').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                document.getElementById('crop-image-target').src = url;
+                document.getElementById('crop-modal').classList.remove('hidden');
+                
+                if (cropperInstance) cropperInstance.destroy();
+                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
+            }
+        });
+
+        function confirmCrop() {
+            if (cropperInstance) {
+                cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob((blob) => {
+                    croppedMainPhotoBlob = blob;
+                    document.getElementById('main-photo-preview').classList.remove('hidden');
+                    document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
+                    document.getElementById('crop-modal').classList.add('hidden');
+                }, 'image/jpeg', 0.85);
+            }
+        }
+
+        function cancelCrop() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            document.getElementById('report-main-photo').value = "";
+            croppedMainPhotoBlob = null;
+        }
+
+        // 2. 額外媒體拖曳排序邏輯
+        document.getElementById('report-extra-media').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                existingMedia.push({
+                    file: file,
+                    url: URL.createObjectURL(file),
+                    type: file.type.startsWith('video/') ? 'video' : 'photo'
+                });
+            });
+            renderMediaGrid();
+            this.value = ''; // Reset
+        });
+
+        function handleDragStart(e, index) {
+            dragSrcIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => e.target.classList.add('opacity-50'), 0);
+        }
+
+        function handleDragEnd(e) { e.target.classList.remove('opacity-50'); }
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
+        function handleDrop(e, targetIndex) {
+            e.stopPropagation();
+            if (dragSrcIndex === null || dragSrcIndex === targetIndex) return false;
+            const draggedItem = existingMedia[dragSrcIndex];
+            existingMedia.splice(dragSrcIndex, 1);
+            existingMedia.splice(targetIndex, 0, draggedItem);
+            renderMediaGrid();
+            return false;
+        }
+
+        function renderMediaGrid() {
+            const grid = document.getElementById('existing-media-grid');
+            grid.innerHTML = '';
+            existingMedia.forEach((media, index) => {
+                let mediaHtml = media.type === 'video' 
+                    ? `<video src="${media.url}" class="w-full h-full object-cover pointer-events-none bg-black"></video><div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>`
+                    : `<img src="${media.url}" class="w-full h-full object-cover pointer-events-none">`;
+
+                grid.innerHTML += `
+                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95" draggable="true" ondragstart="handleDragStart(event, ${index})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})">
+                        ${mediaHtml}
+                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeMedia(${index})">✕</button>
+                    </div>`;
+            });
+        }
+        function removeMedia(index) { existingMedia.splice(index, 1); renderMediaGrid(); }
+        // ========================================================
 
         const customModal = document.getElementById('custom-modal'), customModalText = document.getElementById('custom-modal-text');
         function showModal(msg) { customModalText.innerText = msg; customModal.classList.remove('hidden'); }
@@ -424,16 +520,6 @@
         }
         function escapeHTML(str) { return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m])); }
         function generateRandomColor() { const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return colors[Math.floor(Math.random() * colors.length)]; }
-
-        // ======= 進度 UI =======
-        function updateProgress(step, status, text) {
-            const el = document.getElementById(`prog-${step}`);
-            if (!el) return;
-            if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; }
-            else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; }
-            else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; }
-            else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; }
-        }
 
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; 
@@ -469,7 +555,7 @@
             return compressed;
         }
 
-        // ====== 定位與存檔功能 ======
+        // ====== 補回遺失的核心定位與存檔功能 ======
         function saveLocationToServer(newPoint, forceUpdate = false) {
             if (!isSystemReady) return;
             const uData = {
@@ -549,7 +635,7 @@
                 if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url;
             } catch (e) {}
 
-            SERVER_HTTP_URL = getBaseHttpUrl();
+            SERVER_HTTP_URL = getBaseHttpUrl(); // 初始化 Http Url 給相簿用
 
             fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json')
                 .then(res => res.json())
@@ -600,78 +686,6 @@
             
             connectWebSocket(); checkLocalSetupAndStart();
         }
-
-        // ================= 照片裁剪與拖曳上傳模組 =================
-        document.getElementById('report-main-photo').addEventListener('change', function(e) {
-            if (e.target.files && e.target.files.length > 0) {
-                const file = e.target.files[0];
-                const url = URL.createObjectURL(file);
-                document.getElementById('crop-image-target').src = url;
-                document.getElementById('crop-modal').classList.remove('hidden');
-                
-                if (cropperInstance) cropperInstance.destroy();
-                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
-            }
-        });
-
-        function confirmCrop() {
-            if (cropperInstance) {
-                cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob((blob) => {
-                    croppedMainPhotoBlob = blob;
-                    document.getElementById('main-photo-preview').classList.remove('hidden');
-                    document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
-                    document.getElementById('crop-modal').classList.add('hidden');
-                }, 'image/jpeg', 0.85);
-            }
-        }
-
-        function cancelCrop() {
-            document.getElementById('crop-modal').classList.add('hidden');
-            document.getElementById('report-main-photo').value = "";
-            croppedMainPhotoBlob = null;
-        }
-
-        // 額外媒體拖曳排序
-        function handleDragStart(e, index) {
-            dragSrcIndex = index;
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => e.target.classList.add('opacity-50'), 0);
-        }
-
-        function handleDragEnd(e) { e.target.classList.remove('opacity-50'); }
-        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
-        function handleDrop(e, targetIndex) {
-            e.stopPropagation();
-            if (dragSrcIndex === null || dragSrcIndex === targetIndex) return false;
-            const draggedItem = existingMedia[dragSrcIndex];
-            existingMedia.splice(dragSrcIndex, 1);
-            existingMedia.splice(targetIndex, 0, draggedItem);
-            renderMediaGrid();
-            return false;
-        }
-
-        function renderMediaGrid() {
-            const grid = document.getElementById('existing-media-grid');
-            grid.innerHTML = '';
-            existingMedia.forEach((media, index) => {
-                let url = media.url.startsWith('/images/') ? SERVER_HTTP_URL + media.url : media.url;
-                let isVideo = url.match(/\.(mp4|webm|ogg)$/i) || media.type === 'video';
-                
-                let mediaHtml = isVideo 
-                    ? `<video src="${url}" class="w-full h-full object-cover pointer-events-none bg-black" preload="metadata"></video><div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-2xl font-black drop-shadow-md">▶</div>`
-                    : `<img src="${url}" class="w-full h-full object-cover pointer-events-none">`;
-
-                grid.innerHTML += `
-                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95" draggable="true" ondragstart="handleDragStart(event, ${index})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})">
-                        ${mediaHtml}
-                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full font-bold border-2 border-black z-10 hover:bg-red-500 flex items-center justify-center" onclick="removeMedia(${index})">✕</button>
-                    </div>`;
-            });
-            document.getElementById('report-media-data').value = JSON.stringify(existingMedia);
-        }
-        function removeMedia(index) { existingMedia.splice(index, 1); renderMediaGrid(); }
-
-        // ========================================================
 
         document.getElementById('report-stray-btn').addEventListener('click', () => {
             isReportingMode = true;
@@ -739,7 +753,7 @@
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('report-time').value = now.toISOString().slice(0, 16);
             
-            // 重置表單狀態
+            // 每次打開表單前重置所有輸入
             document.getElementById('report-main-photo').value = "";
             document.getElementById('main-photo-preview').classList.add('hidden');
             croppedMainPhotoBlob = null;
@@ -758,7 +772,7 @@
             document.getElementById('report-crosshair').style.display = 'block';
         });
 
-        // 獨立的上傳函式
+        // 獨立上傳 Blob
         async function uploadBlobFile(blob, filename) {
             const formData = new FormData();
             formData.append('files', blob, filename);
@@ -768,6 +782,7 @@
             throw new Error("上傳失敗");
         }
 
+        // 獨立上傳一般檔案
         async function uploadFiles(inputElement) {
             const files = inputElement.files;
             if (files.length === 0) return [];
@@ -786,7 +801,7 @@
             const submitBtn = document.getElementById('report-submit-btn');
             submitBtn.disabled = true;
             
-            // 開啟進度框
+            // 打開進度框
             updateProgress(1, 'pending', '處理主照片...');
             updateProgress(2, 'pending', '處理額外媒體...');
             updateProgress(3, 'pending', '同步資料至伺服器...');
@@ -802,25 +817,28 @@
                     const urls = await uploadFiles(document.getElementById('report-main-photo'));
                     if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
+                
                 if (!mainPhotoUrl) { throw new Error("請務必上傳並設定一張主照片！"); }
                 updateProgress(1, 'done', '主照片處理完成');
 
                 // 2. 處理額外相片與影片
                 updateProgress(2, 'active', '正在上傳額外媒體...');
-                let mediaData = JSON.parse(document.getElementById('report-media-data').value || '[]');
-                if (document.getElementById('report-extra-media').files.length > 0) {
-                    const files = document.getElementById('report-extra-media').files;
-                    const newMediaUrls = await uploadFiles(document.getElementById('report-extra-media'));
-                    for(let i=0; i<newMediaUrls.length; i++) {
-                        let type = files[i].type.startsWith('video/') ? 'video' : 'photo';
-                        mediaData.push({ url: newMediaUrls[i], type: type });
+                let finalMediaUrls = [mainPhotoUrl]; // 永遠把 main 放在陣列第一個供相簿相容
+                
+                if (existingMedia.length > 0) {
+                    const formData = new FormData();
+                    existingMedia.forEach(media => formData.append('files', media.file));
+                    const res = await fetch(SERVER_HTTP_URL + '/api/upload_media', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if(data.success) {
+                        data.urls.forEach(u => finalMediaUrls.push(u));
+                    } else {
+                        throw new Error("額外媒體上傳失敗");
                     }
                 }
-                // 將整理好的媒體全部統一當作 photos 陣列儲存，後端統一解析
-                let finalMediaUrls = [mainPhotoUrl];
-                mediaData.forEach(m => finalMediaUrls.push(m.url));
                 updateProgress(2, 'done', '額外媒體上傳完成');
 
+                // 3. 發送 WebSocket 資料
                 updateProgress(3, 'active', '正在傳送回報資料...');
                 const payload = {
                     isStray: true, 
@@ -845,6 +863,7 @@
                     }));
                     
                     updateProgress(3, 'done', '資料同步完成！');
+                    
                     setTimeout(() => {
                         document.getElementById('upload-progress-modal').classList.add('hidden');
                         document.getElementById('report-form-modal').classList.add('hidden');
@@ -873,6 +892,85 @@
                 showModal("錯誤: " + err.message);
             }
         });
+
+        // ======= 補回遺失的介面互動監聽器 =======
+        document.getElementById('master-start-btn').addEventListener('click', () => {
+            currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
+            dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
+            setPersistentData('dogMap_userName', currentUserName);
+            setPersistentData('dogMap_userColor', dbUserColor);
+            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            startLocationServices(false);
+        });
+
+        document.getElementById('toggle-fog-btn').addEventListener('click', () => {
+            isFogVisible = !isFogVisible;
+            map.getPane('fogPane').style.display = isFogVisible ? 'block' : 'none';
+            document.getElementById('toggle-fog-btn').innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
+            if(isFogVisible) requestFogRender();
+        });
+
+        document.getElementById('locate-btn').addEventListener('click', () => { 
+            if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true}); 
+            else showModal("目前尚未取得您的定位！");
+        });
+
+        document.getElementById('spectator-btn').addEventListener('click', () => {
+            isSpectatorMode = !isSpectatorMode;
+            document.getElementById('spectator-btn').innerText = isSpectatorMode ? "退出觀看" : "觀看模式";
+            document.getElementById('spectator-btn').style.backgroundColor = isSpectatorMode ? "#ef4444" : "#f59e0b";
+            document.getElementById('spectator-btn').style.color = isSpectatorMode ? "white" : "#1a202c";
+            const hint = document.getElementById('spectator-hint');
+            if (isSpectatorMode) hint.classList.remove('hidden'); else hint.classList.add('hidden');
+            renderMap();
+        });
+
+        document.getElementById('my-route-btn').addEventListener('click', () => {
+            isMyRouteMode = !isMyRouteMode;
+            if(isMyRouteMode) {
+                targetRouteUid = myUid; 
+                document.getElementById('my-route-btn').innerText = "🔙 退出軌跡";
+                document.getElementById('playback-controls').classList.remove('hidden');
+                snakeIndex = 0; snakeInterval = null; isPlaybackPaused = false;
+                document.getElementById('pb-pause').innerText = "=";
+            } else {
+                document.getElementById('my-route-btn').innerText = "🐍 我的軌跡";
+                document.getElementById('playback-controls').classList.add('hidden');
+                if(snakeInterval) clearInterval(snakeInterval);
+            }
+            renderMap();
+        });
+
+        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
+        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 10); renderMap(); });
+        document.getElementById('pb-pause').addEventListener('click', (e) => { 
+            isPlaybackPaused = !isPlaybackPaused; 
+            e.target.innerText = isPlaybackPaused ? "▶" : "="; 
+            const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+            if(!isPlaybackPaused && snakeIndex >= hLen) snakeIndex = 0;
+            if(!isPlaybackPaused) startSnakePlayback();
+            else if(snakeInterval) clearInterval(snakeInterval);
+        });
+        document.getElementById('pb-speed').addEventListener('click', () => { 
+            currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 50 : 500);
+            if(!isPlaybackPaused) startSnakePlayback();
+        });
+        document.getElementById('pb-end').addEventListener('click', () => { 
+            snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+            if(snakeInterval) clearInterval(snakeInterval);
+            renderMap();
+        });
+
+        function startSnakePlayback() {
+            if(snakeInterval) clearInterval(snakeInterval);
+            snakeInterval = setInterval(() => {
+                if(isPlaybackPaused) return;
+                const hLen = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0);
+                if(snakeIndex < hLen) { snakeIndex += Math.max(1, Math.ceil(hLen / 200)); renderMap(); }
+                else { clearInterval(snakeInterval); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "▶"; }
+            }, currentPlaybackSpeed);
+        }
+        // ===========================================
 
         document.getElementById('admin-login-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.remove('hidden'));
         document.getElementById('admin-cancel-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.add('hidden'));
@@ -1086,6 +1184,7 @@
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
                 const isSelf = (uid === myUid);
                 
+                // 本機自己的歷史如果本地有更完整的，就不依賴伺服器回傳的
                 const historyToUse = isSelf && localHistory.length > 0 ? localHistory : userData.history;
                 const lastPoint = historyToUse[historyToUse.length - 1];
 
@@ -1186,7 +1285,7 @@
                 
                 const userData = allUsersData[uid]; 
                 if (userData.history) {
-                    if (uid === myUid) return;
+                    if (uid === myUid) return; 
                     let hPts = isMyRouteMode ? userData.history.slice(0, Math.max(1, snakeIndex)) : userData.history;
                     allHistoryToDraw.push(hPts);
                 }
@@ -1197,6 +1296,7 @@
                 if (myPts.length > 0) allHistoryToDraw.push(myPts);
             }
 
+            // 擦除超過一小時的軌跡
             tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
             allHistoryToDraw.forEach(historyPts => {
                 historyPts.forEach((point, i) => {
@@ -1209,6 +1309,7 @@
             });
             lowResCtx.globalCompositeOperation = 'destination-out'; lowResCtx.globalAlpha = 0.4; lowResCtx.drawImage(tempCanvas, 0, 0);
             
+            // 擦除一小時內的軌跡
             tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
             allHistoryToDraw.forEach(historyPts => {
                 historyPts.forEach((point, i) => {
@@ -1225,6 +1326,7 @@
             fogCtx.imageSmoothingEnabled = false; 
             fogCtx.drawImage(lowResCanvas, 0, 0, w, h, 0, 0, fogCanvas.width, fogCanvas.height);
 
+            // 繪製淡色歷史軌跡點
             const maxFadeTime = 30 * 60 * 1000; 
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return; 
@@ -1264,10 +1366,14 @@
                 const response = JSON.parse(event.data);
                 let needReInit = false; 
                 
-                if (response.type === 'sync' || response.type === 'stray_projects_updated') {
-                    if (response.strayProjects || (response.data && response.data.strayProjects)) {
-                        const newProjects = response.strayProjects || response.data.strayProjects;
-                        PROJECTS = newProjects;
+                if (response.type === 'sync' || response.type === 'projects_updated') {
+                    if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
+                        const allProjs = response.dynamicProjects || response.data.dynamicProjects;
+                        const strayProjs = {};
+                        Object.keys(allProjs).forEach(k => {
+                            if (allProjs[k].isStray === true) strayProjs[k] = allProjs[k];
+                        });
+                        PROJECTS = strayProjs;
                         
                         Object.keys(PROJECTS).forEach(k => {
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
