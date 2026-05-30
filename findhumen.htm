@@ -400,6 +400,9 @@
 
         let adminCachedApps = []; 
 
+        // 宣告 allAnnouncements
+        let allAnnouncements = {};
+
         // --- Cropper 與媒體變數 ---
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
@@ -1086,6 +1089,10 @@
 
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) totalOnlineUserCount++;
                 if (isSpectatorMode && isSelf) return;
+
+                // 修改：如果使用者的 project 不等於 currentProjectKey，而且他不是在 default，就不畫在地圖上
+                if (userData.project !== currentProjectKey && userData.project !== "default" && userData.project !== "") return;
+
                 if (!currentBounds.contains([lastPoint.lat, lastPoint.lng])) return;
 
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) { 
@@ -1179,6 +1186,7 @@
                 if (isMyRouteMode && uid !== targetRouteUid) return; 
                 
                 const userData = allUsersData[uid]; 
+                // 修改：即使是在其他專案的人走過的路，我們在浪浪地圖也一起畫出來（共用探索度）
                 if (userData.history) {
                     if (uid === myUid) return; 
                     let hPts = isMyRouteMode ? userData.history.slice(0, Math.max(1, snakeIndex)) : userData.history;
@@ -1251,7 +1259,7 @@
             ws.onopen = () => {
                 isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
                 document.getElementById('toast-text').innerText = "連線成功"; 
-                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" })); 
+                ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey || "default" })); 
                 if(localHistory.length > 0) saveLocationToServer(null, true); 
             };
             ws.onmessage = (event) => {
@@ -1297,8 +1305,10 @@
                             div.className = "border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]";
                             
                             let mediaHtml = '';
-                            if(item.projectData && item.projectData.photos && item.projectData.photos.length > 0) {
-                                mediaHtml = `<img src="${item.projectData.photos[0]}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
+                            if(item.projectData && item.projectData.mainPhoto) {
+                                let firstUrl = item.projectData.mainPhoto;
+                                if(firstUrl.startsWith('/images/')) firstUrl = getBaseHttpUrl() + firstUrl;
+                                mediaHtml = `<img src="${firstUrl}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
                             }
 
                             div.innerHTML = `
