@@ -78,10 +78,13 @@
 
     <div id="map-container"><div id="map"></div></div>
 
+    <!-- 省電模式黑畫面遮罩 (無提示字樣，全黑85%半透明) -->
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black/85 touch-none"></div>
+
+    <!-- 中央半透明提示視窗 (Toast) -->
+    <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
+
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
-        <!-- 背景輪播牆容器 (分階段載入用) -->
-        <div id="startup-bg-container" class="absolute inset-0 z-0 flex flex-wrap content-start pointer-events-none"></div>
-        
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
@@ -172,7 +175,7 @@
         </div>
     </div>
 
-    <!-- UI 上方排版：下拉式選單 (手機靠左，電腦置中) -->
+    <!-- UI 上方排版：下拉式選單 -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all">
         <div class="relative w-full">
             <select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate">
@@ -216,20 +219,11 @@
         </div>
 
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <!-- 動物資訊卡片 (移除hover，改為點擊放大，加入 draggable="false" 防止拖曳圖片) -->
+            <!-- 動物資訊卡片 -->
             <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
-                <!-- 向左箭頭 -->
-                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">
-                    &lt;
-                </div>
-                
+                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">&lt;</div>
                 <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" title="點擊放大目標照片" draggable="false">
-                
-                <!-- 向右箭頭 -->
-                <div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">
-                    &gt;
-                </div>
-
+                <div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">&gt;</div>
                 <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none z-10" id="animal-name-date">載入中...</div>
                 <div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700 z-10">📸 看相簿</div>
             </div>
@@ -247,36 +241,22 @@
     <!-- 寵物照片放大與對照 Modal -->
     <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4">
         <button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] active:translate-y-1 active:shadow-none cursor-pointer">✕</button>
-        
         <div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2">
-            <!-- 左側：本機上傳對照區 (預設隱藏) -->
             <div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg">
                 <input type="file" id="compare-file-input" accept="image/*" class="hidden">
-                
                 <div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors" onclick="document.getElementById('compare-file-input').click()">
                     <div class="text-5xl sm:text-6xl mb-4">📸</div>
                     <div class="text-white font-bold text-sm sm:text-lg mb-2">點擊選擇本機照片</div>
                     <div class="text-gray-400 text-[10px] sm:text-xs font-bold whitespace-pre-wrap leading-relaxed">上傳後會出現在左邊\n方便使用者對照這張放大的圖片(在右邊)\n(照片僅在您的裝置顯示，無需網路)</div>
                 </div>
-                
-                <div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container">
-                    <img id="compare-local-img" src="">
-                </div>
-                
-                <!-- 重新選擇按鈕 -->
+                <div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container"><img id="compare-local-img" src=""></div>
                 <button id="compare-reselect-btn" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 pixel-btn px-4 py-2 bg-blue-500 text-white text-xs z-10 shadow-[2px_2px_0px_#000]" onclick="document.getElementById('compare-file-input').click()">🔄 重新選擇</button>
             </div>
-            
-            <!-- 右側：目標放大照片 -->
             <div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg">
                 <div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap tracking-widest border border-gray-500">放大的目標照片</div>
-                <div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center">
-                    <img id="compare-main-img" src="">
-                </div>
+                <div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center"><img id="compare-main-img" src=""></div>
             </div>
         </div>
-        
-        <!-- 開啟比對模式按鈕 -->
         <button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 pixel-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button>
     </div>
 
@@ -288,8 +268,7 @@
                <button id="tab-photos" class="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none">📸 相片</button>
                <button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none">🎥 影片</button>
            </div>
-           <div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative">
-           </div>
+           <div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div>
            <button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button>
        </div>
     </div>
@@ -307,7 +286,7 @@
         </div>
     </div>
 
-    <!-- 步數面板與禮物面板 -->
+    <!-- 步數面板與省電/禮物面板 -->
     <div class="absolute bottom-10 right-4 z-[2000] flex flex-col gap-2 items-end pointer-events-none">
         <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2">
             <div class="relative">
@@ -317,9 +296,16 @@
             <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
 
-        <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer pointer-events-auto">
-            👣 累積步數<br>
-            <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+        <div class="flex gap-2 pointer-events-auto">
+            <!-- 手機版專屬省電模式按鈕 -->
+            <button id="power-saving-btn" class="sm:hidden pixel-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-[4px_4px_0px_#1a202c] active:translate-y-1 cursor-pointer flex flex-col items-center justify-center min-w-[65px] transition-colors border-gray-600">
+                <div class="text-xl mb-0.5">🌙</div>
+                <div class="tracking-widest">省電</div>
+            </button>
+            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]">
+                👣 累積步數<br>
+                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+            </div>
         </div>
     </div>
 
@@ -328,7 +314,6 @@
         <div class="pixel-panel p-6 w-full max-w-sm text-center">
             <h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3>
             <p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p>
-            
             <div class="bg-gray-200 border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_#1a202c]">
                 <div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div>
                 <div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2">
@@ -337,7 +322,6 @@
                     <div id="reel-3" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div>
                 </div>
             </div>
-            
             <div class="flex flex-col gap-3">
                 <button id="slot-draw-btn" class="pixel-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button>
                 <div class="flex gap-2">
@@ -377,7 +361,7 @@
     <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標</h3><input type="text" id="coord-input-value" class="pixel-input w-full p-3 mb-4 text-center font-mono" placeholder="貼上座標..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉列表</button></div></div>
     
-    <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="pixel-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="pixel-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
+    <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="pixel-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取氰</button><button id="route-finish-btn" class="pixel-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
 
@@ -435,38 +419,85 @@
             currentProjectKey = urlProject; // 網址參數優先級最高
         }
 
-        let hasPopulatedBg = false;
-        function populateStartupBackground() {
-            if (hasPopulatedBg) return;
-            const bgContainer = document.getElementById('startup-bg-container');
-            if (!bgContainer) return;
-            const keys = Object.keys(PROJECTS);
-            if (keys.length === 0) return;
-            hasPopulatedBg = true;
-            
-            const shuffled = [...keys].sort(() => 0.5 - Math.random()).slice(0, 15);
-            shuffled.forEach((key, index) => {
-                const proj = PROJECTS[key];
-                if (proj && proj.mainPhoto) {
-                    let pUrl = proj.mainPhoto;
-                    if(pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-                    
-                    const img = document.createElement('img');
-                    img.src = pUrl;
-                    img.className = "flex-grow h-24 sm:h-32 object-cover opacity-0 transition-opacity duration-1000 ease-in-out";
-                    img.style.minWidth = "25%";
-                    img.style.filter = "grayscale(60%) blur(2px) contrast(0.8) brightness(0.5)";
-                    bgContainer.appendChild(img);
-                    
-                    // 分階段交錯淡入
-                    setTimeout(() => {
-                        img.classList.remove('opacity-0');
-                        img.classList.add('opacity-50');
-                    }, 300 + index * 150);
-                }
-            });
+        // --- Toast 中央提示系統 ---
+        let centerToastTimer = null;
+        function showCenterToast(msg, duration = 4000) {
+            const toast = document.getElementById('toast-center');
+            toast.innerText = msg;
+            toast.classList.remove('hidden');
+            if (centerToastTimer) clearTimeout(centerToastTimer);
+            centerToastTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, duration);
         }
+
+        // --- 省電模式與螢幕常亮 ---
+        let powerSavingTimer = null;
+        let wakeLock = null;
+        let isPowerSaving = false;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator && !wakeLock) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released');
+                    });
+                }
+            } catch (err) {
+                console.log('Wake Lock error:', err);
+            }
+        }
+
+        function enterPowerSavingMode() {
+            if (isPowerSaving) return;
+            isPowerSaving = true;
+            document.getElementById('power-saving-overlay').classList.remove('hidden');
+            requestWakeLock();
+        }
+
+        function exitPowerSavingMode() {
+            if (!isPowerSaving) return;
+            isPowerSaving = false;
+            document.getElementById('power-saving-overlay').classList.add('hidden');
+            // 不主動釋放 wakeLock，盡量維持網頁不暗屏
+        }
+
+        function resetPowerSavingTimer() {
+            if (isPowerSaving) {
+                exitPowerSavingMode();
+            }
+            if (powerSavingTimer) clearTimeout(powerSavingTimer);
+            // 只有在地圖正在追蹤且非觀看模式，才自動啟動省電計時
+            if (isTrackingStarted && !isSpectatorMode) {
+                powerSavingTimer = setTimeout(enterPowerSavingMode, 30000);
+            }
+        }
+
+        // 綁定全域解除/重置省電的事件
+        document.body.addEventListener('touchstart', resetPowerSavingTimer, { passive: true });
+        document.body.addEventListener('click', resetPowerSavingTimer);
+        document.body.addEventListener('mousemove', resetPowerSavingTimer);
         
+        // 針對省電遮罩的觸控快速解除
+        document.getElementById('power-saving-overlay').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            resetPowerSavingTimer();
+        }, { passive: false });
+        
+        document.getElementById('power-saving-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            enterPowerSavingMode();
+        });
+
+        // 處理手機切換 App 再回來時 WakeLock 可能遺失的情況
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                wakeLock = null; // 強制重新申請
+                if (isTrackingStarted) requestWakeLock();
+            }
+        });
+
         function updateProjectDropdown() {
             projectSelect.innerHTML = '';
             
@@ -537,11 +568,10 @@
         let currentProjectHasPrize = false; 
         let lotteryTickets = 0;             
 
-        // --- 【重大修正】全域共用同一條軌跡，不再因切換專案而歸零 ---
+        // --- 全域共用同一條軌跡 ---
         let localHistory = [];
         let savedH = localStorage.getItem('dogMap_localHistory');
         if (!savedH) {
-            // 平滑兼容：若沒有全域記錄，嘗試讀取以前存在特定專案名下的記錄
             let currentProj = getPersistentData('dogMap_currentProject');
             if (currentProj) savedH = localStorage.getItem('dogMap_localHistory_' + currentProj);
         }
@@ -697,16 +727,19 @@
 
             map.on('click', (e) => {
                 if (isDrawingRoute) { currentRoutePoints.push([e.latlng.lat, e.latlng.lng]); updateDrawingRoutePreview(); }
+                resetPowerSavingTimer();
             });
             
             map.on('dragstart zoomstart mousedown touchstart', () => {
                 isMapInteracting = true;
                 if (mapInteractionTimer) clearTimeout(mapInteractionTimer);
+                resetPowerSavingTimer();
             });
             
             map.on('moveend zoomend mouseup touchend', () => {
                 mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); 
                 renderMap(); 
+                resetPowerSavingTimer();
             });
 
             map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none';
@@ -837,7 +870,6 @@
 
         const animalInfoSection = document.getElementById('animal-info-section');
 
-        // 手機觸控事件
         animalInfoSection.addEventListener('touchstart', (e) => {
             cardTouchStartX = e.changedTouches[0].screenX;
             cardTouchStartY = e.changedTouches[0].screenY;
@@ -847,7 +879,6 @@
         animalInfoSection.addEventListener('touchmove', (e) => {
             const currentX = e.changedTouches[0].screenX;
             const currentY = e.changedTouches[0].screenY;
-            // 滑動超過 15px 視為正在滑動
             if (Math.abs(currentX - cardTouchStartX) > 15 || Math.abs(currentY - cardTouchStartY) > 15) {
                 isCardSwiping = true;
             }
@@ -859,7 +890,6 @@
             handleCardSwipe();
         });
 
-        // 電腦滑鼠事件 (模擬滑動)
         animalInfoSection.addEventListener('mousedown', (e) => {
             cardTouchStartX = e.screenX;
             cardTouchStartY = e.screenY;
@@ -867,7 +897,7 @@
         });
 
         animalInfoSection.addEventListener('mousemove', (e) => {
-            if (e.buttons === 1) { // 左鍵按住
+            if (e.buttons === 1) { 
                 const currentX = e.screenX;
                 const currentY = e.screenY;
                 if (Math.abs(currentX - cardTouchStartX) > 15 || Math.abs(currentY - cardTouchStartY) > 15) {
@@ -884,7 +914,6 @@
             }
         });
 
-        // 統一切換專案邏輯 (方向：-1 向左/前, 1 向右/後)
         function switchProjectByDirection(direction) {
             const keys = Object.keys(PROJECTS);
             if (keys.length <= 1) return;
@@ -907,43 +936,39 @@
         function handleCardSwipe() {
             const SWIPE_THRESHOLD = 40;
             const keys = Object.keys(PROJECTS);
-            if (keys.length <= 1) return; // 如果只有一個專案就不用切換
+            if (keys.length <= 1) return; 
 
             const deltaX = cardTouchEndX - cardTouchStartX;
             const deltaY = cardTouchEndY - cardTouchStartY;
 
-            // 確認是水平滑動為主
             if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
                 if (deltaX < 0) {
-                    switchProjectByDirection(1); // 向左滑動 -> 下一個專案
+                    switchProjectByDirection(1); 
                 } else {
-                    switchProjectByDirection(-1); // 向右滑動 -> 上一個專案
+                    switchProjectByDirection(-1); 
                 }
             }
         }
 
-        // 綁定卡片左右箭頭的點擊事件
         const cardPrevBtn = document.getElementById('card-prev-btn');
         const cardNextBtn = document.getElementById('card-next-btn');
 
         if(cardPrevBtn) {
             cardPrevBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation(); // 阻止氣泡傳遞，以免打開放大照片
+                e.stopPropagation(); 
                 switchProjectByDirection(-1);
             });
         }
         if(cardNextBtn) {
             cardNextBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation(); // 阻止氣泡傳遞，以免打開放大照片
+                e.stopPropagation(); 
                 switchProjectByDirection(1);
             });
         }
 
-        // 點擊主照片開啟放大/比對視窗 (防呆機制)
         animalInfoSection.addEventListener('click', (e) => {
-            // 如果剛剛是滑動，就阻擋原本的點擊動作
             if (isCardSwiping) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -957,7 +982,6 @@
                 renderGallery('photos');
                 document.getElementById('gallery-modal').classList.remove('hidden');
             } else if (e.target.id === 'animal-main-photo') {
-                // 不分電腦或手機，皆改為點擊放大
                 openCompareModal();
             } else {
                 if (animalInfoSection.classList.contains('mobile-collapsed')) {
@@ -1119,8 +1143,6 @@
             newUrl.search = `?${encodeURIComponent(projName)}`;
             window.history.pushState({}, '', newUrl);
             
-            // 注意：我們不再切換 localHistory 的內容，讓歷史軌跡全域延續
-            
             loadLotteryState();
 
             updateAnimalInfoCard();
@@ -1258,9 +1280,6 @@
                             }
                         });
 
-                        // 觸發：分階段背景讀入專案主照片 (只有在按鈕點擊後才會開始載入)
-                        populateStartupBackground();
-
                         const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
                         if (oldProjectKey !== currentProjectKey) {
@@ -1289,7 +1308,6 @@
                         });
                     }
                     
-                    // 接收獎品狀態與資料庫儲存的票數
                     currentProjectHasPrize = response.data.has_prize_history ? (response.data.has_prize_history[currentProjectKey] || false) : false;
                     lotteryTickets = response.data.tickets || 0;
                     
@@ -1303,7 +1321,6 @@
                 }
 
                 if (response.type === 'sync_light') {
-                    // 安全過濾：確保收到的廣播資料是屬於當前專案的，避免在跨專案同步時互相覆蓋
                     let isForMe = true;
                     if (response.data.sightings) {
                         const sVals = Object.values(response.data.sightings);
@@ -1638,12 +1655,20 @@
             document.getElementById('startup-overlay').style.display = 'none'; isTrackingStarted = true;
             document.getElementById('status-toast').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden');
             
-            // UI 顯示時也檢查一次禮物盒是否該顯示
             updateGiftUI();
             
             document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden'); document.getElementById('nav-pin-btn').classList.remove('hidden'); document.getElementById('force-upload-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('eva-grid-btn').classList.remove('hidden');
             document.getElementById('toast-text').innerText = "位置同步成功";
+
+            // 第一次使用時的全域提示
+            if (!getPersistentData('dogMap_firstTimeTipShown')) {
+                showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n如果你一直看到定位相關的錯誤訊息，\n請使用瀏覽器(Safari/Chrome)打開這個網頁。", 8000);
+                setPersistentData('dogMap_firstTimeTipShown', 'true');
+            }
+
+            requestWakeLock();
+            resetPowerSavingTimer();
         }
 
         function handleValidPosition(lat, lng, timestamp) {
@@ -1662,7 +1687,6 @@
             const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
             localHistory = optimizeHistory(localHistory); 
             
-            // 統一存至單一的全域 localHistory
             try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
             
             allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey };
@@ -1799,7 +1823,7 @@
         function renderSightings() {
             if (!sightingsLayer) return; sightingsLayer.clearLayers();
             Object.values(allSightings).forEach(data => {
-                if (data.project && data.project !== currentProjectKey) return; // 確保只畫出當前專案
+                if (data.project && data.project !== currentProjectKey) return; 
                 const d = new Date(data.timestamp); const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                 const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}`;
                 const safeDesc = escapeHTML(data.description);
@@ -1818,7 +1842,7 @@
         function renderRoutes() {
             if (!routesLayer) return; routesLayer.clearLayers();
             Object.values(allRoutes).forEach(r => {
-                if (r.project && r.project !== currentProjectKey) return; // 確保只畫出當前專案
+                if (r.project && r.project !== currentProjectKey) return; 
                 if (!r.points) return;
                 const safeName = escapeHTML(r.name);
                 const projectTag = r.project && r.project !== currentProjectKey ? ` (${escapeHTML(r.project)})` : '';
@@ -2108,7 +2132,6 @@
             let allValidPts = [];
             for (const uid in allUsersData) {
                 const u = allUsersData[uid];
-                // 【修改】移除專案限制，讓所有跨專案軌跡都參與計算
                 if (u.history) {
                     allValidPts.push(...u.history);
                 }
@@ -2264,10 +2287,9 @@
             setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor);
             document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
             
-            // 此處載入該專案的剩餘計時器
             loadLotteryState();
             
-            connectWebSocket(); // <--- 初次使用的玩家，在這裡才開始連線 WS
+            connectWebSocket();
             
             startLocationServices(false);
         });
@@ -2290,19 +2312,23 @@
                 document.getElementById('eva-grid-btn').classList.add('hidden'); 
                 document.getElementById('floating-gift-container').classList.add('hidden'); 
             }
-            let msg = "無定位權限。請至手機設定中確認。", isCopyable = false;
-            if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; isCopyable = true; } 
+            let msg = "無定位權限。請至手機設定中確認。";
+            if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; } 
             else if (error.code === 2) msg = "無法獲取位置，請確認 GPS 已開啟。"; 
             else if (error.code === 3) msg = "獲取位置逾時，請檢查網路。";
             
             const errorMsg = document.getElementById('error-msg');
             errorMsg.innerText = msg.replace(/\n/g, ' '); errorMsg.classList.remove('hidden');
-            if (isCopyable) {
+            if (error.code === 1) {
                 errorMsg.className = "text-red-700 font-bold text-sm mt-6 bg-red-100 p-4 rounded-lg cursor-pointer border-2 border-red-500 border-dashed hover:bg-red-200 transition-colors block leading-relaxed whitespace-pre-wrap";
                 errorMsg.innerText = msg; 
-                errorMsg.onclick = () => { const t = document.createElement("textarea"); t.value = window.location.href; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); showModal("✅ 網址已複製！"); } catch(e){} document.body.removeChild(t); };
+                errorMsg.onclick = () => { const t = document.createElement("textarea"); t.value = window.location.href; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); showCenterToast("✅ 網址已複製！"); } catch(e){} document.body.removeChild(t); };
             } else { errorMsg.className = "text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; errorMsg.onclick = null; }
-            if (document.getElementById('startup-overlay').style.display === 'none') showModal(msg.replace(/<[^>]+>/g, ''));
+
+            // 把所有的強制阻塞 modal 替換成中央半透明視窗
+            if (document.getElementById('startup-overlay').style.display === 'none') {
+                showCenterToast(msg.replace(/<[^>]+>/g, '') + "\n\n如果您一直看到這個訊息，請使用瀏覽器打開這個網頁。", 6000);
+            }
         }
 
         function checkLocalSetupAndStart() {
@@ -2321,7 +2347,7 @@
                 
                 loadLotteryState();
                 
-                connectWebSocket(); // <--- 曾經連線過的老玩家，直接在這裡連線 WS
+                connectWebSocket(); 
                 
                 finishUIReveal(); document.getElementById('toast-text').innerText = "自動定位..."; startLocationServices(true);
             } else { document.getElementById('startup-overlay').style.display = 'flex'; document.getElementById('startup-overlay').style.opacity = '1'; }
@@ -2338,8 +2364,6 @@
                 toggleAnnouncePanelBtn.innerText = '➕'; 
             } else { 
                 announcementText.classList.remove('hidden'); 
-                
-                // 檢查是否真的有連結，有的話展開時才顯示
                 const proj = PROJECTS[currentProjectKey];
                 if (proj && proj.actionLink && proj.actionLink.url) {
                     actionContainer.classList.remove('hidden');
@@ -2404,7 +2428,7 @@
             saveLocationToServer(null, true);
             renderMap();
             document.getElementById('profile-modal').classList.add('hidden');
-            showModal("✅ 個人資料已成功更新！\n您的新顏色已同步給線上其他使用者。");
+            showCenterToast("✅ 個人資料已成功更新！\n您的新顏色已同步給線上其他使用者。");
         });
         
         document.getElementById('toggle-fog-btn').addEventListener('click', () => { 
@@ -2428,10 +2452,10 @@
         });
         
         document.getElementById('force-upload-btn').addEventListener('click', () => {
-            if (isSpectatorMode) { showModal("觀看模式下無法上傳位置！"); return; }
+            if (isSpectatorMode) { showCenterToast("觀看模式下無法上傳位置！"); return; }
             const forceUploadBtn = document.getElementById('force-upload-btn');
             forceUploadBtn.innerText = "⏳ 獲取中..."; forceUploadBtn.style.backgroundColor = "#9ca3af";
-            if (!navigator.geolocation) { showModal("不支援定位"); resetForceUploadBtn(); return; }
+            if (!navigator.geolocation) { showCenterToast("不支援定位"); resetForceUploadBtn(); return; }
             navigator.geolocation.getCurrentPosition((pos) => {
                 const newPoint = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
                 localHistory.push(newPoint); lastSavedPos = newPoint;
@@ -2442,7 +2466,7 @@
                 allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey };
                 updateStepsCounter(); 
                 map.setView([newPoint.lat, newPoint.lng], 17, { animate: true }); renderMap(); saveLocationToServer(newPoint, true);
-                resetForceUploadBtn(); showModal("✅ 強制打卡成功！");
+                resetForceUploadBtn(); showCenterToast("✅ 強制打卡成功！");
             }, (err) => { resetForceUploadBtn(); handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000 });
         });
         function resetForceUploadBtn() { 
@@ -2583,9 +2607,6 @@
                 
                 if (hasValidOldPoints && maxDist50Min < 50) {
                     lotteryTimeRemaining = 3599; 
-                    // 移除 showModal 彈跳視窗，讓它只在背景默默重置
-                    console.log("背景處理：偵測到掛網，重新計時");
-                    
                     let m = Math.floor(lotteryTimeRemaining / 60).toString().padStart(2, '0');
                     let s = (lotteryTimeRemaining % 60).toString().padStart(2, '0');
                     timerUI.innerText = `${m}:${s}`;
@@ -2604,7 +2625,6 @@
                 lotteryTimeRemaining = 3600;
                 saveLotteryState();
                 
-                // 通知伺服器增加一張此專案的抽獎券
                 if (isSystemReady) {
                     ws.send(JSON.stringify({ type: "earn_ticket", uid: myUid, project: currentProjectKey }));
                 }
@@ -2621,15 +2641,13 @@
             saveLotteryState();
         }, 1000);
 
-        // 管理員與抽獎按鈕邏輯
         document.getElementById('slot-draw-btn').addEventListener('click', () => {
             if (!isAdmin && lotteryTickets <= 0) { 
-                showModal("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！(移動累積60分鐘抽1次)"); 
+                showCenterToast("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！\n(移動累積60分鐘抽1次)"); 
                 return; 
             }
-            if (!isSystemReady) { showModal("系統目前未連線！"); return; }
+            if (!isSystemReady) { showCenterToast("系統目前未連線！"); return; }
             
-            // 先不直接減票數，交給伺服器來扣除並更新，避免防呆
             document.getElementById('slot-draw-btn').innerText = "🎰 抽獎中..."; document.getElementById('slot-draw-btn').disabled = true;
             
             slotSpinning = true;
@@ -2644,7 +2662,7 @@
         });
         
         document.getElementById('slot-check-pool-btn').addEventListener('click', () => {
-            if (!isSystemReady) { showModal("系統未連線！"); return; }
+            if (!isSystemReady) { showCenterToast("系統未連線！"); return; }
             ws.send(JSON.stringify({ type: "get_prizes", project: currentProjectKey }));
         });
 
@@ -2662,7 +2680,7 @@
                 ws.send(JSON.stringify({ type: "admin_login", data: { password: pwd } }));
                 document.getElementById('admin-submit-btn').innerText = "驗證中...";
             } else {
-                showModal("⚠️ 系統未連線，無法驗證管理員身份！");
+                showCenterToast("⚠️ 系統未連線，無法驗證管理員身份！");
             }
         });
 
@@ -2674,7 +2692,7 @@
             sessionStorage.removeItem('dogMap_isAdmin');
             sessionStorage.removeItem('dogMap_adminToken');
             updateGiftUI();
-            showModal("已退出管理員模式。");
+            showCenterToast("已退出管理員模式。");
         });
         
         document.getElementById('au-close-btn').addEventListener('click', () => {
@@ -2696,7 +2714,7 @@
                 ws.send(JSON.stringify({ type: "admin_get_blacklist", token: adminToken }));
                 document.getElementById('manage-blacklist-modal').classList.remove('hidden');
             } else {
-                showModal("⚠️ 系統未連線！");
+                showCenterToast("⚠️ 系統未連線！");
             }
         });
 
@@ -2720,8 +2738,8 @@
                 if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
                     NGROK_WS_URL = newUrl;
                     if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); }
-                    showModal("✅ 伺服器網址已更新，系統將自動重新連線！");
-                } else { showModal("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
+                    showCenterToast("✅ 伺服器網址已更新，系統將自動重新連線！");
+                } else { showCenterToast("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
             });
         });
         
@@ -2730,8 +2748,8 @@
                 if(newUrl.startsWith("wss://") || newUrl.startsWith("ws://")) {
                     NGROK_WS_URL = newUrl;
                     if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); }
-                    showModal("✅ 伺服器網址已更新，系統將自動重新連線！");
-                } else { showModal("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
+                    showCenterToast("✅ 伺服器網址已更新，系統將自動重新連線！");
+                } else { showCenterToast("⚠️ 網址格式錯誤，必須以 ws:// 或 wss:// 開頭。"); }
             });
         });
         
@@ -2748,11 +2766,11 @@
 
                 newMapBtn.addEventListener('click', () => {
                     positionMethodModal.classList.add('hidden');
-                    showModal("📍 請在地圖上【點擊】發生該事件的精確位置！");
+                    showCenterToast("📍 請在地圖上【點擊】發生該事件的精確位置！");
                     map.once('click', (e) => {
                         if(isSystemReady) {
                             ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: e.latlng.lat, lng: e.latlng.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
-                            showModal("✅ 成功新增事件點！");
+                            showCenterToast("✅ 成功新增事件點！");
                         }
                     });
                 });
@@ -2768,7 +2786,7 @@
 
                     newSubmitBtn.addEventListener('click', () => {
                         const val = inputField.value.trim();
-                        if (!val) { showModal("⚠️ 請輸入座標內容！"); return; }
+                        if (!val) { showCenterToast("⚠️ 請輸入座標內容！"); return; }
                         
                         function parseCoordinatesInput(inputStr) {
                             inputStr = inputStr.trim();
@@ -2785,10 +2803,10 @@
                             coordinateInputModal.classList.add('hidden');
                             if(isSystemReady) {
                                 ws.send(JSON.stringify({ type: "add_sighting", token: adminToken, project: currentProjectKey, data: { lat: parsed.lat, lng: parsed.lng, description: desc, timestamp: Date.now(), project: currentProjectKey }}));
-                                showModal(`✅ 成功新增事件點！\n座標：[${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}]`);
+                                showCenterToast(`✅ 成功新增事件點！\n座標：[${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}]`);
                                 map.setView([parsed.lat, parsed.lng], 16, { animate: true }); 
-                            } else { showModal("⚠️ 系統未連線，無法送出指令！"); }
-                        } else { showModal("⚠️ 無法解析您的座標格式！\n範例: 23.75288, 120.39444"); }
+                            } else { showCenterToast("⚠️ 系統未連線，無法送出指令！"); }
+                        } else { showCenterToast("⚠️ 無法解析您的座標格式！\n範例: 23.75288, 120.39444"); }
                     });
                     newCancelBtn.addEventListener('click', () => { coordinateInputModal.classList.add('hidden'); });
                 });
@@ -2841,7 +2859,7 @@
                     const id = e.target.getAttribute('data-id');
                     const data = allSightings[id];
                     showInputModal("📝 編輯出沒點", "請修改描述...", data.description, (newDesc) => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_sighting", id: id, token: adminToken, project: currentProjectKey, data: { description: newDesc } })); showModal("✅ 編輯指令已送出！"); }
+                        if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_sighting", id: id, token: adminToken, project: currentProjectKey, data: { description: newDesc } })); showCenterToast("✅ 編輯指令已送出！"); }
                     });
                 });
             });
@@ -2850,7 +2868,7 @@
                 btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
                     showConfirm("確定要永久刪除這個出沒紀錄嗎？", () => {
-                        if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_sighting", id: id, token: adminToken, project: currentProjectKey })); showModal("✅ 刪除指令已送出！"); }
+                        if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_sighting", id: id, token: adminToken, project: currentProjectKey })); showCenterToast("✅ 刪除指令已送出！"); }
                     });
                 });
             });
@@ -2863,7 +2881,7 @@
             if(!isAdmin) return;
             isDrawingRoute = true; currentRoutePoints = []; document.getElementById('route-name').value = '';
             document.getElementById('route-drawing-panel').classList.remove('hidden'); document.getElementById('admin-panel').classList.add('hidden'); 
-            showModal(`🗺️ 進入「${PROJECTS[currentProjectKey]?.name || ''}」路線繪製模式！\n請直接在地圖上「點擊」來新增路線節點。`); updateDrawingRoutePreview();
+            showCenterToast(`🗺️ 進入「${PROJECTS[currentProjectKey]?.name || ''}」路線繪製模式！\n請直接在地圖上「點擊」來新增路線節點。`); updateDrawingRoutePreview();
         });
 
         document.getElementById('route-undo-btn').addEventListener('click', () => {
@@ -2873,11 +2891,11 @@
         document.getElementById('route-cancel-btn').addEventListener('click', () => exitRouteDrawingMode());
 
         document.getElementById('route-finish-btn').addEventListener('click', () => {
-            if (currentRoutePoints.length < 2) { showModal("⚠️ 路線至少需要兩個節點才能成線！"); return; }
+            if (currentRoutePoints.length < 2) { showCenterToast("⚠️ 路線至少需要兩個節點才能成線！"); return; }
             const name = document.getElementById('route-name').value.trim() || '未命名路線';
             const color = document.getElementById('route-color').value; const weight = parseInt(document.getElementById('route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, project: currentProjectKey, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showModal("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
-            } else { showModal("⚠️ 系統未連線！"); }
+            if(isSystemReady) { ws.send(JSON.stringify({ type: "add_route", token: adminToken, project: currentProjectKey, data: { name, color, weight, points: currentRoutePoints, timestamp: Date.now(), project: currentProjectKey } })); showCenterToast("✅ 路線已成功發布推播！"); exitRouteDrawingMode();
+            } else { showCenterToast("⚠️ 系統未連線！"); }
         });
 
         function exitRouteDrawingMode() {
@@ -2937,7 +2955,7 @@
             routesListContainer.querySelectorAll('.delete-route-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.target.getAttribute('data-id');
-                    showConfirm("確定要永久刪除這條路線嗎？", () => { if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_route", id: id, token: adminToken, project: currentProjectKey })); showModal("✅ 刪除指令已送出！"); } });
+                    showConfirm("確定要永久刪除這條路線嗎？", () => { if(isSystemReady) { ws.send(JSON.stringify({ type: "delete_route", id: id, token: adminToken, project: currentProjectKey })); showCenterToast("✅ 刪除指令已送出！"); } });
                 });
             });
         }
@@ -2948,7 +2966,7 @@
             if (!editingRouteId) return;
             const newName = document.getElementById('edit-route-name').value.trim() || '未命名路線';
             const newColor = document.getElementById('edit-route-color').value; const newWeight = parseInt(document.getElementById('edit-route-weight').value);
-            if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_route", id: editingRouteId, token: adminToken, project: currentProjectKey, data: { name: newName, color: newColor, weight: newWeight } })); showModal("✅ 屬性已更新！"); document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; }
+            if(isSystemReady) { ws.send(JSON.stringify({ type: "edit_route", id: editingRouteId, token: adminToken, project: currentProjectKey, data: { name: newName, color: newColor, weight: newWeight } })); showCenterToast("✅ 屬性已更新！"); document.getElementById('edit-route-modal').classList.add('hidden'); editingRouteId = null; }
         });
         
         document.getElementById('update-announce-btn').addEventListener('click', () => {
@@ -2958,7 +2976,7 @@
                 allAnnouncements[currentProjectKey] = text; 
                 if(isSystemReady) {
                     ws.send(JSON.stringify({ type: "update_announcement", token: adminToken, data: text, project: currentProjectKey })); 
-                    showModal("✅ 公告更新指令已送出！"); 
+                    showCenterToast("✅ 公告更新指令已送出！"); 
                 }
             });
         });
@@ -3029,16 +3047,16 @@
             }
 
             if (prizes.length === 0) {
-                showModal("⚠️ 請至少完整填寫一個獎品的名稱與網址！");
+                showCenterToast("⚠️ 請至少完整填寫一個獎品的名稱與網址！");
                 return;
             }
 
             if (isSystemReady) {
                 ws.send(JSON.stringify({ type: "add_prizes", token: adminToken, project: currentProjectKey, data: prizes }));
                 addPrizeModal.classList.add('hidden');
-                showModal("⏳ 獎品新增指令已送出！系統將自動比對重複項目...");
+                showCenterToast("⏳ 獎品新增指令已送出！系統將自動比對重複項目...");
             } else {
-                showModal("⚠️ 系統未連線！");
+                showCenterToast("⚠️ 系統未連線！");
             }
         });
 
@@ -3050,7 +3068,7 @@
                 ws.send(JSON.stringify({ type: "get_admin_prizes", token: adminToken, project: currentProjectKey }));
                 managePrizesModal.classList.remove('hidden');
             } else {
-                showModal("⚠️ 系統未連線！");
+                showCenterToast("⚠️ 系統未連線！");
             }
         });
 
@@ -3088,7 +3106,7 @@
 
         document.getElementById('slot-close-btn').addEventListener('click', () => document.getElementById('slot-machine-modal').classList.add('hidden'));
         document.getElementById('floating-gift-container').addEventListener('click', () => {
-            if (isSpectatorMode) { showModal("觀看模式無法參與抽獎喔！"); return; }
+            if (isSpectatorMode) { showCenterToast("觀看模式無法參與抽獎喔！"); return; }
             document.getElementById('slot-machine-title').innerText = `🎰 「${PROJECTS[currentProjectKey]?.name || ''}」抽獎`;
             updateGiftUI();
             document.getElementById('slot-machine-modal').classList.remove('hidden');
