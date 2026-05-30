@@ -49,7 +49,7 @@
 
     <div id="map-container"><div id="map"></div></div>
 
-    <!-- 遮罩與全域 UI -->
+    <!-- 省電模式黑畫面遮罩 -->
     <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black/90 touch-none"></div>
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
 
@@ -385,11 +385,15 @@
             isTrackingStarted: false,
             isAnnounceCollapsed: localStorage.getItem('dogMap_announceCollapsed') === 'true',
             
+            // 卡片滑動
+            cardTouchStartX: 0, cardTouchStartY: 0, cardTouchEndX: 0, cardTouchEndY: 0, isCardSwiping: false, animalInfoCollapseTimer: null,
+            
             // 播放器相關
             targetRouteUid: null,
             snakeInterval: null,
             snakeIndex: 0,
             currentPlaybackSpeed: 500,
+            basePlaybackSpeed: 500,
             isPlaybackPaused: false,
 
             // 相簿相關
@@ -397,10 +401,11 @@
             GALLERY_BATCH_SIZE: 2,
             currentGalleryType: 'photos',
             viewerPhotos: [],
-            currentViewerIndex: 0
+            currentViewerIndex: 0,
+            touchStartX: 0, touchEndX: 0
         };
 
-        // DOM Elements (常用)
+        const MAP = { allCenterMarkers: [], activeBoundsRectangle: null };
         const projectSelect = document.getElementById('switch-project-select');
         
         // ==========================================
@@ -430,6 +435,20 @@
                 compressed.push(history[history.length - 1]);
                 if (compressed.length > 10000) compressed = compressed.slice(compressed.length - 10000);
                 return compressed;
+            },
+            offsetLatLng: (lat, lng, dNorth, dEast) => {
+                const rEarth = 6378137; const pi = Math.PI;
+                const dLat = (dNorth / rEarth) * (180 / pi);
+                const dLng = (dEast / (rEarth * Math.cos(lat * pi / 180))) * (180 / pi);
+                return [lat + dLat, lng + dLng];
+            },
+            getHexPoints: (centerLat, centerLng, R) => {
+                const points = [];
+                for(let i=0; i<6; i++) {
+                    const angle_deg = 60 * i - 30; const angle_rad = Math.PI / 180 * angle_deg;
+                    points.push(Utils.offsetLatLng(centerLat, centerLng, R * Math.sin(angle_rad), R * Math.cos(angle_rad)));
+                }
+                return points;
             }
         };
 
@@ -478,12 +497,11 @@
             },
             updateAnimalInfoCard: () => {
                 const proj = STATE.projects[STATE.currentProjectKey];
+                const section = document.getElementById('animal-info-section');
                 if (!proj) {
-                    document.getElementById('animal-info-section').classList.add('hidden');
-                    document.getElementById('announcement-panel').classList.add('hidden');
-                    return; 
+                    section.classList.add('hidden'); document.getElementById('announcement-panel').classList.add('hidden'); return; 
                 }
-                document.getElementById('animal-info-section').classList.remove('hidden');
+                section.classList.remove('hidden');
                 let mainUrl = proj.mainPhoto;
                 if (mainUrl && mainUrl.startsWith('/images/')) mainUrl = Utils.getBaseHttpUrl() + mainUrl;
                 document.getElementById('animal-main-photo').src = mainUrl || "";
@@ -499,13 +517,17 @@
                 const actionContainer = document.getElementById('announcement-action-container');
                 actionContainer.innerHTML = '';
                 if (proj.actionLink && proj.actionLink.url) {
-                    const btn = document.createElement('a');
-                    btn.href = proj.actionLink.url; btn.target = "_blank";
-                    btn.className = "pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white shadow-[2px_2px_0px_#1a202c] no-underline";
-                    btn.innerText = `🔗 ${proj.actionLink.text || "前往連結"}`;
+                    const btn = document.createElement('a'); btn.href = proj.actionLink.url; btn.target = "_blank";
+                    btn.className = "pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white shadow-[2px_2px_0px_#1a202c] no-underline"; btn.innerText = `🔗 ${proj.actionLink.text || "前往連結"}`;
                     actionContainer.appendChild(btn);
                 }
                 UI.applyAnnouncePanelCollapseState();
+
+                if (window.innerWidth <= 640) {
+                    section.classList.remove('mobile-collapsed');
+                    if (STATE.animalInfoCollapseTimer) clearTimeout(STATE.animalInfoCollapseTimer);
+                    STATE.animalInfoCollapseTimer = setTimeout(() => { section.classList.add('mobile-collapsed'); }, 5000);
+                }
             },
             applyAnnouncePanelCollapseState: () => {
                 const text = document.getElementById('announcement-text'), container = document.getElementById('announcement-action-container'), btn = document.getElementById('toggle-announce-panel-btn');
@@ -531,18 +553,19 @@
                 const proj = STATE.projects[STATE.currentProjectKey]; if (!proj) return;
                 let mainUrl = proj.mainPhoto; if (mainUrl && mainUrl.startsWith('/images/')) mainUrl = Utils.getBaseHttpUrl() + mainUrl;
                 document.getElementById('compare-main-img').src = mainUrl || "";
-                
-                document.getElementById('compare-file-input').value = "";
-                document.getElementById('compare-local-img').src = "";
-                document.getElementById('compare-local-container').classList.add('hidden');
-                document.getElementById('compare-upload-prompt').classList.remove('hidden');
-                document.getElementById('compare-reselect-btn').classList.add('hidden');
-                
-                document.getElementById('compare-left-pane').classList.remove('flex');
-                document.getElementById('compare-left-pane').classList.add('hidden');
-                document.getElementById('compare-right-label').classList.add('hidden');
-                document.getElementById('enable-compare-btn').classList.remove('hidden');
+                document.getElementById('compare-file-input').value = ""; document.getElementById('compare-local-img').src = "";
+                document.getElementById('compare-local-container').classList.add('hidden'); document.getElementById('compare-upload-prompt').classList.remove('hidden'); document.getElementById('compare-reselect-btn').classList.add('hidden');
+                document.getElementById('compare-left-pane').classList.remove('flex'); document.getElementById('compare-left-pane').classList.add('hidden');
+                document.getElementById('compare-right-label').classList.add('hidden'); document.getElementById('enable-compare-btn').classList.remove('hidden');
                 document.getElementById('photo-compare-modal').classList.remove('hidden');
+            },
+            switchProjectByDirection: (direction) => {
+                const keys = Object.keys(STATE.projects); if (keys.length <= 1) return;
+                let currentIndex = keys.indexOf(STATE.currentProjectKey);
+                if (direction < 0) currentIndex = (currentIndex - 1 + keys.length) % keys.length;
+                else currentIndex = (currentIndex + 1) % keys.length;
+                const selectEl = document.getElementById('switch-project-select');
+                if(selectEl) { selectEl.value = keys[currentIndex]; selectEl.dispatchEvent(new Event('change')); }
             }
         };
 
@@ -550,22 +573,10 @@
         // 🔋 4. 硬體、省電與定位 (Hardware & Geo)
         // ==========================================
         const Geo = {
-            powerSavingTimer: null,
-            wakeLock: null,
-            watchId: null,
-            isPowerSaving: false,
-            
-            requestWakeLock: async () => {
-                try { if ('wakeLock' in navigator && !Geo.wakeLock) Geo.wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log('Wake Lock error:', err); }
-            },
-            enterPowerSavingMode: () => {
-                if (Geo.isPowerSaving) return;
-                Geo.isPowerSaving = true; document.getElementById('power-saving-overlay').classList.remove('hidden'); Geo.requestWakeLock();
-            },
-            exitPowerSavingMode: () => {
-                if (!Geo.isPowerSaving) return;
-                Geo.isPowerSaving = false; document.getElementById('power-saving-overlay').classList.add('hidden');
-            },
+            powerSavingTimer: null, wakeLock: null, watchId: null, isPowerSaving: false,
+            requestWakeLock: async () => { try { if ('wakeLock' in navigator && !Geo.wakeLock) Geo.wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} },
+            enterPowerSavingMode: () => { if (Geo.isPowerSaving) return; Geo.isPowerSaving = true; document.getElementById('power-saving-overlay').classList.remove('hidden'); Geo.requestWakeLock(); },
+            exitPowerSavingMode: () => { if (!Geo.isPowerSaving) return; Geo.isPowerSaving = false; document.getElementById('power-saving-overlay').classList.add('hidden'); },
             resetPowerSavingTimer: () => {
                 if (Geo.isPowerSaving) Geo.exitPowerSavingMode();
                 if (Geo.powerSavingTimer) clearTimeout(Geo.powerSavingTimer);
@@ -647,7 +658,7 @@
                         });
                     });
                     FogSys.requestRender();
-                }).catch(err => console.warn('無法載入台灣地形檔，將使用全螢幕迷霧:', err));
+                }).catch(err => {});
 
                 MapSys.map = L.map('map', { zoomControl: false }).setView([23.5, 121], 8);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(MapSys.map);
@@ -655,16 +666,8 @@
                 
                 MapSys.markersLayer = L.layerGroup().addTo(MapSys.map); MapSys.sightingsLayer = L.layerGroup().addTo(MapSys.map); MapSys.routesLayer = L.layerGroup().addTo(MapSys.map);
                 
-                MapSys.map.on('dragstart zoomstart mousedown touchstart', () => {
-                    STATE.isMapInteracting = true;
-                    if (MapSys.mapInteractionTimer) clearTimeout(MapSys.mapInteractionTimer);
-                    Geo.resetPowerSavingTimer();
-                });
-                
-                MapSys.map.on('moveend zoomend mouseup touchend', () => {
-                    MapSys.mapInteractionTimer = setTimeout(() => { STATE.isMapInteracting = false; }, 900000); 
-                    MapSys.renderMap(); Geo.resetPowerSavingTimer();
-                });
+                MapSys.map.on('dragstart zoomstart mousedown touchstart', () => { STATE.isMapInteracting = true; if (MapSys.mapInteractionTimer) clearTimeout(MapSys.mapInteractionTimer); Geo.resetPowerSavingTimer(); });
+                MapSys.map.on('moveend zoomend mouseup touchend', () => { MapSys.mapInteractionTimer = setTimeout(() => { STATE.isMapInteracting = false; }, 900000); MapSys.renderMap(); Geo.resetPowerSavingTimer(); });
 
                 MapSys.map.createPane('fogPane'); MapSys.map.getPane('fogPane').style.zIndex = 450; MapSys.map.getPane('fogPane').style.pointerEvents = 'none';
                 MapSys.map.createPane('evaPane'); MapSys.map.getPane('evaPane').style.zIndex = 460; MapSys.map.getPane('evaPane').style.pointerEvents = 'none';
@@ -674,10 +677,8 @@
                 MAP.allCenterMarkers.forEach(m => MapSys.map.removeLayer(m)); MAP.allCenterMarkers = [];
                 if (MAP.activeBoundsRectangle) { MapSys.map.removeLayer(MAP.activeBoundsRectangle); MAP.activeBoundsRectangle = null; }
                 Object.keys(STATE.projects).forEach(key => {
-                    const proj = STATE.projects[key];
-                    const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
-                    const isCurrent = (key === STATE.currentProjectKey);
-                    const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', 'rabbit': '🐇', 'turtle': '🐢' }; const iconSymbol = typeMap[proj.type] || '🐾';
+                    const proj = STATE.projects[key]; const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
+                    const isCurrent = (key === STATE.currentProjectKey); const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', 'rabbit': '🐇', 'turtle': '🐢' }; const iconSymbol = typeMap[proj.type] || '🐾';
                     let ann = STATE.allAnnouncements[key] || proj.announcement || "";
                     let rewardHtml = ""; const rewardMatch = ann.match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/);
                     if (rewardMatch) rewardHtml = `<div class="user-name-tag pixel-panel" style="color: #000; background-color: #fef08a; border-color: #1a202c; z-index: 11; margin-bottom: 2px; padding: 2px 4px;">💰 $${rewardMatch[1]}</div>`;
@@ -687,9 +688,7 @@
                     const marker = L.marker(center, { icon: L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] }), zIndexOffset: isCurrent ? 2000 : 500 }).addTo(MapSys.map);
                     marker.on('click', () => { if (!isCurrent) { projectSelect.value = key; projectSelect.dispatchEvent(new Event('change')); } });
                     MAP.allCenterMarkers.push(marker);
-                    if (isCurrent) {
-                        MAP.activeBoundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.1, dashArray: '5, 10'}).addTo(MapSys.map).bindPopup(`<div class="font-bold text-center">📍 ${Utils.escapeHTML(proj.animalName)}從這裡範圍遺失</div>`, {className: 'pixel-popup'});
-                    }
+                    if (isCurrent) MAP.activeBoundsRectangle = L.rectangle(proj.bounds, {color: "#ef4444", weight: 3, fillOpacity: 0.1, dashArray: '5, 10'}).addTo(MapSys.map).bindPopup(`<div class="font-bold text-center">📍 ${Utils.escapeHTML(proj.animalName)}從這裡範圍遺失</div>`, {className: 'pixel-popup'});
                 });
             },
             renderMap: () => {
@@ -737,8 +736,6 @@
                 document.getElementById('toast-text').innerText = `線上探索: ${onlineCount} 人`; FogSys.requestRender();
             }
         };
-
-        const MAP = { allCenterMarkers: [], activeBoundsRectangle: null }; // 儲存地圖相關狀態
 
         // ==========================================
         // 🌫️ 6. 迷霧與完成度系統 (Fog & EVA)
@@ -819,8 +816,205 @@
             }
         };
 
+        const EvaSys = {
+            evaAnimationTimeout: null,
+            evaGridLayer: null,
+            draw: () => {
+                if (!EvaSys.evaGridLayer) { EvaSys.evaGridLayer = L.layerGroup().addTo(MapSys.map); } 
+                else { EvaSys.evaGridLayer.clearLayers(); }
+                if (EvaSys.evaAnimationTimeout) clearTimeout(EvaSys.evaAnimationTimeout);
+
+                const R = 300, pi = Math.PI, rEarth = 6378137;
+                const proj = STATE.projects[STATE.currentProjectKey]; if(!proj) return;
+                const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2, centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2;
+                const cosLat = Math.cos(centerLat * pi / 180);
+
+                let allValidPts = [];
+                for (const uid in STATE.allUsersData) { if (STATE.allUsersData[uid].history) allValidPts.push(...STATE.allUsersData[uid].history); }
+
+                let max_ring = 0;
+                allValidPts.forEach(pt => {
+                    const dLat = pt.lat - centerLat, dLng = pt.lng - centerLng;
+                    const y = dLat * (rEarth * pi / 180), x = dLng * (rEarth * cosLat * pi / 180); 
+                    const q_frac = (Math.sqrt(3)/3 * x - 1/3 * y) / R, r_frac = (2/3 * y) / R;
+                    let rq = Math.round(q_frac), rr = Math.round(r_frac), rs = Math.round(-q_frac - r_frac);
+                    const q_diff = Math.abs(rq - q_frac), r_diff = Math.abs(rr - r_frac), s_diff = Math.abs(rs - (-q_frac - r_frac));
+                    if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs; else if (r_diff > s_diff) rr = -rq - rs;
+                    const ring = Math.max(Math.abs(rq), Math.abs(rr), Math.abs(-rq - rr));
+                    if (ring > max_ring) max_ring = ring;
+                });
+                const target_ring = Math.max(3, Math.min(max_ring + 2, 12)); 
+
+                MapSys.map.flyToBounds([[centerLat - (1500/111000), centerLng - (1500/(111000*cosLat))], [centerLat + (1500/111000), centerLng + (1500/(111000*cosLat))]], { animate: true, duration: 1.0 });
+
+                let currentRing = 0;
+                function processNextRing() {
+                    if (!STATE.isEvaMode || currentRing > target_ring) return;
+                    let ringHexes = [];
+                    if (currentRing === 0) ringHexes.push({q: 0, r: 0});
+                    else { for (let q = -currentRing; q <= currentRing; q++) { for (let r = -currentRing; r <= currentRing; r++) { if (Math.max(Math.abs(q), Math.abs(r), Math.abs(-q-r)) === currentRing) ringHexes.push({q, r}); } } }
+
+                    ringHexes.forEach(h => {
+                        const q = h.q, r = h.r;
+                        const x = Math.sqrt(3) * R * (q + r/2.0), y = 1.5 * R * r;
+                        const cLatLng = Utils.offsetLatLng(centerLat, centerLng, y, x);
+
+                        let testPoints = [ cLatLng ];
+                        for(let i=0; i<6; i++) testPoints.push(Utils.offsetLatLng(cLatLng[0], cLatLng[1], 75*Math.sin(i*Math.PI/3), 75*Math.cos(i*Math.PI/3)));
+                        for(let i=0; i<12; i++) testPoints.push(Utils.offsetLatLng(cLatLng[0], cLatLng[1], 150*Math.sin(i*Math.PI/6), 150*Math.cos(i*Math.PI/6)));
+                        for(let i=0; i<18; i++) testPoints.push(Utils.offsetLatLng(cLatLng[0], cLatLng[1], 225*Math.sin(i*Math.PI/9), 225*Math.cos(i*Math.PI/9)));
+                        for(let i=0; i<24; i++) testPoints.push(Utils.offsetLatLng(cLatLng[0], cLatLng[1], 285*Math.sin(i*Math.PI/12), 285*Math.cos(i*Math.PI/12)));
+
+                        let coveredCount = 0, hexMaxTs = 0;
+                        for(let tp of testPoints) { for(let pt of allValidPts) { if (Utils.getDistance(tp[0], tp[1], pt.lat, pt.lng) <= 60) { coveredCount++; if (pt.timestamp > hexMaxTs) hexMaxTs = pt.timestamp; break; } } }
+
+                        const hexPoints = Utils.getHexPoints(cLatLng[0], cLatLng[1], R);
+                        let textHtml = "";
+                        if (coveredCount > 0) {
+                            const density = Math.min(100, Math.floor((coveredCount / testPoints.length) * 100));
+                            const diff = Math.max(0, Date.now() - hexMaxTs), hrs = Math.floor(diff / 3600000), mins = Math.floor((diff % 3600000) / 60000);
+                            let timeStr = ""; if (hrs > 0) timeStr += `${hrs}時`; timeStr += `${mins}分前`;
+                            let densityColor = '#39ff14'; if (density <= 50) densityColor = '#ef4444'; else if (density <= 98) densityColor = '#f97316'; 
+                            textHtml = `<div class="text-center font-bold" style="color: ${densityColor}; text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; font-family: 'Courier New', monospace;"><div class="text-xl tracking-wider">${density}%</div><div class="text-[10px] whitespace-nowrap text-[#39ff14]">${timeStr}</div></div>`;
+                        } else { textHtml = `<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow: 1px 1px 0px #000; font-family: 'Courier New', monospace; font-size: 11px;">未探索</div>`; }
+
+                        L.polygon(hexPoints, { color: '#39ff14', weight: 2, fillColor: '#39ff14', fillOpacity: 0.05, dashArray: '5, 5', pane: 'evaPane' }).addTo(EvaSys.evaGridLayer);
+                        L.marker(cLatLng, { icon: L.divIcon({ className: 'custom-div-icon', html: textHtml, iconSize: [80, 50], iconAnchor: [40, 25] }), zIndexOffset: -100, pane: 'evaPane' }).addTo(EvaSys.evaGridLayer);
+                    });
+
+                    const zoomRings = [2, 5, 8];
+                    if (zoomRings.includes(currentRing)) {
+                        const viewRadiusMeters = Math.min(3000, (currentRing + 1.5) * R * 1.5);
+                        const radiusLat = viewRadiusMeters / 111000, radiusLng = viewRadiusMeters / (111000 * cosLat);
+                        MapSys.map.flyToBounds([[centerLat - radiusLat, centerLng - radiusLng], [centerLat + radiusLat, centerLng + radiusLng]], { animate: true, duration: 1.5 });
+                    }
+                    currentRing++;
+                    let nextDelay = 100; if (currentRing > 3) nextDelay = 250; if (currentRing > 6) nextDelay = 500; if (currentRing > 9) nextDelay = 1000; 
+                    EvaSys.evaAnimationTimeout = setTimeout(processNextRing, nextDelay);
+                }
+                EvaSys.evaAnimationTimeout = setTimeout(processNextRing, 500); 
+            },
+            clear: () => {
+                if (EvaSys.evaAnimationTimeout) clearTimeout(EvaSys.evaAnimationTimeout);
+                if (EvaSys.evaGridLayer) { EvaSys.evaGridLayer.clearLayers(); MapSys.map.removeLayer(EvaSys.evaGridLayer); EvaSys.evaGridLayer = null; }
+            }
+        };
+
         // ==========================================
-        // 📡 7. 網路通訊與 WebSocket (Network)
+        // 🖼️ 7. 相簿與影像檢視 (Gallery)
+        // ==========================================
+        const GallerySys = {
+            render: (type) => {
+                STATE.currentGalleryType = type; STATE.galleryLoadedCount = 0;
+                const content = document.getElementById('gallery-content');
+                const btnP = document.getElementById('tab-photos'), btnV = document.getElementById('tab-videos');
+                content.innerHTML = '';
+                if (type === 'photos') { btnP.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnV.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; } 
+                else { btnV.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnP.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; }
+                const proj = STATE.projects[STATE.currentProjectKey];
+                if (!proj || !proj[type] || proj[type].length === 0) { content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有${type === 'photos' ? '相片' : '影片'}</div>`; return; }
+                GallerySys.loadMore();
+            },
+            loadMore: () => {
+                const content = document.getElementById('gallery-content'); const proj = STATE.projects[STATE.currentProjectKey];
+                if (!proj || !proj[STATE.currentGalleryType]) return;
+                const items = proj[STATE.currentGalleryType]; const start = STATE.galleryLoadedCount; const end = Math.min(start + STATE.GALLERY_BATCH_SIZE, items.length);
+                if (start >= items.length) return;
+                for (let i = start; i < end; i++) {
+                    const item = items[i];
+                    if (STATE.currentGalleryType === 'photos') {
+                        const imgObj = typeof item === 'string' ? { url: item } : item; let pUrl = imgObj.url;
+                        if(pUrl && pUrl.startsWith('/images/')) pUrl = Utils.getBaseHttpUrl() + pUrl;
+                        const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform";
+                        container.addEventListener('click', () => GallerySys.openViewer(i, items));
+                        const img = document.createElement('img'); img.src = pUrl; img.loading = "lazy"; img.className = "w-full object-cover border-b-2 border-black block"; container.appendChild(img);
+                        if (imgObj.title && imgObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "p-2 text-sm font-bold text-gray-900 text-center"; titleDiv.innerText = imgObj.title; container.appendChild(titleDiv); } else { img.classList.remove('border-b-2', 'border-black'); }
+                        content.appendChild(container);
+                    } else {
+                        const vidObj = typeof item === 'string' ? { url: item } : item; let vUrl = vidObj.url;
+                        if(vUrl && vUrl.startsWith('/images/')) vUrl = Utils.getBaseHttpUrl() + vUrl;
+                        const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3";
+                        if (vidObj.title && vidObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1"; titleDiv.innerText = vidObj.title; container.appendChild(titleDiv); }
+                        const videoEl = document.createElement('video'); videoEl.src = vUrl; videoEl.controls = true; videoEl.preload = "metadata"; videoEl.className = "w-full border-2 border-black bg-black"; container.appendChild(videoEl);
+                        content.appendChild(container);
+                    }
+                }
+                STATE.galleryLoadedCount = end;
+            },
+            openViewer: (index, photos) => { STATE.viewerPhotos = photos; STATE.currentViewerIndex = index; GallerySys.updateViewer(); document.getElementById('photo-viewer-modal').classList.remove('hidden'); },
+            updateViewer: () => {
+                if (STATE.viewerPhotos.length === 0) return;
+                const imgObj = typeof STATE.viewerPhotos[STATE.currentViewerIndex] === 'string' ? { url: STATE.viewerPhotos[STATE.currentViewerIndex], title: "" } : STATE.viewerPhotos[STATE.currentViewerIndex];
+                let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = Utils.getBaseHttpUrl() + pUrl;
+                document.getElementById('viewer-img').src = pUrl; document.getElementById('viewer-title').innerText = imgObj.title || "";
+                document.getElementById('viewer-prev-btn').style.opacity = STATE.currentViewerIndex > 0 ? "1" : "0.5"; document.getElementById('viewer-next-btn').style.opacity = STATE.currentViewerIndex < STATE.viewerPhotos.length - 1 ? "1" : "0.5";
+            },
+            handleSwipe: () => {
+                const SWIPE_THRESHOLD = 50;
+                if (STATE.touchEndX < STATE.touchStartX - SWIPE_THRESHOLD) { if (STATE.currentViewerIndex < STATE.viewerPhotos.length - 1) { STATE.currentViewerIndex++; GallerySys.updateViewer(); } } 
+                else if (STATE.touchEndX > STATE.touchStartX + SWIPE_THRESHOLD) { if (STATE.currentViewerIndex > 0) { STATE.currentViewerIndex--; GallerySys.updateViewer(); } }
+            }
+        };
+
+        // ==========================================
+        // ⏯️ 8. 軌跡播放 (PlaybackSys)
+        // ==========================================
+        const PlaybackSys = {
+            start: () => {
+                if (STATE.snakeInterval) clearInterval(STATE.snakeInterval);
+                if (STATE.isPlaybackPaused) return;
+                STATE.snakeInterval = setInterval(() => {
+                    const tData = (STATE.targetRouteUid === STATE.myUid) ? {history: STATE.localHistory} : STATE.allUsersData[STATE.targetRouteUid];
+                    const mLen = (tData && tData.history) ? tData.history.length : 0;
+                    if (STATE.snakeIndex < mLen) { STATE.snakeIndex++; MapSys.renderMap(); } 
+                    else { clearInterval(STATE.snakeInterval); STATE.snakeInterval = null; STATE.isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; }
+                }, STATE.currentPlaybackSpeed);
+            }
+        };
+
+        // ==========================================
+        // 🎰 9. 抽獎與 AFK 計時 (LotterySys)
+        // ==========================================
+        const LotterySys = {
+            saveState: () => { const data = JSON.stringify({ r: STATE.lotteryTimeRemaining }); Utils.setPersistentData('dogMap_lottery_time_' + STATE.currentProjectKey, data); },
+            loadState: () => { const data = Utils.getPersistentData('dogMap_lottery_time_' + STATE.currentProjectKey); if (data) { try { let parsed = JSON.parse(data); STATE.lotteryTimeRemaining = typeof parsed.r === 'number' ? parsed.r : 3600; } catch(e) { STATE.lotteryTimeRemaining = 3600; } } else { STATE.lotteryTimeRemaining = 3600; } UI.updateGiftUI(); },
+            startTimer: () => {
+                setInterval(() => {
+                    if (STATE.isSpectatorMode || !STATE.isTrackingStarted) return;
+                    let isOutOfRange = false;
+                    if (STATE.localHistory && STATE.localHistory.length > 0) {
+                        const currentLoc = STATE.localHistory[STATE.localHistory.length - 1]; const proj = STATE.projects[STATE.currentProjectKey];
+                        if(proj) { const centerLat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2, centerLng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2; const distToCenter = Utils.getDistance(currentLoc.lat, currentLoc.lng, centerLat, centerLng); if (distToCenter > 50000) isOutOfRange = true; }
+                    }
+                    const timerUI = document.getElementById('gift-timer'), spectatorHint = document.getElementById('spectator-hint');
+                    if (isOutOfRange) { timerUI.style.color = '#ef4444'; timerUI.innerText = "太遠了"; if (!STATE.isSpectatorMode) spectatorHint.classList.remove('hidden'); return; } 
+                    else { timerUI.style.color = ''; spectatorHint.classList.add('hidden'); }
+
+                    if (STATE.lotteryTimeRemaining === 300) {
+                        const now = Date.now(), fiftyMinsAgo = now - 50 * 60 * 1000; let maxDist50Min = 0, hasValidOldPoints = false;
+                        if (STATE.localHistory && STATE.localHistory.length > 0) {
+                            const currentLoc = STATE.localHistory[STATE.localHistory.length - 1];
+                            for (let i = STATE.localHistory.length - 1; i >= 0; i--) { const pt = STATE.localHistory[i]; if (pt.timestamp >= fiftyMinsAgo) { const d = Utils.getDistance(currentLoc.lat, currentLoc.lng, pt.lat, pt.lng); if (d > maxDist50Min) maxDist50Min = d; hasValidOldPoints = true; } else break; }
+                        }
+                        if (hasValidOldPoints && maxDist50Min < 50) { STATE.lotteryTimeRemaining = 3599; let m = Math.floor(STATE.lotteryTimeRemaining / 60).toString().padStart(2, '0'); let s = (STATE.lotteryTimeRemaining % 60).toString().padStart(2, '0'); timerUI.innerText = `${m}:${s}`; LotterySys.saveState(); return; }
+                    }
+
+                    STATE.lotteryTimeRemaining--;
+                    let m = Math.floor(STATE.lotteryTimeRemaining / 60).toString().padStart(2, '0'), s = (STATE.lotteryTimeRemaining % 60).toString().padStart(2, '0'); timerUI.innerText = `${m}:${s}`;
+                    if (STATE.lotteryTimeRemaining <= 0) {
+                        STATE.lotteryTimeRemaining = 3600; LotterySys.saveState();
+                        if (STATE.isSystemReady) WS.send("earn_ticket", { uid: STATE.myUid, project: STATE.currentProjectKey });
+                        const marquee = document.getElementById('lottery-marquee-container'); marquee.classList.remove('hidden');
+                        marquee.querySelector('.animate-marquee-text').style.animation = 'none'; marquee.querySelector('.animate-marquee-text').offsetHeight; marquee.querySelector('.animate-marquee-text').style.animation = null;
+                        setTimeout(() => marquee.classList.add('hidden'), 20000);
+                    }
+                    LotterySys.saveState();
+                }, 1000);
+            }
+        };
+
+        // ==========================================
+        // 📡 10. 網路通訊與 WebSocket (Network)
         // ==========================================
         const MessageHandlers = {
             sync: (res) => {
@@ -887,9 +1081,7 @@
                 const container = document.getElementById('blacklist-container'); container.innerHTML = '';
                 if (!res.data || res.data.length === 0) container.innerHTML = '<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>';
                 else {
-                    res.data.forEach(u => {
-                        container.innerHTML += `<div class="border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${Utils.escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${Utils.escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${Utils.escapeHTML(u.uid.substring(0, 8))}...</div></div><button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap active:translate-y-[2px]" onclick="WS.send('admin_remove_blacklist', {token: STATE.adminToken, uid: '${u.uid}'}); this.innerText='處理中...';">✅ 解除</button></div>`;
-                    });
+                    res.data.forEach(u => { container.innerHTML += `<div class="border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${Utils.escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${Utils.escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${Utils.escapeHTML(u.uid.substring(0, 8))}...</div></div><button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap active:translate-y-[2px]" onclick="WS.send('admin_remove_blacklist', {token: STATE.adminToken, uid: '${u.uid}'}); this.innerText='處理中...';">✅ 解除</button></div>`; });
                 }
                 document.getElementById('manage-blacklist-modal').classList.remove('hidden');
             },
@@ -907,7 +1099,7 @@
                 let html = '<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>';
                 if (res.data.available && res.data.available.length > 0) {
                     res.data.available.forEach(item => {
-                        html += `<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${Utils.escapeHTML(item.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${item.prob}" value="${item.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${item.first_prob||70.0}" value="${item.first_prob||70.0}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black hover:bg-red-600 active:translate-y-[2px] transition" data-id="${item.id}" onclick="UI.showConfirm('確定要刪除這個未抽出的獎品嗎？', () => { if(STATE.isSystemReady) WS.send('delete_prize', {id:'${item.id}', project: STATE.currentProjectKey, token: STATE.adminToken}) })">🗑️ 刪除此獎品</button></div></div>`;
+                        html += `<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${Utils.escapeHTML(item.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${item.prob}" value="${item.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${item.id}" data-original="${item.first_prob||70.0}" value="${item.first_prob||70.0}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black hover:bg-red-600 active:translate-y-[2px] transition" data-id="${item.id}">🗑️ 刪除此獎品</button></div></div>`;
                     });
                 } else html += '<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>';
                 
@@ -922,6 +1114,7 @@
                     saveBtn.className = hasChanges ? "pixel-btn flex-1 py-3 bg-blue-500 text-white cursor-pointer" : "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; saveBtn.disabled = !hasChanges;
                 };
                 container.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(input => input.addEventListener('input', checkChanges));
+                container.querySelectorAll('.delete-prize-btn').forEach(btn => btn.addEventListener('click', (e) => { const id = e.target.getAttribute('data-id'); UI.showConfirm("確定要刪除這個未抽出的獎品嗎？", () => { if(STATE.isSystemReady) WS.send('delete_prize', {id:id, project: STATE.currentProjectKey, token: STATE.adminToken}) }); }));
             },
             draw_result: (res) => {
                 setTimeout(() => {
@@ -970,7 +1163,7 @@
         };
 
         // ==========================================
-        // 🎮 8. 事件監聽總結 (Event Listeners)
+        // 🎮 11. 事件監聽總結 (Event Listeners)
         // ==========================================
         function updateProjectDropdown() {
             projectSelect.innerHTML = '';
@@ -981,20 +1174,64 @@
             if (foundKey) { STATE.currentProjectKey = foundKey; projectSelect.value = foundKey; } else { const keys = Object.keys(STATE.projects); STATE.currentProjectKey = keys[Math.floor(Math.random() * keys.length)]; projectSelect.value = STATE.currentProjectKey; Utils.setPersistentData('dogMap_currentProject', STATE.currentProjectKey); }
         }
 
+        function createPrizeRow() {
+            const div = document.createElement('div'); div.className = 'border-4 border-black p-3 bg-gray-100 relative mb-3';
+            div.innerHTML = `<button class="absolute top-1 right-1 text-red-600 font-bold text-xs remove-row-btn px-2 py-1 active:translate-y-1">✖</button><input type="text" class="prize-name-input pixel-input w-full p-2 mb-2 text-sm" placeholder="獎項名稱 (例如: 咖啡一杯)"><select class="prize-type-select pixel-input w-full p-2 mb-2 text-sm bg-white cursor-pointer"><option value="url">🔗 外部網址</option></select><input type="text" class="prize-url-input pixel-input w-full p-2 mb-2 text-sm" placeholder="兌換網址 (https://...)"><div class="flex items-center gap-2 mb-2 bg-blue-50 p-1 border-2 border-blue-200"><label class="text-xs font-bold text-gray-800 whitespace-nowrap">一般機率(%):</label><input type="number" class="prize-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="1.0" min="0.001" step="0.1"></div><div class="flex items-center gap-2 bg-red-50 p-1 border-2 border-red-200"><label class="text-xs font-bold text-gray-800 whitespace-nowrap">首抽機率(%):</label><input type="number" class="prize-first-prob-input pixel-input flex-1 p-1 text-sm font-sans" value="70.0" min="0.001" step="0.1"></div>`;
+            div.querySelector('.remove-row-btn').addEventListener('click', () => div.remove()); return div;
+        }
+
         function initEvents() {
             // -- 核心啟動按鈕 --
             document.getElementById('master-start-btn').addEventListener('click', (e) => {
                 e.preventDefault(); document.getElementById('error-msg').classList.add('hidden'); document.getElementById('master-start-btn').innerText = "連線中...";
                 STATE.currentUserName = document.getElementById('user-name-input').value.trim() || `P${Math.floor(100+Math.random()*900)}`; STATE.dbUserColor = Utils.generateRandomColor();
                 Utils.setPersistentData('dogMap_userName', STATE.currentUserName); Utils.setPersistentData('dogMap_userColor', STATE.dbUserColor); document.getElementById('profile-edit-trigger').style.backgroundColor = STATE.dbUserColor;
-                WS.connect(); Geo.startLocationServices(false);
+                LotterySys.loadState(); WS.connect(); Geo.startLocationServices(false);
             });
 
-            // -- 工具按鈕 (地圖操作) --
-            document.getElementById('toggle-fog-btn').addEventListener('click', () => { 
-                STATE.isFogVisible = !STATE.isFogVisible; const fogPane = MapSys.map ? MapSys.map.getPane('fogPane') : null; if(fogPane) fogPane.style.display = STATE.isFogVisible ? 'block' : 'none'; 
-                const btn = document.getElementById('toggle-fog-btn'); if (STATE.isFogVisible) { btn.innerText = "👁️ 關閉迷霧"; btn.style.backgroundColor = "#f59e0b"; FogSys.requestRender(); } else { btn.innerText = "🌫️ 開啟迷霧"; btn.style.backgroundColor = "#9ca3af"; }
+            // -- 硬體省電與常亮 --
+            document.body.addEventListener('touchstart', Geo.resetPowerSavingTimer, { passive: true }); document.body.addEventListener('click', Geo.resetPowerSavingTimer); document.body.addEventListener('mousemove', Geo.resetPowerSavingTimer);
+            document.getElementById('power-saving-overlay').addEventListener('touchstart', (e) => { e.preventDefault(); Geo.resetPowerSavingTimer(); }, { passive: false });
+            document.getElementById('power-saving-btn').addEventListener('click', (e) => { e.stopPropagation(); Geo.enterPowerSavingMode(); });
+            document.addEventListener('visibilitychange', async () => { if (Geo.wakeLock !== null && document.visibilityState === 'visible') { Geo.wakeLock = null; if (STATE.isTrackingStarted) Geo.requestWakeLock(); } });
+
+            // -- 動物資訊卡片交互與滑動 --
+            const animalInfoSection = document.getElementById('animal-info-section');
+            animalInfoSection.addEventListener('touchstart', (e) => { STATE.cardTouchStartX = e.changedTouches[0].screenX; STATE.cardTouchStartY = e.changedTouches[0].screenY; STATE.isCardSwiping = false; }, {passive: true});
+            animalInfoSection.addEventListener('touchmove', (e) => { const currentX = e.changedTouches[0].screenX; const currentY = e.changedTouches[0].screenY; if (Math.abs(currentX - STATE.cardTouchStartX) > 15 || Math.abs(currentY - STATE.cardTouchStartY) > 15) { STATE.isCardSwiping = true; } }, {passive: true});
+            animalInfoSection.addEventListener('touchend', (e) => { STATE.cardTouchEndX = e.changedTouches[0].screenX; STATE.cardTouchEndY = e.changedTouches[0].screenY; if(Math.abs(STATE.cardTouchEndX - STATE.cardTouchStartX) > 40) UI.switchProjectByDirection(STATE.cardTouchEndX - STATE.cardTouchStartX < 0 ? 1 : -1); });
+            animalInfoSection.addEventListener('mousedown', (e) => { STATE.cardTouchStartX = e.screenX; STATE.cardTouchStartY = e.screenY; STATE.isCardSwiping = false; });
+            animalInfoSection.addEventListener('mousemove', (e) => { if (e.buttons === 1) { if (Math.abs(e.screenX - STATE.cardTouchStartX) > 15 || Math.abs(e.screenY - STATE.cardTouchStartY) > 15) STATE.isCardSwiping = true; } });
+            animalInfoSection.addEventListener('mouseup', (e) => { if (STATE.isCardSwiping) { STATE.cardTouchEndX = e.screenX; STATE.cardTouchEndY = e.screenY; if(Math.abs(STATE.cardTouchEndX - STATE.cardTouchStartX) > 40) UI.switchProjectByDirection(STATE.cardTouchEndX - STATE.cardTouchStartX < 0 ? 1 : -1); } });
+            document.getElementById('card-prev-btn').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); UI.switchProjectByDirection(-1); });
+            document.getElementById('card-next-btn').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); UI.switchProjectByDirection(1); });
+            animalInfoSection.addEventListener('click', (e) => {
+                if (STATE.isCardSwiping) { e.preventDefault(); e.stopPropagation(); return; }
+                if (e.target.classList.contains('gallery-btn-overlay')) { const proj = STATE.projects[STATE.currentProjectKey]; if(!proj) return; document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; GallerySys.render('photos'); document.getElementById('gallery-modal').classList.remove('hidden'); } 
+                else if (e.target.id === 'animal-main-photo') { UI.openCompareModal(); } 
+                else { if (animalInfoSection.classList.contains('mobile-collapsed')) { animalInfoSection.classList.remove('mobile-collapsed'); if (STATE.animalInfoCollapseTimer) clearTimeout(STATE.animalInfoCollapseTimer); STATE.animalInfoCollapseTimer = setTimeout(() => { animalInfoSection.classList.add('mobile-collapsed'); }, 5000); } }
             });
+            document.getElementById('toggle-announce-panel-btn').addEventListener('click', (e) => { STATE.isAnnounceCollapsed = !STATE.isAnnounceCollapsed; localStorage.setItem('dogMap_announceCollapsed', STATE.isAnnounceCollapsed); UI.applyAnnouncePanelCollapseState(); });
+
+            // -- 相簿與影像檢視 --
+            document.getElementById('close-gallery-btn').addEventListener('click', () => { document.getElementById('gallery-content').innerHTML = ''; document.getElementById('gallery-modal').classList.add('hidden'); });
+            document.getElementById('tab-photos').addEventListener('click', () => GallerySys.render('photos'));
+            document.getElementById('tab-videos').addEventListener('click', () => GallerySys.render('videos'));
+            document.getElementById('gallery-content').addEventListener('scroll', function() { if (this.scrollTop + this.clientHeight >= this.scrollHeight - 50) GallerySys.loadMore(); });
+            document.getElementById('viewer-close-btn').addEventListener('click', () => { document.getElementById('photo-viewer-modal').classList.add('hidden'); });
+            document.getElementById('viewer-prev-btn').addEventListener('click', () => { if (STATE.currentViewerIndex > 0) { STATE.currentViewerIndex--; GallerySys.updateViewer(); } });
+            document.getElementById('viewer-next-btn').addEventListener('click', () => { if (STATE.currentViewerIndex < STATE.viewerPhotos.length - 1) { STATE.currentViewerIndex++; GallerySys.updateViewer(); } });
+            const viewerContainer = document.getElementById('photo-viewer-container');
+            viewerContainer.addEventListener('touchstart', e => { STATE.touchStartX = e.changedTouches[0].screenX; });
+            viewerContainer.addEventListener('touchend', e => { STATE.touchEndX = e.changedTouches[0].screenX; GallerySys.handleSwipe(); });
+
+            // -- 照片比對 --
+            document.getElementById('enable-compare-btn').addEventListener('click', () => { document.getElementById('compare-left-pane').classList.remove('hidden'); document.getElementById('compare-left-pane').classList.add('flex'); document.getElementById('compare-right-label').classList.remove('hidden'); document.getElementById('enable-compare-btn').classList.add('hidden'); });
+            document.getElementById('compare-close-btn').addEventListener('click', () => { document.getElementById('photo-compare-modal').classList.add('hidden'); });
+            document.getElementById('compare-file-input').addEventListener('change', function(e) { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('compare-local-img').src = e.target.result; document.getElementById('compare-local-container').classList.remove('hidden'); document.getElementById('compare-upload-prompt').classList.add('hidden'); document.getElementById('compare-reselect-btn').classList.remove('hidden'); }; reader.readAsDataURL(file); } });
+
+            // -- 工具按鈕 (地圖操作) --
+            document.getElementById('toggle-fog-btn').addEventListener('click', () => { STATE.isFogVisible = !STATE.isFogVisible; const fogPane = MapSys.map ? MapSys.map.getPane('fogPane') : null; if(fogPane) fogPane.style.display = STATE.isFogVisible ? 'block' : 'none'; const btn = document.getElementById('toggle-fog-btn'); if (STATE.isFogVisible) { btn.innerText = "👁️ 關閉迷霧"; btn.style.backgroundColor = "#f59e0b"; FogSys.requestRender(); } else { btn.innerText = "🌫️ 開啟迷霧"; btn.style.backgroundColor = "#9ca3af"; } });
             document.getElementById('locate-btn').addEventListener('click', () => { if (!STATE.isSpectatorMode && STATE.lastSavedPos) { MapSys.map.setView([STATE.lastSavedPos.lat, STATE.lastSavedPos.lng], 17, { animate: true }); STATE.isMapInteracting = false; } });
             document.getElementById('force-upload-btn').addEventListener('click', () => {
                 if (STATE.isSpectatorMode) { UI.showCenterToast("觀看模式下無法上傳位置！"); return; }
@@ -1002,16 +1239,53 @@
                 if (!navigator.geolocation) { UI.showCenterToast("不支援定位"); btn.innerText = "📤 強制打卡"; btn.style.backgroundColor = ""; return; }
                 navigator.geolocation.getCurrentPosition((pos) => { Geo.handleValidPosition(pos.coords.latitude, pos.coords.longitude, Date.now()); btn.innerText = "📤 強制打卡"; btn.style.backgroundColor = ""; UI.showCenterToast("✅ 強制打卡成功！"); }, (err) => { btn.innerText = "📤 強制打卡"; btn.style.backgroundColor = ""; Geo.handleGeoError(err, false); }, { enableHighAccuracy: true, timeout: 15000 });
             });
+            document.getElementById('spectator-btn').addEventListener('click', () => {
+                STATE.isSpectatorMode = !STATE.isSpectatorMode; document.getElementById('spectator-hint').classList.add('hidden'); const spectatorBtn = document.getElementById('spectator-btn');
+                if (STATE.isSpectatorMode) {
+                    spectatorBtn.innerText = "退出觀看"; spectatorBtn.style.backgroundColor = "#ef4444"; spectatorBtn.style.color = "white";
+                    if (Geo.watchId) { navigator.geolocation.clearWatch(Geo.watchId); Geo.watchId = null; }
+                    if (STATE.isMyRouteMode) { STATE.isMyRouteMode = false; STATE.targetRouteUid = null; document.getElementById('playback-controls').classList.add('hidden'); if (STATE.snakeInterval) { clearInterval(STATE.snakeInterval); STATE.snakeInterval = null; } document.getElementById('my-route-btn').innerText = "🐍 我的軌跡"; document.getElementById('my-route-btn').style.backgroundColor = "#a855f7"; document.getElementById('my-route-btn').style.color = "white"; if (!STATE.isFogVisible) { STATE.isFogVisible = true; if(MapSys.map) MapSys.map.getPane('fogPane').style.display = 'block'; document.getElementById('toggle-fog-btn').innerText = "👁️ 關閉迷霧"; document.getElementById('toggle-fog-btn').style.backgroundColor = "#f59e0b"; } }
+                    const proj = STATE.projects[STATE.currentProjectKey]; if(proj) { const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2]; MapSys.map.setView(center, 13, { animate: true }); }
+                    MapSys.renderMap(); document.getElementById('toast-text').innerText = "觀看模式啟動";
+                } else { spectatorBtn.innerText = "觀看模式"; spectatorBtn.style.backgroundColor = "#f59e0b"; spectatorBtn.style.color = "#1a202c"; document.getElementById('toast-text').innerText = "重新定位中..."; Geo.startLocationServices(true); }
+            });
+            document.getElementById('eva-grid-btn').addEventListener('click', () => { STATE.isEvaMode = !STATE.isEvaMode; const evaGridBtn = document.getElementById('eva-grid-btn'); if (STATE.isEvaMode) { evaGridBtn.innerText = "❌ 關閉顯示"; evaGridBtn.style.backgroundColor = "#ef4444"; evaGridBtn.style.color = "white"; EvaSys.draw(); } else { evaGridBtn.innerText = "🕸️ 完成度"; evaGridBtn.style.backgroundColor = "#f59e0b"; evaGridBtn.style.color = "#1a202c"; EvaSys.clear(); } });
 
             // -- 專案切換與操作 --
             projectSelect.addEventListener('change', (e) => {
                 STATE.currentProjectKey = e.target.value; Utils.setPersistentData('dogMap_currentProject', STATE.currentProjectKey);
                 window.history.pushState({}, '', `?${encodeURIComponent(STATE.projects[STATE.currentProjectKey]?.animalName || STATE.currentProjectKey)}`);
-                UI.updateAnimalInfoCard(); MapSys.drawAllProjects();
+                LotterySys.loadState(); UI.updateAnimalInfoCard(); MapSys.drawAllProjects();
                 const proj = STATE.projects[STATE.currentProjectKey]; if(proj) MapSys.map.flyToBounds(proj.bounds, {padding: [50, 50], animate: true});
+                if (STATE.isMyRouteMode) { STATE.isMyRouteMode = false; STATE.targetRouteUid = null; document.getElementById('playback-controls').classList.add('hidden'); if (STATE.snakeInterval) { clearInterval(STATE.snakeInterval); STATE.snakeInterval = null; } const myRouteBtn = document.getElementById('my-route-btn'); myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white"; if (!STATE.isFogVisible) { STATE.isFogVisible = true; const fogPane = MapSys.map.getPane('fogPane'); if(fogPane) fogPane.style.display = 'block'; const toggleFogBtn = document.getElementById('toggle-fog-btn'); toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; } }
                 if (STATE.isSystemReady) WS.send("init", { uid: STATE.myUid, project: STATE.currentProjectKey });
             });
             document.getElementById('delete-project-btn').addEventListener('click', () => { if (STATE.isAdmin && STATE.currentProjectKey) UI.showConfirm(`確定要永久刪除專案「${STATE.currentProjectKey}」嗎？\n不用擔心，志工的心血(軌跡)與獎品將會被保留！`, () => { if (STATE.isSystemReady) WS.send("admin_delete_project", { token: STATE.adminToken, project: STATE.currentProjectKey }); }); });
+
+            // -- 軌跡回放控制 --
+            document.getElementById('my-route-btn').addEventListener('click', () => {
+                if (STATE.isSpectatorMode) { UI.showModal("觀看模式下無法使用此功能！"); return; }
+                STATE.isMyRouteMode = !STATE.isMyRouteMode; const myRouteBtn = document.getElementById('my-route-btn');
+                if (STATE.isMyRouteMode) {
+                    STATE.targetRouteUid = STATE.myUid; let msg = "🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。\n(為避免運鏡時畫面閃爍，已自動為您暫時關閉迷霧層)";
+                    if (STATE.isAdmin) { let maxLen = 0; for (const uid in STATE.allUsersData) { const u = STATE.allUsersData[uid]; if (u.history && u.history.length > maxLen) { maxLen = u.history.length; STATE.targetRouteUid = uid; } } if (STATE.targetRouteUid !== STATE.myUid) msg = `👑 [管理員模式]\n已鎖定探索資料最豐富的「${Utils.escapeHTML(STATE.allUsersData[STATE.targetRouteUid].userName)}」進行軌跡重現！\n(已自動暫時關閉迷霧層)`; }
+                    myRouteBtn.innerText = "❌ 退出軌跡"; myRouteBtn.style.backgroundColor = "#ef4444"; myRouteBtn.style.color = "white"; document.getElementById('playback-controls').classList.remove('hidden');
+                    if (STATE.isFogVisible) { STATE.isFogVisible = false; if(MapSys.map) MapSys.map.getPane('fogPane').style.display = 'none'; const toggleFogBtn = document.getElementById('toggle-fog-btn'); toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }
+                    STATE.snakeIndex = 1; STATE.isPlaybackPaused = false; STATE.currentPlaybackSpeed = STATE.basePlaybackSpeed; document.getElementById('pb-pause').innerText = "=";
+                    const tData = (STATE.targetRouteUid === STATE.myUid) ? {history: STATE.localHistory} : STATE.allUsersData[STATE.targetRouteUid]; if (tData && tData.history && tData.history.length > 0) MapSys.map.setView([tData.history[0].lat, tData.history[0].lng], 16);
+                    PlaybackSys.start(); UI.showModal(msg);
+                } else {
+                    STATE.targetRouteUid = null; document.getElementById('playback-controls').classList.add('hidden'); if (STATE.snakeInterval) { clearInterval(STATE.snakeInterval); STATE.snakeInterval = null; }
+                    myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
+                    if (!STATE.isFogVisible) { STATE.isFogVisible = true; if(MapSys.map) MapSys.map.getPane('fogPane').style.display = 'block'; const toggleFogBtn = document.getElementById('toggle-fog-btn'); toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; }
+                }
+                MapSys.renderMap(); FogSys.requestRender();
+            });
+            document.getElementById('pb-start').addEventListener('click', () => { STATE.snakeIndex = 1; STATE.isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; PlaybackSys.start(); MapSys.renderMap(); });
+            document.getElementById('pb-prev').addEventListener('click', () => { STATE.snakeIndex = Math.max(1, STATE.snakeIndex - 1); STATE.isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; PlaybackSys.start(); MapSys.renderMap(); });
+            document.getElementById('pb-pause').addEventListener('click', () => { STATE.isPlaybackPaused = !STATE.isPlaybackPaused; PlaybackSys.start(); });
+            document.getElementById('pb-speed').addEventListener('click', () => { STATE.currentPlaybackSpeed = STATE.currentPlaybackSpeed / 2; if (STATE.currentPlaybackSpeed < 62.5) STATE.currentPlaybackSpeed = STATE.basePlaybackSpeed; PlaybackSys.start(); });
+            document.getElementById('pb-end').addEventListener('click', () => { const tData = (STATE.targetRouteUid === STATE.myUid) ? {history: STATE.localHistory} : STATE.allUsersData[STATE.targetRouteUid]; STATE.snakeIndex = (tData && tData.history) ? tData.history.length : 0; STATE.isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; PlaybackSys.start(); MapSys.renderMap(); });
 
             // -- 抽獎與獎池 --
             document.getElementById('slot-draw-btn').addEventListener('click', () => {
@@ -1022,12 +1296,17 @@
                 WS.send("draw_gift", { uid: STATE.myUid, userName: STATE.currentUserName, project: STATE.currentProjectKey, token: STATE.adminToken });
             });
             document.getElementById('slot-check-pool-btn').addEventListener('click', () => { if (STATE.isSystemReady) WS.send("get_prizes", { project: STATE.currentProjectKey }); else UI.showCenterToast("系統未連線！"); });
+            document.getElementById('slot-close-btn').addEventListener('click', () => document.getElementById('slot-machine-modal').classList.add('hidden'));
+            document.getElementById('floating-gift-container').addEventListener('click', () => { if (STATE.isSpectatorMode) { UI.showCenterToast("觀看模式無法參與抽獎喔！"); return; } document.getElementById('slot-machine-title').innerText = `🎰 「${STATE.projects[STATE.currentProjectKey]?.name || ''}」抽獎`; UI.updateGiftUI(); document.getElementById('slot-machine-modal').classList.remove('hidden'); });
+            document.getElementById('prize-pool-close-btn').addEventListener('click', () => { document.getElementById('prize-pool-modal').classList.add('hidden'); });
             
             // -- 個資設定 --
-            document.getElementById('profile-edit-trigger').addEventListener('click', () => { document.getElementById('profile-name').value = STATE.currentUserName; document.getElementById('profile-color').value = document.getElementById('profile-hex').value = STATE.dbUserColor.toUpperCase(); document.getElementById('profile-error').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('hidden'); });
+            const profileColorPicker = document.getElementById('profile-color'), profileHexInput = document.getElementById('profile-hex');
+            profileColorPicker.addEventListener('input', e => profileHexInput.value = e.target.value.toUpperCase()); profileHexInput.addEventListener('input', e => { let val = e.target.value; if (val.startsWith('#') && (val.length === 4 || val.length === 7)) { profileColorPicker.value = val; } });
+            document.getElementById('profile-edit-trigger').addEventListener('click', () => { document.getElementById('profile-name').value = STATE.currentUserName; profileColorPicker.value = STATE.dbUserColor; profileHexInput.value = STATE.dbUserColor.toUpperCase(); document.getElementById('profile-error').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('hidden'); });
             document.getElementById('profile-cancel-btn').addEventListener('click', () => document.getElementById('profile-modal').classList.add('hidden'));
             document.getElementById('profile-save-btn').addEventListener('click', () => {
-                const name = document.getElementById('profile-name').value.trim(), hex = document.getElementById('profile-color').value;
+                const name = document.getElementById('profile-name').value.trim(), hex = profileColorPicker.value;
                 if (!/^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/.test(name)) { document.getElementById('profile-error').classList.remove('hidden'); return; }
                 STATE.currentUserName = name; STATE.dbUserColor = hex; Utils.setPersistentData('dogMap_userName', name); Utils.setPersistentData('dogMap_userColor', hex); document.getElementById('profile-edit-trigger').style.backgroundColor = hex;
                 if (STATE.allUsersData[STATE.myUid]) { STATE.allUsersData[STATE.myUid].userName = name; STATE.allUsersData[STATE.myUid].color = hex; }
@@ -1042,39 +1321,55 @@
             document.getElementById('au-close-btn').addEventListener('click', () => document.getElementById('admin-user-info-modal').classList.add('hidden'));
             document.getElementById('au-restrict-btn').addEventListener('click', (e) => { if(STATE.isSystemReady) { WS.send("admin_toggle_restriction", { token: STATE.adminToken, uid: e.target.getAttribute('data-uid') }); e.target.innerText = "⏳ 處理中..."; } });
             
-            // ... (其他原有事件如觀看模式、軌跡播放等請依同樣邏輯綁定)
+            // -- 管理員獎品管理 --
+            document.getElementById('add-prize-btn').addEventListener('click', () => { if (!STATE.isAdmin) return; document.getElementById('add-prize-title').innerText = `🎁 新增「${STATE.projects[STATE.currentProjectKey]?.name || ''}」獎池`; const c = document.getElementById('prize-rows-container'); c.innerHTML = ''; c.appendChild(createPrizeRow()); document.getElementById('add-prize-modal').classList.remove('hidden'); });
+            document.getElementById('add-prize-row-btn').addEventListener('click', () => { document.getElementById('prize-rows-container').appendChild(createPrizeRow()); });
+            document.getElementById('add-prize-cancel-btn').addEventListener('click', () => { document.getElementById('add-prize-modal').classList.add('hidden'); });
+            document.getElementById('add-prize-submit-btn').addEventListener('click', () => {
+                const rows = document.getElementById('prize-rows-container').children, prizes = [];
+                for (let i = 0; i < rows.length; i++) {
+                    const name = rows[i].querySelector('.prize-name-input').value.trim(), prob = parseFloat(rows[i].querySelector('.prize-prob-input').value), first_prob = parseFloat(rows[i].querySelector('.prize-first-prob-input').value), url = rows[i].querySelector('.prize-url-input').value.trim();
+                    if (name && url && !isNaN(prob) && !isNaN(first_prob)) prizes.push({ name, url, prob, first_prob });
+                }
+                if (prizes.length === 0) { UI.showCenterToast("⚠️ 請至少完整填寫一個獎品的名稱與網址！"); return; }
+                if (STATE.isSystemReady) { WS.send("add_prizes", { token: STATE.adminToken, project: STATE.currentProjectKey, data: prizes }); document.getElementById('add-prize-modal').classList.add('hidden'); UI.showCenterToast("⏳ 獎品新增指令已送出！系統將自動比對重複項目..."); } else UI.showCenterToast("⚠️ 系統未連線！");
+            });
+            document.getElementById('manage-prizes-btn').addEventListener('click', () => { if (!STATE.isAdmin) return; document.getElementById('manage-prize-title').innerText = `⚙️ 管理「${STATE.projects[STATE.currentProjectKey]?.name || ''}」獎品`; if (STATE.isSystemReady) { document.getElementById('admin-prizes-list-container').innerHTML = '<p class="text-center font-bold text-gray-600 mt-4">載入中...</p>'; WS.send("get_admin_prizes", { token: STATE.adminToken, project: STATE.currentProjectKey }); document.getElementById('manage-prizes-modal').classList.remove('hidden'); } else UI.showCenterToast("⚠️ 系統未連線！"); });
+            document.getElementById('close-manage-prizes-btn').addEventListener('click', () => { document.getElementById('manage-prizes-modal').classList.add('hidden'); });
+            document.getElementById('save-prizes-btn').addEventListener('click', () => {
+                const updates = []; document.querySelectorAll('.edit-prob-input').forEach(probInp => { const id = probInp.getAttribute('data-id'), firstProbInp = document.querySelector(`.edit-first-prob-input[data-id="${id}"]`); if (firstProbInp && (probInp.value !== probInp.getAttribute('data-original') || firstProbInp.value !== firstProbInp.getAttribute('data-original'))) updates.push({ id: id, prob: parseFloat(probInp.value), first_prob: parseFloat(firstProbInp.value) }); });
+                if (updates.length > 0 && STATE.isSystemReady) { const btn = document.getElementById('save-prizes-btn'); btn.innerText = "儲存中..."; btn.className = "pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; btn.disabled = true; WS.send("update_prize_probs", { token: STATE.adminToken, data: updates }); }
+            });
         }
 
         // ==========================================
-        // 🚀 9. 系統啟動 (Bootstrap)
+        // 🚀 12. 系統啟動 (Bootstrap)
         // ==========================================
         async function initSystem() {
             try { const c = await (await fetch('config.json?t=' + Date.now())).json(); if(c && c.ws_url) STATE.wsUrl = c.ws_url; } catch (e) {}
             if (!STATE.wsUrl) STATE.wsUrl = window.location.origin.replace('http', 'ws') + '/ws';
             
-            let uProj = new URLSearchParams(window.location.search).get('project'); if(!uProj && window.location.search.substring(1)) uProj = decodeURIComponent(window.location.search.substring(1));
-            STATE.currentProjectKey = uProj || Utils.getPersistentData('dogMap_currentProject');
+            // 處理專案 URL 參數
+            const urlParams = new URLSearchParams(window.location.search); let urlProject = urlParams.get('project');
+            if (!urlProject) { const queryString = window.location.search.substring(1); if (queryString && !queryString.includes('=')) urlProject = decodeURIComponent(queryString); }
+            STATE.currentProjectKey = urlProject || Utils.getPersistentData('dogMap_currentProject');
             
             STATE.myUid = Utils.getPersistentData('dogMap_UID'); if (!STATE.myUid) { STATE.myUid = 'usr_' + Math.random().toString(36).substr(2, 9); Utils.setPersistentData('dogMap_UID', STATE.myUid); }
             
             try { STATE.localHistory = JSON.parse(localStorage.getItem('dogMap_localHistory') || localStorage.getItem('dogMap_localHistory_' + STATE.currentProjectKey) || "[]"); STATE.lastSavedPos = STATE.localHistory[STATE.localHistory.length - 1]; } catch(e){}
 
-            initEvents();
-            MapSys.init();
+            initEvents(); MapSys.init(); LotterySys.startTimer();
             
             if (STATE.isAdmin) { document.getElementById('admin-panel').classList.remove('hidden'); document.getElementById('delete-project-btn').classList.remove('hidden'); }
 
-            const savedName = Utils.getPersistentData('dogMap_userName'), savedColor = Utils.getPersistentData('dogMap_userColor');
+            const savedName = Utils.getPersistentData('dogMap_userName'), rawColor = Utils.getPersistentData('dogMap_userColor') || '';
+            const savedColor = /^#[0-9a-fA-F]{6}$/i.test(rawColor) ? rawColor : null;
             if (savedName) {
                 STATE.currentUserName = Utils.escapeHTML(savedName); STATE.dbUserColor = savedColor || Utils.generateRandomColor();
                 if (!savedColor) Utils.setPersistentData('dogMap_userColor', STATE.dbUserColor);
                 if (STATE.localHistory.length > 0) { STATE.allUsersData[STATE.myUid] = { userName: STATE.currentUserName, color: STATE.dbUserColor, history: [...STATE.localHistory], project: STATE.currentProjectKey }; MapSys.renderMap(); UI.updateStepsCounter(); }
                 document.getElementById('profile-edit-trigger').style.backgroundColor = STATE.dbUserColor;
-                
-                let timeStr = Utils.getPersistentData('dogMap_lottery_time_' + STATE.currentProjectKey);
-                if (timeStr) { try { STATE.lotteryTimeRemaining = JSON.parse(timeStr).r || 3600; } catch(e){ STATE.lotteryTimeRemaining=3600; } }
-                
-                WS.connect(); Geo.finishUIReveal(); document.getElementById('toast-text').innerText = "自動定位..."; Geo.startLocationServices(true);
+                LotterySys.loadState(); WS.connect(); Geo.finishUIReveal(); document.getElementById('toast-text').innerText = "自動定位..."; Geo.startLocationServices(true);
             } else { document.getElementById('startup-overlay').style.display = 'flex'; document.getElementById('startup-overlay').style.opacity = '1'; }
         }
 
