@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>浪浪守護地圖</title>
+    <!--不請求icon-->
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -278,7 +279,7 @@
             <div><label class="block text-xs font-bold mb-1">📞 聯絡方式</label><input type="text" id="edit-stray-contact" class="pixel-input w-full p-2 text-sm"></div>
             <div class="border-t-2 border-dashed border-gray-400 pt-3 mt-2 grid grid-cols-2 gap-2">
                 <button class="admin-status-btn pixel-btn py-2 bg-green-500 text-white text-sm" data-status="approved">✅ 儲存並上架</button>
-                <button class="admin-status-btn pixel-btn py-2 bg-orange-500 text-white text-sm" data-status="takedown">⬇️ 暫時下架</button>
+                <button class="admin-status-btn pixel-btn py-2 bg-orange-500 text-white text-sm" data-status="pending">⬇️ 暫時下架(改為待審)</button>
                 <button class="admin-status-btn pixel-btn py-2 bg-blue-500 text-white text-sm" data-status="found_owner">🎉 找到主人(結案)</button>
                 <button class="admin-status-btn pixel-btn py-2 bg-red-600 text-white text-sm" data-status="deleted">🗑️ 永久刪除</button>
             </div>
@@ -298,7 +299,6 @@
         function setPersistentData(key, value) { try { localStorage.setItem(key, value); } catch(e) {} }
         function getPersistentData(key) { try { return localStorage.getItem(key); } catch(e) {} return null; }
 
-        // 無損切換核心：沿用尋寵地圖的 LocalStorage Keys
         let myUid = getPersistentData('dogMap_UID');
         if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
         let currentUserName = "", dbUserColor = "";
@@ -317,14 +317,13 @@
         let lastFullSyncTime = 0;
         let isMapInteracting = false;
         let mapInteractionTimer = null;
+        let taiwanPolygons = []; 
 
-        // 歷史軌跡
         let localHistory = [];
         let savedH = getPersistentData('dogMap_localHistory');
         if (savedH) { try { localHistory = JSON.parse(savedH); } catch(e){} }
         let lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
         
-        // 我的軌跡重現變數
         let isMyRouteMode = false;
         let targetRouteUid = null; 
         let snakeInterval = null;
@@ -333,20 +332,21 @@
         let currentPlaybackSpeed = 500;
         let isPlaybackPaused = false;
 
-        // 專案快取
         let allUsersData = {}, PROJECTS = {};
         let currentProjectKey = null;
         let allCenterMarkers = [];
         let activeBoundsRectangle = null;
         
         let isReportingMode = false;
-        let preReportFogState = true; // 紀錄進入回報前的迷霧狀態
+        let preReportFogState = true; 
         let isAnnounceCollapsed = localStorage.getItem('dogMap_announceCollapsed') === 'true';
         let animalInfoCollapseTimer = null;
 
         let viewerPhotos = [], currentViewerIndex = 0;
         let galleryLoadedCount = 0, currentGalleryType = 'photos';
         const GALLERY_BATCH_SIZE = 2;
+
+        let adminCachedApps = []; // 用來儲存從伺服器抓到的原始專案資料供審核修改用
 
         const customModal = document.getElementById('custom-modal'), customModalText = document.getElementById('custom-modal-text');
         function showModal(msg) { customModalText.innerText = msg; customModal.classList.remove('hidden'); }
@@ -404,6 +404,29 @@
                 if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url;
             } catch (e) {}
 
+            fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json')
+                .then(res => res.json())
+                .then(data => {
+                    data.features.forEach(feature => {
+                        let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+                        polys.forEach(poly => {
+                            let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+                            poly[0].forEach(coord => {
+                                if (coord[1] < minLat) minLat = coord[1];
+                                if (coord[1] > maxLat) maxLat = coord[1];
+                                if (coord[0] < minLng) minLng = coord[0];
+                                if (coord[0] > maxLng) maxLng = coord[0];
+                            });
+                            taiwanPolygons.push({
+                                coordinates: poly,
+                                bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng])
+                            });
+                        });
+                    });
+                    requestFogRender();
+                })
+                .catch(err => console.warn('無法載入台灣地形檔，將使用全螢幕迷霧:', err));
+
             map = L.map('map', { zoomControl: false }).setView([23.5, 121], 8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -427,6 +450,7 @@
                 document.getElementById('admin-login-btn').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
             }
+            
             connectWebSocket(); checkLocalSetupAndStart();
         }
 
@@ -474,6 +498,7 @@
                 document.getElementById('report-search-btn').innerText = '搜尋';
                 return;
             }
+
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await res.json();
@@ -528,15 +553,44 @@
             }
 
             const payload = {
-                animal_type: document.getElementById('report-type').value,
-                discover_time: timeVal.replace('T', ' '),
-                notes: document.getElementById('report-notes').value.trim(),
-                contact: document.getElementById('report-contact').value.trim(),
-                lat: reportLat, lng: reportLng, media_urls: mediaUrls
+                isStray: true, // 核心：使用 isStray 標記區分尋寵與浪浪資料庫
+                animalName: "浪浪 (" + document.getElementById('report-type').value + ")",
+                type: document.getElementById('report-type').value === '狗' ? 'dog' : (document.getElementById('report-type').value === '貓' ? 'cat' : 'other'),
+                lostDate: timeVal.replace('T', ' '),
+                bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
+                mainPhoto: mediaUrls.length > 0 ? mediaUrls[0] : "",
+                photos: mediaUrls,
+                announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
             };
 
+            const strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+
             if(isSystemReady) {
-                ws.send(JSON.stringify({ type: "report_stray", uid: myUid, data: payload }));
+                ws.send(JSON.stringify({ 
+                    type: "submit_application", 
+                    id: strayId,
+                    ownerInfo: { account: "stray_user_" + myUid, password: "123" },
+                    projectData: payload,
+                    forceStatus: "pending" 
+                }));
+                // 因為 submit_application 本身沒有針對發送者專屬的成功回傳事件，我們這裡直接重置介面
+                setTimeout(() => {
+                    document.getElementById('report-form-modal').classList.add('hidden');
+                    isReportingMode = false;
+                    document.getElementById('report-stray-btn').classList.remove('hidden');
+                    document.getElementById('project-select-wrapper').classList.remove('hidden');
+                    submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
+                    document.getElementById('report-notes').value = ''; document.getElementById('report-media').value = '';
+                    
+                    if (preReportFogState) {
+                        isFogVisible = true;
+                        const fogPane = map ? map.getPane('fogPane') : null;
+                        if(fogPane) fogPane.style.display = 'block';
+                        requestFogRender();
+                    }
+                    showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
+                }, 1000);
+
             } else {
                 showModal("系統未連線！");
                 submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
@@ -558,271 +612,117 @@
 
         document.getElementById('admin-pending-btn').addEventListener('click', () => {
             document.getElementById('admin-list-title').innerText = "📋 待審核浪浪列表";
-            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_strays", token: adminToken, status: "pending" }));
+            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "pending" }));
         });
         document.getElementById('admin-approved-btn').addEventListener('click', () => {
             document.getElementById('admin-list-title').innerText = "🐾 已上架浪浪管理";
-            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_strays", token: adminToken, status: "approved" }));
+            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "approved" }));
         });
         document.getElementById('admin-list-close-btn').addEventListener('click', () => document.getElementById('admin-list-modal').classList.add('hidden'));
         document.getElementById('admin-edit-close-btn').addEventListener('click', () => document.getElementById('admin-edit-modal').classList.add('hidden'));
 
-        function openAdminEditModal(data) {
-            document.getElementById('edit-stray-id').value = data.id;
-            document.getElementById('edit-stray-type').value = data.animal_type || '其他';
-            document.getElementById('edit-stray-time').value = (data.discover_time || "").replace(' ', 'T');
-            document.getElementById('edit-stray-notes').value = data.notes || "";
-            document.getElementById('edit-stray-contact').value = data.contact || "";
+        function openAdminEditModal(appId) {
+            const app = adminCachedApps.find(a => a.id === appId);
+            if(!app) return;
+            const pd = app.projectData;
+            
+            document.getElementById('edit-stray-id').value = app.id;
+            
+            const typeMatch = pd.animalName.match(/\((.*?)\)/);
+            document.getElementById('edit-stray-type').value = typeMatch ? typeMatch[1] : '其他';
+            document.getElementById('edit-stray-time').value = (pd.lostDate || "").replace(' ', 'T');
+            
+            let notes = pd.announcement || "";
+            let contact = "";
+            const contactSplit = notes.split("\n\n聯絡方式: ");
+            if (contactSplit.length > 1) {
+                notes = contactSplit[0];
+                contact = contactSplit[1];
+            }
+            
+            document.getElementById('edit-stray-notes').value = notes;
+            document.getElementById('edit-stray-contact').value = contact;
+            
             document.getElementById('admin-edit-modal').classList.remove('hidden');
         }
 
         document.querySelectorAll('.admin-status-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const status = e.target.getAttribute('data-status');
-                const s_id = document.getElementById('edit-stray-id').value;
-                const payload = {
-                    animal_type: document.getElementById('edit-stray-type').value,
-                    discover_time: document.getElementById('edit-stray-time').value.replace('T', ' '),
-                    notes: document.getElementById('edit-stray-notes').value.trim(),
-                    contact: document.getElementById('edit-stray-contact').value.trim(),
-                    status: status
-                };
-                if(isSystemReady) ws.send(JSON.stringify({ type: "admin_update_stray", token: adminToken, id: s_id, data: payload }));
+                const app_id = document.getElementById('edit-stray-id').value;
+                const app = adminCachedApps.find(a => a.id === app_id);
+                if (!app) return;
+
+                if (status === "deleted") {
+                    if(isSystemReady) ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: app_id, status: "deleted" }));
+                } else {
+                    const pd = app.projectData;
+                    pd.animalName = "浪浪 (" + document.getElementById('edit-stray-type').value + ")";
+                    pd.type = document.getElementById('edit-stray-type').value === '狗' ? 'dog' : (document.getElementById('edit-stray-type').value === '貓' ? 'cat' : 'other');
+                    pd.lostDate = document.getElementById('edit-stray-time').value.replace('T', ' ');
+                    pd.announcement = document.getElementById('edit-stray-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('edit-stray-contact').value.trim();
+                    
+                    if(isSystemReady) ws.send(JSON.stringify({
+                        type: "submit_application",
+                        id: app_id,
+                        ownerInfo: app.ownerInfo,
+                        projectData: pd,
+                        forceStatus: status
+                    }));
+                }
+                
                 e.target.innerText = "處理中...";
+                setTimeout(() => {
+                    document.getElementById('admin-edit-modal').classList.add('hidden');
+                    document.getElementById('admin-list-modal').classList.add('hidden');
+                    e.target.innerText = e.target.innerText.replace('處理中...', '');
+                    showModal("✅ 狀態與內容已更新並送出！");
+                }, 1000);
             });
         });
 
-        const projectSelect = document.getElementById('switch-project-select');
         function updateProjectDropdown() {
-            projectSelect.innerHTML = '';
+            const select = document.getElementById('switch-project-select');
+            select.innerHTML = '';
             const keys = Object.keys(PROJECTS);
-            if (keys.length === 0) {
-                const opt = document.createElement('option'); opt.value = ""; opt.innerText = `目前無浪浪專案`;
-                projectSelect.appendChild(opt); currentProjectKey = null;
+            if(keys.length === 0) {
+                const opt = document.createElement('option'); opt.value = ""; opt.innerText = "目前無浪浪專案";
+                select.appendChild(opt); currentProjectKey = null;
                 document.getElementById('animal-info-section').classList.add('hidden');
                 return;
-            } else { document.getElementById('animal-info-section').classList.remove('hidden'); }
-
-            keys.forEach(key => {
-                const opt = document.createElement('option'); opt.value = key; opt.innerText = `🎯 ${PROJECTS[key].animalName}`;
-                projectSelect.appendChild(opt);
+            }
+            document.getElementById('animal-info-section').classList.remove('hidden');
+            keys.forEach(k => {
+                const opt = document.createElement('option'); opt.value = k; opt.innerText = `🎯 ${PROJECTS[k].animalName}`;
+                select.appendChild(opt);
             });
-
-            if (currentProjectKey && PROJECTS[currentProjectKey]) {
-                projectSelect.value = currentProjectKey;
-            } else {
-                currentProjectKey = keys[0]; projectSelect.value = currentProjectKey;
-            }
+            if(!currentProjectKey || !PROJECTS[currentProjectKey]) currentProjectKey = keys[0];
+            select.value = currentProjectKey;
         }
 
-        projectSelect.addEventListener('change', (e) => {
+        document.getElementById('switch-project-select').addEventListener('change', (e) => {
             currentProjectKey = e.target.value;
-            updateAnimalInfoCard(); drawAllProjects();
-            const proj = PROJECTS[currentProjectKey];
-            if(proj) map.flyToBounds(proj.bounds, {padding: [50, 50], animate: true});
-            
-            if (isMyRouteMode) {
-                isMyRouteMode = false; targetRouteUid = null;
-                document.getElementById('playback-controls').classList.add('hidden');
-                if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
-                const myRouteBtn = document.getElementById('my-route-btn');
-                myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
-                if (!isFogVisible) {
-                    isFogVisible = true;
-                    const fogPane = map ? map.getPane('fogPane') : null;
-                    if(fogPane) fogPane.style.display = 'block';
-                    document.getElementById('toggle-fog-btn').innerText = "👁️ 關閉迷霧"; document.getElementById('toggle-fog-btn').style.backgroundColor = "#f59e0b";
-                }
-            }
+            updateAnimalInfoCard();
+            drawAllProjects();
+            if(PROJECTS[currentProjectKey]) map.flyToBounds(PROJECTS[currentProjectKey].bounds, {padding: [50, 50], animate: true});
         });
-
-        function connectWebSocket() {
-            ws = new WebSocket(NGROK_WS_URL);
-            ws.onopen = () => {
-                isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
-                document.getElementById('toast-text').innerText = "連線成功"; 
-                wsReconnectDelay = 3000;
-                ws.send(JSON.stringify({ type: "init", uid: myUid, project: currentProjectKey || "default" }));
-                if(localHistory.length > 0) saveLocationToServer(null, true); 
-            };
-            ws.onmessage = (event) => {
-                const response = JSON.parse(event.data);
-                
-                if (response.type === 'sync' || response.type === 'projects_updated') {
-                    if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
-                        PROJECTS = response.dynamicProjects || response.data.dynamicProjects;
-                        updateProjectDropdown(); drawAllProjects(); updateAnimalInfoCard();
-                    }
-                }
-                if (response.type === 'sync') {
-                    allUsersData = response.data.locations || {};
-                    renderMap();
-                    return;
-                }
-                if (response.type === 'user_appended') {
-                    const uid = response.uid; const inData = response.data;
-                    if (!allUsersData[uid]) allUsersData[uid] = { userName: inData.userName, color: inData.color, project: response.project, history: [] };
-                    else { allUsersData[uid].userName = inData.userName; allUsersData[uid].color = inData.color; }
-                    allUsersData[uid].history.push(inData.point); renderMap(); return;
-                }
-                if (response.type === 'user_update') { allUsersData[response.uid] = response.data; renderMap(); return; }
-
-                if(response.type === 'report_result') {
-                    document.getElementById('report-form-modal').classList.add('hidden');
-                    isReportingMode = false;
-                    document.getElementById('report-stray-btn').classList.remove('hidden');
-                    document.getElementById('project-select-wrapper').classList.remove('hidden');
-                    const btn = document.getElementById('report-submit-btn');
-                    btn.innerText = "🚀 確認送出"; btn.disabled = false;
-                    document.getElementById('report-notes').value = ''; document.getElementById('report-media').value = '';
-                    
-                    if (preReportFogState) {
-                        isFogVisible = true;
-                        const fogPane = map ? map.getPane('fogPane') : null;
-                        if(fogPane) fogPane.style.display = 'block';
-                        requestFogRender();
-                    }
-                    showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
-                }
-
-                if (response.type === 'admin_login_result') {
-                    document.getElementById('admin-submit-btn').innerText = "登入";
-                    if (response.success) {
-                        isAdmin = true; adminToken = response.token; 
-                        sessionStorage.setItem('dogMap_isAdmin', 'true'); sessionStorage.setItem('dogMap_adminToken', adminToken);
-                        document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden');
-                        showModal("登入成功！您現在擁有伺服器管理權限。");
-                    } else { showModal("密碼錯誤，請重試！"); }
-                    return; 
-                }
-                if (response.type === 'admin_action_result') { 
-                    showModal(response.msg); 
-                    document.getElementById('admin-edit-modal').classList.add('hidden'); document.getElementById('admin-list-modal').classList.add('hidden');
-                    document.querySelectorAll('.admin-status-btn').forEach(b => {
-                        const original = {"approved": "✅ 儲存並上架", "takedown": "⬇️ 暫時下架", "found_owner": "🎉 找到主人(結案)", "deleted": "🗑️ 永久刪除"};
-                        b.innerText = original[b.getAttribute('data-status')];
-                    });
-                    return; 
-                }
-
-                if(response.type === 'admin_strays_data') {
-                    const container = document.getElementById('admin-list-container');
-                    container.innerHTML = '';
-                    if(response.data.length === 0) {
-                        container.innerHTML = '<p class="text-center font-bold text-gray-500 mt-10">目前沒有資料</p>';
-                    } else {
-                        response.data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = "border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]";
-                            let mediaHtml = '';
-                            if(item.media_urls) {
-                                const urls = JSON.parse(item.media_urls);
-                                if(urls.length > 0) mediaHtml = `<img src="${urls[0]}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
-                            }
-                            div.innerHTML = `
-                                ${mediaHtml}
-                                <div class="font-bold text-sm mb-1">【${item.animal_type}】${item.discover_time}</div>
-                                <div class="text-xs text-gray-700 truncate mb-2">${item.notes || '無備註'}</div>
-                                <button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">查看 / 變更狀態</button>
-                            `;
-                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item));
-                            container.appendChild(div);
-                        });
-                    }
-                    document.getElementById('admin-list-modal').classList.remove('hidden');
-                }
-                if(response.type === 'admin_notify' && isAdmin) { showModal(response.msg); }
-            };
-            ws.onclose = () => {
-                isSystemReady = false; document.getElementById('sync-ping').style.backgroundColor = '#ef4444';
-                document.getElementById('toast-text').innerText = "重連中..."; 
-                setTimeout(connectWebSocket, wsReconnectDelay); 
-                wsReconnectDelay = Math.min(wsReconnectDelay * 2, 60000);
-            };
-        }
-
-        function startLocationServices(isAutoStart) {
-            if (!navigator.geolocation) { handleGeoError({code: 0, message: "瀏覽器不支援"}, isAutoStart); return; }
-            navigator.geolocation.getCurrentPosition((pos) => { handleValidPosition(pos.coords.latitude, pos.coords.longitude, Date.now()); finishUIReveal(); }, (err) => { handleGeoError(err, isAutoStart); }, { enableHighAccuracy: true, timeout: 15000 });
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            watchId = navigator.geolocation.watchPosition((pos) => { handleValidPosition(pos.coords.latitude, pos.coords.longitude, Date.now()); }, (err) => {}, { enableHighAccuracy: true, maximumAge: 5000 });
-        }
-        function finishUIReveal() {
-            document.getElementById('startup-overlay').style.display = 'none'; isTrackingStarted = true;
-            document.getElementById('status-toast').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden');
-            document.getElementById('locate-btn').classList.remove('hidden'); document.getElementById('spectator-btn').classList.remove('hidden'); document.getElementById('toggle-fog-btn').classList.remove('hidden');
-            document.getElementById('my-route-btn').classList.remove('hidden'); document.getElementById('report-stray-btn').classList.remove('hidden');
-            document.getElementById('toast-text').innerText = "位置同步成功";
-        }
-
-        function handleValidPosition(lat, lng, timestamp) {
-            if (isSpectatorMode) return; 
-            if (localHistory.length === 0 && !isReportingMode) map.setView([lat, lng], 17); 
-            
-            let shouldUpload = false;
-            if (lastSavedPos) {
-                const dist = getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng);
-                const timeElapsed = timestamp - lastSavedPos.timestamp;
-                if (dist >= 15 || timeElapsed >= 3 * 60 * 1000) shouldUpload = true;
-            } else shouldUpload = true;
-            
-            if (!shouldUpload && lastSavedPos) return;
-
-            const newPoint = { lat, lng, timestamp }; localHistory.push(newPoint); lastSavedPos = newPoint;
-            localHistory = optimizeHistory(localHistory); 
-            
-            try { localStorage.setItem('dogMap_localHistory', JSON.stringify(localHistory)); } catch(e) {}
-            allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey };
-            
-            if (!isMapInteracting && map && !isMyRouteMode && !isReportingMode) {
-                if (!map.getBounds().contains([lat, lng])) { map.setView([lat, lng], map.getZoom() || 17, { animate: true }); }
-            }
-            saveLocationToServer(newPoint, false); renderMap();
-        }
-
-        function saveLocationToServer(newPoint, forceFull = false) {
-            if (!isSystemReady || isSpectatorMode) return;
-            const now = Date.now();
-            if (forceFull || (now - lastFullSyncTime > 5 * 60 * 1000)) {
-                ws.send(JSON.stringify({ type: "update_location", uid: myUid, project: currentProjectKey, data: { userName: currentUserName, color: dbUserColor, history: localHistory, lastUpdate: now } }));
-                lastFullSyncTime = now;
-            } else if (newPoint) {
-                ws.send(JSON.stringify({ type: "append_location", uid: myUid, project: currentProjectKey, data: { userName: currentUserName, color: dbUserColor, point: newPoint } }));
-            }
-        }
 
         function updateAnimalInfoCard() {
             const proj = PROJECTS[currentProjectKey];
-            if (!proj) {
-                document.getElementById('animal-info-section').classList.add('hidden');
-                document.getElementById('announcement-panel').classList.add('hidden');
-                return; 
-            }
-            document.getElementById('animal-info-section').classList.remove('hidden');
+            if(!proj) { document.getElementById('announcement-panel').classList.add('hidden'); return; }
+            
+            document.getElementById('announcement-panel').classList.remove('hidden');
             let mainUrl = proj.mainPhoto;
             if (mainUrl && mainUrl.startsWith('/images/')) mainUrl = getBaseHttpUrl() + mainUrl;
             document.getElementById('animal-main-photo').src = mainUrl || "";
-            document.getElementById('animal-name-date').innerText = `${proj.animalName}`;
-            document.getElementById('announcement-panel').classList.remove('hidden');
-            
-            let ann = proj.announcement || "目前無最新公告。";
-            document.getElementById('announcement-text').innerHTML = escapeHTML(ann).replace(/\n/g, '<br>');
-
-            if (isAnnounceCollapsed) document.getElementById('announcement-text').classList.add('hidden');
-            else document.getElementById('announcement-text').classList.remove('hidden');
-
-            if (window.innerWidth <= 640) {
-                const infoSection = document.getElementById('animal-info-section');
-                infoSection.classList.remove('mobile-collapsed');
-                if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
-                animalInfoCollapseTimer = setTimeout(() => { infoSection.classList.add('mobile-collapsed'); }, 5000);
-            }
+            document.getElementById('animal-name-date').innerText = proj.animalName;
+            document.getElementById('announcement-text').innerHTML = escapeHTML(proj.announcement || "無").replace(/\n/g, '<br>');
         }
 
         function drawAllProjects() {
-            allCenterMarkers.forEach(m => map.removeLayer(m)); allCenterMarkers = [];
-            if (activeBoundsRectangle) { map.removeLayer(activeBoundsRectangle); activeBoundsRectangle = null; }
-
+            allCenterMarkers.forEach(m => map.removeLayer(m));
+            allCenterMarkers = [];
+            
             Object.keys(PROJECTS).forEach(key => {
                 const proj = PROJECTS[key];
                 const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
@@ -845,50 +745,74 @@
                                   </div>`;
                 }
 
-                const centerIcon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
-                const marker = L.marker(center, { icon: centerIcon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
-
-                marker.on('click', () => { if (!isCurrent) { document.getElementById('switch-project-select').value = key; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); } });
+                const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
+                const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
+                marker.on('click', () => {
+                    if (!isCurrent) {
+                        document.getElementById('switch-project-select').value = key;
+                        document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+                    }
+                });
                 allCenterMarkers.push(marker);
             });
         }
 
         function renderMap() {
-            if (!markersLayer || !map) return;
-            markersLayer.clearLayers(); 
+            if(!markersLayer) return;
+            markersLayer.clearLayers();
             const now = Date.now();
             const currentBounds = map.getBounds(); 
             
             if (isMyRouteMode) {
                 const targetData = allUsersData[targetRouteUid];
-                let historyToDraw = []; let rColor = '#ef4444'; let rName = '使用者';
+                let historyToDraw = [];
+                let rColor = '#ef4444';
+                let rName = '使用者';
 
-                if (targetRouteUid === myUid) { historyToDraw = localHistory; rColor = dbUserColor; rName = currentUserName; } 
-                else if (targetData && targetData.history) { historyToDraw = targetData.history; rColor = targetData.color || '#ef4444'; rName = targetData.userName; }
+                if (targetRouteUid === myUid) {
+                    historyToDraw = localHistory;
+                    rColor = dbUserColor;
+                    rName = currentUserName;
+                } else if (targetData && targetData.history) {
+                    historyToDraw = targetData.history;
+                    rColor = targetData.color || '#ef4444';
+                    rName = targetData.userName;
+                }
 
                 if (historyToDraw && historyToDraw.length > 0) {
-                    if (!snakeInterval && !isPlaybackPaused && snakeIndex < historyToDraw.length) snakeIndex = historyToDraw.length;
+                    if (!snakeInterval && !isPlaybackPaused && snakeIndex < historyToDraw.length) {
+                        snakeIndex = historyToDraw.length;
+                    }
                     const currentHistory = historyToDraw.slice(0, Math.max(1, snakeIndex));
                     if (currentHistory.length > 0) {
                         const latlngs = currentHistory.map(p => [p.lat, p.lng]);
                         L.polyline(latlngs, { color: rColor, weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(markersLayer);
-                        const lastPoint = currentHistory[currentHistory.length - 1]; const safeUserName = escapeHTML(rName);
+                        const lastPoint = currentHistory[currentHistory.length - 1];
+                        const safeUserName = escapeHTML(rName);
                         let tagSuffix = (targetRouteUid !== myUid) ? ' (觀察中)' : '';
                         let nameColor = `color: ${rColor}; border-color: ${rColor}; pointer-events: auto;`;
                         
                         const avatarHtml = `<div class="user-avatar-pixel blinking-red-pixel" style="background-color: ${rColor}; animation-duration: 2s;"></div>`;
                         const customIcon = L.divIcon({ className: 'custom-div-icon', html: `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${targetRouteUid || myUid}" style="${nameColor}">${safeUserName}${tagSuffix}</div>${avatarHtml}</div>`, iconSize: [0, 0], iconAnchor: [0, 0] });
                         L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: 5000 }).addTo(markersLayer);
+                        
                         if (snakeInterval) map.panTo([lastPoint.lat, lastPoint.lng], { animate: true, duration: (currentPlaybackSpeed/1000) });
                     }
                 }
-                document.getElementById('toast-text').innerText = "軌跡模式中"; requestFogRender(); return; 
+                document.getElementById('toast-text').innerText = "軌跡模式中";
+                requestFogRender();
+                return; 
             }
             
             let totalOnlineUserCount = 0;
             Object.keys(allUsersData).forEach(uid => {
                 const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
-                const isSelf = (uid === myUid); const lastPoint = userData.history[userData.history.length - 1];
+                const isSelf = (uid === myUid);
+                
+                // 本機自己的歷史如果本地有更完整的，就不依賴伺服器回傳的
+                const historyToUse = isSelf && localHistory.length > 0 ? localHistory : userData.history;
+                const lastPoint = historyToUse[historyToUse.length - 1];
+
                 if (now - lastPoint.timestamp < 60 * 60 * 1000) totalOnlineUserCount++;
                 if (isSpectatorMode && isSelf) return;
                 if (!currentBounds.contains([lastPoint.lat, lastPoint.lng])) return;
@@ -902,9 +826,11 @@
                     L.marker([lastPoint.lat, lastPoint.lng], { icon: customIcon, zIndexOffset: isSelf ? 5000 : 1000 }).addTo(markersLayer);
                 }
             });
-            document.getElementById('toast-text').innerText = `線上探索: ${totalOnlineUserCount} 人`; requestFogRender();
+            document.getElementById('toast-text').innerText = `線上探索: ${totalOnlineUserCount} 人`;
+            requestFogRender();
         }
 
+        // ================= 迷霧系統 =================
         function initFogSystem() {
             fogCanvas = document.createElement('canvas'); map.getPane('fogPane').appendChild(fogCanvas); fogCtx = fogCanvas.getContext('2d');
             lowResCanvas = document.createElement('canvas'); lowResCtx = lowResCanvas.getContext('2d');
@@ -917,187 +843,243 @@
                 tempCanvas.width = lowResCanvas.width; tempCanvas.height = lowResCanvas.height;
                 updateCanvasPosition(); 
             }
-            function updateCanvasPosition() { L.DomUtil.setPosition(fogCanvas, map.containerPointToLayerPoint([0, 0])); requestFogRender(); }
+            function updateCanvasPosition() {
+                L.DomUtil.setPosition(fogCanvas, map.containerPointToLayerPoint([0, 0]));
+                requestFogRender();
+            }
             window.addEventListener('resize', resizeCanvas); map.on('zoomend', resizeCanvas); map.on('move', updateCanvasPosition);
             resizeCanvas();
         }
 
-        function requestFogRender() { if (!fogRenderPending) { fogRenderPending = true; requestAnimationFrame(() => { if(isFogVisible) renderFog(); fogRenderPending = false; }); } }
+        function requestFogRender() { if(!fogRenderPending) { fogRenderPending = true; requestAnimationFrame(() => { if(isFogVisible) renderFog(); fogRenderPending = false; }); } }
         
         function renderFog() {
             if (!map || !fogCtx || !isFogVisible) return;
-            const w = lowResCanvas.width, h = lowResCanvas.height;
-            lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h);
-            tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
+            const w = Math.ceil(fogCanvas.width * FOG_SCALE), h = Math.ceil(fogCanvas.height * FOG_SCALE);
+            lowResCanvas.width = w; lowResCanvas.height = h; tempCanvas.width = w; tempCanvas.height = h;
             
+            const mapBounds = map.getBounds().pad(0.1);
             const center = map.getCenter();
-            const mpp = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI/180))) / Math.pow(2, map.getZoom() + 8);
+            const distToTw = getDistance(center.lat, center.lng, 23.5, 121.0);
             
+            if (taiwanPolygons.length > 0) {
+                try {
+                    let visiblePolygons = taiwanPolygons.filter(p => mapBounds.intersects(p.bounds));
+                    if (visiblePolygons.length > 0) {
+                        lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+                        lowResCtx.beginPath();
+                        visiblePolygons.forEach(p => {
+                            p.coordinates.forEach(ring => {
+                                ring.forEach((coord, idx) => {
+                                    const pt = map.latLngToContainerPoint([coord[1], coord[0]]);
+                                    if (idx === 0) lowResCtx.moveTo(pt.x * FOG_SCALE, pt.y * FOG_SCALE);
+                                    else lowResCtx.lineTo(pt.x * FOG_SCALE, pt.y * FOG_SCALE);
+                                });
+                            });
+                        });
+                        lowResCtx.fill('evenodd');
+                    } else if (distToTw <= 500000) {
+                        // 雖然沒交集，但距離台灣不到500公里，還是畫全滿迷霧以防邊緣破圖
+                        lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+                        lowResCtx.fillRect(0, 0, w, h);
+                    }
+                    // distToTw > 500000 的國外區域什麼都不畫，呈現透明
+                } catch(e) {
+                    console.error("台灣輪廓繪製失敗，退回全版迷霧", e);
+                    lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+                    lowResCtx.fillRect(0, 0, w, h);
+                }
+            } else {
+                lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+                lowResCtx.fillRect(0, 0, w, h);
+            }
+            
+            const now = Date.now();
+            const mpp = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI/180))) / Math.pow(2, map.getZoom() + 8);
+            const ONE_HOUR = 60 * 60 * 1000;
+
+            function getDynamicRadiusPx(historyPts, i) {
+                let timeSpent = (i < historyPts.length - 1) ? (historyPts[i+1].timestamp - historyPts[i].timestamp) : (now - historyPts[i].timestamp);
+                let ratio = Math.max(0, Math.min(1.0, timeSpent / 60000.0)); 
+                let effectiveRadius = 8 + (117 * ratio); 
+                return (effectiveRadius / mpp) * FOG_SCALE;
+            }
+
+            // 【核心修正】：收集所有應該被畫出來的歷史軌跡，並將 localHistory 強制加入確保能看到自己走過的路
+            let allHistoryToDraw = [];
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return;
                 if (isMyRouteMode && uid !== targetRouteUid) return; 
-                const userData = allUsersData[uid]; if (!userData.history) return;
                 
-                let historyPts = userData.history;
-                if (isMyRouteMode) historyPts = historyPts.slice(0, Math.max(1, snakeIndex));
-                
+                const userData = allUsersData[uid]; 
+                if (userData.history) {
+                    if (uid === myUid) return; // 自己的先跳過，等下用最完整的 localHistory
+                    let hPts = isMyRouteMode ? userData.history.slice(0, Math.max(1, snakeIndex)) : userData.history;
+                    allHistoryToDraw.push(hPts);
+                }
+            });
+
+            // 強制加入自己的完整本機歷史
+            if (!isSpectatorMode && (!isMyRouteMode || targetRouteUid === myUid)) {
+                let myPts = isMyRouteMode ? localHistory.slice(0, Math.max(1, snakeIndex)) : localHistory;
+                if (myPts.length > 0) allHistoryToDraw.push(myPts);
+            }
+
+            // 擦除超過一小時的軌跡
+            tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
+            allHistoryToDraw.forEach(historyPts => {
                 historyPts.forEach((point, i) => {
-                    if (Date.now() - point.timestamp < 60*60*1000 || isMyRouteMode) {
-                        let radiusPx = ((15 + (i < historyPts.length-1 ? 0 : 50)) / mpp) * FOG_SCALE;
-                        const p = map.latLngToContainerPoint([point.lat, point.lng]);
-                        tempCtx.beginPath(); tempCtx.arc(p.x * FOG_SCALE, p.y * FOG_SCALE, radiusPx, 0, Math.PI * 2); tempCtx.fill();
+                    if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { 
+                        const dynRadiusPx = getDynamicRadiusPx(historyPts, i);
+                        const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
+                        if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); }
                     }
                 });
             });
-            lowResCtx.globalCompositeOperation = 'destination-out'; lowResCtx.drawImage(tempCanvas, 0, 0); lowResCtx.globalCompositeOperation = 'source-over';
+            lowResCtx.globalCompositeOperation = 'destination-out'; lowResCtx.globalAlpha = 0.4; lowResCtx.drawImage(tempCanvas, 0, 0);
+            
+            // 擦除一小時內的軌跡
+            tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black';
+            allHistoryToDraw.forEach(historyPts => {
+                historyPts.forEach((point, i) => {
+                    if (now - point.timestamp < ONE_HOUR || isMyRouteMode) {
+                        const dynRadiusPx = getDynamicRadiusPx(historyPts, i);
+                        const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE;
+                        if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); }
+                    }
+                });
+            });
+            lowResCtx.globalAlpha = 1.0; lowResCtx.drawImage(tempCanvas, 0, 0); lowResCtx.globalCompositeOperation = 'source-over';
             
             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
             fogCtx.imageSmoothingEnabled = false; 
             fogCtx.drawImage(lowResCanvas, 0, 0, w, h, 0, 0, fogCanvas.width, fogCanvas.height);
         }
 
-        function startPlaybackInterval() {
-            if (snakeInterval) clearInterval(snakeInterval);
-            if (isPlaybackPaused) return;
-            snakeInterval = setInterval(() => {
-                const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid];
-                const mLen = (tData && tData.history) ? tData.history.length : 0;
-                if (snakeIndex < mLen) { snakeIndex++; renderMap(); } 
-                else { clearInterval(snakeInterval); snakeInterval = null; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; }
-            }, currentPlaybackSpeed);
-        }
+        function connectWebSocket() {
+            ws = new WebSocket(NGROK_WS_URL);
+            ws.onopen = () => {
+                isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
+                document.getElementById('toast-text').innerText = "連線成功"; 
+                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" })); // 送什麼沒差，主要是要回傳大包的 sync
+                if(localHistory.length > 0) saveLocationToServer(null, true); 
+            };
+            ws.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                
+                // 【核心分流】：只要抓取 dynamicProjects 中，帶有 isStray: true 標籤的專案
+                if (response.type === 'sync' || response.type === 'projects_updated') {
+                    if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
+                        const allProjs = response.dynamicProjects || response.data.dynamicProjects;
+                        const strayProjs = {};
+                        Object.keys(allProjs).forEach(k => {
+                            if (allProjs[k].isStray === true) strayProjs[k] = allProjs[k];
+                        });
+                        PROJECTS = strayProjs;
+                        
+                        Object.keys(PROJECTS).forEach(k => {
+                            if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
+                                allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。";
+                            }
+                        });
 
-        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 1; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap(); });
-        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(1, snakeIndex - 1); isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap(); });
-        document.getElementById('pb-pause').addEventListener('click', () => { isPlaybackPaused = !isPlaybackPaused; startPlaybackInterval(); });
-        document.getElementById('pb-speed').addEventListener('click', () => { currentPlaybackSpeed = currentPlaybackSpeed / 2; if (currentPlaybackSpeed < 62.5) currentPlaybackSpeed = basePlaybackSpeed; startPlaybackInterval(); });
-        document.getElementById('pb-end').addEventListener('click', () => { const tData = (targetRouteUid === myUid) ? {history: localHistory} : allUsersData[targetRouteUid]; snakeIndex = (tData && tData.history) ? tData.history.length : 0; isPlaybackPaused = true; document.getElementById('pb-pause').innerText = "="; startPlaybackInterval(); renderMap(); });
-
-        document.getElementById('my-route-btn').addEventListener('click', () => {
-            if (isSpectatorMode) { showModal("觀看模式下無法使用此功能！"); return; }
-            isMyRouteMode = !isMyRouteMode;
-            const myRouteBtn = document.getElementById('my-route-btn');
-            
-            if (isMyRouteMode) {
-                targetRouteUid = myUid;
-                myRouteBtn.innerText = "❌ 退出軌跡"; myRouteBtn.style.backgroundColor = "#ef4444"; myRouteBtn.style.color = "white";
-                document.getElementById('playback-controls').classList.remove('hidden');
-                if (isFogVisible) {
-                    isFogVisible = false; const fogPane = map ? map.getPane('fogPane') : null;
-                    if(fogPane) fogPane.style.display = 'none';
-                    document.getElementById('toggle-fog-btn').innerText = "🌫️ 開啟迷霧"; document.getElementById('toggle-fog-btn').style.backgroundColor = "#9ca3af";
+                        const oldProjectKey = currentProjectKey;
+                        updateProjectDropdown();
+                        drawAllProjects();
+                        updateAnimalInfoCard();
+                    }
                 }
-                snakeIndex = 1; isPlaybackPaused = false; currentPlaybackSpeed = basePlaybackSpeed; document.getElementById('pb-pause').innerText = "=";
-                if (localHistory.length > 0) map.setView([localHistory[0].lat, localHistory[0].lng], 16);
-                startPlaybackInterval(); showModal("🐍 已開啟您的軌跡重現模式！\n為避免運鏡時畫面閃爍，已自動為您暫時關閉迷霧層。");
-            } else {
-                targetRouteUid = null; document.getElementById('playback-controls').classList.add('hidden');
-                if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; }
-                myRouteBtn.innerText = "🐍 我的軌跡"; myRouteBtn.style.backgroundColor = "#a855f7"; myRouteBtn.style.color = "white";
-                if (!isFogVisible) {
-                    isFogVisible = true; const fogPane = map ? map.getPane('fogPane') : null;
-                    if(fogPane) fogPane.style.display = 'block';
-                    document.getElementById('toggle-fog-btn').innerText = "👁️ 關閉迷霧"; document.getElementById('toggle-fog-btn').style.backgroundColor = "#f59e0b";
+
+                if (response.type === 'sync') {
+                    allUsersData = response.data.locations || {};
+                    renderMap();
                 }
-            }
-            renderMap(); requestFogRender();
-        });
 
-        document.getElementById('master-start-btn').addEventListener('click', (e) => {
-            e.preventDefault(); document.getElementById('error-msg').classList.add('hidden'); document.getElementById('master-start-btn').innerText = "連線中...";
-            currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
-            dbUserColor = generateRandomColor();
-            setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor);
-            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
-            startLocationServices(false);
-        });
-        
-        function handleGeoError(error, isAutoStart) {
-            if (isSpectatorMode) return; 
-            const masterStartBtn = document.getElementById('master-start-btn'); masterStartBtn.innerText = "繼續探索 [重新授權]";
-            if (isAutoStart) { 
-                document.getElementById('startup-overlay').style.display = 'flex'; document.getElementById('startup-overlay').style.opacity = '1'; 
-                document.getElementById('status-toast').classList.add('hidden'); document.getElementById('locate-btn').classList.add('hidden'); document.getElementById('spectator-btn').classList.add('hidden'); document.getElementById('toggle-fog-btn').classList.add('hidden'); document.getElementById('project-select-wrapper').classList.add('hidden'); document.getElementById('my-route-btn').classList.add('hidden'); document.getElementById('report-stray-btn').classList.add('hidden');
-            }
-            let msg = "無定位權限。請至手機設定中確認。", isCopyable = false;
-            if (error.code === 1) { msg = "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。"; isCopyable = true; } 
-            const errorMsg = document.getElementById('error-msg');
-            errorMsg.innerText = msg.replace(/\n/g, ' '); errorMsg.classList.remove('hidden');
-            if (isCopyable) {
-                errorMsg.className = "text-red-700 font-bold text-sm mt-6 bg-red-100 p-4 rounded-lg cursor-pointer border-2 border-red-500 border-dashed hover:bg-red-200 transition-colors block leading-relaxed whitespace-pre-wrap";
-                errorMsg.innerText = msg; 
-                errorMsg.onclick = () => { const t = document.createElement("textarea"); t.value = window.location.href; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); showModal("✅ 網址已複製！"); } catch(e){} document.body.removeChild(t); };
-            } else { errorMsg.className = "text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; errorMsg.onclick = null; }
-            if (document.getElementById('startup-overlay').style.display === 'none') showModal(msg.replace(/<[^>]+>/g, ''));
+                if(response.type === 'admin_apps_data') {
+                    adminCachedApps = response.data || [];
+                    const container = document.getElementById('admin-list-container');
+                    container.innerHTML = '';
+                    
+                    const strayApps = adminCachedApps.filter(app => app.projectData && app.projectData.isStray === true);
+                    
+                    if(strayApps.length === 0) {
+                        container.innerHTML = '<p class="text-center font-bold text-gray-500 mt-10">目前沒有待處理的資料</p>';
+                    } else {
+                        strayApps.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = "border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]";
+                            
+                            let mediaHtml = '';
+                            if(item.projectData && item.projectData.photos && item.projectData.photos.length > 0) {
+                                mediaHtml = `<img src="${item.projectData.photos[0]}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
+                            }
+
+                            div.innerHTML = `
+                                ${mediaHtml}
+                                <div class="font-bold text-sm mb-1">【${escapeHTML(item.projectData.type === 'dog' ? '狗' : (item.projectData.type === 'cat' ? '貓' : '其他'))}】${escapeHTML(item.projectData.lostDate)}</div>
+                                <div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(item.projectData.announcement) || '無備註'}</div>
+                                <button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">審核 / 編輯</button>
+                            `;
+                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item.id));
+                            container.appendChild(div);
+                        });
+                    }
+                    document.getElementById('admin-list-modal').classList.remove('hidden');
+                }
+
+                if(response.type === 'user_appended' || response.type === 'user_update') {
+                    const uid = response.uid;
+                    const inData = response.data;
+                    
+                    if (response.type === 'user_appended') {
+                        if (!allUsersData[uid]) allUsersData[uid] = { userName: inData.userName, color: inData.color, project: response.project, history: [] };
+                        else { allUsersData[uid].userName = inData.userName; allUsersData[uid].color = inData.color; }
+                        allUsersData[uid].history.push(inData.point);
+                    } else {
+                        allUsersData[response.uid] = response.data;
+                    }
+                    renderMap();
+                }
+            };
+            ws.onclose = () => {
+                isSystemReady = false; document.getElementById('sync-ping').style.backgroundColor = '#ef4444';
+                document.getElementById('toast-text').innerText = "重連中...";
+                setTimeout(connectWebSocket, 3000);
+            };
         }
 
-        function checkLocalSetupAndStart() {
-            const savedName = getPersistentData('dogMap_userName');
-            const rawColor = getPersistentData('dogMap_userColor') || '';
-            const savedColor = /^#[0-9a-fA-F]{6}$/i.test(rawColor) ? rawColor : null;
-            if (savedName) {
-                currentUserName = escapeHTML(savedName); dbUserColor = savedColor || generateRandomColor();
-                if (!savedColor) setPersistentData('dogMap_userColor', dbUserColor);
-                if (localHistory.length > 0) { allUsersData[myUid] = { userName: currentUserName, color: dbUserColor, history: [...localHistory], project: currentProjectKey }; renderMap(); }
-                document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
-                finishUIReveal(); document.getElementById('toast-text').innerText = "自動定位..."; startLocationServices(true);
-            } else { document.getElementById('startup-overlay').style.display = 'flex'; document.getElementById('startup-overlay').style.opacity = '1'; }
-        }
-        
+        // ================= 輔助 UI 縮放與比對邏輯 =================
         document.getElementById('toggle-announce-panel-btn').addEventListener('click', () => {
-            isAnnounceCollapsed = !isAnnounceCollapsed; localStorage.setItem('dogMap_announceCollapsed', isAnnounceCollapsed); 
-            if (isAnnounceCollapsed) { document.getElementById('announcement-text').classList.add('hidden'); document.getElementById('toggle-announce-panel-btn').innerText = '➕'; } 
-            else { document.getElementById('announcement-text').classList.remove('hidden'); document.getElementById('toggle-announce-panel-btn').innerText = '➖'; }
-        });
-        
-        // 個人資料設定
-        const profileColorPicker = document.getElementById('profile-color'); const profileHexInput = document.getElementById('profile-hex');
-        profileColorPicker.addEventListener('input', e => profileHexInput.value = e.target.value.toUpperCase());
-        profileHexInput.addEventListener('input', e => { let val = e.target.value; if (val.startsWith('#') && (val.length === 4 || val.length === 7)) { profileColorPicker.value = val; } });
-        document.getElementById('profile-edit-trigger').addEventListener('click', () => { document.getElementById('profile-name').value = currentUserName; profileColorPicker.value = dbUserColor; profileHexInput.value = dbUserColor.toUpperCase(); document.getElementById('profile-error').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('hidden'); });
-        document.getElementById('profile-cancel-btn').addEventListener('click', () => { document.getElementById('profile-modal').classList.add('hidden'); });
-        document.getElementById('profile-save-btn').addEventListener('click', () => {
-            const name = document.getElementById('profile-name').value.trim(); const hex = profileColorPicker.value;
-            if (!/^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/.test(name)) { document.getElementById('profile-error').classList.remove('hidden'); return; }
-            currentUserName = name; dbUserColor = hex;
-            setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor);
-            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
-            if (allUsersData[myUid]) { allUsersData[myUid].userName = currentUserName; allUsersData[myUid].color = dbUserColor; }
-            saveLocationToServer(null, true); renderMap(); document.getElementById('profile-modal').classList.add('hidden');
-            showModal("✅ 個人資料已成功更新！\n您的新顏色已同步給線上其他使用者。");
-        });
-        
-        document.getElementById('toggle-fog-btn').addEventListener('click', () => { 
-            isFogVisible = !isFogVisible; const fogPane = map ? map.getPane('fogPane') : null;
-            if(fogPane) fogPane.style.display = isFogVisible ? 'block' : 'none'; 
-            const toggleFogBtn = document.getElementById('toggle-fog-btn');
-            if (isFogVisible) { toggleFogBtn.innerText = "👁️ 關閉迷霧"; toggleFogBtn.style.backgroundColor = "#f59e0b"; requestFogRender(); } 
-            else { toggleFogBtn.innerText = "🌫️ 開啟迷霧"; toggleFogBtn.style.backgroundColor = "#9ca3af"; }
-        });
-        
-        document.getElementById('spectator-btn').addEventListener('click', () => {
-            isSpectatorMode = !isSpectatorMode; document.getElementById('spectator-hint').classList.add('hidden');
-            const spectatorBtn = document.getElementById('spectator-btn');
-            if (isSpectatorMode) {
-                spectatorBtn.innerText = "退出觀看"; spectatorBtn.style.backgroundColor = "#ef4444"; spectatorBtn.style.color = "white";
-                if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-                if (isMyRouteMode) document.getElementById('my-route-btn').click(); // 自動關閉我的軌跡
-                const proj = PROJECTS[currentProjectKey];
-                if(proj) map.setView([(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2], 13, { animate: true }); 
-                renderMap(); document.getElementById('toast-text').innerText = "觀看模式啟動";
-            } else {
-                spectatorBtn.innerText = "觀看模式"; spectatorBtn.style.backgroundColor = "#f59e0b"; spectatorBtn.style.color = "#1a202c";
-                document.getElementById('toast-text').innerText = "重新定位中..."; startLocationServices(true);
-            }
+            const panel = document.getElementById('announcement-text');
+            panel.classList.toggle('hidden');
+            document.getElementById('toggle-announce-panel-btn').innerText = panel.classList.contains('hidden') ? '➕' : '➖';
         });
 
-        document.getElementById('locate-btn').addEventListener('click', () => { if (!isSpectatorMode && lastSavedPos) { map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, { animate: true }); isMapInteracting = false; } });
-        document.getElementById('set-ws-btn').addEventListener('click', () => {
-            if(!isAdmin) return;
-            const newUrl = prompt("請輸入 wss:// 開頭的網址...", NGROK_WS_URL);
-            if(newUrl && (newUrl.startsWith("wss://") || newUrl.startsWith("ws://"))) { NGROK_WS_URL = newUrl; if(ws && ws.readyState === WebSocket.OPEN) { ws.close(); } else { connectWebSocket(); } showModal("✅ 伺服器網址已更新，系統將自動重新連線！"); }
+        document.getElementById('profile-edit-trigger').addEventListener('click', () => {
+            document.getElementById('profile-name').value = currentUserName;
+            document.getElementById('profile-color').value = dbUserColor;
+            document.getElementById('profile-modal').classList.remove('hidden');
         });
-        document.getElementById('status-toast').addEventListener('dblclick', () => document.getElementById('set-ws-btn').click() );
+        document.getElementById('profile-cancel-btn').addEventListener('click', () => document.getElementById('profile-modal').classList.add('hidden'));
+        document.getElementById('profile-save-btn').addEventListener('click', () => {
+            currentUserName = document.getElementById('profile-name').value || '志工';
+            dbUserColor = document.getElementById('profile-color').value;
+            localStorage.setItem('dogMap_userName', currentUserName); localStorage.setItem('dogMap_userColor', dbUserColor);
+            document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            if(allUsersData[myUid]) { allUsersData[myUid].userName = currentUserName; allUsersData[myUid].color = dbUserColor; }
+            saveLocationToServer(null, true); document.getElementById('profile-modal').classList.add('hidden'); renderMap();
+        });
+
+        document.getElementById('animal-info-section').addEventListener('click', function(e) {
+            if(e.target.classList.contains('gallery-btn-overlay')) {
+                const proj = PROJECTS[currentProjectKey]; if(!proj) return;
+                document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; renderGallery('photos'); document.getElementById('gallery-modal').classList.remove('hidden');
+            } else if (e.target.id === 'animal-main-photo') {
+                openCompareModal();
+            } else {
+                this.classList.toggle('mobile-collapsed');
+            }
+        });
 
         function openCompareModal() {
             const proj = PROJECTS[currentProjectKey]; if (!proj) return;
@@ -1116,21 +1098,7 @@
             if (file) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('compare-local-img').src = e.target.result; document.getElementById('compare-local-container').classList.remove('hidden'); document.getElementById('compare-upload-prompt').classList.add('hidden'); document.getElementById('compare-reselect-btn').classList.remove('hidden'); }; reader.readAsDataURL(file); }
         });
 
-        const animalInfoSection = document.getElementById('animal-info-section');
-        animalInfoSection.addEventListener('click', (e) => {
-            if (e.target.classList.contains('gallery-btn-overlay')) {
-                const proj = PROJECTS[currentProjectKey]; if(!proj) return;
-                document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; renderGallery('photos'); document.getElementById('gallery-modal').classList.remove('hidden');
-            } else if (e.target.id === 'animal-main-photo') { openCompareModal();
-            } else {
-                if (animalInfoSection.classList.contains('mobile-collapsed')) {
-                    animalInfoSection.classList.remove('mobile-collapsed');
-                    if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
-                    animalInfoCollapseTimer = setTimeout(() => { animalInfoSection.classList.add('mobile-collapsed'); }, 5000);
-                }
-            }
-        });
-        document.getElementById('close-gallery-btn').addEventListener('click', () => { document.getElementById('gallery-content').innerHTML = ''; document.getElementById('gallery-modal').classList.add('hidden'); });
+        document.getElementById('close-gallery-btn').addEventListener('click', () => document.getElementById('gallery-modal').classList.add('hidden'));
         document.getElementById('tab-photos').addEventListener('click', () => renderGallery('photos')); document.getElementById('tab-videos').addEventListener('click', () => renderGallery('videos'));
         
         function renderGallery(type) {
@@ -1178,9 +1146,6 @@
         document.getElementById('viewer-close-btn').addEventListener('click', () => document.getElementById('photo-viewer-modal').classList.add('hidden') );
         document.getElementById('viewer-prev-btn').addEventListener('click', () => { if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } });
         document.getElementById('viewer-next-btn').addEventListener('click', () => { if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } });
-        const viewerContainer = document.getElementById('photo-viewer-container');
-        viewerContainer.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
-        viewerContainer.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; if (touchEndX < touchStartX - 50 && currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } else if (touchEndX > touchStartX + 50 && currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } });
 
         window.onload = initSystem;
     </script>
