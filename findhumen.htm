@@ -841,47 +841,21 @@
                 // 3. 發送 WebSocket 資料
                 updateProgress(3, 'active', '正在傳送回報資料...');
                 const payload = {
-                    isStray: true, 
-                    animalName: "浪浪 (" + document.getElementById('report-type').value + ")",
-                    type: document.getElementById('report-type').value === '狗' ? 'dog' : (document.getElementById('report-type').value === '貓' ? 'cat' : 'other'),
-                    lostDate: timeVal.replace('T', ' '),
-                    bounds: [[reportLat-0.005, reportLng-0.005], [reportLat+0.005, reportLng+0.005]],
-                    mainPhoto: mainPhotoUrl,
-                    photos: finalMediaUrls,
-                    announcement: document.getElementById('report-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('report-contact').value.trim()
+                    animal_type: document.getElementById('report-type').value,
+                    discover_time: timeVal.replace('T', ' '),
+                    notes: document.getElementById('report-notes').value.trim(),
+                    contact: document.getElementById('report-contact').value.trim(),
+                    lat: reportLat,
+                    lng: reportLng,
+                    media_urls: finalMediaUrls
                 };
-
-                const strayId = "stray_" + Date.now() + "_" + Math.floor(Math.random()*1000);
 
                 if(isSystemReady) {
                     ws.send(JSON.stringify({ 
-                        type: "submit_application", 
-                        id: strayId,
-                        ownerInfo: { account: "stray_user_" + myUid, password: "123" },
-                        projectData: payload,
-                        forceStatus: "pending" 
+                        type: "report_stray", 
+                        uid: myUid,
+                        data: payload
                     }));
-                    
-                    updateProgress(3, 'done', '資料同步完成！');
-                    
-                    setTimeout(() => {
-                        document.getElementById('upload-progress-modal').classList.add('hidden');
-                        document.getElementById('report-form-modal').classList.add('hidden');
-                        isReportingMode = false;
-                        document.getElementById('report-stray-btn').classList.remove('hidden');
-                        document.getElementById('project-select-wrapper').classList.remove('hidden');
-                        submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
-                        document.getElementById('report-notes').value = '';
-                        
-                        if (preReportFogState) {
-                            isFogVisible = true;
-                            const fogPane = map ? map.getPane('fogPane') : null;
-                            if(fogPane) fogPane.style.display = 'block';
-                            requestFogRender();
-                        }
-                        showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
-                    }, 500);
-
                 } else {
                     throw new Error("系統未連線！");
                 }
@@ -987,72 +961,47 @@
 
         document.getElementById('admin-pending-btn').addEventListener('click', () => {
             document.getElementById('admin-list-title').innerText = "📋 待審核浪浪列表";
-            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "pending" }));
+            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_strays", token: adminToken, status: "pending" }));
         });
         document.getElementById('admin-approved-btn').addEventListener('click', () => {
             document.getElementById('admin-list-title').innerText = "🐾 已上架浪浪管理";
-            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "approved" }));
+            if(isSystemReady) ws.send(JSON.stringify({ type: "admin_get_strays", token: adminToken, status: "approved" }));
         });
         document.getElementById('admin-list-close-btn').addEventListener('click', () => document.getElementById('admin-list-modal').classList.add('hidden'));
         document.getElementById('admin-edit-close-btn').addEventListener('click', () => document.getElementById('admin-edit-modal').classList.add('hidden'));
 
-        function openAdminEditModal(appId) {
-            const app = adminCachedApps.find(a => a.id === appId);
-            if(!app) return;
-            const pd = app.projectData;
-            
-            document.getElementById('edit-stray-id').value = app.id;
-            
-            const typeMatch = pd.animalName.match(/\((.*?)\)/);
-            document.getElementById('edit-stray-type').value = typeMatch ? typeMatch[1] : '其他';
-            document.getElementById('edit-stray-time').value = (pd.lostDate || "").replace(' ', 'T');
-            
-            let notes = pd.announcement || "";
-            let contact = "";
-            const contactSplit = notes.split("\n\n聯絡方式: ");
-            if (contactSplit.length > 1) {
-                notes = contactSplit[0];
-                contact = contactSplit[1];
-            }
-            
-            document.getElementById('edit-stray-notes').value = notes;
-            document.getElementById('edit-stray-contact').value = contact;
-            
+        function openAdminEditModal(item) {
+            document.getElementById('edit-stray-id').value = item.id;
+            document.getElementById('edit-stray-type').value = item.animal_type || '其他';
+            document.getElementById('edit-stray-time').value = (item.discover_time || "").replace(' ', 'T');
+            document.getElementById('edit-stray-notes').value = item.notes || "";
+            document.getElementById('edit-stray-contact').value = item.contact || "";
             document.getElementById('admin-edit-modal').classList.remove('hidden');
         }
 
         document.querySelectorAll('.admin-status-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const status = e.target.getAttribute('data-status');
-                const app_id = document.getElementById('edit-stray-id').value;
-                const app = adminCachedApps.find(a => a.id === app_id);
-                if (!app) return;
+                const s_id = document.getElementById('edit-stray-id').value;
 
-                if (status === "deleted") {
-                    if(isSystemReady) ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: app_id, status: "deleted" }));
-                } else {
-                    const pd = app.projectData;
-                    pd.animalName = "浪浪 (" + document.getElementById('edit-stray-type').value + ")";
-                    pd.type = document.getElementById('edit-stray-type').value === '狗' ? 'dog' : (document.getElementById('edit-stray-type').value === '貓' ? 'cat' : 'other');
-                    pd.lostDate = document.getElementById('edit-stray-time').value.replace('T', ' ');
-                    pd.announcement = document.getElementById('edit-stray-notes').value.trim() + "\n\n聯絡方式: " + document.getElementById('edit-stray-contact').value.trim();
-                    
-                    if(isSystemReady) ws.send(JSON.stringify({
-                        type: "submit_application",
-                        id: app_id,
-                        ownerInfo: app.ownerInfo,
-                        projectData: pd,
-                        forceStatus: status
+                const payload = {
+                    animal_type: document.getElementById('edit-stray-type').value,
+                    discover_time: document.getElementById('edit-stray-time').value.replace('T', ' '),
+                    notes: document.getElementById('edit-stray-notes').value.trim(),
+                    contact: document.getElementById('edit-stray-contact').value.trim(),
+                    status: status
+                };
+                
+                if(isSystemReady) {
+                    ws.send(JSON.stringify({ 
+                        type: "admin_update_stray", 
+                        token: adminToken, 
+                        id: s_id, 
+                        data: payload 
                     }));
                 }
                 
                 e.target.innerText = "處理中...";
-                setTimeout(() => {
-                    document.getElementById('admin-edit-modal').classList.add('hidden');
-                    document.getElementById('admin-list-modal').classList.add('hidden');
-                    e.target.innerText = e.target.innerText.replace('處理中...', '');
-                    showModal("✅ 狀態與內容已更新並送出！");
-                }, 1000);
             });
         });
 
@@ -1402,34 +1351,71 @@
                     renderMap();
                 }
 
-                if(response.type === 'admin_apps_data') {
-                    adminCachedApps = response.data || [];
+                if (response.type === 'report_result') {
+                    updateProgress(3, 'done', '資料同步完成！');
+                    
+                    setTimeout(() => {
+                        document.getElementById('upload-progress-modal').classList.add('hidden');
+                        document.getElementById('report-form-modal').classList.add('hidden');
+                        isReportingMode = false;
+                        document.getElementById('report-stray-btn').classList.remove('hidden');
+                        document.getElementById('project-select-wrapper').classList.remove('hidden');
+                        const submitBtn = document.getElementById('report-submit-btn');
+                        submitBtn.innerText = "🚀 確認送出"; submitBtn.disabled = false;
+                        document.getElementById('report-notes').value = '';
+                        
+                        if (preReportFogState) {
+                            isFogVisible = true;
+                            const fogPane = map ? map.getPane('fogPane') : null;
+                            if(fogPane) fogPane.style.display = 'block';
+                            requestFogRender();
+                        }
+                        showModal("✅ 感謝你的幫忙！\n管理員審核通過後，將立即發布在地圖上供大家查看。");
+                    }, 500);
+                }
+
+                if (response.type === 'admin_action_result') {
+                    document.getElementById('admin-edit-modal').classList.add('hidden');
+                    document.getElementById('admin-list-modal').classList.add('hidden');
+                    document.querySelectorAll('.admin-status-btn').forEach(b => {
+                        b.innerText = b.innerText.replace('處理中...', '');
+                    });
+                    showModal(response.msg || "✅ 狀態與內容已更新並送出！");
+                }
+
+                if (response.type === 'admin_notify' && isAdmin) {
+                    showModal(response.msg);
+                }
+
+                if(response.type === 'admin_strays_data') {
+                    const strays = response.data || [];
                     const container = document.getElementById('admin-list-container');
                     container.innerHTML = '';
                     
-                    const strayApps = adminCachedApps.filter(app => app.projectData && app.projectData.isStray === true);
-                    
-                    if(strayApps.length === 0) {
+                    if(strays.length === 0) {
                         container.innerHTML = '<p class="text-center font-bold text-gray-500 mt-10">目前沒有待處理的資料</p>';
                     } else {
-                        strayApps.forEach(item => {
+                        strays.forEach(item => {
                             const div = document.createElement('div');
                             div.className = "border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]";
                             
                             let mediaHtml = '';
-                            if(item.projectData && item.projectData.photos && item.projectData.photos.length > 0) {
-                                let firstUrl = item.projectData.photos[0];
+                            let mediaUrls = [];
+                            try { mediaUrls = JSON.parse(item.media_urls); } catch(e){}
+                            
+                            if(mediaUrls && mediaUrls.length > 0) {
+                                let firstUrl = mediaUrls[0];
                                 if(firstUrl.startsWith('/images/')) firstUrl = SERVER_HTTP_URL + firstUrl;
                                 mediaHtml = `<img src="${firstUrl}" class="w-full h-24 object-cover border-2 border-black mb-2">`;
                             }
 
                             div.innerHTML = `
                                 ${mediaHtml}
-                                <div class="font-bold text-sm mb-1">【${escapeHTML(item.projectData.type === 'dog' ? '狗' : (item.projectData.type === 'cat' ? '貓' : '其他'))}】${escapeHTML(item.projectData.lostDate)}</div>
-                                <div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(item.projectData.announcement) || '無備註'}</div>
+                                <div class="font-bold text-sm mb-1">【${escapeHTML(item.animal_type)}】${escapeHTML(item.discover_time)}</div>
+                                <div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(item.notes) || '無備註'}</div>
                                 <button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">審核 / 編輯</button>
                             `;
-                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item.id));
+                            div.querySelector('.edit-btn').addEventListener('click', () => openAdminEditModal(item));
                             container.appendChild(div);
                         });
                     }
