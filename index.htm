@@ -78,8 +78,11 @@
 
     <div id="map-container"><div id="map"></div></div>
 
-    <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/70 flex items-center justify-center transition-opacity duration-300">
-        <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform">
+    <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
+        <!-- 背景輪播牆容器 (分階段載入用) -->
+        <div id="startup-bg-container" class="absolute inset-0 z-0 flex flex-wrap content-start pointer-events-none"></div>
+        
+        <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
             <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
@@ -215,9 +218,20 @@
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
             <!-- 動物資訊卡片 (移除hover，改為點擊放大，加入 draggable="false" 防止拖曳圖片) -->
             <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
+                <!-- 向左箭頭 -->
+                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">
+                    &lt;
+                </div>
+                
                 <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" title="點擊放大目標照片" draggable="false">
-                <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none" id="animal-name-date">載入中...</div>
-                <div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700">📸 看相簿</div>
+                
+                <!-- 向右箭頭 -->
+                <div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 transition-colors backdrop-blur-sm">
+                    &gt;
+                </div>
+
+                <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none z-10" id="animal-name-date">載入中...</div>
+                <div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700 z-10">📸 看相簿</div>
             </div>
             
             <!-- 公告區 -->
@@ -405,6 +419,7 @@
         let PROJECTS = {};
 
         const projectSelect = document.getElementById('switch-project-select');
+        // 恢復保留上次使用的專案記憶
         let currentProjectKey = getPersistentData('dogMap_currentProject') || null; 
         
         // 處理網址參數設定預設專案
@@ -417,7 +432,39 @@
             }
         }
         if (urlProject) {
-            currentProjectKey = urlProject;
+            currentProjectKey = urlProject; // 網址參數優先級最高
+        }
+
+        let hasPopulatedBg = false;
+        function populateStartupBackground() {
+            if (hasPopulatedBg) return;
+            const bgContainer = document.getElementById('startup-bg-container');
+            if (!bgContainer) return;
+            const keys = Object.keys(PROJECTS);
+            if (keys.length === 0) return;
+            hasPopulatedBg = true;
+            
+            const shuffled = [...keys].sort(() => 0.5 - Math.random()).slice(0, 15);
+            shuffled.forEach((key, index) => {
+                const proj = PROJECTS[key];
+                if (proj && proj.mainPhoto) {
+                    let pUrl = proj.mainPhoto;
+                    if(pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
+                    
+                    const img = document.createElement('img');
+                    img.src = pUrl;
+                    img.className = "flex-grow h-24 sm:h-32 object-cover opacity-0 transition-opacity duration-1000 ease-in-out";
+                    img.style.minWidth = "25%";
+                    img.style.filter = "grayscale(60%) blur(2px) contrast(0.8) brightness(0.5)";
+                    bgContainer.appendChild(img);
+                    
+                    // 分階段交錯淡入
+                    setTimeout(() => {
+                        img.classList.remove('opacity-0');
+                        img.classList.add('opacity-50');
+                    }, 300 + index * 150);
+                }
+            });
         }
         
         function updateProjectDropdown() {
@@ -462,8 +509,14 @@
                 currentProjectKey = foundKey;
                 projectSelect.value = currentProjectKey;
             } else {
-                currentProjectKey = Object.keys(PROJECTS)[0];
-                projectSelect.value = currentProjectKey;
+                // 若完全沒有紀錄(或紀錄失效)且無網址參數，則隨機分配一隻
+                const keys = Object.keys(PROJECTS);
+                if (keys.length > 0) {
+                    const randomIdx = Math.floor(Math.random() * keys.length);
+                    currentProjectKey = keys[randomIdx];
+                    projectSelect.value = currentProjectKey;
+                    setPersistentData('dogMap_currentProject', currentProjectKey);
+                }
             }
         }
 
@@ -831,6 +884,26 @@
             }
         });
 
+        // 統一切換專案邏輯 (方向：-1 向左/前, 1 向右/後)
+        function switchProjectByDirection(direction) {
+            const keys = Object.keys(PROJECTS);
+            if (keys.length <= 1) return;
+            let currentIndex = keys.indexOf(currentProjectKey);
+            
+            if (direction < 0) {
+                currentIndex = (currentIndex - 1 + keys.length) % keys.length;
+            } else {
+                currentIndex = (currentIndex + 1) % keys.length;
+            }
+            
+            const newKey = keys[currentIndex];
+            const selectEl = document.getElementById('switch-project-select');
+            if(selectEl) {
+                selectEl.value = newKey;
+                selectEl.dispatchEvent(new Event('change'));
+            }
+        }
+
         function handleCardSwipe() {
             const SWIPE_THRESHOLD = 40;
             const keys = Object.keys(PROJECTS);
@@ -841,24 +914,31 @@
 
             // 確認是水平滑動為主
             if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-                let currentIndex = keys.indexOf(currentProjectKey);
-                
                 if (deltaX < 0) {
-                    // 向左滑動 -> 下一個專案
-                    currentIndex = (currentIndex + 1) % keys.length;
+                    switchProjectByDirection(1); // 向左滑動 -> 下一個專案
                 } else {
-                    // 向右滑動 -> 上一個專案
-                    currentIndex = (currentIndex - 1 + keys.length) % keys.length;
-                }
-                
-                const newKey = keys[currentIndex];
-                const selectEl = document.getElementById('switch-project-select');
-                if(selectEl) {
-                    selectEl.value = newKey;
-                    // 手動觸發 change 事件讓地圖資料更新
-                    selectEl.dispatchEvent(new Event('change'));
+                    switchProjectByDirection(-1); // 向右滑動 -> 上一個專案
                 }
             }
+        }
+
+        // 綁定卡片左右箭頭的點擊事件
+        const cardPrevBtn = document.getElementById('card-prev-btn');
+        const cardNextBtn = document.getElementById('card-next-btn');
+
+        if(cardPrevBtn) {
+            cardPrevBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // 阻止氣泡傳遞，以免打開放大照片
+                switchProjectByDirection(-1);
+            });
+        }
+        if(cardNextBtn) {
+            cardNextBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // 阻止氣泡傳遞，以免打開放大照片
+                switchProjectByDirection(1);
+            });
         }
 
         // 點擊主照片開啟放大/比對視窗 (防呆機制)
@@ -1176,7 +1256,10 @@
                             }
                         });
 
-                        // 記下轉換前的 Key，如果從名稱轉成 UUID，代表剛剛要錯資料了
+                        // 觸發：分階段背景讀入專案主照片
+                        populateStartupBackground();
+
+                        // 記下轉換前的 Key，如果從名稱轉成 UUID 或隨機分配，代表剛剛要錯資料了
                         const oldProjectKey = currentProjectKey;
                         updateProjectDropdown();
                         if (oldProjectKey !== currentProjectKey) {
