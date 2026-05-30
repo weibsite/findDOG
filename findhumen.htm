@@ -397,7 +397,7 @@
             return compressed;
         }
 
-        // ====== 補回遺失的核心定位與存檔功能 ======
+        // ====== 定位與存檔功能 ======
         function saveLocationToServer(newPoint, forceUpdate = false) {
             if (!isSystemReady) return;
             const uData = {
@@ -670,7 +670,7 @@
             }
         });
 
-        // ======= 補回遺失的介面互動監聽器 =======
+        // ======= 介面互動監聽器 =======
         document.getElementById('master-start-btn').addEventListener('click', () => {
             currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
             dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
@@ -1031,13 +1031,10 @@
                         });
                         lowResCtx.fill('evenodd');
                     } else if (distToTw <= 500000) {
-                        // 雖然沒交集，但距離台灣不到500公里，還是畫全滿迷霧以防邊緣破圖
                         lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
                         lowResCtx.fillRect(0, 0, w, h);
                     }
-                    // distToTw > 500000 的國外區域什麼都不畫，呈現透明
                 } catch(e) {
-                    console.error("台灣輪廓繪製失敗，退回全版迷霧", e);
                     lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)';
                     lowResCtx.fillRect(0, 0, w, h);
                 }
@@ -1057,7 +1054,6 @@
                 return (effectiveRadius / mpp) * FOG_SCALE;
             }
 
-            // 【核心修正】：收集所有應該被畫出來的歷史軌跡，並將 localHistory 強制加入確保能看到自己走過的路
             let allHistoryToDraw = [];
             Object.keys(allUsersData).forEach(uid => {
                 if (isSpectatorMode && uid === myUid) return;
@@ -1065,13 +1061,12 @@
                 
                 const userData = allUsersData[uid]; 
                 if (userData.history) {
-                    if (uid === myUid) return; // 自己的先跳過，等下用最完整的 localHistory
+                    if (uid === myUid) return;
                     let hPts = isMyRouteMode ? userData.history.slice(0, Math.max(1, snakeIndex)) : userData.history;
                     allHistoryToDraw.push(hPts);
                 }
             });
 
-            // 強制加入自己的完整本機歷史
             if (!isSpectatorMode && (!isMyRouteMode || targetRouteUid === myUid)) {
                 let myPts = isMyRouteMode ? localHistory.slice(0, Math.max(1, snakeIndex)) : localHistory;
                 if (myPts.length > 0) allHistoryToDraw.push(myPts);
@@ -1106,6 +1101,33 @@
             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
             fogCtx.imageSmoothingEnabled = false; 
             fogCtx.drawImage(lowResCanvas, 0, 0, w, h, 0, 0, fogCanvas.width, fogCanvas.height);
+            
+            // 繪製彩色半透明歷史軌跡 (超過一小時未消失的部分)
+            const maxFadeTime = 30 * 60 * 1000; 
+            Object.keys(allUsersData).forEach(uid => {
+                if (isSpectatorMode && uid === myUid) return; 
+                if (isMyRouteMode && uid !== targetRouteUid) return; 
+                
+                const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return;
+                const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6');
+                
+                if (isMyRouteMode && uid === targetRouteUid) return; 
+
+                userData.history.forEach((point, index) => {
+                    const age = Math.max(0, now - point.timestamp);
+                    const isLatest = index === userData.history.length - 1;
+                    
+                    if (!isLatest) {
+                        let opacity = 0.05; 
+                        if (age < ONE_HOUR) { opacity = Math.max(0.15, Math.min(1.0, 1 - (age / maxFadeTime))); }
+                        const pt = map.latLngToContainerPoint([point.lat, point.lng]);
+                        if (pt.x > -10 && pt.x < fogCanvas.width + 10 && pt.y > -10 && pt.y < fogCanvas.height + 10) { 
+                            fogCtx.globalAlpha = opacity; fogCtx.fillStyle = renderColor; fogCtx.fillRect(pt.x - 4, pt.y - 4, 8, 8); 
+                        }
+                    }
+                });
+            });
+            fogCtx.globalAlpha = 1.0;
         }
 
         function connectWebSocket() {
@@ -1113,13 +1135,12 @@
             ws.onopen = () => {
                 isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981';
                 document.getElementById('toast-text').innerText = "連線成功"; 
-                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" })); // 送什麼沒差，主要是要回傳大包的 sync
+                ws.send(JSON.stringify({ type: "init", uid: myUid, project: "default" }));
                 if(localHistory.length > 0) saveLocationToServer(null, true); 
             };
             ws.onmessage = (event) => {
                 const response = JSON.parse(event.data);
                 
-                // 【核心分流】：只要抓取 dynamicProjects 中，帶有 isStray: true 標籤的專案
                 if (response.type === 'sync' || response.type === 'projects_updated') {
                     if (response.dynamicProjects || (response.data && response.data.dynamicProjects)) {
                         const allProjs = response.dynamicProjects || response.data.dynamicProjects;
