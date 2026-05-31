@@ -45,6 +45,8 @@
             line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
         }
         #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
+        #animal-info-section.mobile-collapsed #prev-stray-btn,
+        #animal-info-section.mobile-collapsed #next-stray-btn { display: none !important; }
 
         /* 照片比對容器 */
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
@@ -144,8 +146,13 @@
             <!-- 動物資訊卡片 -->
             <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
                 <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" title="點擊放大目標照片" draggable="false">
+                
+                <!-- 新增：左右切換浪浪專案按鈕 -->
+                <button id="prev-stray-btn" class="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-6 h-6 flex items-center justify-center rounded-full font-black text-xs hover:bg-black shadow-[1px_1px_0px_#1a202c] pointer-events-auto hidden z-20" title="上一個浪浪">&lt;</button>
+                <button id="next-stray-btn" class="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-6 h-6 flex items-center justify-center rounded-full font-black text-xs hover:bg-black shadow-[1px_1px_0px_#1a202c] pointer-events-auto hidden z-20" title="下一個浪浪">&gt;</button>
+                
                 <div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none" id="animal-name-date">載入中...</div>
-                <div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700">📸 看相簿</div>
+                <div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700 z-10">📸 看相簿</div>
             </div>
             
             <a id="animal-ig-btn" href="#" target="_blank" class="hidden block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center shadow-[2px_2px_0px_#1a202c]">🐾 回報人 IG</a>
@@ -209,9 +216,9 @@
     <!-- 7. 步驟1：回報浪浪位置面板 -->
     <div id="report-location-panel" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm flex flex-col gap-3">
         <h3 class="text-center font-bold text-lg text-blue-700 border-b-2 border-black pb-1">📍 步驟 1/2：標記發現位置</h3>
-        <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址/座標來快速移動</p>
+        <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址、座標、Google Map 連結來快速移動</p>
         <div class="flex gap-2">
-            <input type="text" id="report-search-input" class="pixel-input flex-1 p-2 text-sm" placeholder="輸入地址或座標 (例: 台北車站)">
+            <input type="text" id="report-search-input" class="pixel-input flex-1 p-2 text-sm" placeholder="地址 / 座標 / Google網址">
             <button id="report-search-btn" class="pixel-btn px-3 py-2 bg-gray-200 text-sm">搜尋</button>
         </div>
         <div class="flex gap-2 mt-2">
@@ -343,8 +350,14 @@
         </div>
     </div>
 
+    <!-- 獨立正方形計步器 (偽裝為管理員登入) -->
+    <div id="step-admin-trigger" class="absolute bottom-12 right-2 sm:right-4 z-[2000] pixel-panel w-16 h-16 flex flex-col items-center justify-center bg-white cursor-pointer pointer-events-auto shadow-[4px_4px_0px_#1a202c] active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all" title="系統管理">
+        <div class="text-[10px] font-bold mb-1 text-gray-500">👣 累積步數</div>
+        <div id="step-counter-display" class="text-lg font-black text-gray-800 tracking-wider transition-colors">0</div>
+    </div>
+
     <!-- 9. 系統管理員後台面板 (隱藏，由步數點擊觸發) -->
-    <div class="absolute bottom-12 right-4 z-[2000] flex flex-col gap-2 pointer-events-none">
+    <div class="absolute bottom-[8.5rem] right-4 z-[2000] flex flex-col gap-2 pointer-events-none">
         <div id="admin-panel" class="hidden flex flex-col gap-2 pointer-events-auto border-4 border-red-600 bg-red-100 p-2 shadow-[4px_4px_0px_rgba(220,38,38,1)]">
             <div class="text-red-700 font-bold text-center text-xs border-b-2 border-red-400 pb-1 mb-1">系統後台管理</div>
             <button id="admin-pending-btn" class="pixel-btn p-2 text-xs bg-orange-500 text-white">📋 審核浪浪</button>
@@ -395,12 +408,8 @@
         </div>
     </div>
     
-    <!-- 右下角選單 (包含步數偽裝管理員登入) -->
+    <!-- 右下角選單 -->
     <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3 items-center">
-        <div id="step-admin-trigger" class="cursor-pointer hover:scale-105 transition-transform" title="點擊登入管理">
-            <span id="step-counter-display" class="text-gray-700 font-black">👟 0 步</span>
-        </div>
-        <div class="w-[2px] h-3 bg-gray-400"></div>
         <a href="/" target="_self" class="text-orange-500 hover:text-orange-700 no-underline font-black">尋寵地圖</a>
         <a href="https://finddog.online/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a>
         <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a>
@@ -751,23 +760,22 @@
             if (localHistory && localHistory.length > 1) {
                 for(let i=1; i < localHistory.length; i++) {
                     const d = getDistance(localHistory[i-1].lat, localHistory[i-1].lng, localHistory[i].lat, localHistory[i].lng);
-                    if (d < 1000) totalDist += d; // 忽略定位漂移太大的點
+                    if (d < 1000) totalDist += d; 
                 }
             }
-            const steps = Math.floor(totalDist / 0.6); // 1 步 = 60 公分
+            const steps = Math.floor(totalDist / 0.6); 
             const displayEl = document.getElementById('step-counter-display');
             
             if (displayEl) {
-                displayEl.innerText = `👟 ${steps} 步`;
-                // 依照步數自動升級外觀顏色
+                displayEl.innerText = steps; 
                 if (steps >= 10000) {
-                    displayEl.className = "text-yellow-600 font-black drop-shadow-[0_0_2px_rgba(253,224,71,0.8)]";
+                    displayEl.className = "text-lg font-black text-yellow-500 drop-shadow-[1px_1px_0px_#000] tracking-wider transition-colors";
                 } else if (steps >= 5000) {
-                    displayEl.className = "text-purple-600 font-black";
+                    displayEl.className = "text-lg font-black text-purple-600 tracking-wider transition-colors";
                 } else if (steps >= 1000) {
-                    displayEl.className = "text-blue-600 font-black";
+                    displayEl.className = "text-lg font-black text-blue-600 tracking-wider transition-colors";
                 } else {
-                    displayEl.className = "text-gray-700 font-black hover:text-black transition-colors";
+                    displayEl.className = "text-lg font-black text-gray-800 tracking-wider transition-colors";
                 }
             }
         }
@@ -1006,7 +1014,16 @@
             if(!query) return;
             document.getElementById('report-search-btn').innerText = '⏳';
             
-            const coordMatch = query.match(/^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/);
+            // 1. Google Maps URL Pattern: /@24.9665352,121.2887258/
+            const gmMatch = query.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if(gmMatch) {
+                map.setView([parseFloat(gmMatch[1]), parseFloat(gmMatch[2])], 18, {animate: true});
+                document.getElementById('report-search-btn').innerText = '搜尋';
+                return;
+            }
+
+            // 2. Coordinate Pattern: (24.97858, 121.2810) or 24.97,121.28
+            const coordMatch = query.match(/^\s*\(?\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*\)?\s*$/);
             if(coordMatch) {
                 map.setView([parseFloat(coordMatch[1]), parseFloat(coordMatch[3])], 18, {animate: true});
                 document.getElementById('report-search-btn').innerText = '搜尋';
@@ -1316,7 +1333,7 @@
         });
 
         // ======= 其他互動與系統管理員 =======
-        // 將原本的 admin-login-btn 改由右下角的計步器觸發
+        // 將原本的 admin-login-btn 改由獨立的計步器觸發
         document.getElementById('step-admin-trigger').addEventListener('click', () => {
             document.getElementById('admin-login-modal').classList.remove('hidden');
         });
@@ -1416,6 +1433,25 @@
             });
         });
 
+        // ================= 跨專案切換輔助 =================
+        function switchStrayProject(offset) {
+            const keys = Object.keys(PROJECTS);
+            if (keys.length <= 1) return;
+            let idx = keys.indexOf(currentProjectKey);
+            idx = (idx + offset + keys.length) % keys.length;
+            document.getElementById('switch-project-select').value = keys[idx];
+            document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+        }
+
+        document.getElementById('prev-stray-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchStrayProject(-1);
+        });
+        document.getElementById('next-stray-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchStrayProject(1);
+        });
+
         function updateProjectDropdown() {
             const select = document.getElementById('switch-project-select');
             select.innerHTML = '';
@@ -1464,6 +1500,15 @@
                 igBtn.classList.remove('hidden');
             } else {
                 igBtn.classList.add('hidden');
+            }
+
+            // 判斷是否顯示左右切換箭頭
+            if (Object.keys(PROJECTS).length > 1) {
+                document.getElementById('prev-stray-btn').classList.remove('hidden');
+                document.getElementById('next-stray-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('prev-stray-btn').classList.add('hidden');
+                document.getElementById('next-stray-btn').classList.add('hidden');
             }
         }
 
@@ -1744,7 +1789,6 @@
                         PROJECTS = strayProjs;
                         
                         Object.keys(PROJECTS).forEach(k => {
-                            // 自動修復：將舊資料中被放到 photos 的影片轉移到 videos 陣列
                             if (PROJECTS[k].photos) {
                                 let actualPhotos = [];
                                 let actualVideos = PROJECTS[k].videos || [];
@@ -1759,7 +1803,6 @@
                                 PROJECTS[k].photos = actualPhotos;
                                 PROJECTS[k].videos = actualVideos;
                             }
-
                             if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") {
                                 allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。";
                             }
@@ -1809,7 +1852,6 @@
                     document.getElementById('admin-list-modal').classList.remove('hidden');
                 }
 
-                // 準備接收下一次後端更新後傳來的 IP 綁定資料
                 if (response.type === 'my_reported_strays_data') {
                     const strays = response.data || [];
                     let myStrays = JSON.parse(localStorage.getItem('strayMap_myStrays') || '[]');
@@ -1895,7 +1937,7 @@
                 document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; renderGallery('photos'); document.getElementById('gallery-modal').classList.remove('hidden');
             } else if (e.target.id === 'animal-main-photo') {
                 openCompareModal();
-            } else {
+            } else if (!e.target.closest('#prev-stray-btn') && !e.target.closest('#next-stray-btn')) {
                 this.classList.toggle('mobile-collapsed');
             }
         });
@@ -1954,19 +1996,71 @@
         }
         document.getElementById('gallery-content').addEventListener('scroll', function() { if (this.scrollTop + this.clientHeight >= this.scrollHeight - 50) loadMoreGalleryItems(); });
         
-        function openPhotoViewer(index, photos) { viewerPhotos = photos; currentViewerIndex = index; updatePhotoViewer(); document.getElementById('photo-viewer-modal').classList.remove('hidden'); }
+        function openPhotoViewer(index, photos) { 
+            viewerPhotos = photos; 
+            currentViewerIndex = index; 
+            updatePhotoViewer(); 
+            document.getElementById('photo-viewer-modal').classList.remove('hidden'); 
+        }
+
         function updatePhotoViewer() {
             if (viewerPhotos.length === 0) return;
             const imgObj = typeof viewerPhotos[currentViewerIndex] === 'string' ? { url: viewerPhotos[currentViewerIndex], title: "" } : viewerPhotos[currentViewerIndex];
             let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
             document.getElementById('viewer-img').src = pUrl; 
             const titleEl = document.getElementById('viewer-title');
-            if (titleEl) titleEl.innerText = imgObj.title || "";
-            document.getElementById('viewer-prev-btn').style.opacity = currentViewerIndex > 0 ? "1" : "0.5"; document.getElementById('viewer-next-btn').style.opacity = currentViewerIndex < viewerPhotos.length - 1 ? "1" : "0.5";
+            if (titleEl) {
+                const projName = PROJECTS[currentProjectKey]?.animalName || "";
+                titleEl.innerText = projName ? `[${projName}] ${imgObj.title || ""}` : (imgObj.title || "");
+            }
+            // 按鈕始終保持可見，因為到了盡頭會自動切換至下一個專案
+            document.getElementById('viewer-prev-btn').style.opacity = "1"; 
+            document.getElementById('viewer-next-btn').style.opacity = "1";
         }
+        
+        function switchToAdjacentProjectPhotos(offset) {
+            const keys = Object.keys(PROJECTS);
+            if (keys.length <= 1) return;
+            let idx = keys.indexOf(currentProjectKey);
+            
+            let foundKey = null;
+            for(let i=1; i < keys.length; i++) {
+                idx = (idx + offset + keys.length) % keys.length;
+                let k = keys[idx];
+                if (PROJECTS[k] && PROJECTS[k].photos && PROJECTS[k].photos.length > 0) {
+                    foundKey = k;
+                    break;
+                }
+            }
+            
+            if (foundKey) {
+                document.getElementById('switch-project-select').value = foundKey;
+                document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+                viewerPhotos = PROJECTS[foundKey].photos;
+                currentViewerIndex = offset > 0 ? 0 : viewerPhotos.length - 1;
+                updatePhotoViewer();
+            }
+        }
+
         document.getElementById('viewer-close-btn').addEventListener('click', () => document.getElementById('photo-viewer-modal').classList.add('hidden') );
-        document.getElementById('viewer-prev-btn').addEventListener('click', () => { if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } });
-        document.getElementById('viewer-next-btn').addEventListener('click', () => { if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } });
+        
+        document.getElementById('viewer-prev-btn').addEventListener('click', () => { 
+            if (currentViewerIndex > 0) { 
+                currentViewerIndex--; 
+                updatePhotoViewer(); 
+            } else {
+                switchToAdjacentProjectPhotos(-1);
+            }
+        });
+        
+        document.getElementById('viewer-next-btn').addEventListener('click', () => { 
+            if (currentViewerIndex < viewerPhotos.length - 1) { 
+                currentViewerIndex++; 
+                updatePhotoViewer(); 
+            } else {
+                switchToAdjacentProjectPhotos(1);
+            }
+        });
 
         window.onload = initSystem;
     </script>
