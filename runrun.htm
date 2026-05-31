@@ -329,11 +329,9 @@
     </div>
 
     <!-- 獨立正方形計步器 (偽裝為管理員登入) -->
-    <div class="absolute bottom-[4.5rem] right-2 sm:right-4 z-[2000]">
-        <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]" title="系統管理">
-            👣 累積步數<br>
-            <span id="step-counter-value" class="text-lg sm:text-xl text-gray-800 font-black tracking-wider transition-colors">0</span>
-        </div>
+    <div id="step-admin-trigger" class="absolute bottom-12 right-2 sm:right-4 z-[2000] pixel-panel w-16 h-16 flex flex-col items-center justify-center bg-white cursor-pointer pointer-events-auto shadow-[4px_4px_0px_#1a202c] active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all" title="系統管理">
+        <div class="text-[10px] font-bold mb-1 text-gray-500">👣 累積步數</div>
+        <div id="step-counter-display" class="text-lg font-black text-gray-800 tracking-wider transition-colors">0</div>
     </div>
 
     <!-- 9. 系統管理員後台面板 (隱藏，由步數點擊觸發) -->
@@ -744,7 +742,7 @@
                 }
             }
             const steps = Math.floor(totalDist / 0.6); 
-            const displayEl = document.getElementById('step-counter-value');
+            const displayEl = document.getElementById('step-counter-display');
             
             if (displayEl) {
                 displayEl.innerText = steps; 
@@ -818,7 +816,6 @@
             document.getElementById('report-stray-btn').classList.remove('hidden');
             document.getElementById('toggle-fog-btn').classList.remove('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
-            document.getElementById('step-panel').parentElement.classList.remove('hidden');
             document.getElementById('spectator-btn').classList.remove('hidden');
             document.getElementById('locate-btn').classList.remove('hidden');
             document.getElementById('my-route-btn').classList.remove('hidden');
@@ -897,7 +894,7 @@
                 document.getElementById('admin-panel').classList.remove('hidden');
             }
             
-            // ================= 綁定左側輔助按鈕功能 =================
+            // 綁定左側輔助按鈕功能
             document.getElementById('my-route-btn').addEventListener('click', function() {
                 isMyRouteMode = !isMyRouteMode;
                 targetRouteUid = myUid;
@@ -1065,32 +1062,15 @@
             if(!query) return;
             document.getElementById('report-search-btn').innerText = '⏳';
             
-            // 處理 Google Maps 網址 (包含短網址 maps.app.goo.gl 或一般網址)
-            if (query.includes('google.com/maps') || query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
-                try {
-                    let textToSearch = query;
-                    // 如果是短網址，透過 allorigins proxy 取得轉址後的內容
-                    if (query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
-                        document.getElementById('report-search-btn').innerText = '解析中...';
-                        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(query)}`);
-                        const data = await res.json();
-                        // 嘗試從重新導向的 URL 或是 HTML 內容中抓取坐標
-                        textToSearch = (data.status && data.status.url ? data.status.url : "") + (data.contents || "");
-                    }
-                    
-                    const gmMatch = textToSearch.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-                    if (gmMatch) {
-                        map.setView([parseFloat(gmMatch[1]), parseFloat(gmMatch[2])], 18, {animate: true});
-                        document.getElementById('report-search-btn').innerText = '搜尋';
-                        return;
-                    }
-                } catch(e) { console.warn("Google Maps URL 解析失敗", e); }
-            }
-
-            // 處理一般經緯度座標 (例如: (24.978, 121.281) 或 24.97,121.28)
-            const coordMatch = query.match(/^\s*\(?\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*\)?\s*$/);
-            if(coordMatch) {
-                map.setView([parseFloat(coordMatch[1]), parseFloat(coordMatch[3])], 18, {animate: true});
+            // 強大的坐標與網址解析
+            const coordMatch = query.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
+            if (coordMatch) {
+                let val1 = parseFloat(coordMatch[1]);
+                let val2 = parseFloat(coordMatch[2]);
+                let lat = val1, lng = val2;
+                // 防止經緯度貼反而跑去海裡 (以台灣為主的簡單防呆)
+                if (val1 > 100 && val2 < 50) { lat = val2; lng = val1; }
+                map.setView([lat, lng], 18, {animate: true});
                 document.getElementById('report-search-btn').innerText = '搜尋';
                 return;
             }
@@ -1099,7 +1079,7 @@
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 if(data && data.length > 0) map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
-                else showModal('❌ 找不到該地址，請輸入明確路名、座標或 Google Map 連結。');
+                else showModal('❌ 找不到該地址，請輸入明確路名或座標。');
             } catch(e) { showModal('❌ 搜尋異常。'); }
             document.getElementById('report-search-btn').innerText = '搜尋';
         });
@@ -1397,8 +1377,8 @@
             }
         });
 
-        // ======= 系統管理員事件 =======
-        document.getElementById('step-panel').addEventListener('click', () => {
+        // ======= 其他互動與系統管理員 =======
+        document.getElementById('step-admin-trigger').addEventListener('click', () => {
             document.getElementById('admin-login-modal').classList.remove('hidden');
         });
         document.getElementById('admin-cancel-btn').addEventListener('click', () => document.getElementById('admin-login-modal').classList.add('hidden'));
@@ -2147,6 +2127,78 @@
                 document.getElementById('viewer-prev-btn').click();
             }
         }
+
+        // ======= 左側輔助按鈕事件綁定 =======
+        document.getElementById('my-route-btn').addEventListener('click', function() {
+            isMyRouteMode = !isMyRouteMode;
+            targetRouteUid = myUid;
+            snakeIndex = 0;
+            if (isMyRouteMode) {
+                this.style.backgroundColor = '#3b82f6';
+                this.style.color = 'white';
+                document.getElementById('playback-controls').classList.remove('hidden');
+                document.getElementById('pb-pause').innerText = "||";
+                isPlaybackPaused = false;
+                if (snakeInterval) clearInterval(snakeInterval);
+                snakeInterval = setInterval(() => {
+                    if (isPlaybackPaused) return;
+                    snakeIndex++;
+                    renderMap();
+                }, currentPlaybackSpeed);
+            } else {
+                this.style.backgroundColor = '';
+                this.style.color = '';
+                document.getElementById('playback-controls').classList.add('hidden');
+                if (snakeInterval) clearInterval(snakeInterval);
+                snakeInterval = null;
+            }
+            renderMap();
+        });
+
+        document.getElementById('toggle-fog-btn').addEventListener('click', function() {
+            isFogVisible = !isFogVisible;
+            this.innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
+            const fogPane = map ? map.getPane('fogPane') : null;
+            if(fogPane) fogPane.style.display = isFogVisible ? 'block' : 'none';
+            if (isFogVisible) requestFogRender();
+        });
+
+        document.getElementById('spectator-btn').addEventListener('click', function() {
+            isSpectatorMode = !isSpectatorMode;
+            if (isSpectatorMode) {
+                this.style.backgroundColor = '#ef4444';
+                this.style.color = 'white';
+            } else {
+                this.style.backgroundColor = '';
+                this.style.color = '';
+            }
+            document.getElementById('spectator-hint').classList.toggle('hidden');
+            renderMap();
+        });
+
+        document.getElementById('locate-btn').addEventListener('click', () => {
+            if (lastSavedPos && map) {
+                map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
+            }
+        });
+        
+        // 軌跡播放控制項事件
+        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
+        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 5); renderMap(); });
+        document.getElementById('pb-pause').addEventListener('click', () => { 
+            isPlaybackPaused = !isPlaybackPaused; 
+            document.getElementById('pb-pause').innerText = isPlaybackPaused ? "▶" : "||"; 
+        });
+        document.getElementById('pb-speed').addEventListener('click', () => { 
+            currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 20 : 500); 
+            if(snakeInterval) {
+                clearInterval(snakeInterval);
+                snakeInterval = setInterval(() => { if (!isPlaybackPaused) { snakeIndex++; renderMap(); } }, currentPlaybackSpeed);
+            }
+        });
+        document.getElementById('pb-end').addEventListener('click', () => { snakeIndex = 999999; renderMap(); });
+
+        window.onload = initSystem;
     </script>
 </body>
 </html>
