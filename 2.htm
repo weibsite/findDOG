@@ -125,6 +125,7 @@
         const escapeHTML = str => String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
         const getBaseHttpUrl = () => NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : "";
         const replaceBtn = (id, cb) => { let el=$(id), clo=el.cloneNode(true); el.parentNode.replaceChild(clo, el); if(cb) clo.addEventListener('click', cb); return clo; };
+        const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
 
         // --- 全域變數 ---
         let NGROK_WS_URL = "", ws, wsReconnectDelay = 3000, isSystemReady = false;
@@ -432,6 +433,22 @@
         on('add-prize-submit-btn','click',()=>{ let pz=[]; $('prize-rows-container').childNodes.forEach(r=>{let n=r.querySelector('.p-name').value, u=r.querySelector('.p-url').value, p=parseFloat(r.querySelector('.p-prob').value), fp=parseFloat(r.querySelector('.p-fprob').value); if(n&&u&&!isNaN(p)&&!isNaN(fp))pz.push({name:n,url:u,prob:p,first_prob:fp});}); if(!pz.length)return showCenterToast("⚠️ 填寫不完整！"); wsSend("add_prizes",{data:pz}); hide('add-prize-modal'); showCenterToast("⏳ 指令已送出！"); });
         on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
         on('slot-close-btn','click',()=>hide('slot-machine-modal')); on('floating-gift-container','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法參與抽獎！"); text('slot-machine-title',`🎰 抽獎`); updateGiftUI(); show('slot-machine-modal'); }); on('prize-pool-close-btn','click',()=>hide('prize-pool-modal'));
+
+        // ================= 修復加入的開始按鈕點擊事件 =================
+        on('master-start-btn', 'click', e => {
+            e.preventDefault();
+            hide('error-msg');
+            text('master-start-btn', "連線中...");
+            currentUserName = $('user-name-input').value.trim() || `P${Math.floor(100+Math.random()*900)}`;
+            dbUserColor = generateRandomColor();
+            lsSet('dogMap_userName', currentUserName); 
+            lsSet('dogMap_userColor', dbUserColor);
+            if ($('profile-edit-trigger')) $('profile-edit-trigger').style.backgroundColor = dbUserColor;
+            
+            loadLotteryState();
+            connectWebSocket();
+            startLocationServices(false);
+        });
 
         window.addEventListener('DOMContentLoaded', initSystem);
     </script>
