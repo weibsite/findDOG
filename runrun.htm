@@ -133,7 +133,6 @@
     <!-- 6. 右上角：線上狀態與動物卡片 / 公告區 -->
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div class="pointer-events-auto flex gap-2">
-            <button id="top-user-manage-btn" class="pixel-btn p-2 text-xs bg-blue-500 text-white shadow-[2px_2px_0px_#1a202c]">🐾 登入管理</button>
             <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 cursor-help">
                 <div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div>
                 <span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span>
@@ -586,7 +585,6 @@
             btn.innerText = "手動載入"; btn.disabled = false;
         }
 
-        document.getElementById('top-user-manage-btn').addEventListener('click', openUserManageModal);
         document.getElementById('user-manage-trigger-btn-left').addEventListener('click', openUserManageModal);
         document.getElementById('user-manage-close-btn').addEventListener('click', () => { document.getElementById('user-manage-modal').classList.add('hidden'); });
 
@@ -1478,14 +1476,14 @@
                 const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
                 const isCurrent = (key === currentProjectKey);
                 
-                const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', 'other': '🐾' };
+                const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', '其他': '🐾' };
                 const iconSymbol = typeMap[proj.type] || '🐾';
                 
                 let markerHtml = '';
                 if (isCurrent) {
                     markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div>
                                   <div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;">
-                                      <div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 ${escapeHTML(proj.animalName)}在這裡</div>
+                                      <div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 在這裡發現${escapeHTML(proj.animalName)}</div>
                                       <div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div>
                                   </div>`;
                 } else {
