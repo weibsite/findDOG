@@ -113,7 +113,7 @@
         </div>
     </div>
     
-    <!-- 5. 主功能按鈕 -->
+    <!-- 5. 主功能按鈕 (位置重新編排) -->
     <button id="report-stray-btn" class="absolute bottom-[14rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-green-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">📢 回報浪浪</button>
     <button id="user-manage-trigger-btn-left" class="absolute bottom-[11rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-blue-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🐾 管理浪浪</button>
     <button id="my-route-btn" class="absolute bottom-[8.5rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
@@ -824,7 +824,8 @@
             document.getElementById('my-route-btn').classList.remove('hidden');
         }
 
-        // 綁定大門按鈕的監聽器
+        // ================= 綁定全域/左側輔助按鈕 =================
+        // 將事件綁定放在外層，確保不會因為初始化異常而失效
         document.getElementById('master-start-btn').addEventListener('click', () => {
             currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100+Math.random()*900)}`;
             dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor();
@@ -834,6 +835,74 @@
             updateStepCounter();
             startLocationServices(false);
         });
+
+        document.getElementById('my-route-btn').addEventListener('click', function() {
+            isMyRouteMode = !isMyRouteMode;
+            targetRouteUid = myUid;
+            snakeIndex = 0;
+            if (isMyRouteMode) {
+                this.style.backgroundColor = '#3b82f6';
+                this.style.color = 'white';
+                document.getElementById('playback-controls').classList.remove('hidden');
+                document.getElementById('pb-pause').innerText = "||";
+                isPlaybackPaused = false;
+                if (snakeInterval) clearInterval(snakeInterval);
+                snakeInterval = setInterval(() => {
+                    if (isPlaybackPaused) return;
+                    snakeIndex++;
+                    renderMap();
+                }, currentPlaybackSpeed);
+            } else {
+                this.style.backgroundColor = '';
+                this.style.color = '';
+                document.getElementById('playback-controls').classList.add('hidden');
+                if (snakeInterval) clearInterval(snakeInterval);
+                snakeInterval = null;
+            }
+            renderMap();
+        });
+
+        document.getElementById('toggle-fog-btn').addEventListener('click', function() {
+            isFogVisible = !isFogVisible;
+            this.innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
+            const fogPane = map ? map.getPane('fogPane') : null;
+            if(fogPane) fogPane.style.display = isFogVisible ? 'block' : 'none';
+            if (isFogVisible) requestFogRender();
+        });
+
+        document.getElementById('spectator-btn').addEventListener('click', function() {
+            isSpectatorMode = !isSpectatorMode;
+            if (isSpectatorMode) {
+                this.style.backgroundColor = '#ef4444';
+                this.style.color = 'white';
+            } else {
+                this.style.backgroundColor = '';
+                this.style.color = '';
+            }
+            document.getElementById('spectator-hint').classList.toggle('hidden');
+            renderMap();
+        });
+
+        document.getElementById('locate-btn').addEventListener('click', () => {
+            if (lastSavedPos && map) {
+                map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
+            }
+        });
+        
+        document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
+        document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 5); renderMap(); });
+        document.getElementById('pb-pause').addEventListener('click', () => { 
+            isPlaybackPaused = !isPlaybackPaused; 
+            document.getElementById('pb-pause').innerText = isPlaybackPaused ? "▶" : "||"; 
+        });
+        document.getElementById('pb-speed').addEventListener('click', () => { 
+            currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 20 : 500); 
+            if(snakeInterval) {
+                clearInterval(snakeInterval);
+                snakeInterval = setInterval(() => { if (!isPlaybackPaused) { snakeIndex++; renderMap(); } }, currentPlaybackSpeed);
+            }
+        });
+        document.getElementById('pb-end').addEventListener('click', () => { snakeIndex = 999999; renderMap(); });
 
         function checkLocalSetupAndStart() {
             const savedName = getPersistentData('dogMap_userName');
@@ -896,76 +965,6 @@
                 document.getElementById('admin-login-modal').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
             }
-            
-            // ================= 綁定左側輔助按鈕功能 =================
-            document.getElementById('my-route-btn').addEventListener('click', function() {
-                isMyRouteMode = !isMyRouteMode;
-                targetRouteUid = myUid;
-                snakeIndex = 0;
-                if (isMyRouteMode) {
-                    this.style.backgroundColor = '#3b82f6';
-                    this.style.color = 'white';
-                    document.getElementById('playback-controls').classList.remove('hidden');
-                    document.getElementById('pb-pause').innerText = "||";
-                    isPlaybackPaused = false;
-                    if (snakeInterval) clearInterval(snakeInterval);
-                    snakeInterval = setInterval(() => {
-                        if (isPlaybackPaused) return;
-                        snakeIndex++;
-                        renderMap();
-                    }, currentPlaybackSpeed);
-                } else {
-                    this.style.backgroundColor = '';
-                    this.style.color = '';
-                    document.getElementById('playback-controls').classList.add('hidden');
-                    if (snakeInterval) clearInterval(snakeInterval);
-                    snakeInterval = null;
-                }
-                renderMap();
-            });
-
-            document.getElementById('toggle-fog-btn').addEventListener('click', function() {
-                isFogVisible = !isFogVisible;
-                this.innerText = isFogVisible ? "👁️ 關閉迷霧" : "🌫️ 開啟迷霧";
-                const fogPane = map ? map.getPane('fogPane') : null;
-                if(fogPane) fogPane.style.display = isFogVisible ? 'block' : 'none';
-                if (isFogVisible) requestFogRender();
-            });
-
-            document.getElementById('spectator-btn').addEventListener('click', function() {
-                isSpectatorMode = !isSpectatorMode;
-                if (isSpectatorMode) {
-                    this.style.backgroundColor = '#ef4444';
-                    this.style.color = 'white';
-                } else {
-                    this.style.backgroundColor = '';
-                    this.style.color = '';
-                }
-                document.getElementById('spectator-hint').classList.toggle('hidden');
-                renderMap();
-            });
-
-            document.getElementById('locate-btn').addEventListener('click', () => {
-                if (lastSavedPos && map) {
-                    map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
-                }
-            });
-            
-            // 軌跡播放控制項事件
-            document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 0; renderMap(); });
-            document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(0, snakeIndex - 5); renderMap(); });
-            document.getElementById('pb-pause').addEventListener('click', () => { 
-                isPlaybackPaused = !isPlaybackPaused; 
-                document.getElementById('pb-pause').innerText = isPlaybackPaused ? "▶" : "||"; 
-            });
-            document.getElementById('pb-speed').addEventListener('click', () => { 
-                currentPlaybackSpeed = currentPlaybackSpeed === 500 ? 100 : (currentPlaybackSpeed === 100 ? 20 : 500); 
-                if(snakeInterval) {
-                    clearInterval(snakeInterval);
-                    snakeInterval = setInterval(() => { if (!isPlaybackPaused) { snakeIndex++; renderMap(); } }, currentPlaybackSpeed);
-                }
-            });
-            document.getElementById('pb-end').addEventListener('click', () => { snakeIndex = 999999; renderMap(); });
             
             connectWebSocket(); checkLocalSetupAndStart();
         }
@@ -1063,7 +1062,8 @@
         document.getElementById('report-search-btn').addEventListener('click', async () => {
             const query = document.getElementById('report-search-input').value.trim();
             if(!query) return;
-            document.getElementById('report-search-btn').innerText = '⏳';
+            const searchBtn = document.getElementById('report-search-btn');
+            searchBtn.innerText = '⏳';
             
             // 處理 Google Maps 網址 (包含短網址 maps.app.goo.gl 或一般網址)
             if (query.includes('google.com/maps') || query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
@@ -1071,7 +1071,7 @@
                     let textToSearch = query;
                     // 如果是短網址，透過 allorigins proxy 取得轉址後的內容
                     if (query.includes('maps.app.goo.gl') || query.includes('goo.gl/maps')) {
-                        document.getElementById('report-search-btn').innerText = '解析中...';
+                        searchBtn.innerText = '解析中...';
                         const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(query)}`);
                         const data = await res.json();
                         // 嘗試從重新導向的 URL 或是 HTML 內容中抓取坐標
@@ -1081,7 +1081,7 @@
                     const gmMatch = textToSearch.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
                     if (gmMatch) {
                         map.setView([parseFloat(gmMatch[1]), parseFloat(gmMatch[2])], 18, {animate: true});
-                        document.getElementById('report-search-btn').innerText = '搜尋';
+                        searchBtn.innerText = '搜尋';
                         return;
                     }
                 } catch(e) { console.warn("Google Maps URL 解析失敗", e); }
@@ -1091,7 +1091,7 @@
             const coordMatch = query.match(/^\s*\(?\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*\)?\s*$/);
             if(coordMatch) {
                 map.setView([parseFloat(coordMatch[1]), parseFloat(coordMatch[3])], 18, {animate: true});
-                document.getElementById('report-search-btn').innerText = '搜尋';
+                searchBtn.innerText = '搜尋';
                 return;
             }
 
@@ -1101,7 +1101,7 @@
                 if(data && data.length > 0) map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
                 else showModal('❌ 找不到該地址，請輸入明確路名、座標或 Google Map 連結。');
             } catch(e) { showModal('❌ 搜尋異常。'); }
-            document.getElementById('report-search-btn').innerText = '搜尋';
+            searchBtn.innerText = '搜尋';
         });
 
         let reportLat, reportLng;
