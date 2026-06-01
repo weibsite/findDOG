@@ -113,7 +113,7 @@
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
     <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
     <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
-    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" target="_blank" class="text-orange-600 hover:text-orange-800 no-underline font-black">回報浪浪</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">回報浪浪</a><a href="/helpme.htm" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -128,9 +128,22 @@
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
 
         // --- 全域變數 ---
+        let hasInitialUrlZoomed = false; // 新增：判斷是否已執行過 URL 初始放大
         let NGROK_WS_URL = "", ws, wsReconnectDelay = 3000, isSystemReady = false;
         let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle = null;
-        let PROJECTS = {}, currentProjectKey = lsGet('dogMap_currentProject') || (new URLSearchParams(window.location.search)).get('project') || decodeURIComponent(window.location.search.substring(1)) || null;
+        let PROJECTS = {};
+        
+        // 修正：強化從網址列抓取 ?animalName 的邏輯
+        const getProjectFromURL = () => {
+            const params = new URLSearchParams(window.location.search);
+            const fromParam = params.get('project');
+            if (fromParam) return fromParam;
+            const rawQuery = window.location.search.substring(1);
+            if (rawQuery && !rawQuery.includes('=')) return decodeURIComponent(rawQuery);
+            return null;
+        };
+        let currentProjectKey = getProjectFromURL() || lsGet('dogMap_currentProject') || null;
+
         let myUid = lsGet('dogMap_UID') || ('usr_' + Math.random().toString(36).substr(2, 9)); lsSet('dogMap_UID', myUid);
         let currentUserName = "", dbUserColor = "", isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true', adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
@@ -172,8 +185,9 @@
             markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
             
             map.on('click', e => { if(isDrawingRoute){ currentRoutePoints.push([e.latlng.lat, e.latlng.lng]); updateDrawingRoutePreview(); } resetPowerSavingTimer(); });
-            map.on('dragstart zoomstart mousedown touchstart', ()=>{ isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); });
-            map.on('moveend zoomend mouseup touchend', ()=>{ mapInteractionTimer=setTimeout(()=>isMapInteracting=false, 900000); renderMap(); resetPowerSavingTimer(); });
+            // 更新互動判斷事件，避免單純點擊干擾自動追蹤
+            map.on('dragstart zoomstart', ()=>{ isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); });
+            map.on('dragend zoomend', ()=>{ mapInteractionTimer=setTimeout(()=>isMapInteracting=false, 900000); renderMap(); resetPowerSavingTimer(); });
             map.createPane('fogPane').style.cssText='z-index:450; pointer-events:none;'; map.createPane('evaPane').style.cssText='z-index:460; pointer-events:none;';
             initFogSystem(); setInterval(renderMap, 15000);
             
@@ -199,6 +213,18 @@
                     currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; lotteryTickets=res.data.tickets||0;
                     updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI();
                     if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
+                    
+                    // --- 初次 URL 載入自動定位到專案消失地 (約 600m 範圍) ---
+                    if (!hasInitialUrlZoomed && getProjectFromURL() && PROJECTS[currentProjectKey]) {
+                        let p = PROJECTS[currentProjectKey];
+                        let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2, cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+                        let rLat = 300 / 111000, rLng = 300 / (111000 * Math.cos(cLat * Math.PI / 180));
+                        map.flyToBounds([[cLat - rLat, cLng - rLng], [cLat + rLat, cLng + rLng]], { animate: true, duration: 1.5 });
+                        isMapInteracting = true;
+                        if(mapInteractionTimer) clearTimeout(mapInteractionTimer);
+                        mapInteractionTimer = setTimeout(()=>isMapInteracting=false, 30000); // 30秒內暫停跟隨定位，讓使用者看清楚
+                        hasInitialUrlZoomed = true;
+                    }
                 } else if(res.type==='sync_light') {
                     let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;}
                     if(isMe){
@@ -254,10 +280,13 @@
         function finishUIReveal() { $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} requestWakeLock(); resetPowerSavingTimer(); }
         function handleValidPosition(lat, lng, ts) {
             if(isSpectatorMode) return; if(!localHistory.length) map.setView([lat,lng], 17);
+            
+            // 將判斷出畫面的置中邏輯往前移，避免被距離太近的判斷 return 掉。加上 pad(-0.1) 讓走近邊緣時提前流暢置中。
+            if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().pad(-0.1).contains([lat,lng])) map.setView([lat,lng], map.getZoom()||17, {animate:true});
+            
             if(lastSavedPos && getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng)<15 && ts-lastSavedPos.timestamp<180000) return;
             const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory', JSON.stringify(localHistory));
             allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey}; updateStepsCounter();
-            if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().contains([lat,lng])) map.setView([lat,lng], map.getZoom()||17, {animate:true});
             saveLocationToServer(pt, false); renderMap();
         }
         function saveLocationToServer(pt, force) {
@@ -270,6 +299,12 @@
             Object.keys(PROJECTS).forEach(k=>{ s.innerHTML+=`<option value="${k}">🎯 ${PROJECTS[k].animalName||PROJECTS[k].name}</option>`; });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey]) fk=currentProjectKey; else if(currentProjectKey) { for(let k in PROJECTS) if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey) {fk=k; break;} }
             if(fk){ currentProjectKey=fk; s.value=currentProjectKey; } else { let ks=Object.keys(PROJECTS); if(ks.length){currentProjectKey=ks[Math.floor(Math.random()*ks.length)]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);} }
+            
+            // 同步更新網址列，但不刷新頁面
+            if(currentProjectKey && PROJECTS[currentProjectKey]) {
+                const displayName = PROJECTS[currentProjectKey].animalName || PROJECTS[currentProjectKey].name || currentProjectKey;
+                window.history.replaceState(null, '', `?${encodeURIComponent(displayName)}`);
+            }
         }
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
@@ -404,7 +439,32 @@
         on('viewer-close-btn','click',()=>hide('photo-viewer-modal')); on('viewer-prev-btn','click',()=>{if(currentViewerIndex>0){currentViewerIndex--;updatePhotoViewer();}}); on('viewer-next-btn','click',()=>{if(currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}});
         let vc=$('photo-viewer-container'); vc.addEventListener('touchstart',e=>touchStartX=e.changedTouches[0].screenX); vc.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX; if(touchEndX<touchStartX-50&&currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}else if(touchEndX>touchStartX+50&&currentViewerIndex>0){currentViewerIndex--;updatePhotoViewer();} });
         
-        $('switch-project-select').addEventListener('change', e=>{ currentProjectKey=e.target.value; lsSet('dogMap_currentProject', currentProjectKey); window.history.pushState({}, '', '?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); loadLotteryState(); updateAnimalInfoCard(); drawAllProjects(); let p=PROJECTS[currentProjectKey]; if(p)map.flyToBounds(p.bounds, {padding:[50,50],animate:true}); if(isMyRouteMode)$('my-route-btn').click(); wsSend("init"); });
+        // 切換專案時，同樣自動聚焦到消失地並暫停追蹤
+        const zoomToProject = (key) => {
+            let p = PROJECTS[key];
+            if (!p) return;
+            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2, cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+            let rLat = 300 / 111000, rLng = 300 / (111000 * Math.cos(cLat * Math.PI / 180));
+            map.flyToBounds([[cLat - rLat, cLng - rLng], [cLat + rLat, cLng + rLng]], { animate: true, duration: 1.5 });
+            
+            isMapInteracting = true;
+            if(mapInteractionTimer) clearTimeout(mapInteractionTimer);
+            mapInteractionTimer = setTimeout(()=>isMapInteracting=false, 30000); 
+        };
+
+        $('switch-project-select').addEventListener('change', e=>{ 
+            currentProjectKey=e.target.value; 
+            lsSet('dogMap_currentProject', currentProjectKey); 
+            window.history.replaceState(null, '', '?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); 
+            loadLotteryState(); 
+            updateAnimalInfoCard(); 
+            drawAllProjects(); 
+            
+            zoomToProject(currentProjectKey); // 套用新版自動聚焦邏輯
+            
+            if(isMyRouteMode)$('my-route-btn').click(); 
+            wsSend("init"); 
+        });
 
         // --- 管理員操作 ---
         on('step-panel','click',()=>{ $('admin-pwd-input').value=""; show('admin-login-modal'); }); on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
