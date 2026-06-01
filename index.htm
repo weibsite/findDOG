@@ -156,7 +156,7 @@
         let isEvaMode = false, evaGridLayer = null, evaAnimationTimeout = null;
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx, fogRenderPending = false, FOG_SCALE = 0.08;
         
-        let currentProjectHasPrize = false, lotteryTickets = 0, lotteryTimeRemaining = 3600, isTrackingStarted = false, lastFullSyncTime = 0, slotSpinning = false, slotTimer = null;
+        let currentProjectHasPrize = false, lotteryTickets = 0, lotteryTimeRemaining = 300, isTrackingStarted = false, lastFullSyncTime = 0, slotSpinning = false, slotTimer = null;
         let isMapInteracting = false, mapInteractionTimer = null, powerSavingTimer = null, wakeLock = null, isPowerSaving = false;
         let isAnnounceCollapsed = lsGet('dogMap_announceCollapsed') === 'true', animalInfoCollapseTimer = null;
         let viewerPhotos = [], currentViewerIndex = 0, touchStartX = 0, touchEndX = 0, galleryLoadedCount = 0, currentGalleryType = 'photos';
@@ -257,7 +257,7 @@
         async function requestWakeLock(){ try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{}); } }catch(e){} }
         function enterPowerSavingMode(){ if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); }
         function exitPowerSavingMode(){ if(!isPowerSaving)return; isPowerSaving=false; hide('power-saving-overlay'); }
-        function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,30000); }
+        function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); }
         document.body.addEventListener('touchstart', resetPowerSavingTimer, {passive:true}); document.body.addEventListener('click', resetPowerSavingTimer); document.body.addEventListener('mousemove', resetPowerSavingTimer);
         $('power-saving-overlay').addEventListener('touchstart', e=>{e.preventDefault(); resetPowerSavingTimer();}, {passive:false});
         on('power-saving-btn', 'click', e=>{e.stopPropagation(); enterPowerSavingMode();});
