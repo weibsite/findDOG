@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -19,8 +20,11 @@
         .view-section { display: none; }
         .view-section.active { display: block; }
         
-        #map-container { width: 100%; height: 300px; background-color: #e5e7eb; border: 4px solid #1a202c; position: relative; }
-        #map { width: 100%; height: 100%; }
+        /* 地圖狀態樣式 */
+        .map-normal { width: 100%; height: 300px; border: 4px solid #1a202c; position: relative; }
+        .map-fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 9999; border: none; margin: 0; }
+        #map-container { background-color: #e5e7eb; transition: all 0.2s; }
+        #map { width: 100%; height: 100%; z-index: 1; }
 
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 2px solid #1a202c; }
@@ -132,9 +136,9 @@
                                     <div class="flex gap-2">
                                         <input type="text" id="f-lost-date" class="pixel-input flex-1" required placeholder="例如: 2024/05/20">
                                         <div class="relative w-14 flex-shrink-0">
-                                            <!-- 將日曆按鈕改成使用 showPicker()，讓按鈕全區塊皆可觸發 -->
-                                            <button type="button" onclick="try{document.getElementById('f-lost-date-picker').showPicker()}catch(e){document.getElementById('f-lost-date-picker').focus();}" class="pixel-btn w-full h-full bg-blue-300 flex items-center justify-center p-0 m-0 text-xl">📅</button>
-                                            <input type="date" id="f-lost-date-picker" class="absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none" onchange="if(this.value) document.getElementById('f-lost-date').value = this.value.replace(/-/g, '/');">
+                                            <!-- 將 input[type=date] 設為透明並放置於頂層，解決手機點擊範圍問題 -->
+                                            <button type="button" class="pixel-btn w-full h-full bg-blue-300 flex items-center justify-center p-0 m-0 text-xl pointer-events-none">📅</button>
+                                            <input type="date" id="f-lost-date-picker" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="if(this.value) document.getElementById('f-lost-date').value = this.value.replace(/-/g, '/');">
                                         </div>
                                     </div>
                                 </div>
@@ -144,16 +148,26 @@
                         <!-- 3. 地圖範圍選擇 -->
                         <div class="bg-gray-100 p-4 border-4 border-black">
                             <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">3. 走失範圍圈選</h3>
-                            <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，然後在地圖上<strong>按住滑鼠拖曳</strong>以畫出方形邊界。<br>(若不小心圈選太大，系統將自動為您縮小至 500 公尺以內的範圍)</p>
+                            <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，然後在地圖上<strong>按住拖曳</strong>以畫出方形邊界。<br>若手機操作不易，可點擊「全螢幕」放大地圖操作。</p>
                             
                             <div class="flex gap-2 mb-2">
                                 <input type="text" id="map-search-input" class="pixel-input flex-1" placeholder="輸入地址或地標...">
                                 <button type="button" onclick="searchAddress()" class="pixel-btn bg-blue-500 text-white px-4 py-2">🔍 搜尋定位</button>
                             </div>
 
-                            <div id="map-container" class="mb-2">
+                            <div id="map-container" class="map-normal mb-2 shadow-[6px_6px_0_#1a202c]">
+                                <button type="button" id="fullscreen-btn" onclick="toggleFullscreenMap()" class="absolute top-2 right-2 z-[1000] pixel-btn bg-purple-500 text-white px-3 py-2 text-xs sm:text-sm shadow-[2px_2px_0_#1a202c]">📱 全螢幕</button>
                                 <div id="map"></div>
-                                <div id="draw-hint" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-1 border-2 border-black z-[1000] hidden pointer-events-none">請在地圖上「按住滑鼠左鍵並拖曳」畫出範圍...</div>
+                                <div id="draw-hint" class="absolute top-14 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-2 border-2 border-black z-[1000] hidden pointer-events-none w-[80%] max-w-sm text-center text-sm shadow-[4px_4px_0_#1a202c]">請在地圖上「按住滑鼠或手指拖曳」畫出範圍...</div>
+                                
+                                <!-- 全螢幕模式專屬工具列 -->
+                                <div id="fullscreen-tools" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[1000] hidden w-[90%] max-w-md flex flex-col gap-3">
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">📐 重新圈選</button>
+                                        <button type="button" onclick="toggleFullscreenMap()" class="pixel-btn bg-green-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">✅ 確認縮小</button>
+                                    </div>
+                                    <div id="fs-bounds-status" class="bg-white border-2 border-black p-2 text-center text-sm font-bold text-gray-600 shadow-[4px_4px_0_#1a202c]">❌ 尚未圈選範圍</div>
+                                </div>
                             </div>
                             
                             <div class="flex items-center gap-4">
@@ -395,6 +409,7 @@
 
         let step1Timeout = null;
         let step2Timeout = null;
+        let isMapFullscreen = false; // 控制全螢幕地圖狀態
 
         // 裁剪與影片相關變數
         let cropperInstance = null;
@@ -465,7 +480,6 @@
             document.getElementById('ceremony-animal-name-2').innerText = animalName;
             
             let baseUrl = window.location.href.split('?')[0].replace(/[^/]*$/, '');
-            // 移除 encodeURIComponent，強制在畫面上顯示中文
             let shareUrl = baseUrl + '?' + animalName;
             document.getElementById('ceremony-share-url').value = shareUrl;
             
@@ -648,6 +662,37 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
         }
 
+        // 同步雙邊狀態文字
+        function updateBoundsStatus(text, isSuccess) {
+            const normalStatus = document.getElementById('bounds-status');
+            const fsStatus = document.getElementById('fs-bounds-status');
+            const className = `text-sm font-bold ${isSuccess ? 'text-green-600' : 'text-gray-600'}`;
+            
+            if(normalStatus) { normalStatus.innerHTML = text; normalStatus.className = className; }
+            if(fsStatus) { fsStatus.innerHTML = text; fsStatus.className = className; }
+        }
+
+        function toggleFullscreenMap() {
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('fullscreen-btn');
+            const fsTools = document.getElementById('fullscreen-tools');
+            isMapFullscreen = !isMapFullscreen;
+            
+            if (isMapFullscreen) {
+                container.classList.remove('map-normal');
+                container.classList.add('map-fullscreen');
+                btn.classList.add('hidden'); // 全螢幕時隱藏右上角小按鈕
+                fsTools.classList.remove('hidden');
+            } else {
+                container.classList.add('map-normal');
+                container.classList.remove('map-fullscreen');
+                btn.classList.remove('hidden');
+                btn.innerHTML = "📱 全螢幕";
+                fsTools.classList.add('hidden');
+            }
+            setTimeout(() => { if(map) map.invalidateSize(); }, 300);
+        }
+
         function initMap() {
             map = L.map('map').setView([23.5, 121], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -660,8 +705,8 @@
                 });
             }
 
-            // 拖曳圈選邏輯
-            map.on('mousedown', (e) => {
+            // 支援手機與電腦的拖曳圈選邏輯
+            map.on('mousedown touchstart', (e) => {
                 if (drawState === 1) {
                     isDrawing = true;
                     drawPoints[0] = e.latlng;
@@ -670,16 +715,20 @@
                 }
             });
 
-            map.on('mousemove', (e) => {
-                if (drawState === 1 && isDrawing) {
+            map.on('mousemove touchmove', (e) => {
+                if (drawState === 1 && isDrawing && e.latlng) {
                     drawRectangle.setBounds([drawPoints[0], e.latlng]);
                 }
             });
 
-            map.on('mouseup', (e) => {
+            map.on('mouseup touchend', (e) => {
                 if (drawState === 1 && isDrawing) {
                     isDrawing = false;
-                    drawPoints[1] = e.latlng;
+                    
+                    // 為了相容手機 touchend 可能無法取得當下座標，直接抓取矩形的最終邊界
+                    const finalBounds = drawRectangle.getBounds();
+                    drawPoints[0] = finalBounds.getSouthWest();
+                    drawPoints[1] = finalBounds.getNorthEast();
                     drawState = 0;
                     
                     const dist = getDistance(drawPoints[0].lat, drawPoints[0].lng, drawPoints[1].lat, drawPoints[1].lng);
@@ -709,8 +758,8 @@
                     
                     boundsData = [ [drawPoints[0].lat, drawPoints[0].lng], [drawPoints[1].lat, drawPoints[1].lng] ];
                     document.getElementById('f-bounds').value = JSON.stringify(boundsData);
-                    document.getElementById('bounds-status').innerHTML = "✅ 已圈選範圍";
-                    document.getElementById('bounds-status').className = "text-sm font-bold text-green-600";
+                    
+                    updateBoundsStatus("✅ 已圈選範圍", true);
                     
                     // 解鎖地圖平移與縮放
                     map.dragging.enable();
@@ -744,9 +793,10 @@
             if (drawRectangle) map.removeLayer(drawRectangle);
             boundsData = null;
             document.getElementById('f-bounds').value = "";
-            document.getElementById('bounds-status').innerHTML = "⏳ 圈選中...";
-            document.getElementById('bounds-status').className = "text-sm font-bold text-gray-600";
-            document.getElementById('draw-hint').innerText = "請在地圖上「按住滑鼠左鍵並拖曳」畫出範圍...";
+            
+            updateBoundsStatus("⏳ 圈選中...", false);
+            
+            document.getElementById('draw-hint').innerText = "請在地圖上「按住滑鼠左鍵或手指並拖曳」畫出範圍...";
             document.getElementById('draw-hint').classList.remove('hidden');
             
             // 鎖定地圖平移與縮放，讓拖曳可以專心畫框框
@@ -1107,8 +1157,7 @@
             boundsData = pd.bounds;
             if(boundsData && boundsData.length === 2) {
                 document.getElementById('f-bounds').value = JSON.stringify(boundsData);
-                document.getElementById('bounds-status').innerHTML = "✅ 已繼承原範圍";
-                document.getElementById('bounds-status').className = "text-sm font-bold text-green-600";
+                updateBoundsStatus("✅ 已繼承原範圍", true);
             }
             
             document.getElementById('f-main-photo-url').value = pd.mainPhoto;
