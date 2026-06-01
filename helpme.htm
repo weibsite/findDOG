@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -148,7 +147,7 @@
                         <!-- 3. 地圖範圍選擇 -->
                         <div class="bg-gray-100 p-4 border-4 border-black">
                             <h3 class="font-black text-lg mb-2 text-gray-900 bg-yellow-300 inline-block px-2 border-2 border-black">3. 走失範圍圈選</h3>
-                            <p class="text-xs font-bold text-red-600 mb-2">請點擊「開始圈選」，然後在地圖上<strong>按住拖曳</strong>以畫出方形邊界。<br>若手機操作不易，可點擊「全螢幕」放大地圖操作。</p>
+                            <p class="text-xs font-bold text-red-600 mb-2">請點擊「畫筆圈選」，然後在地圖上<strong>按住滑鼠或手指畫一個圈</strong>。<br>系統會自動分析出最適合的方形邊界。若手機操作不易可點擊「全螢幕」。</p>
                             
                             <div class="flex gap-2 mb-2">
                                 <input type="text" id="map-search-input" class="pixel-input flex-1" placeholder="輸入地址或地標...">
@@ -158,20 +157,20 @@
                             <div id="map-container" class="map-normal mb-2 shadow-[6px_6px_0_#1a202c]">
                                 <button type="button" id="fullscreen-btn" onclick="toggleFullscreenMap()" class="absolute top-2 right-2 z-[1000] pixel-btn bg-purple-500 text-white px-3 py-2 text-xs sm:text-sm shadow-[2px_2px_0_#1a202c]">📱 全螢幕</button>
                                 <div id="map"></div>
-                                <div id="draw-hint" class="absolute top-14 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-2 border-2 border-black z-[1000] hidden pointer-events-none w-[80%] max-w-sm text-center text-sm shadow-[4px_4px_0_#1a202c]">請在地圖上「按住滑鼠或手指拖曳」畫出範圍...</div>
+                                <div id="draw-hint" class="absolute top-14 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold px-4 py-2 border-2 border-black z-[1000] hidden pointer-events-none w-[80%] max-w-sm text-center text-sm shadow-[4px_4px_0_#1a202c]">請在地圖上「按住滑鼠或手指並畫一個圈」...</div>
                                 
                                 <!-- 全螢幕模式專屬工具列 -->
                                 <div id="fullscreen-tools" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[1000] hidden w-[90%] max-w-md flex flex-col gap-3">
                                     <div class="flex gap-2">
-                                        <button type="button" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">📐 重新圈選</button>
-                                        <button type="button" onclick="toggleFullscreenMap()" class="pixel-btn bg-green-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">✅ 確認縮小</button>
+                                        <button type="button" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">🖍️ 重新畫圈</button>
+                                        <button type="button" onclick="toggleFullscreenMap()" class="pixel-btn bg-green-500 text-white px-4 py-3 flex-1 text-base shadow-[4px_4px_0_#1a202c]">✅ 確認範圍</button>
                                     </div>
                                     <div id="fs-bounds-status" class="bg-white border-2 border-black p-2 text-center text-sm font-bold text-gray-600 shadow-[4px_4px_0_#1a202c]">❌ 尚未圈選範圍</div>
                                 </div>
                             </div>
                             
                             <div class="flex items-center gap-4">
-                                <button type="button" id="start-draw-btn" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-2">📐 開始圈選</button>
+                                <button type="button" id="start-draw-btn" onclick="startDrawing()" class="pixel-btn bg-orange-500 text-white px-4 py-2">🖍️ 畫筆圈選</button>
                                 <span id="bounds-status" class="text-sm font-bold text-gray-600">❌ 尚未圈選範圍</span>
                                 <input type="hidden" id="f-bounds" required>
                             </div>
@@ -410,6 +409,10 @@
         let step1Timeout = null;
         let step2Timeout = null;
         let isMapFullscreen = false; // 控制全螢幕地圖狀態
+        
+        // 畫筆功能相關變數
+        let freehandPath = [];
+        let freehandLine = null;
 
         // 裁剪與影片相關變數
         let cropperInstance = null;
@@ -705,19 +708,22 @@
                 });
             }
 
-            // 支援手機與電腦的拖曳圈選邏輯
+            // 畫筆圈選邏輯
             map.on('mousedown touchstart', (e) => {
                 if (drawState === 1) {
                     isDrawing = true;
-                    drawPoints[0] = e.latlng;
+                    freehandPath = [e.latlng];
                     if (drawRectangle) map.removeLayer(drawRectangle);
-                    drawRectangle = L.rectangle([e.latlng, e.latlng], {color: "#ef4444", weight: 3}).addTo(map);
+                    if (freehandLine) map.removeLayer(freehandLine);
+                    // 繪製紅色的手繪虛線
+                    freehandLine = L.polyline(freehandPath, {color: '#ef4444', weight: 4, dashArray: '5, 5'}).addTo(map);
                 }
             });
 
             map.on('mousemove touchmove', (e) => {
                 if (drawState === 1 && isDrawing && e.latlng) {
-                    drawRectangle.setBounds([drawPoints[0], e.latlng]);
+                    freehandPath.push(e.latlng);
+                    freehandLine.setLatLngs(freehandPath);
                 }
             });
 
@@ -725,41 +731,56 @@
                 if (drawState === 1 && isDrawing) {
                     isDrawing = false;
                     
-                    // 為了相容手機 touchend 可能無法取得當下座標，直接抓取矩形的最終邊界
-                    const finalBounds = drawRectangle.getBounds();
-                    drawPoints[0] = finalBounds.getSouthWest();
-                    drawPoints[1] = finalBounds.getNorthEast();
+                    // 防呆：畫的點太少（例如只是點擊一下）
+                    if (freehandPath.length < 5) {
+                         showModal("⚠️ 無法辨識您的圈選，請在地圖上「按住滑鼠或手指」畫出一個明顯的範圍！");
+                         if (freehandLine) map.removeLayer(freehandLine);
+                         startDrawing();
+                         return;
+                    }
+
+                    // 系統自動抓取使用者畫出來的不規則形狀的最大邊界 (Bounding Box)
+                    const tempBounds = L.latLngBounds(freehandPath);
+                    drawPoints[0] = tempBounds.getSouthWest();
+                    drawPoints[1] = tempBounds.getNorthEast();
                     drawState = 0;
                     
                     const dist = getDistance(drawPoints[0].lat, drawPoints[0].lng, drawPoints[1].lat, drawPoints[1].lng);
                     
-                    // 防呆：範圍太小 (例如只是點擊一下)
+                    // 防呆：範圍太小
                     if (dist < 10) {
-                         showModal("⚠️ 範圍太小，請重新「按住並拖曳」出較大的範圍！");
-                         map.removeLayer(drawRectangle);
+                         showModal("⚠️ 範圍太小，請重新畫出較大的範圍！");
+                         if (freehandLine) map.removeLayer(freehandLine);
                          startDrawing();
                          return;
                     }
 
                     // 防呆：範圍過大 (自動以中心點縮小為 500 公尺)
                     if (dist > 500) {
-                        showModal("⚠️ 圈選範圍過大！系統已自動以中心點為準，縮小至 500 公尺的合理搜尋範圍。");
-                        const centerLat = (drawPoints[0].lat + drawPoints[1].lat) / 2;
-                        const centerLng = (drawPoints[0].lng + drawPoints[1].lng) / 2;
+                        showModal("⚠️ 圈選範圍過大！系統已自動分析中心點，並縮小至 500 公尺的合理搜尋範圍。");
+                        const centerLat = tempBounds.getCenter().lat;
+                        const centerLng = tempBounds.getCenter().lng;
                         const offsetLat = 250 / 111320;
                         const offsetLng = 250 / (111320 * Math.cos(centerLat * Math.PI / 180));
                         drawPoints[0] = L.latLng(centerLat - offsetLat, centerLng - offsetLng);
                         drawPoints[1] = L.latLng(centerLat + offsetLat, centerLng + offsetLng);
-                        drawRectangle.setBounds([drawPoints[0], drawPoints[1]]);
                     }
 
                     document.getElementById('draw-hint').classList.add('hidden');
-                    document.getElementById('start-draw-btn').innerText = "重新圈選";
+                    document.getElementById('start-draw-btn').innerText = "🖍️ 重新畫圈";
                     
+                    // 畫出系統分析後的標準範圍 (藍色方框)
+                    drawRectangle = L.rectangle([drawPoints[0], drawPoints[1]], {color: "#3b82f6", weight: 3, fillOpacity: 0.2}).addTo(map);
+                    
+                    // 將原本的手繪線條變成灰色，讓使用者知道系統已處理
+                    if (freehandLine) {
+                        freehandLine.setStyle({color: '#9ca3af', weight: 2, dashArray: ''});
+                    }
+
                     boundsData = [ [drawPoints[0].lat, drawPoints[0].lng], [drawPoints[1].lat, drawPoints[1].lng] ];
                     document.getElementById('f-bounds').value = JSON.stringify(boundsData);
                     
-                    updateBoundsStatus("✅ 已圈選範圍", true);
+                    updateBoundsStatus("✅ 已分析並鎖定範圍", true);
                     
                     // 解鎖地圖平移與縮放
                     map.dragging.enable();
@@ -789,14 +810,15 @@
         function startDrawing() {
             drawState = 1; 
             isDrawing = false;
-            drawPoints = [];
+            freehandPath = [];
             if (drawRectangle) map.removeLayer(drawRectangle);
+            if (freehandLine) map.removeLayer(freehandLine);
             boundsData = null;
             document.getElementById('f-bounds').value = "";
             
-            updateBoundsStatus("⏳ 圈選中...", false);
+            updateBoundsStatus("⏳ 畫筆準備中...", false);
             
-            document.getElementById('draw-hint').innerText = "請在地圖上「按住滑鼠左鍵或手指並拖曳」畫出範圍...";
+            document.getElementById('draw-hint').innerText = "請在地圖上「按住滑鼠或手指隨意畫一個圈」...";
             document.getElementById('draw-hint').classList.remove('hidden');
             
             // 鎖定地圖平移與縮放，讓拖曳可以專心畫框框
