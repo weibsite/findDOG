@@ -391,6 +391,9 @@
         let adminToken = null;
         let allAdminApps = []; 
 
+        let step1Timeout = null;
+        let step2Timeout = null;
+
         // 裁剪與影片相關變數
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
@@ -574,6 +577,7 @@
                 }
                 else if (res.type === 'submit_app_result') {
                     if (isPartialSave) {
+                        clearTimeout(step1Timeout);
                         document.getElementById('step1-next-btn').innerText = "下一步 👉 (完成初步註冊)";
                         document.getElementById('step1-next-btn').disabled = false;
                         if (res.success) {
@@ -584,6 +588,7 @@
                             showModal("❌ 錯誤：" + res.msg);
                         }
                     } else {
+                        clearTimeout(step2Timeout);
                         document.getElementById('submit-form-btn').disabled = false;
                         if (res.success) {
                             updateProgress(4, 'done', '資料同步完成！');
@@ -854,7 +859,26 @@
             document.getElementById('step1-next-btn').disabled = true;
 
             isPartialSave = true;
+            
+            // 檢查 WebSocket 連線狀態
+            if (ws.readyState !== WebSocket.OPEN) {
+                showModal("⚠️ 伺服器未連線，請重新整理頁面後再試。");
+                document.getElementById('step1-next-btn').innerText = "下一步 👉 (完成初步註冊)";
+                document.getElementById('step1-next-btn').disabled = false;
+                return;
+            }
+
             ws.send(JSON.stringify(payload));
+
+            // 設定 10 秒逾時機制
+            clearTimeout(step1Timeout);
+            step1Timeout = setTimeout(() => {
+                if (isPartialSave && document.getElementById('step1-next-btn').disabled) {
+                    document.getElementById('step1-next-btn').innerText = "下一步 👉 (完成初步註冊)";
+                    document.getElementById('step1-next-btn').disabled = false;
+                    showModal("⚠️ 伺服器回應超時 (10秒)，請檢查您的網路連線，或再次點擊按鈕重試！");
+                }
+            }, 10000);
         }
 
         function prevStep() {
@@ -918,7 +942,24 @@
                 updateProgress(4, 'active', '正在將最終資料同步至伺服器...');
                 const payload = getBasePayload();
                 isPartialSave = false;
+                
+                // 檢查 WebSocket 連線狀態
+                if (ws.readyState !== WebSocket.OPEN) {
+                    throw new Error("伺服器連線已斷開，請重新整理頁面。");
+                }
+                
                 ws.send(JSON.stringify(payload));
+                
+                // 設定 15 秒逾時機制 (給予最終寫入較多時間)
+                clearTimeout(step2Timeout);
+                step2Timeout = setTimeout(() => {
+                    if (!isPartialSave && document.getElementById('submit-form-btn').disabled) {
+                        document.getElementById('submit-form-btn').disabled = false;
+                        updateProgress(4, 'error', '伺服器回應超時！');
+                        setTimeout(() => document.getElementById('upload-progress-modal').classList.add('hidden'), 2000);
+                        showModal("⚠️ 伺服器回應超時，請檢查您的網路連線，或再次點擊按鈕重試！");
+                    }
+                }, 15000);
 
             } catch (err) {
                 updateProgress(4, 'error', '發生錯誤: ' + err.message);
