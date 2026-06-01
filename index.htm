@@ -130,7 +130,19 @@
         // --- 全域變數 ---
         let NGROK_WS_URL = "", ws, wsReconnectDelay = 3000, isSystemReady = false;
         let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle = null;
-        let PROJECTS = {}, currentProjectKey = lsGet('dogMap_currentProject') || (new URLSearchParams(window.location.search)).get('project') || decodeURIComponent(window.location.search.substring(1)) || null;
+        let PROJECTS = {};
+        
+        // 修正：強化從網址列抓取 ?animalName 的邏輯
+        const getProjectFromURL = () => {
+            const params = new URLSearchParams(window.location.search);
+            const fromParam = params.get('project');
+            if (fromParam) return fromParam;
+            const rawQuery = window.location.search.substring(1);
+            if (rawQuery && !rawQuery.includes('=')) return decodeURIComponent(rawQuery);
+            return null;
+        };
+        let currentProjectKey = getProjectFromURL() || lsGet('dogMap_currentProject') || null;
+
         let myUid = lsGet('dogMap_UID') || ('usr_' + Math.random().toString(36).substr(2, 9)); lsSet('dogMap_UID', myUid);
         let currentUserName = "", dbUserColor = "", isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true', adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
         
@@ -274,6 +286,12 @@
             Object.keys(PROJECTS).forEach(k=>{ s.innerHTML+=`<option value="${k}">🎯 ${PROJECTS[k].animalName||PROJECTS[k].name}</option>`; });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey]) fk=currentProjectKey; else if(currentProjectKey) { for(let k in PROJECTS) if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey) {fk=k; break;} }
             if(fk){ currentProjectKey=fk; s.value=currentProjectKey; } else { let ks=Object.keys(PROJECTS); if(ks.length){currentProjectKey=ks[Math.floor(Math.random()*ks.length)]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);} }
+            
+            // 同步更新網址列，但不刷新頁面
+            if(currentProjectKey && PROJECTS[currentProjectKey]) {
+                const displayName = PROJECTS[currentProjectKey].animalName || PROJECTS[currentProjectKey].name || currentProjectKey;
+                window.history.replaceState(null, '', `?${encodeURIComponent(displayName)}`);
+            }
         }
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
