@@ -89,7 +89,6 @@
       }, []);
 
       const detectPlatform = (url) => {
-        // 更新：同時支援 threads.net 與 threads.com
         if (url.includes('threads.net') || url.includes('threads.com')) return 'Threads';
         if (url.includes('instagram.com')) return 'Instagram';
         if (url.includes('facebook.com') || url.includes('fb.watch')) return 'Facebook';
@@ -114,48 +113,44 @@
         setStatus('loading');
         setResult(null);
 
-        // --- 這裡是你未來要串接真實後端的地方 ---
-        /*
+        // --- 真實串接後端 API ---
         try {
           const baseUrl = getBaseHttpUrl(); 
-          // 注意：如果你的前端放在 GitHub Pages (HTTPS)，後端網址也必須是 HTTPS (例如 ngrok 的網址)
+          
           const response = await fetch(`${baseUrl}/api/scrape`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
           });
+          
           const data = await response.json();
+          
           if(data.success) {
              setStatus('success');
-             setResult(data.data);
+             
+             // 處理圖片路徑，確保可以被正確渲染
+             const formattedImages = data.data.images.map(img => {
+               // 將 Windows 的反斜線替換為正斜線
+               let safeImgPath = img.replace(/\\/g, '/');
+               // 如果是相對路徑，補上 baseUrl (假設您的 server 有掛載 static folder)
+               return safeImgPath.startsWith('http') ? safeImgPath : `${baseUrl}/${safeImgPath}`;
+             });
+
+             setResult({
+               platform: platform,
+               text: data.data.text,
+               images: formattedImages,
+               savedPath: data.savedPath
+             });
           } else {
              setStatus('error');
-             setErrorMessage(data.error || '抓取失敗');
+             setErrorMessage(data.error || '抓取失敗，請確認該貼文是否為公開狀態。');
           }
         } catch (err) {
+           console.error("Scrape Error:", err);
            setStatus('error');
-           setErrorMessage('無法連線到伺服器');
+           setErrorMessage('無法連線到伺服器。請確認後端伺服器 (server.py) 是否已啟動，以及網址設定是否正確。');
         }
-        */
-
-        // 目前為模擬抓取，讓你可以在 GitHub Pages 上先看到介面效果
-        setTimeout(() => {
-          if (Math.random() > 0.1) { 
-            setStatus('success');
-            setResult({
-              platform: platform,
-              text: `這是一段從 ${platform} 抓取下來的模擬貼文內容。這名使用者分享了他們今天的心情與照片。在實際運作中，這段文字會透過伺服器提取出來。`,
-              images: [
-                `https://placehold.co/600x400/2563eb/ffffff?text=${platform}+Image+1`,
-                `https://placehold.co/600x400/10b981/ffffff?text=${platform}+Image+2`
-              ],
-              savedPath: `/Users/yourname/Downloads/ScrapedData/${new Date().getTime()}/`
-            });
-          } else {
-            setStatus('error');
-            setErrorMessage('伺服器抓取失敗，可能是該貼文設為不公開或需要登入。');
-          }
-        }, 2500);
       };
 
       if (!isInitialized) {
@@ -196,7 +191,7 @@
                     <input
                       id="url-input"
                       type="url"
-                      placeholder="https://www.threads.com/..."
+                      placeholder="https://www.threads.net/..."
                       value={url}
                       onChange={(e) => { setUrl(e.target.value); setStatus('idle'); }}
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -243,7 +238,7 @@
               <div className="space-y-6">
                 <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                  <p>成功擷取！檔案已儲存至您的本機資料夾：<code className="bg-white px-2 py-1 rounded border text-xs">{result.savedPath}</code></p>
+                  <p>成功擷取！檔案已儲存至伺服器資料夾：<code className="bg-white px-2 py-1 rounded border text-xs">{result.savedPath}</code></p>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -269,7 +264,7 @@
                         <img src={img} alt={`Scraped image ${index + 1}`} className="w-full h-auto object-cover aspect-video" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-white text-sm font-medium flex items-center gap-1">
-                            <Download className="w-4 h-4" /> 本機已儲存
+                            <Download className="w-4 h-4" /> 已儲存
                           </span>
                         </div>
                       </div>
