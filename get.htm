@@ -132,8 +132,14 @@
              const formattedImages = data.data.images.map(img => {
                // 將 Windows 的反斜線替換為正斜線
                let safeImgPath = img.replace(/\\/g, '/');
-               // 如果是相對路徑，補上 baseUrl (假設您的 server 有掛載 static folder)
-               return safeImgPath.startsWith('http') ? safeImgPath : `${baseUrl}/${safeImgPath}`;
+               
+               if (safeImgPath.startsWith('http')) return safeImgPath;
+               
+               // 修正：去除 baseUrl 尾部斜線與 safeImgPath 首部斜線，防止出現 //downloads 導致 FastAPI 找不到檔案
+               const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+               const cleanImgPath = safeImgPath.startsWith('/') ? safeImgPath.substring(1) : safeImgPath;
+               
+               return `${cleanBaseUrl}/${cleanImgPath}`;
              });
 
              setResult({
