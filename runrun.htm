@@ -138,6 +138,9 @@
     <div id="spectator-hint" class="hidden absolute bottom-16 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 觀看模式</div>
     <button id="locate-btn" class="absolute bottom-4 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
+    <!-- 快速回報(相機)按鈕 -->
+    <button id="quick-camera-btn" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[2000] w-16 h-16 rounded-full bg-yellow-400 border-4 border-black shadow-[4px_4px_0px_#1a202c] flex items-center justify-center text-3xl active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all hidden" title="快速回報浪浪">📷</button>
+
     <!-- 軌跡播放控制面板 -->
     <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
         <button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到最前面">&lt;&lt;</button>
@@ -233,7 +236,6 @@
                     </button>
                     <!-- 保留原生 input 備用(隱藏) -->
                     <input type="file" id="f-main-photo" accept="image/*" class="hidden">
-                    <input type="hidden" id="f-main-photo-url">
                     <div id="main-photo-preview" class="mt-2 hidden text-center">
                         <img src="" class="w-32 h-32 border-2 border-black object-cover mx-auto">
                         <p class="text-xs text-gray-500 mt-1">點擊上方按鈕可重新拍攝/選擇</p>
@@ -343,16 +345,16 @@
     </div>
 
     <!-- 圖片裁剪 Modal -->
-    <div id="crop-modal" class="hidden fixed inset-0 z-[15500] bg-black/90 flex flex-col items-center justify-center p-4">
-        <div class="w-full max-w-md bg-white p-4 pixel-panel">
-            <h3 class="font-bold mb-2">✂️ 裁剪主照片</h3>
-            <p class="text-[10px] text-gray-500 font-bold mb-2">請將動物置於框內，可滾動滑鼠或雙指縮放。</p>
-            <div class="w-full h-64 bg-gray-200 mb-4 border-2 border-black">
-                <img id="crop-image-target" src="" class="max-w-full max-h-full block">
+    <div id="crop-modal" class="hidden fixed inset-0 z-[15500] bg-black/95 flex flex-col items-center justify-center p-2 sm:p-4">
+        <div class="w-full max-w-md h-[95vh] bg-white p-3 pixel-panel flex flex-col">
+            <h3 class="font-bold mb-1 border-b-2 border-black pb-1 text-center text-lg">✂️ 裁剪主照片</h3>
+            <p class="text-xs text-gray-500 font-bold mb-2 shrink-0 text-center">請將動物置於框內，可單指拖曳、雙指縮放。</p>
+            <div class="w-full flex-1 bg-gray-200 mb-3 border-2 border-black relative overflow-hidden">
+                <img id="crop-image-target" src="" class="block max-w-full">
             </div>
-            <div class="flex gap-2">
-                <button type="button" onclick="cancelCrop()" class="flex-1 pixel-btn bg-gray-400 py-2">取消</button>
-                <button type="button" onclick="confirmCrop()" class="flex-1 pixel-btn bg-blue-500 text-white py-2">確認裁剪</button>
+            <div class="flex gap-2 shrink-0 mt-auto">
+                <button type="button" onclick="cancelCrop()" class="flex-1 pixel-btn bg-gray-400 py-3 text-lg text-white">取消</button>
+                <button type="button" onclick="confirmCrop()" class="flex-1 pixel-btn bg-blue-500 text-white py-3 text-lg">確認裁剪</button>
             </div>
         </div>
     </div>
@@ -510,6 +512,7 @@
         let allCenterMarkers = [];
         
         let isReportingMode = false;
+        let isQuickReport = false;
         let preReportFogState = true; 
         let isAnnounceCollapsed = localStorage.getItem('dogMap_announceCollapsed') === 'true';
 
@@ -892,6 +895,7 @@
             document.getElementById('status-toast').classList.remove('hidden');
             document.getElementById('project-select-wrapper').classList.remove('hidden');
             document.getElementById('report-stray-btn').classList.remove('hidden');
+            document.getElementById('quick-camera-btn').classList.remove('hidden');
             document.getElementById('toggle-fog-btn').classList.remove('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
             document.getElementById('spectator-btn').classList.remove('hidden');
@@ -1032,6 +1036,7 @@
         // ======= 回報流程：步驟 1 =======
         document.getElementById('report-stray-btn').addEventListener('click', () => {
             isReportingMode = true;
+            isQuickReport = false;
             preReportFogState = isFogVisible; 
             
             if (isFogVisible) {
@@ -1043,6 +1048,7 @@
             document.getElementById('report-crosshair').style.display = 'block';
             document.getElementById('report-location-panel').classList.remove('hidden');
             document.getElementById('report-stray-btn').classList.add('hidden');
+            document.getElementById('quick-camera-btn').classList.add('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
             document.getElementById('project-select-wrapper').classList.add('hidden');
             
@@ -1054,6 +1060,7 @@
             document.getElementById('report-crosshair').style.display = 'none';
             document.getElementById('report-location-panel').classList.add('hidden');
             document.getElementById('report-stray-btn').classList.remove('hidden');
+            document.getElementById('quick-camera-btn').classList.remove('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
             document.getElementById('project-select-wrapper').classList.remove('hidden');
             
@@ -1070,6 +1077,29 @@
             if(!query) return;
             document.getElementById('report-search-btn').innerText = '⏳';
             
+            // 1. 判斷是否為網址 (包含 Google Maps 短網址)
+            if (query.startsWith('http://') || query.startsWith('https://')) {
+                if(isSystemReady) {
+                    ws.send(JSON.stringify({ type: "parse_map_url", url: query }));
+                    // 延長等待時間到 8 秒，因為後端解析 Google 短網址可能需要經歷重新導向 (Redirect)
+                    const res = await waitWsResponse('parse_map_url_result', 8000); 
+                    if (res && res.success && res.lat && res.lng) {
+                        map.setView([res.lat, res.lng], 18, {animate: true});
+                        document.getElementById('report-search-btn').innerText = '搜尋';
+                        return;
+                    } else {
+                        showModal('❌ 網址解析失敗，請確認網址是否有效，或直接輸入地址。');
+                        document.getElementById('report-search-btn').innerText = '搜尋';
+                        return;
+                    }
+                } else {
+                    showModal('❌ 系統未連線，無法解析網址。');
+                    document.getElementById('report-search-btn').innerText = '搜尋';
+                    return;
+                }
+            }
+
+            // 2. 判斷是否為經緯度座標
             const coordMatch = query.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
             if (coordMatch) {
                 let val1 = parseFloat(coordMatch[1]);
@@ -1105,7 +1135,6 @@
             editingMyStray = null;
             document.getElementById('report-form-title').innerText = "📝 步驟 2/2：填寫浪浪資訊";
             document.getElementById('f-main-photo').value = "";
-            document.getElementById('f-main-photo-url').value = "";
             document.getElementById('main-photo-preview').classList.add('hidden');
             document.getElementById('report-notes').value = "";
             document.getElementById('report-contact').value = "";
@@ -1123,10 +1152,59 @@
             document.getElementById('report-form-modal').classList.add('hidden');
             if (editingMyStray) {
                 editingMyStray = null;
+            } else if (isQuickReport) {
+                isReportingMode = false;
+                isQuickReport = false;
+                document.getElementById('report-stray-btn').classList.remove('hidden');
+                document.getElementById('quick-camera-btn').classList.remove('hidden');
+                document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
+                document.getElementById('project-select-wrapper').classList.remove('hidden');
+                if (preReportFogState) {
+                    isFogVisible = true;
+                    const fogPane = map ? map.getPane('fogPane') : null;
+                    if(fogPane) fogPane.style.display = 'block';
+                    requestFogRender();
+                }
             } else {
                 document.getElementById('report-location-panel').classList.remove('hidden');
                 document.getElementById('report-crosshair').style.display = 'block';
             }
+        });
+
+        // ======= 快速回報 =======
+        document.getElementById('quick-camera-btn').addEventListener('click', () => {
+            isReportingMode = true;
+            isQuickReport = true;
+            preReportFogState = isFogVisible; 
+            if (isFogVisible) { isFogVisible = false; const fp = map ? map.getPane('fogPane') : null; if(fp) fp.style.display = 'none'; }
+
+            document.getElementById('report-stray-btn').classList.add('hidden');
+            document.getElementById('quick-camera-btn').classList.add('hidden');
+            document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
+            document.getElementById('project-select-wrapper').classList.add('hidden');
+            
+            // 快速回報使用目前經緯度或地圖中心
+            const center = lastSavedPos ? {lat: lastSavedPos.lat, lng: lastSavedPos.lng} : map.getCenter();
+            reportLat = center.lat; 
+            reportLng = center.lng;
+            
+            const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('report-time').value = now.toISOString().slice(0, 16);
+            
+            editingMyStray = null;
+            document.getElementById('report-form-title').innerText = "📝 快速回報：填寫浪浪資訊";
+            document.getElementById('f-main-photo').value = "";
+            document.getElementById('main-photo-preview').classList.add('hidden');
+            document.getElementById('report-notes').value = "";
+            document.getElementById('report-contact').value = "";
+            document.getElementById('report-contact-public').checked = false;
+            document.getElementById('report-ig').value = "";
+            
+            croppedMainPhotoBlob = null; currentMediaList = []; renderPhotos();
+            
+            // 顯示表單並馬上觸發相機
+            document.getElementById('report-form-modal').classList.remove('hidden');
+            openCamera('main');
         });
 
         // ================= 寶可夢相機與錄影系統 =================
@@ -1288,7 +1366,10 @@
                 document.getElementById('crop-image-target').src = url;
                 document.getElementById('crop-modal').classList.remove('hidden');
                 if (cropperInstance) cropperInstance.destroy();
-                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
+                // 增加微小延遲讓 flex 容器計算高度後再初始化，使裁切框完美自適應大畫面
+                setTimeout(() => {
+                    cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
+                }, 50);
             } else {
                 currentMediaList.push({ type: 'file', data: file });
                 renderPhotos();
@@ -1483,8 +1564,10 @@
                             document.getElementById('upload-progress-modal').classList.add('hidden');
                             document.getElementById('report-form-modal').classList.add('hidden');
                             isReportingMode = false;
+                            isQuickReport = false;
                             
                             document.getElementById('report-stray-btn').classList.remove('hidden');
+                            document.getElementById('quick-camera-btn').classList.remove('hidden');
                             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
                             document.getElementById('project-select-wrapper').classList.remove('hidden');
                             
