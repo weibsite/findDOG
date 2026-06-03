@@ -48,9 +48,6 @@
         #animal-info-section.mobile-collapsed #prev-stray-btn,
         #animal-info-section.mobile-collapsed #next-stray-btn { display: none !important; }
 
-        /* 照片比對容器 */
-        .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
-
         /* 標靶中心游標 (回報用) */
         .crosshair-target { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; pointer-events: none; z-index: 1000; display: none; }
 
@@ -71,6 +68,13 @@
     </style>
 </head>
 <body>
+
+    <!-- 影像調整用 SVG 濾鏡 (提供真正的銳利化效果) -->
+    <svg width="0" height="0" class="hidden">
+        <filter id="dynamic-sharpness">
+            <feConvolveMatrix id="sharpness-matrix" order="3 3" preserveAlpha="true" matrix="0 0 0 0 1 0 0 0 0" />
+        </filter>
+    </svg>
 
     <!-- 1. 地圖容器 -->
     <div id="map-container">
@@ -104,12 +108,10 @@
     <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4">
         <div class="pixel-panel p-6 w-full max-w-sm text-center">
             <h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3>
-            <p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p>
             <input type="text" id="profile-name" class="pixel-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱 (限中英文、數字、底線)" maxlength="15">
             <div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black">
                 <label class="text-sm font-bold text-gray-800">代表色:</label>
                 <input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer">
-                <input type="text" id="profile-hex" class="pixel-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7">
             </div>
             <div class="flex gap-2">
                 <button id="profile-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
@@ -128,26 +130,46 @@
         </div>
     </div>
     
-    <!-- 5. 主功能按鈕 -->
+    <!-- 5. 主功能按鈕 (新增網路尋找按鈕) -->
+    <button id="scrape-stray-btn" class="absolute bottom-[16.5rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-purple-600 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🕸️ 網路尋找</button>
     <button id="report-stray-btn" class="absolute bottom-[14rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-green-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">📢 回報浪浪</button>
     <button id="user-manage-trigger-btn-left" class="absolute bottom-[11rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-blue-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🐾 管理浪浪</button>
     <button id="my-route-btn" class="absolute bottom-[8.5rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
     <button id="toggle-fog-btn" class="absolute bottom-[6.5rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
     
     <button id="spectator-btn" class="absolute bottom-16 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
-    <div id="spectator-hint" class="hidden absolute bottom-16 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 觀看模式</div>
     <button id="locate-btn" class="absolute bottom-4 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
     <!-- 快速回報(相機)按鈕 -->
     <button id="quick-camera-btn" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[2000] w-16 h-16 rounded-full bg-yellow-400 border-4 border-black shadow-[4px_4px_0px_#1a202c] flex items-center justify-center text-3xl active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all hidden" title="快速回報浪浪">📷</button>
 
-    <!-- 軌跡播放控制面板 -->
-    <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]">
-        <button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到最前面">&lt;&lt;</button>
-        <button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到上一格">&lt;</button>
-        <button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black" title="暫停/播放">=</button>
-        <button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white" title="加倍速度前進">&gt;</button>
-        <button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white" title="直接完成">&gt;&gt;</button>
+    <!-- 網路尋找浪浪 輸入Modal -->
+    <div id="scrape-input-modal" class="hidden absolute inset-0 z-[16000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center">
+            <h3 class="text-gray-900 font-bold mb-4 text-xl">🕸️ 網路貼文抓取</h3>
+            <p class="text-xs font-bold text-gray-600 mb-4">輸入 Threads, IG, 或 FB 的貼文網址，<br>系統將自動幫您抓取圖文、影片與發布時間。</p>
+            <input type="url" id="scrape-url-input" class="pixel-input w-full p-3 mb-4 text-sm font-sans" placeholder="https://...">
+            <div id="scrape-error" class="hidden text-red-600 font-bold text-xs mb-3"></div>
+            <div class="flex gap-2">
+                <button id="scrape-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="scrape-submit-btn" class="pixel-btn flex-1 py-2 bg-purple-600 text-white">開始抓取</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 網路尋找浪浪 選取主照片與裁切 Modal -->
+    <div id="scrape-photo-select-modal" class="hidden fixed inset-0 z-[16500] bg-black/95 flex flex-col items-center justify-center p-0 touch-none">
+        <div class="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <h3 class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20">請選擇一張作為主照片</h3>
+            <img id="scrape-preview-img" src="" class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-none">
+            
+            <button id="scrape-photo-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&lt;</button>
+            <button id="scrape-photo-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&gt;</button>
+            
+            <div class="absolute bottom-6 left-0 w-full flex justify-center z-20 px-4">
+                <button id="scrape-photo-confirm-btn" class="pixel-btn px-6 py-3 bg-blue-500 text-white border-2 border-black shadow-[4px_4px_0px_#1a202c] text-lg w-full max-w-sm active:translate-y-1">✅ 設為主照片並裁切</button>
+            </div>
+        </div>
     </div>
 
     <!-- 6. 右上角：線上狀態與動物卡片 / 公告區 -->
@@ -196,12 +218,50 @@
        </div>
     </div>
 
-    <!-- 圖片放大檢視 Modal -->
+    <!-- 圖片/影片放大與進階檢視 Modal (加入專業影像調整與縮放功能) -->
     <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none">
         <div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container">
-            <div id="viewer-title" class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded"></div>
-            <img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-transform duration-300 pointer-events-none">
-            <button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer active:scale-95 shadow-[2px_2px_0px_#000]">關閉 ✕</button>
+            <div id="viewer-title" class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20 pointer-events-none"></div>
+            
+            <!-- 原本的 img 標籤去除了 transition 屬性，交由 JS 控制以確保拖曳流暢 -->
+            <img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain pointer-events-none origin-center">
+            <video id="viewer-vid" src="" controls playsinline class="max-w-full max-h-[85vh] object-contain hidden origin-center"></video>
+            
+            <!-- 新增: 右側邊欄 影像調整面板與觸發按鈕 -->
+            <div class="absolute right-0 top-1/2 -translate-y-1/2 z-[35] flex items-center">
+                <!-- 展開按鈕 -->
+                <button id="btn-toggle-viewer-controls" class="bg-black/80 text-white p-3 border-2 border-r-0 border-white rounded-l-xl shadow-[-2px_2px_0px_#000] text-xl active:scale-95 transition-transform" title="影像調整面板">
+                    🎛️
+                </button>
+                <!-- 控制面板本體 -->
+                <div id="viewer-control-panel" class="hidden bg-black/80 p-4 border-2 border-r-0 border-white w-52 sm:w-60 shadow-[-4px_4px_0px_rgba(0,0,0,0.5)] flex-col gap-4 rounded-l-xl relative">
+                    <button id="btn-close-controls" class="absolute top-2 right-2 text-white font-black text-lg hover:text-red-400">✕</button>
+                    <div class="text-white text-sm font-bold text-center border-b border-white/30 pb-2 flex items-center justify-center gap-1">
+                        <span>🎛️ 影像調整</span>
+                    </div>
+                    
+                    <div>
+                        <label class="text-white text-xs font-bold flex justify-between mb-1">🔍 放大倍率 <span class="text-yellow-400"><span id="lbl-zoom">1.0</span>x</span></label>
+                        <input type="range" id="ctrl-zoom" min="1" max="5" step="0.1" value="1" class="w-full accent-yellow-400">
+                    </div>
+                    <div>
+                        <label class="text-white text-xs font-bold flex justify-between mb-1">☀️ 亮度 <span class="text-yellow-400"><span id="lbl-bright">100</span>%</span></label>
+                        <input type="range" id="ctrl-bright" min="20" max="200" step="5" value="100" class="w-full accent-yellow-400">
+                    </div>
+                    <div>
+                        <label class="text-white text-xs font-bold flex justify-between mb-1">🌓 對比度 <span class="text-yellow-400"><span id="lbl-contrast">100</span>%</span></label>
+                        <input type="range" id="ctrl-contrast" min="20" max="200" step="5" value="100" class="w-full accent-yellow-400">
+                    </div>
+                    <div>
+                        <label class="text-white text-xs font-bold flex justify-between mb-1">✨ 銳利度 <span class="text-yellow-400"><span id="lbl-sharp">0.0</span></span></label>
+                        <input type="range" id="ctrl-sharp" min="0" max="3" step="0.1" value="0" class="w-full accent-yellow-400">
+                    </div>
+                    
+                    <button id="btn-reset-filters" class="pixel-btn text-xs py-2 mt-2 bg-red-500 text-white w-full border-white text-center">🔄 重置設定</button>
+                </div>
+            </div>
+
+            <button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border border-white px-3 py-1 text-sm font-bold cursor-pointer active:scale-95 shadow-[2px_2px_0px_#000]">關閉 ✕</button>
             <div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4">
                 <button id="viewer-prev-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c]">&lt; 上一張</button>
                 <button id="viewer-next-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c]">下一張 &gt;</button>
@@ -209,17 +269,17 @@
         </div>
     </div>
 
-    <!-- 7. 步驟1：回報浪浪位置面板 -->
-    <div id="report-location-panel" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm flex flex-col gap-3">
-        <h3 class="text-center font-bold text-lg text-blue-700 border-b-2 border-black pb-1">📍 步驟 1/2：標記發現位置</h3>
-        <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址、座標、Google Map 連結來快速移動</p>
+    <!-- 7. 步驟1：回報浪浪位置面板 (現在可以在網頁抓取後自動切換至此) -->
+    <div id="report-location-panel" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm flex flex-col gap-3 shadow-[6px_6px_0px_#1a202c]">
+        <h3 class="text-center font-bold text-lg text-blue-700 border-b-2 border-black pb-1">📍 定位標記發現位置</h3>
+        <p class="text-xs font-bold text-gray-700 text-center leading-tight">請拖曳地圖將紅色十字對準發現位置<br>或輸入地址、座標、Google Map 連結快速移動</p>
         <div class="flex gap-2">
-            <input type="text" id="report-search-input" class="pixel-input flex-1 p-2 text-sm" placeholder="地址 / 座標 / Google網址">
+            <input type="text" id="report-search-input" class="pixel-input flex-1 p-2 text-sm" placeholder="輸入地址或經緯度 (例: 23.5, 121.2)">
             <button id="report-search-btn" class="pixel-btn px-3 py-2 bg-gray-200 text-sm">搜尋</button>
         </div>
         <div class="flex gap-2 mt-2">
             <button id="report-cancel-loc-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white">取消</button>
-            <button id="report-next-btn" class="pixel-btn flex-1 py-3 bg-blue-500 text-white text-lg">下一步 ➡️</button>
+            <button id="report-next-btn" class="pixel-btn flex-1 py-3 bg-blue-500 text-white text-lg transition-colors">下一步 ➡️</button>
         </div>
     </div>
 
@@ -230,14 +290,26 @@
             
             <div>
                 <label class="block text-sm font-bold mb-1 text-red-600">📸 主照片 (必填，將顯示為封面)</label>
-                <div class="border-2 border-black p-2 bg-gray-100 flex flex-col gap-2">
+                <!-- 將主照片區塊變成拖曳接收區 -->
+                <div id="main-photo-dropzone" class="border-2 border-black p-2 bg-gray-100 flex flex-col gap-2 relative transition-colors"
+                     ondragover="event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; this.classList.add('bg-blue-100', 'border-blue-500');"
+                     ondragleave="this.classList.remove('bg-blue-100', 'border-blue-500');"
+                     ondrop="this.classList.remove('bg-blue-100', 'border-blue-500'); handleMainPhotoDrop(event)">
+                    
+                    <div class="w-full text-center text-xs font-bold text-gray-500 mb-1 border-b border-gray-300 pb-1 pointer-events-none">✨ 可將下方圖片或影片拖曳至此設為封面 ✨</div>
+
                     <button type="button" id="btn-open-camera-main" class="pixel-btn w-full py-3 bg-yellow-400 text-black text-sm flex items-center justify-center gap-2">
                         <span class="text-lg">📷</span> 開啟相機捕捉浪浪
                     </button>
                     <!-- 保留原生 input 備用(隱藏) -->
                     <input type="file" id="f-main-photo" accept="image/*" class="hidden">
                     <div id="main-photo-preview" class="mt-2 hidden text-center">
-                        <img src="" class="w-32 h-32 border-2 border-black object-cover mx-auto">
+                        <div class="relative inline-block group overflow-hidden border-2 border-black">
+                            <img id="main-photo-img" src="" class="w-32 h-32 object-cover block cursor-pointer" onclick="previewMainPhoto()">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer z-10" onclick="previewMainPhoto()">
+                                <span class="text-white font-bold text-sm bg-black/60 px-2 py-1 rounded">🔍 放大預覽</span>
+                            </div>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">點擊上方按鈕可重新拍攝/選擇</p>
                     </div>
                 </div>
@@ -273,7 +345,7 @@
 
             <div>
                 <label class="block text-sm font-bold mb-1">📝 備註特徵 (公告)</label>
-                <textarea id="report-notes" class="pixel-input w-full p-2 h-20 text-sm" placeholder="毛色、是否有項圈、發現時的狀況..."></textarea>
+                <textarea id="report-notes" class="pixel-input w-full p-2 h-32 text-sm leading-relaxed" placeholder="毛色、是否有項圈、發現時的狀況..."></textarea>
             </div>
             
             <div>
@@ -293,54 +365,37 @@
 
             <div class="flex gap-2 mt-2 border-t-2 border-dashed border-gray-400 pt-4">
                 <button id="report-form-back-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white">⬅️ 關閉</button>
-                <button id="report-submit-btn" class="pixel-btn flex-[2] py-3 bg-green-500 text-white text-lg">🚀 確認送出</button>
+                <button id="report-submit-btn" class="pixel-btn flex-[2] py-3 bg-green-500 text-white text-lg transition-colors">🚀 確認送出</button>
             </div>
         </div>
     </div>
 
     <!-- 寶可夢風格相機與錄影 Modal -->
     <div id="camera-modal" class="hidden fixed inset-0 z-[15000] bg-black flex flex-col items-center justify-center touch-none">
-        
-        <!-- Live Video Feed -->
         <video id="camera-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
-
-        <!-- 寶可夢瞄準器 Overlay -->
         <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div class="pokemon-aim flex items-center justify-center">
                 <div class="corner-bot w-full h-full absolute inset-0"></div>
                 <div class="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
             </div>
-            <!-- 錄影提示 -->
             <div id="rec-indicator" class="hidden absolute top-12 left-6 bg-black/60 px-3 py-1 rounded-full text-red-500 font-bold text-lg flex items-center gap-2 border border-red-500">
                 <div class="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div> <span id="rec-time">00:00</span>
             </div>
         </div>
-
-        <!-- 模式切換 (照片/影片) -->
         <div id="camera-mode-switcher" class="absolute bottom-32 left-1/2 transform -translate-x-1/2 flex gap-4 bg-black/60 border-2 border-white rounded-full px-6 py-2 pointer-events-auto">
             <button id="mode-photo-btn" class="text-yellow-400 font-bold text-lg drop-shadow-md">拍照</button>
             <button id="mode-video-btn" class="text-gray-400 font-bold text-lg">錄影</button>
         </div>
-
-        <!-- 底部控制列 -->
         <div class="absolute bottom-0 left-0 w-full p-6 flex justify-between items-center pb-10 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-auto">
-            
-            <!-- 取消/關閉 -->
             <button id="camera-close-btn" class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white border-2 border-white font-black text-xl shadow-[2px_2px_0px_#000] active:scale-90 transition-transform">✕</button>
-
-            <!-- 快門/錄影按鈕 -->
             <button id="camera-shutter-btn" class="w-20 h-20 bg-white/20 rounded-full border-4 border-white shadow-[0_0_15px_rgba(255,255,255,0.5)] active:scale-95 transition-transform flex items-center justify-center">
                 <div id="camera-shutter-inner" class="w-14 h-14 rounded-full border-2 border-black bg-white transition-all duration-300"></div>
             </button>
-
-            <!-- 開啟相簿按鈕 (隱藏 input file 觸發器) -->
             <label class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white border-2 border-white cursor-pointer shadow-[2px_2px_0px_#000] active:scale-90 transition-transform" title="從相簿挑選">
                 <span class="text-xl">🖼️</span>
                 <input type="file" id="camera-gallery-input" class="hidden" accept="image/*,video/*" multiple>
             </label>
         </div>
-        
-        <!-- 用於拍照截圖的隱藏 Canvas -->
         <canvas id="camera-canvas" class="hidden"></canvas>
     </div>
 
@@ -395,6 +450,19 @@
                 <div id="prog-2" class="text-gray-400">⏳ 2. 處理額外媒體...</div>
                 <div id="prog-3" class="text-gray-400">⏳ 3. 同步資料至伺服器...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- 地圖搜尋與排隊提示 Modal -->
+    <div id="search-progress-modal" class="hidden fixed inset-0 z-[11000] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-6 sm:p-8 w-full max-w-sm text-center bg-white shadow-[6px_6px_0px_#1a202c]">
+            <div class="text-4xl mb-4 animate-bounce">🐾</div>
+            <h3 class="text-xl font-black mb-3 border-b-4 border-black pb-2 text-blue-700">地圖解析中</h3>
+            <p id="search-progress-text" class="font-bold text-sm text-gray-700 mb-4">準備連線...</p>
+            <div class="w-full h-4 border-2 border-black bg-gray-200 relative overflow-hidden">
+                <div id="search-progress-fill" class="absolute top-0 left-0 h-full bg-yellow-400 transition-all duration-500 w-0"></div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-4 font-bold leading-tight">若目前有多人同時回報，系統將自動排隊處理，請耐心等候。</p>
         </div>
     </div>
 
@@ -511,8 +579,10 @@
         let currentProjectKey = null;
         let allCenterMarkers = [];
         
+        // --- 核心狀態切換 ---
         let isReportingMode = false;
         let isQuickReport = false;
+        let isScrapeReportMode = false; // 新增：判斷是否為網路抓取回報模式
         let preReportFogState = true; 
         let isAnnounceCollapsed = localStorage.getItem('dogMap_announceCollapsed') === 'true';
 
@@ -523,11 +593,16 @@
         let adminCachedApps = []; 
         let allAnnouncements = {};
 
+        // --- 網路抓取變數 ---
+        let scrapedData = null;
+        let scrapePhotoIndex = 0;
+
         // --- Cropper 與媒體變數 ---
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
-        let currentMediaList = []; // Array of { type: 'url'|'file', data: string|File }
+        let currentMediaList = []; // Array of { type: 'url'|'file', data: string|File, isVideo: boolean }
         let dragSrcIndex = null;
+        window._cropNextStep = null; // 讓 Crop 確認後知道下一步去哪
 
         // --- 寶可夢相機與錄影變數 ---
         let currentStream = null;
@@ -756,12 +831,15 @@
             let mUrl = pd.mainPhoto;
             if (mUrl && mUrl.startsWith('/images/')) mUrl = getBaseHttpUrl() + mUrl;
             document.getElementById('main-photo-preview').classList.remove('hidden');
-            document.getElementById('main-photo-preview').querySelector('img').src = mUrl;
+            document.getElementById('main-photo-img').src = mUrl;
 
             currentMediaList = [];
-            if (pd.photos) pd.photos.forEach(p => currentMediaList.push({ type: 'url', data: p }));
-            if (pd.videos) pd.videos.forEach(p => currentMediaList.push({ type: 'url', data: p }));
+            if (pd.photos) pd.photos.forEach(p => currentMediaList.push({ type: 'url', data: p, isVideo: false }));
+            if (pd.videos) pd.videos.forEach(p => currentMediaList.push({ type: 'url', data: p, isVideo: true }));
             renderPhotos();
+            
+            document.getElementById('report-submit-btn').innerText = "🚀 確認送出";
+            document.getElementById('report-form-back-btn').innerText = "⬅️ 關閉";
 
             document.getElementById('report-form-modal').classList.remove('hidden');
         }
@@ -894,6 +972,7 @@
             document.getElementById('startup-overlay').style.display = 'none';
             document.getElementById('status-toast').classList.remove('hidden');
             document.getElementById('project-select-wrapper').classList.remove('hidden');
+            document.getElementById('scrape-stray-btn').classList.remove('hidden'); 
             document.getElementById('report-stray-btn').classList.remove('hidden');
             document.getElementById('quick-camera-btn').classList.remove('hidden');
             document.getElementById('toggle-fog-btn').classList.remove('hidden');
@@ -1033,10 +1112,213 @@
             });
         }
 
-        // ======= 回報流程：步驟 1 =======
+        // ================= 網路抓取與資料抽取工具 =================
+        function extractContactInfo(text) {
+            let contacts = [];
+            // 找出 09 開頭的手機格式
+            const phoneRegex = /09\d{2}[-\s]?\d{3}[-\s]?\d{3}/g;
+            const phones = text.match(phoneRegex);
+            if (phones) {
+                contacts.push(...phones.map(p => p.replace(/[-\s]/g, '')));
+            }
+            // 找出 LINE 關鍵字
+            const lineRegex = /[L|l][I|i][N|n][E|e]\s*(?:ID|id)?\s*[:：]\s*([A-Za-z0-9.\-_]+)/g;
+            let lineMatch;
+            while ((lineMatch = lineRegex.exec(text)) !== null) {
+                contacts.push("LINE: " + lineMatch[1].trim());
+            }
+            return [...new Set(contacts)].join(" / "); // 去除重複並組合
+        }
+
+        function formatScrapeTime(postTimeStr) {
+            if (!postTimeStr) return "";
+            const d = new Date(postTimeStr);
+            if (isNaN(d.getTime())) return "";
+            // 轉換為 local time 以符合 datetime-local 格式 (YYYY-MM-DDTHH:mm)
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().slice(0, 16);
+        }
+
+        document.getElementById('scrape-stray-btn').addEventListener('click', () => {
+            document.getElementById('scrape-input-modal').classList.remove('hidden');
+            document.getElementById('scrape-url-input').value = "";
+            document.getElementById('scrape-error').classList.add('hidden');
+        });
+
+        document.getElementById('scrape-cancel-btn').addEventListener('click', () => {
+            document.getElementById('scrape-input-modal').classList.add('hidden');
+        });
+
+        document.getElementById('scrape-submit-btn').addEventListener('click', async () => {
+            const url = document.getElementById('scrape-url-input').value.trim();
+            const errEl = document.getElementById('scrape-error');
+            if(!url) { errEl.innerText = "請輸入網址"; errEl.classList.remove('hidden'); return; }
+            
+            if (!url.includes('threads.net') && !url.includes('threads.com') && !url.includes('instagram.com') && !url.includes('facebook.com') && !url.includes('fb.watch')) {
+                errEl.innerText = "目前僅支援 Threads, Instagram, 或 Facebook 的網址"; 
+                errEl.classList.remove('hidden'); 
+                return;
+            }
+
+            const btn = document.getElementById('scrape-submit-btn');
+            btn.innerText = "抓取中...";
+            btn.disabled = true;
+            errEl.classList.add('hidden');
+
+            try {
+                const baseUrl = getBaseHttpUrl();
+                const response = await fetch(`${baseUrl}/api/scrape`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    scrapedData = data.data; 
+                    // 格式化路徑
+                    scrapedData.images = (scrapedData.images || []).map(img => {
+                        let safeImgPath = img.replace(/\\/g, '/');
+                        if (safeImgPath.startsWith('http')) return safeImgPath;
+                        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+                        const cleanImgPath = safeImgPath.startsWith('/') ? safeImgPath.substring(1) : safeImgPath;
+                        return `${cleanBaseUrl}/${cleanImgPath}`;
+                    });
+                    
+                    scrapedData.videos = scrapedData.videos || [];
+
+                    if (scrapedData.images.length === 0 && scrapedData.videos.length === 0) {
+                        errEl.innerText = "抓取成功，但沒有找到照片或影片。請使用手動回報。";
+                        errEl.classList.remove('hidden');
+                    } else if (scrapedData.images.length === 0 && scrapedData.videos.length > 0) {
+                        // 只有影片時，跳過選照片步驟直接進表單
+                        document.getElementById('scrape-input-modal').classList.add('hidden');
+                        isScrapeReportMode = true;
+                        isReportingMode = true;
+                        openScrapeReportForm();
+                    } else {
+                        document.getElementById('scrape-input-modal').classList.add('hidden');
+                        isScrapeReportMode = true;
+                        isReportingMode = true; // 啟動回報模式，隱藏其他按鈕
+                        scrapePhotoIndex = 0;
+                        updateScrapePhotoPreview();
+                        document.getElementById('scrape-photo-select-modal').classList.remove('hidden');
+                    }
+                } else {
+                    errEl.innerText = data.error || "抓取失敗";
+                    errEl.classList.remove('hidden');
+                }
+            } catch (e) {
+                errEl.innerText = "連線伺服器失敗，請確認後端已啟動。";
+                errEl.classList.remove('hidden');
+            }
+            btn.innerText = "開始抓取";
+            btn.disabled = false;
+        });
+
+        function updateScrapePhotoPreview() {
+            document.getElementById('scrape-preview-img').src = scrapedData.images[scrapePhotoIndex];
+        }
+
+        document.getElementById('scrape-photo-prev-btn').addEventListener('click', () => {
+            if (scrapedData.images.length === 0) return;
+            scrapePhotoIndex = (scrapePhotoIndex - 1 + scrapedData.images.length) % scrapedData.images.length;
+            updateScrapePhotoPreview();
+        });
+
+        document.getElementById('scrape-photo-next-btn').addEventListener('click', () => {
+            if (scrapedData.images.length === 0) return;
+            scrapePhotoIndex = (scrapePhotoIndex + 1) % scrapedData.images.length;
+            updateScrapePhotoPreview();
+        });
+
+        document.getElementById('scrape-photo-confirm-btn').addEventListener('click', () => {
+            const mainImgUrl = scrapedData.images[scrapePhotoIndex];
+            document.getElementById('scrape-photo-select-modal').classList.add('hidden');
+            
+            // 進入裁切
+            document.getElementById('crop-image-target').src = mainImgUrl;
+            document.getElementById('crop-modal').classList.remove('hidden');
+            
+            if (cropperInstance) cropperInstance.destroy();
+            setTimeout(() => {
+                cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
+            }, 50);
+
+            // 標記裁切後要進入的下一個流程
+            window._cropNextStep = 'scrape_form'; 
+        });
+
+        function openScrapeReportForm() {
+            editingMyStray = null; // 全新回報
+            document.getElementById('report-form-title').innerText = "📝 網路尋找：確認浪浪資訊";
+            
+            // 1. 自動填入時間
+            const formattedTime = formatScrapeTime(scrapedData.post_time);
+            if (formattedTime) {
+                document.getElementById('report-time').value = formattedTime;
+            } else {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                document.getElementById('report-time').value = now.toISOString().slice(0, 16);
+            }
+
+            // 2. 自動填入內文備註 (加入原始網址)
+            let scrapedText = scrapedData.text || "";
+            const originalUrl = document.getElementById('scrape-url-input').value.trim();
+            if (originalUrl) {
+                scrapedText += `\n\n資料來自網址:\n${originalUrl}`;
+            }
+            document.getElementById('report-notes').value = scrapedText;
+
+            // 3. 自動偵測聯絡方式
+            const contactInfo = extractContactInfo(scrapedData.text || "");
+            document.getElementById('report-contact').value = contactInfo;
+            document.getElementById('report-contact-public').checked = !!contactInfo;
+            document.getElementById('report-ig').value = ""; // IG 留空讓使用者選填
+            document.getElementById('report-type').value = "狗"; // 預設狗，可自行更改
+
+            // 4. 將抓到的所有圖片加入額外相片清單
+            currentMediaList = [];
+            if (scrapedData.images) {
+                scrapedData.images.forEach(img => {
+                    currentMediaList.push({ type: 'url', data: img, isVideo: false });
+                });
+            }
+            if (scrapedData.videos) {
+                scrapedData.videos.forEach(vid => {
+                    currentMediaList.push({ type: 'url', data: vid, isVideo: true });
+                });
+            }
+            renderPhotos();
+
+            // 調整按鈕顯示
+            document.getElementById('report-submit-btn').innerText = "📍 下一步：標記位置 ➡️";
+            document.getElementById('report-form-back-btn').innerText = "⬅️ 取消抓取"; 
+
+            // 隱藏其他地圖按鈕與迷霧
+            preReportFogState = isFogVisible; 
+            if (isFogVisible) {
+                isFogVisible = false;
+                const fogPane = map ? map.getPane('fogPane') : null;
+                if(fogPane) fogPane.style.display = 'none';
+            }
+            document.getElementById('scrape-stray-btn').classList.add('hidden');
+            document.getElementById('report-stray-btn').classList.add('hidden');
+            document.getElementById('quick-camera-btn').classList.add('hidden');
+            document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
+            document.getElementById('project-select-wrapper').classList.add('hidden');
+
+            // 打開填寫表單
+            document.getElementById('report-form-modal').classList.remove('hidden');
+        }
+
+
+        // ======= 正常回報流程：步驟 1 =======
         document.getElementById('report-stray-btn').addEventListener('click', () => {
             isReportingMode = true;
             isQuickReport = false;
+            isScrapeReportMode = false;
             preReportFogState = isFogVisible; 
             
             if (isFogVisible) {
@@ -1047,23 +1329,37 @@
 
             document.getElementById('report-crosshair').style.display = 'block';
             document.getElementById('report-location-panel').classList.remove('hidden');
+            document.getElementById('scrape-stray-btn').classList.add('hidden');
             document.getElementById('report-stray-btn').classList.add('hidden');
             document.getElementById('quick-camera-btn').classList.add('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
             document.getElementById('project-select-wrapper').classList.add('hidden');
             
+            document.getElementById('report-next-btn').innerText = "下一步 ➡️";
+            document.getElementById('report-cancel-loc-btn').innerText = "取消"; 
+            
             if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
         });
 
         document.getElementById('report-cancel-loc-btn').addEventListener('click', () => {
+            if (isScrapeReportMode) {
+                // 網路尋找模式下，這裡的作用是「上一步」，返回表單，保留資料
+                document.getElementById('report-location-panel').classList.add('hidden');
+                document.getElementById('report-crosshair').style.display = 'none';
+                document.getElementById('report-form-modal').classList.remove('hidden');
+                return;
+            }
+
+            // 以下為原本正常模式的取消邏輯
             isReportingMode = false;
             document.getElementById('report-crosshair').style.display = 'none';
             document.getElementById('report-location-panel').classList.add('hidden');
             document.getElementById('report-stray-btn').classList.remove('hidden');
+            document.getElementById('scrape-stray-btn').classList.remove('hidden');
             document.getElementById('quick-camera-btn').classList.remove('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
             document.getElementById('project-select-wrapper').classList.remove('hidden');
-            
+
             if (preReportFogState) {
                 isFogVisible = true;
                 const fogPane = map ? map.getPane('fogPane') : null;
@@ -1072,34 +1368,52 @@
             }
         });
 
+        // 雙重引擎：先解析座標/網址 -> 中文地址用 Google 備案 -> OSM 引擎
         document.getElementById('report-search-btn').addEventListener('click', async () => {
             const query = document.getElementById('report-search-input').value.trim();
             if(!query) return;
-            document.getElementById('report-search-btn').innerText = '⏳';
+            const btn = document.getElementById('report-search-btn');
             
-            // 1. 判斷是否為網址 (包含 Google Maps 短網址)
-            if (query.startsWith('http://') || query.startsWith('https://')) {
-                if(isSystemReady) {
-                    ws.send(JSON.stringify({ type: "parse_map_url", url: query }));
-                    // 延長等待時間到 8 秒，因為後端解析 Google 短網址可能需要經歷重新導向 (Redirect)
-                    const res = await waitWsResponse('parse_map_url_result', 8000); 
-                    if (res && res.success && res.lat && res.lng) {
-                        map.setView([res.lat, res.lng], 18, {animate: true});
-                        document.getElementById('report-search-btn').innerText = '搜尋';
-                        return;
-                    } else {
-                        showModal('❌ 網址解析失敗，請確認網址是否有效，或直接輸入地址。');
-                        document.getElementById('report-search-btn').innerText = '搜尋';
-                        return;
-                    }
-                } else {
-                    showModal('❌ 系統未連線，無法解析網址。');
-                    document.getElementById('report-search-btn').innerText = '搜尋';
-                    return;
-                }
-            }
+            // --- 畫面中央進度條與排隊提示 ---
+            btn.disabled = true;
+            const progModal = document.getElementById('search-progress-modal');
+            const progText = document.getElementById('search-progress-text');
+            const progFill = document.getElementById('search-progress-fill');
 
-            // 2. 判斷是否為經緯度座標
+            progModal.classList.remove('hidden');
+            progFill.style.width = "5%";
+
+            const progressSteps = [
+                "連線地圖解析引擎...",
+                "正在尋找精確座標...",
+                "系統若繁忙將自動排隊 (約 10~30 秒)...",
+                "努力尋找中，請稍候...",
+                "快要完成了..."
+            ];
+            let stepIdx = 0;
+            progText.innerText = progressSteps[stepIdx];
+
+            // 每 4 秒切換一個進度文字
+            const progressTimer = setInterval(() => {
+                stepIdx++;
+                if (stepIdx < progressSteps.length) {
+                    progText.innerText = progressSteps[stepIdx];
+                    progFill.style.width = `${Math.min(95, (stepIdx + 1) * 20)}%`;
+                } else {
+                    progText.innerText = "前方排隊人數較多，請耐心等候...";
+                    progFill.style.width = "95%";
+                }
+            }, 4000);
+
+            // 結束進度輪播的共用函式
+            const stopProgress = () => {
+                clearInterval(progressTimer);
+                progModal.classList.add('hidden');
+                progFill.style.width = "0%";
+                btn.disabled = false;
+            };
+            
+            // 1. 判斷是否為經緯度座標 (直接定位)
             const coordMatch = query.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
             if (coordMatch) {
                 let val1 = parseFloat(coordMatch[1]);
@@ -1107,55 +1421,119 @@
                 let lat = val1, lng = val2;
                 if (val1 > 100 && val2 < 50) { lat = val2; lng = val1; }
                 map.setView([lat, lng], 18, {animate: true});
-                document.getElementById('report-search-btn').innerText = '搜尋';
+                stopProgress();
                 return;
             }
 
+            // 2. 判斷是否為直接的網址 (如 Google Maps 短網址)
+            if (query.startsWith('http://') || query.startsWith('https://')) {
+                if(isSystemReady) {
+                    ws.send(JSON.stringify({ type: "parse_map_url", url: query }));
+                    // 將等待時間修改為原來的近 4 倍 (30000 毫秒)
+                    const res = await waitWsResponse('parse_map_url_result', 30000); 
+                    if (res && res.success && res.lat && res.lng) {
+                        map.setView([res.lat, res.lng], 18, {animate: true});
+                    } else {
+                        showModal('❌ 網址解析失敗，請確認網址是否有效，或直接輸入地址。');
+                    }
+                } else { showModal('❌ 系統未連線，無法解析網址。'); }
+                stopProgress();
+                return;
+            }
+
+            // 3. 純文字地址：優先透過本機 WebSocket 呼叫 Google 解析引擎
+            if (isSystemReady) {
+                ws.send(JSON.stringify({ type: "search_address", address: query }));
+                // 將等待時間修改為原來的近 4 倍 (30000 毫秒)
+                const googleRes = await waitWsResponse('search_address_result', 30000);
+                
+                if (googleRes && googleRes.success && googleRes.lat && googleRes.lng) {
+                    map.setView([googleRes.lat, googleRes.lng], 18, {animate: true});
+                    stopProgress();
+                    return; // Google 解析成功，結束流程
+                }
+            }
+
+            // 4. Nominatim (OSM) 免費搜尋 (Google 雙引擎皆失敗，或系統未連線時的備案)
+            clearInterval(progressTimer); // 暫停 Google 的進度輪播
+            btn.innerText = 'OSM 備用搜尋⏳';
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                if(data && data.length > 0) map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
-                else showModal('❌ 找不到該地址，請輸入明確路名或座標。');
-            } catch(e) { showModal('❌ 搜尋異常。'); }
-            document.getElementById('report-search-btn').innerText = '搜尋';
+                if(data && data.length > 0) {
+                    map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
+                } else {
+                    showModal('❌ 找不到該地址，請嘗試輸入更明確的地標或鄰近道路名稱。');
+                }
+            } catch(e) { 
+                showModal('❌ 搜尋異常，請稍後再試。');
+            }
+            stopProgress();
         });
 
         let reportLat, reportLng;
-        document.getElementById('report-next-btn').addEventListener('click', () => {
+        document.getElementById('report-next-btn').addEventListener('click', async () => {
             const center = map.getCenter();
             reportLat = center.lat; reportLng = center.lng;
             
             document.getElementById('report-location-panel').classList.add('hidden');
             document.getElementById('report-crosshair').style.display = 'none';
-            
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('report-time').value = now.toISOString().slice(0, 16);
-            
-            editingMyStray = null;
-            document.getElementById('report-form-title').innerText = "📝 步驟 2/2：填寫浪浪資訊";
-            document.getElementById('f-main-photo').value = "";
-            document.getElementById('main-photo-preview').classList.add('hidden');
-            document.getElementById('report-notes').value = "";
-            document.getElementById('report-contact').value = "";
-            document.getElementById('report-contact-public').checked = false;
-            document.getElementById('report-ig').value = "";
-            
-            croppedMainPhotoBlob = null;
-            currentMediaList = [];
-            renderPhotos();
-            
-            document.getElementById('report-form-modal').classList.remove('hidden');
+
+            if (isScrapeReportMode) {
+                // 如果是網路尋找模式，這步結束後直接送出
+                await doFinalSubmit();
+            } else {
+                // 正常回報模式，這步結束後開啟填寫表單
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                document.getElementById('report-time').value = now.toISOString().slice(0, 16);
+                
+                editingMyStray = null;
+                document.getElementById('report-form-title').innerText = "📝 步驟 2/2：填寫浪浪資訊";
+                document.getElementById('report-submit-btn').innerText = "🚀 確認送出";
+                document.getElementById('report-form-back-btn').innerText = "⬅️ 上一步";
+                document.getElementById('f-main-photo').value = "";
+                document.getElementById('main-photo-preview').classList.add('hidden');
+                document.getElementById('report-notes').value = "";
+                document.getElementById('report-contact').value = "";
+                document.getElementById('report-contact-public').checked = false;
+                document.getElementById('report-ig').value = "";
+                
+                croppedMainPhotoBlob = null;
+                currentMediaList = [];
+                renderPhotos();
+                
+                document.getElementById('report-form-modal').classList.remove('hidden');
+            }
         });
 
         document.getElementById('report-form-back-btn').addEventListener('click', () => {
             document.getElementById('report-form-modal').classList.add('hidden');
+            
             if (editingMyStray) {
                 editingMyStray = null;
             } else if (isQuickReport) {
                 isReportingMode = false;
                 isQuickReport = false;
                 document.getElementById('report-stray-btn').classList.remove('hidden');
+                document.getElementById('scrape-stray-btn').classList.remove('hidden');
+                document.getElementById('quick-camera-btn').classList.remove('hidden');
+                document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
+                document.getElementById('project-select-wrapper').classList.remove('hidden');
+                if (preReportFogState) {
+                    isFogVisible = true;
+                    const fogPane = map ? map.getPane('fogPane') : null;
+                    if(fogPane) fogPane.style.display = 'block';
+                    requestFogRender();
+                }
+            } else if (isScrapeReportMode) {
+                // 網路抓取模式如果在此放棄，直接取消並還原
+                isReportingMode = false;
+                isScrapeReportMode = false;
+                scrapedData = null;
+                window._cropNextStep = null;
+                document.getElementById('report-stray-btn').classList.remove('hidden');
+                document.getElementById('scrape-stray-btn').classList.remove('hidden');
                 document.getElementById('quick-camera-btn').classList.remove('hidden');
                 document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
                 document.getElementById('project-select-wrapper').classList.remove('hidden');
@@ -1166,6 +1544,7 @@
                     requestFogRender();
                 }
             } else {
+                // 正常回報流程，返回上一層位置標記
                 document.getElementById('report-location-panel').classList.remove('hidden');
                 document.getElementById('report-crosshair').style.display = 'block';
             }
@@ -1175,10 +1554,12 @@
         document.getElementById('quick-camera-btn').addEventListener('click', () => {
             isReportingMode = true;
             isQuickReport = true;
+            isScrapeReportMode = false;
             preReportFogState = isFogVisible; 
             if (isFogVisible) { isFogVisible = false; const fp = map ? map.getPane('fogPane') : null; if(fp) fp.style.display = 'none'; }
 
             document.getElementById('report-stray-btn').classList.add('hidden');
+            document.getElementById('scrape-stray-btn').classList.add('hidden');
             document.getElementById('quick-camera-btn').classList.add('hidden');
             document.getElementById('user-manage-trigger-btn-left').classList.add('hidden');
             document.getElementById('project-select-wrapper').classList.add('hidden');
@@ -1193,6 +1574,8 @@
             
             editingMyStray = null;
             document.getElementById('report-form-title').innerText = "📝 快速回報：填寫浪浪資訊";
+            document.getElementById('report-submit-btn').innerText = "🚀 確認送出";
+            document.getElementById('report-form-back-btn').innerText = "⬅️ 取消";
             document.getElementById('f-main-photo').value = "";
             document.getElementById('main-photo-preview').classList.add('hidden');
             document.getElementById('report-notes').value = "";
@@ -1371,7 +1754,7 @@
                     cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 });
                 }, 50);
             } else {
-                currentMediaList.push({ type: 'file', data: file });
+                currentMediaList.push({ type: 'file', data: file, isVideo: isVideo });
                 renderPhotos();
             }
         }
@@ -1382,17 +1765,49 @@
                 cropperInstance.getCroppedCanvas({ maxWidth: 1024, maxHeight: 1024 }).toBlob((blob) => {
                     croppedMainPhotoBlob = blob;
                     document.getElementById('main-photo-preview').classList.remove('hidden');
-                    document.getElementById('main-photo-preview').querySelector('img').src = URL.createObjectURL(blob);
+                    document.getElementById('main-photo-img').src = URL.createObjectURL(blob);
                     document.getElementById('crop-modal').classList.add('hidden');
+
+                    if (window._cropNextStep === 'scrape_form') {
+                        window._cropNextStep = null;
+                        openScrapeReportForm();
+                    }
                 }, 'image/jpeg', 0.85);
             }
         }
         function cancelCrop() {
             document.getElementById('crop-modal').classList.add('hidden');
             croppedMainPhotoBlob = null;
+            if (window._cropNextStep === 'scrape_form') {
+                // 如果取消裁切，退回相片選擇
+                document.getElementById('scrape-photo-select-modal').classList.remove('hidden');
+                window._cropNextStep = null;
+            }
         }
 
-        // ======= 拖曳排序 UI =======
+        // ======= 拖曳排序 UI 與 影片擷取封面 =======
+        window.previewMainPhoto = function() {
+            let imgEl = document.getElementById('main-photo-img');
+            if (imgEl && imgEl.src) {
+                openPhotoViewer(0, [{ url: imgEl.src, isVideo: false, title: "主照片封面" }]);
+            }
+        };
+
+        window.previewFormMedia = function(index) {
+            let photosToView = currentMediaList.map((item, idx) => {
+                let url = "";
+                let isVideo = item.isVideo;
+                if (item.type === 'file') {
+                    url = URL.createObjectURL(item.data);
+                } else {
+                    url = item.data;
+                    if(url && url.startsWith('/images/')) url = getBaseHttpUrl() + url;
+                }
+                return { url: url, isVideo: isVideo, title: `額外媒體 (${idx + 1} / ${currentMediaList.length})` };
+            });
+            openPhotoViewer(index, photosToView);
+        };
+
         function handleDragStart(e, index) {
             dragSrcIndex = index;
             e.dataTransfer.effectAllowed = 'move';
@@ -1411,20 +1826,87 @@
             return false;
         }
 
+        // 【新增】：將影片轉換為 Canvas 圖片 (供裁切使用)
+        async function extractVideoFrame(urlOrFile) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                let isUrl = typeof urlOrFile === 'string';
+                if (isUrl) video.setAttribute('crossOrigin', 'anonymous');
+                video.src = isUrl ? urlOrFile : URL.createObjectURL(urlOrFile);
+                video.muted = true;
+                video.currentTime = 1;
+                let fallbackTriggered = false;
+
+                const fallback = () => {
+                    if (fallbackTriggered) return;
+                    fallbackTriggered = true;
+                    // 若失敗或跨域阻擋，提供一個精美的預設 "VIDEO" 封面圖讓使用者裁切
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 400; canvas.height = 400;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#1a202c'; ctx.fillRect(0,0,400,400);
+                    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 40px Courier New';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('▶ VIDEO', 200, 200);
+                    resolve(canvas.toDataURL('image/jpeg'));
+                };
+
+                video.onloadeddata = () => {
+                    video.onseeked = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                            resolve(canvas.toDataURL('image/jpeg'));
+                        } catch(e) { fallback(); }
+                    };
+                    if (video.duration < 1) video.currentTime = 0;
+                };
+                video.onerror = fallback;
+                setTimeout(fallback, 2500); // 2.5秒超時機制
+            });
+        }
+
+        // 【新增】：拖曳到主照片框的處理邏輯
+        window.handleMainPhotoDrop = function(e) {
+            e.preventDefault(); e.stopPropagation();
+            if (dragSrcIndex !== null && currentMediaList[dragSrcIndex]) {
+                const item = currentMediaList[dragSrcIndex];
+
+                if (item.isVideo) {
+                    showModal('⏳ 正在擷取影片畫面轉為封面...');
+                    extractVideoFrame(item.data).then(url => {
+                        if (url) {
+                            document.getElementById('crop-image-target').src = url;
+                            document.getElementById('crop-modal').classList.remove('hidden');
+                            if (cropperInstance) cropperInstance.destroy();
+                            setTimeout(() => { cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 }); }, 50);
+                            document.getElementById('custom-modal').classList.add('hidden');
+                        }
+                    });
+                } else {
+                    let url = item.type === 'file' ? URL.createObjectURL(item.data) : item.data;
+                    document.getElementById('crop-image-target').src = url;
+                    document.getElementById('crop-modal').classList.remove('hidden');
+                    if (cropperInstance) cropperInstance.destroy();
+                    setTimeout(() => { cropperInstance = new Cropper(document.getElementById('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8 }); }, 50);
+                }
+            }
+        };
+
         function renderPhotos() {
             const grid = document.getElementById('existing-photos-grid');
             grid.innerHTML = '';
             currentMediaList.forEach((item, index) => {
                 let url = "";
-                let isVideo = false;
+                let isVideo = item.isVideo;
                 
                 if (item.type === 'file') {
                     url = URL.createObjectURL(item.data);
-                    isVideo = item.data.type.startsWith('video/');
                 } else {
                     url = item.data;
                     if(url && url.startsWith('/images/')) url = getBaseHttpUrl() + url;
-                    isVideo = url.match(/\.(mp4|webm|mov|ogg)$/i) != null;
                 }
                 
                 let innerHtml = '';
@@ -1438,25 +1920,47 @@
                 }
 
                 grid.innerHTML += `
-                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95" draggable="true" ondragstart="handleDragStart(event, ${index})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})">
+                    <div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95 group overflow-hidden" draggable="true" ondragstart="handleDragStart(event, ${index})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})">
                         ${innerHtml}
-                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-5 h-5 rounded-full font-bold border border-black z-10 flex items-center justify-center text-xs" onclick="removePhoto(${index})">✕</button>
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer z-10" onclick="previewFormMedia(${index})">
+                            <span class="text-white font-bold text-sm bg-black/60 px-2 py-1 rounded flex items-center gap-1">🔍 放大</span>
+                        </div>
+                        <button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-5 h-5 rounded-full font-bold border border-black z-20 flex items-center justify-center text-xs hover:scale-110 transition-transform" onclick="removePhoto(${index}); event.stopPropagation();">✕</button>
                     </div>`;
             });
         }
         function removePhoto(index) { currentMediaList.splice(index, 1); renderPhotos(); }
 
 
-        // ======= 最終送出回報 =======
+        // ======= 最終送出回報表單邏輯 =======
         document.getElementById('report-submit-btn').addEventListener('click', async () => {
             const timeVal = document.getElementById('report-time').value;
             if(!timeVal) { showModal("請填寫發現時間！"); return; }
-            // 更新判斷邏輯，因為現在改用相機/檔案統一入口
             if(!croppedMainPhotoBlob && !editingMyStray) {
-                showModal("請務必拍攝或選擇主照片並完成裁剪！"); return;
+                showModal("請務必選擇主照片並完成裁剪！"); return;
             }
+
+            if (isScrapeReportMode) {
+                // 如果是網路抓取，點此按鈕是進入地圖定位
+                document.getElementById('report-form-modal').classList.add('hidden');
+                document.getElementById('report-location-panel').classList.remove('hidden');
+                document.getElementById('report-crosshair').style.display = 'block';
+                document.getElementById('report-next-btn').innerText = "🚀 確認送出";
+                document.getElementById('report-cancel-loc-btn').innerText = "⬅️ 上一步";
+                
+                if(lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, {animate: true});
+            } else {
+                // 正常回報流程
+                await doFinalSubmit();
+            }
+        });
+
+        // 將最終上傳與 WebSocket 的邏輯抽成共用函式
+        async function doFinalSubmit() {
+            const timeVal = document.getElementById('report-time').value;
             
             document.getElementById('report-submit-btn').disabled = true;
+            document.getElementById('report-next-btn').disabled = true;
 
             updateProgress(1, 'pending', '處理主照片...');
             updateProgress(2, 'pending', '處理額外媒體...');
@@ -1480,14 +1984,13 @@
                 for (let i = 0; i < currentMediaList.length; i++) {
                     const item = currentMediaList[i];
                     let url = "";
-                    let isVideo = false;
+                    let isVideo = item.isVideo;
                     
                     if (item.type === 'file') {
                         url = await uploadFileObj(item.data);
-                        isVideo = item.data.type.startsWith('video/');
                     } else {
+                        // 如果是抓取模式本身就已經是下載好的相對路徑，就不需要重新上傳
                         url = item.data;
-                        isVideo = url.match(/\.(mp4|webm|mov|ogg)$/i) != null;
                     }
                     
                     if (url) {
@@ -1563,23 +2066,33 @@
                         setTimeout(() => {
                             document.getElementById('upload-progress-modal').classList.add('hidden');
                             document.getElementById('report-form-modal').classList.add('hidden');
+                            document.getElementById('report-location-panel').classList.add('hidden');
+                            
                             isReportingMode = false;
                             isQuickReport = false;
+                            isScrapeReportMode = false;
+                            scrapedData = null;
+                            window._cropNextStep = null;
                             
+                            document.getElementById('scrape-stray-btn').classList.remove('hidden');
                             document.getElementById('report-stray-btn').classList.remove('hidden');
                             document.getElementById('quick-camera-btn').classList.remove('hidden');
                             document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden');
                             document.getElementById('project-select-wrapper').classList.remove('hidden');
                             
                             document.getElementById('report-submit-btn').disabled = false;
+                            document.getElementById('report-next-btn').disabled = false;
                             document.getElementById('report-notes').value = ''; 
                             document.getElementById('report-contact').value = '';
                             document.getElementById('report-contact-public').checked = false;
                             document.getElementById('report-ig').value = '';
                             
+                            document.getElementById('report-cancel-loc-btn').innerText = "取消";
+                            document.getElementById('report-form-back-btn').innerText = "⬅️ 關閉";
+                            
                             if (editingMyStray) {
                                 showModal("✅ 修改已成功儲存！");
-                                editingMyStray = null; // 重置
+                                editingMyStray = null; 
                             } else {
                                 if (preReportFogState) {
                                     isFogVisible = true;
@@ -1598,9 +2111,10 @@
             } catch(e) {
                 updateProgress(3, 'error', '發生錯誤: ' + e.message);
                 document.getElementById('report-submit-btn').disabled = false;
+                document.getElementById('report-next-btn').disabled = false;
                 setTimeout(() => document.getElementById('upload-progress-modal').classList.add('hidden'), 3000);
             }
-        });
+        }
 
         // ======= 其他互動與系統管理員 =======
         document.getElementById('step-admin-trigger').addEventListener('click', () => {
@@ -2258,6 +2772,171 @@
         }
         document.getElementById('gallery-content').addEventListener('scroll', function() { if (this.scrollTop + this.clientHeight >= this.scrollHeight - 50) loadMoreGalleryItems(); });
         
+        // ================= 專業影像調整與放大檢視器 =================
+        let viewerZoom = 1.0;
+        let viewerBright = 100;
+        let viewerContrast = 100;
+        let viewerSharp = 0;
+
+        let viewerPanX = 0;
+        let viewerPanY = 0;
+        let isViewerDragging = false;
+        let viewerDragStartX = 0;
+        let viewerDragStartY = 0;
+
+        function applyViewerTransforms(isDragging = false) {
+            const imgEl = document.getElementById('viewer-img');
+            const vidEl = document.getElementById('viewer-vid');
+            
+            // 更新拉桿數字標籤
+            document.getElementById('lbl-zoom').innerText = viewerZoom.toFixed(1);
+            document.getElementById('lbl-bright').innerText = viewerBright;
+            document.getElementById('lbl-contrast').innerText = viewerContrast;
+            document.getElementById('lbl-sharp').innerText = viewerSharp.toFixed(1);
+
+            // 更新銳利度 SVG 矩陣
+            const matrixEl = document.getElementById('sharpness-matrix');
+            if (viewerSharp > 0) {
+                const s = viewerSharp;
+                matrixEl.setAttribute('matrix', `0 ${-s} 0 ${-s} ${1 + 4*s} ${-s} 0 ${-s} 0`);
+            }
+
+            const filterStr = `brightness(${viewerBright}%) contrast(${viewerContrast}%) ${viewerSharp > 0 ? 'url(#dynamic-sharpness)' : ''}`;
+            const transformStr = `translate(${viewerPanX}px, ${viewerPanY}px) scale(${viewerZoom})`;
+            
+            [imgEl, vidEl].forEach(el => {
+                if (!el) return;
+                el.style.filter = filterStr;
+                el.style.transform = transformStr;
+                // 拖曳時取消 transition 以防延遲
+                el.style.transition = isDragging ? 'none' : 'transform 0.1s ease-out, filter 0.1s ease-out';
+                
+                if (viewerZoom > 1) {
+                    el.style.cursor = isViewerDragging ? 'grabbing' : 'grab';
+                } else {
+                    el.style.cursor = 'default';
+                }
+            });
+        }
+
+        function resetViewerAdjustments() {
+            viewerZoom = 1.0;
+            viewerBright = 100;
+            viewerContrast = 100;
+            viewerSharp = 0;
+            viewerPanX = 0;
+            viewerPanY = 0;
+            
+            document.getElementById('ctrl-zoom').value = 1;
+            document.getElementById('ctrl-bright').value = 100;
+            document.getElementById('ctrl-contrast').value = 100;
+            document.getElementById('ctrl-sharp').value = 0;
+
+            applyViewerTransforms();
+        }
+
+        // 綁定調整控制面板事件
+        document.getElementById('ctrl-zoom').addEventListener('input', e => { viewerZoom = parseFloat(e.target.value); applyViewerTransforms(); });
+        document.getElementById('ctrl-bright').addEventListener('input', e => { viewerBright = parseInt(e.target.value); applyViewerTransforms(); });
+        document.getElementById('ctrl-contrast').addEventListener('input', e => { viewerContrast = parseInt(e.target.value); applyViewerTransforms(); });
+        document.getElementById('ctrl-sharp').addEventListener('input', e => { viewerSharp = parseFloat(e.target.value); applyViewerTransforms(); });
+        document.getElementById('btn-reset-filters').addEventListener('click', resetViewerAdjustments);
+
+        // 控制面板收合切換
+        document.getElementById('btn-toggle-viewer-controls').addEventListener('click', () => {
+            document.getElementById('viewer-control-panel').classList.remove('hidden');
+            document.getElementById('viewer-control-panel').style.display = 'flex';
+            document.getElementById('btn-toggle-viewer-controls').classList.add('hidden');
+        });
+        document.getElementById('btn-close-controls').addEventListener('click', () => {
+            document.getElementById('viewer-control-panel').classList.add('hidden');
+            document.getElementById('viewer-control-panel').style.display = '';
+            document.getElementById('btn-toggle-viewer-controls').classList.remove('hidden');
+        });
+
+        // 拖曳與滾輪放大邏輯
+        const photoViewerContainer = document.getElementById('photo-viewer-container');
+        
+        // Desktop Mousedown Drag
+        photoViewerContainer.addEventListener('mousedown', e => {
+            if (viewerZoom <= 1 || e.target.closest('#viewer-control-panel') || e.target.closest('#btn-toggle-viewer-controls') || e.target.closest('button')) return;
+            isViewerDragging = true;
+            viewerDragStartX = e.clientX - viewerPanX;
+            viewerDragStartY = e.clientY - viewerPanY;
+            applyViewerTransforms(true);
+        });
+        window.addEventListener('mousemove', e => {
+            if (!isViewerDragging) return;
+            viewerPanX = e.clientX - viewerDragStartX;
+            viewerPanY = e.clientY - viewerDragStartY;
+            applyViewerTransforms(true);
+        });
+        window.addEventListener('mouseup', () => {
+            if (isViewerDragging) {
+                isViewerDragging = false;
+                applyViewerTransforms(false);
+            }
+        });
+
+        // Touch Touchstart Drag + Swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        photoViewerContainer.addEventListener('touchstart', e => {
+            if (e.target.closest('#viewer-control-panel') || e.target.closest('#btn-toggle-viewer-controls') || e.target.closest('button')) return;
+            if (viewerZoom > 1) {
+                isViewerDragging = true;
+                viewerDragStartX = e.touches[0].clientX - viewerPanX;
+                viewerDragStartY = e.touches[0].clientY - viewerPanY;
+                applyViewerTransforms(true);
+            } else {
+                touchStartX = e.changedTouches[0].screenX;
+            }
+        }, {passive: false});
+
+        photoViewerContainer.addEventListener('touchmove', e => {
+            if (isViewerDragging && viewerZoom > 1) {
+                e.preventDefault(); // 防止滾動頁面
+                viewerPanX = e.touches[0].clientX - viewerDragStartX;
+                viewerPanY = e.touches[0].clientY - viewerDragStartY;
+                applyViewerTransforms(true);
+            }
+        }, {passive: false});
+
+        photoViewerContainer.addEventListener('touchend', e => {
+            if (isViewerDragging) {
+                isViewerDragging = false;
+                applyViewerTransforms(false);
+            } else if (viewerZoom <= 1 && e.changedTouches && e.changedTouches.length > 0) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }
+        });
+
+        // 滾輪縮放
+        photoViewerContainer.addEventListener('wheel', e => {
+            if (e.target.closest('#viewer-control-panel') || e.target.closest('#btn-toggle-viewer-controls')) return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.2 : 0.2;
+            viewerZoom = Math.max(1, Math.min(5, viewerZoom + delta));
+            document.getElementById('ctrl-zoom').value = viewerZoom;
+            if (viewerZoom === 1) {
+                viewerPanX = 0; 
+                viewerPanY = 0;
+            }
+            applyViewerTransforms();
+        }, {passive: false});
+
+        function handleSwipe() {
+            const SWIPE_THRESHOLD = 50;
+            if (touchEndX < touchStartX - SWIPE_THRESHOLD) {
+                document.getElementById('viewer-next-btn').click();
+            }
+            if (touchEndX > touchStartX + SWIPE_THRESHOLD) {
+                document.getElementById('viewer-prev-btn').click();
+            }
+        }
+
+        // 開啟檢視器
         function openPhotoViewer(index, photos) { 
             viewerPhotos = photos; 
             currentViewerIndex = index; 
@@ -2267,14 +2946,55 @@
 
         function updatePhotoViewer() {
             if (viewerPhotos.length === 0) return;
-            const imgObj = typeof viewerPhotos[currentViewerIndex] === 'string' ? { url: viewerPhotos[currentViewerIndex], title: "" } : viewerPhotos[currentViewerIndex];
-            let pUrl = imgObj.url; if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
-            document.getElementById('viewer-img').src = pUrl; 
+            
+            // 每次換照片自動重置縮放與濾鏡
+            resetViewerAdjustments();
+            
+            const currentItem = viewerPhotos[currentViewerIndex];
+            let pUrl = "";
+            let isVideo = false;
+            let titleText = "";
+            
+            // 判斷傳入的是字串還是物件
+            if (typeof currentItem === 'string') {
+                pUrl = currentItem;
+                isVideo = pUrl.match(/\.(mp4|webm|mov|ogg)$/i) != null;
+            } else {
+                pUrl = currentItem.url;
+                isVideo = currentItem.isVideo !== undefined ? currentItem.isVideo : pUrl.match(/\.(mp4|webm|mov|ogg)$/i) != null;
+                titleText = currentItem.title || "";
+            }
+            
+            if(pUrl && pUrl.startsWith('/images/')) pUrl = getBaseHttpUrl() + pUrl;
+            
+            const imgEl = document.getElementById('viewer-img');
+            const vidEl = document.getElementById('viewer-vid');
+            
+            // 切換 img 與 video 標籤
+            if (isVideo) {
+                imgEl.classList.add('hidden');
+                vidEl.classList.remove('hidden');
+                vidEl.src = pUrl;
+                vidEl.play().catch(e => {}); // 嘗試自動播放
+            } else {
+                vidEl.classList.add('hidden');
+                vidEl.pause();
+                imgEl.classList.remove('hidden');
+                imgEl.src = pUrl; 
+            }
+
             const titleEl = document.getElementById('viewer-title');
             if (titleEl) {
-                const projName = PROJECTS[currentProjectKey]?.animalName || "";
-                titleEl.innerText = projName ? `[${projName}] ${imgObj.title || ""}` : (imgObj.title || "");
+                let projName = "";
+                // 若正在填寫表單，不顯示地圖專案名稱
+                if (document.getElementById('report-form-modal').classList.contains('hidden') && currentProjectKey && PROJECTS[currentProjectKey]) {
+                    projName = PROJECTS[currentProjectKey].animalName || "";
+                }
+                titleEl.innerText = projName ? `[${projName}] ${titleText}` : titleText;
+                if (!projName && !titleText) titleEl.classList.add('hidden');
+                else titleEl.classList.remove('hidden');
             }
+            
             document.getElementById('viewer-prev-btn').style.opacity = "1"; 
             document.getElementById('viewer-next-btn').style.opacity = "1";
         }
@@ -2305,14 +3025,24 @@
             }
         }
 
-        document.getElementById('viewer-close-btn').addEventListener('click', () => document.getElementById('photo-viewer-modal').classList.add('hidden') );
+        document.getElementById('viewer-close-btn').addEventListener('click', () => {
+            document.getElementById('photo-viewer-modal').classList.add('hidden');
+            document.getElementById('viewer-vid').pause();
+            resetViewerAdjustments();
+        });
         
         document.getElementById('viewer-prev-btn').addEventListener('click', () => { 
             if (currentViewerIndex > 0) { 
                 currentViewerIndex--; 
                 updatePhotoViewer(); 
             } else {
-                switchToAdjacentProjectPhotos(-1);
+                // 如果在填寫表單時，相片循環瀏覽，不跳至別的專案
+                if (!document.getElementById('report-form-modal').classList.contains('hidden')) {
+                    currentViewerIndex = viewerPhotos.length - 1;
+                    updatePhotoViewer();
+                } else {
+                    switchToAdjacentProjectPhotos(-1);
+                }
             }
         });
         
@@ -2321,33 +3051,15 @@
                 currentViewerIndex++; 
                 updatePhotoViewer(); 
             } else {
-                switchToAdjacentProjectPhotos(1);
+                // 如果在填寫表單時，相片循環瀏覽，不跳至別的專案
+                if (!document.getElementById('report-form-modal').classList.contains('hidden')) {
+                    currentViewerIndex = 0;
+                    updatePhotoViewer();
+                } else {
+                    switchToAdjacentProjectPhotos(1);
+                }
             }
         });
-
-        // ======= 監聽相簿滑動事件 =======
-        let touchStartX = 0;
-        let touchEndX = 0;
-        const photoViewerContainer = document.getElementById('photo-viewer-container');
-        
-        photoViewerContainer.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-        });
-        
-        photoViewerContainer.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        });
-        
-        function handleSwipe() {
-            const SWIPE_THRESHOLD = 50;
-            if (touchEndX < touchStartX - SWIPE_THRESHOLD) {
-                document.getElementById('viewer-next-btn').click();
-            }
-            if (touchEndX > touchStartX + SWIPE_THRESHOLD) {
-                document.getElementById('viewer-prev-btn').click();
-            }
-        }
 
         window.onload = initSystem;
     </script>
