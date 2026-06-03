@@ -1389,52 +1389,31 @@
                 return;
             }
 
-            // Google 備用解析引擎 (拼湊網址送給後端解析)
-            const tryGoogleFallback = async (q) => {
-                if (isSystemReady) {
-                    btn.innerText = 'Google 搜尋⏳';
-                    const fallbackUrl = `https://www.google.com/maps/place/${encodeURIComponent(q)}`;
-                    ws.send(JSON.stringify({ type: "parse_map_url", url: fallbackUrl }));
-                    const fallbackRes = await waitWsResponse('parse_map_url_result', 8000);
-                    if (fallbackRes && fallbackRes.success && fallbackRes.lat && fallbackRes.lng) {
-                        map.setView([fallbackRes.lat, fallbackRes.lng], 18, {animate: true});
-                        return true;
-                    }
-                }
-                return false;
-            };
-
-            // 3. 若包含中文，強制優先使用 Google 解析引擎
-            const hasChinese = /[\u4e00-\u9fa5]/.test(query);
-            if (hasChinese) {
-                const googleSuccess = await tryGoogleFallback(query);
-                if (googleSuccess) {
+            // 3. 純文字地址：優先透過本機 WebSocket 呼叫 Google 解析引擎
+            if (isSystemReady) {
+                btn.innerText = 'Google 搜尋⏳';
+                ws.send(JSON.stringify({ type: "search_address", address: query }));
+                const googleRes = await waitWsResponse('search_address_result', 8000);
+                
+                if (googleRes && googleRes.success && googleRes.lat && googleRes.lng) {
+                    map.setView([googleRes.lat, googleRes.lng], 18, {animate: true});
                     btn.innerText = '搜尋';
-                    return;
+                    return; // Google 解析成功，結束流程
                 }
             }
 
-            // 4. Nominatim (OSM) 免費搜尋 (英文或 Google 解析失敗時作為備案)
+            // 4. Nominatim (OSM) 免費搜尋 (Google 雙引擎皆失敗，或系統未連線時的備案)
+            btn.innerText = 'OSM 備用搜尋⏳';
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 if(data && data.length > 0) {
                     map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
                 } else {
-                    // 若是英數且 OSM 失敗，嘗試 Google
-                    if (!hasChinese) {
-                        const fallbackSuccess = await tryGoogleFallback(query);
-                        if (fallbackSuccess) { btn.innerText = '搜尋'; return; }
-                    }
                     showModal('❌ 找不到該地址，請嘗試輸入更明確的地標或鄰近道路名稱。');
                 }
             } catch(e) { 
-                if (!hasChinese) {
-                    const fallbackSuccess = await tryGoogleFallback(query);
-                    if (!fallbackSuccess) showModal('❌ 搜尋異常，請稍後再試。');
-                } else {
-                    showModal('❌ 搜尋異常，請稍後再試。');
-                }
+                showModal('❌ 搜尋異常，請稍後再試。');
             }
             btn.innerText = '搜尋';
         });
