@@ -290,7 +290,7 @@
             
             <div>
                 <label class="block text-sm font-bold mb-1 text-red-600">📸 主照片 (必填，將顯示為封面)</label>
-                <!-- 【新增】將主照片區塊變成拖曳接收區 -->
+                <!-- 將主照片區塊變成拖曳接收區 -->
                 <div id="main-photo-dropzone" class="border-2 border-black p-2 bg-gray-100 flex flex-col gap-2 relative transition-colors"
                      ondragover="event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; this.classList.add('bg-blue-100', 'border-blue-500');"
                      ondragleave="this.classList.remove('bg-blue-100', 'border-blue-500');"
@@ -1404,7 +1404,7 @@
                 return false;
             };
 
-            // 3. 若為中文地址，優先使用 Google 解析引擎
+            // 3. 若包含中文，強制優先使用 Google 解析引擎
             const hasChinese = /[\u4e00-\u9fa5]/.test(query);
             if (hasChinese) {
                 const googleSuccess = await tryGoogleFallback(query);
@@ -1414,14 +1414,14 @@
                 }
             }
 
-            // 4. Nominatim (OSM) 免費搜尋 (英文或 Google 解析失敗時)
+            // 4. Nominatim (OSM) 免費搜尋 (英文或 Google 解析失敗時作為備案)
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 if(data && data.length > 0) {
                     map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, {animate: true});
                 } else {
-                    // 若剛才還沒試過 Google 備案，現在試試看
+                    // 若是英數且 OSM 失敗，嘗試 Google
                     if (!hasChinese) {
                         const fallbackSuccess = await tryGoogleFallback(query);
                         if (fallbackSuccess) { btn.innerText = '搜尋'; return; }
