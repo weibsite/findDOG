@@ -40,6 +40,13 @@
         #animal-info-section.mobile-collapsed #animal-name-date { text-align: left; padding-left: 8px; padding-right: 65px; background: transparent; color: #1a202c; line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
+
+        /* 左下角按鈕群 - 手機版自動收合與文字簡介 */
+        @media (max-width: 640px) {
+            .collapsible-btn { transition: all 0.3s ease; white-space: nowrap; overflow: hidden; text-align: left; }
+            .collapsible-btn.collapsed { width: 38px !important; padding-left: 8px !important; padding-right: 0 !important; }
+            .collapsible-btn.expanded::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
+        }
     </style>
 </head>
 <body>
@@ -74,11 +81,12 @@
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
     
-    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden">🕸️ 完成度</button>
-    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📤 強制打卡</button>
-    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden">📍 導航標記</button>
-    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden">👁️ 關閉迷霧</button>
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="地圖放置標記">📍 導航標記</button>
+    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
+    
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
     <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
@@ -256,7 +264,7 @@
         async function requestWakeLock(){ try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{}); } }catch(e){} }
         function enterPowerSavingMode(){ if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); }
         function exitPowerSavingMode(){ if(!isPowerSaving)return; isPowerSaving=false; hide('power-saving-overlay'); }
-        function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); }
+        function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); resetBtnCollapseTimer(); }
         document.body.addEventListener('touchstart', resetPowerSavingTimer, {passive:true}); document.body.addEventListener('click', resetPowerSavingTimer); document.body.addEventListener('mousemove', resetPowerSavingTimer);
         $('power-saving-overlay').addEventListener('touchstart', e=>{e.preventDefault(); resetPowerSavingTimer();}, {passive:false});
         on('power-saving-btn', 'click', e=>{e.stopPropagation(); enterPowerSavingMode();});
@@ -401,7 +409,7 @@
         on('profile-save-btn','click',()=>{ let n=$('profile-name').value.trim(), h=$('profile-color').value; if(!/^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/.test(n))return show('profile-error'); currentUserName=n; dbUserColor=h; lsSet('dogMap_userName',n); lsSet('dogMap_userColor',h); $('profile-edit-trigger').style.backgroundColor=h; if(allUsersData[myUid]){allUsersData[myUid].userName=n; allUsersData[myUid].color=h;} saveLocationToServer(null,true); renderMap(); hide('profile-modal'); showCenterToast("✅ 個人資料已更新！"); });
         
         on('toggle-fog-btn','click',()=>{ isFogVisible=!isFogVisible; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display=isFogVisible?'block':'none'); let b=$('toggle-fog-btn'); if(isFogVisible){b.innerText="👁️ 關閉迷霧"; b.style.backgroundColor="#f59e0b"; requestFogRender();} else {b.innerText="🌫️ 開啟迷霧"; b.style.backgroundColor="#9ca3af";} });
-        on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(), {draggable:true, zIndexOffset:10000, icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">拖曳調整位置</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
+        on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(), {draggable:true, zIndexOffset:10000, icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey}; updateStepsCounter(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
         on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟動");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
@@ -528,6 +536,55 @@
         on('add-prize-submit-btn','click',()=>{ let pz=[]; $('prize-rows-container').childNodes.forEach(r=>{let n=r.querySelector('.p-name').value, u=r.querySelector('.p-url').value, p=parseFloat(r.querySelector('.p-prob').value), fp=parseFloat(r.querySelector('.p-fprob').value); if(n&&u&&!isNaN(p)&&!isNaN(fp))pz.push({name:n,url:u,prob:p,first_prob:fp});}); if(!pz.length)return showCenterToast("⚠️ 填寫不完整！"); wsSend("add_prizes",{data:pz}); hide('add-prize-modal'); showCenterToast("⏳ 指令已送出！"); });
         on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
         on('slot-close-btn','click',()=>hide('slot-machine-modal')); on('floating-gift-container','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法參與抽獎！"); text('slot-machine-title',`🎰 抽獎`); updateGiftUI(); show('slot-machine-modal'); }); on('prize-pool-close-btn','click',()=>hide('prize-pool-modal'));
+
+        // ================= 左下按鈕自動收合邏輯 =================
+        let btnCollapseTimer = null;
+        function resetBtnCollapseTimer() {
+            if (window.innerWidth > 640) return;
+            document.querySelectorAll('.collapsible-btn').forEach(btn => {
+                btn.classList.remove('collapsed');
+                btn.classList.add('expanded');
+            });
+            if (btnCollapseTimer) clearTimeout(btnCollapseTimer);
+            btnCollapseTimer = setTimeout(() => {
+                if (window.innerWidth <= 640) {
+                    document.querySelectorAll('.collapsible-btn').forEach(btn => {
+                        btn.classList.add('collapsed');
+                        btn.classList.remove('expanded');
+                    });
+                }
+            }, 30000);
+        }
+        
+        document.querySelectorAll('.collapsible-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (window.innerWidth <= 640 && btn.classList.contains('collapsed')) {
+                    btn.classList.remove('collapsed');
+                    btn.classList.add('expanded');
+                    document.querySelectorAll('.collapsible-btn').forEach(other => {
+                        if (other !== btn) {
+                            other.classList.add('collapsed');
+                            other.classList.remove('expanded');
+                        }
+                    });
+                    if (btnCollapseTimer) clearTimeout(btnCollapseTimer);
+                    btnCollapseTimer = setTimeout(() => {
+                        if (window.innerWidth <= 640) {
+                            document.querySelectorAll('.collapsible-btn').forEach(b => {
+                                b.classList.add('collapsed');
+                                b.classList.remove('expanded');
+                            });
+                        }
+                    }, 30000);
+
+                    // 如果是有 two-tap class 的按鈕，則攔截後續點擊事件
+                    if (btn.classList.contains('two-tap')) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                    }
+                }
+            }, true); // 使用 Capture 階段，優先攔截
+        });
 
         // ================= 修復加入的開始按鈕點擊事件 =================
         on('master-start-btn', 'click', e => {
