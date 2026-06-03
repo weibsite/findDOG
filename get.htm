@@ -162,6 +162,8 @@
                platform: platform,
                text: data.data.text,
                images: formattedImages,
+               // 如果後端有回傳 original_images 就優先使用，否則退回使用原本的路徑
+               originalImages: data.data.original_images || formattedImages,
                savedPath: data.savedPath
              });
           } else {
@@ -291,7 +293,9 @@
                     <h3 className="font-semibold text-gray-800">擷取到的圖片 ({result.images.length})</h3>
                   </div>
                   <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {result.images.map((img, index) => (
+                    {result.images.map((img, index) => {
+                      const originalUrl = result.originalImages ? result.originalImages[index] : img;
+                      return (
                       <div key={index} className="flex flex-col rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
                         {/* 圖片展示區塊 (可點擊) */}
                         <div 
@@ -310,20 +314,21 @@
                           </div>
                         </div>
                         
-                        {/* 檔案連結區塊 */}
-                        <div className="p-3 border-t border-gray-100 text-xs text-gray-600 break-all">
+                        {/* 檔案連結區塊 (修改為顯示原始網址) */}
+                        <div className="p-3 border-t border-gray-100 text-xs text-gray-600 bg-white">
                           <a 
-                            href={img} 
+                            href={originalUrl} 
                             target="_blank" 
                             rel="noreferrer" 
-                            className="inline-flex items-start gap-1.5 hover:text-blue-600 hover:underline"
+                            className="inline-flex items-start gap-1.5 hover:text-blue-600 hover:underline break-all"
+                            title={originalUrl}
                           >
                             <LinkIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            {img}
+                            <span className="line-clamp-2">{originalUrl}</span>
                           </a>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               </div>
