@@ -45,7 +45,7 @@
         @media (max-width: 640px) {
             .collapsible-btn { transition: all 0.3s ease; white-space: nowrap; overflow: hidden; text-align: left; }
             .collapsible-btn.collapsed { width: 38px !important; padding-left: 8px !important; padding-right: 0 !important; }
-            .collapsible-btn.expanded::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
+            .collapsible-btn.show-desc::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
         }
     </style>
 </head>
@@ -81,11 +81,12 @@
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
     
-    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
-    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
-    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded two-tap" data-desc="地圖放置標記">📍 導航標記</button>
-    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn expanded" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
+    <!-- 取消了 expanded 類別，確保載入時只顯示 ICON + 名稱 -->
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="地圖放置標記">📍 導航標記</button>
+    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
     
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
@@ -111,14 +112,14 @@
     <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3><p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p><div class="bg-gray-200 border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_#1a202c]"><div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div><div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2"><div id="reel-1" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-2" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-3" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div></div></div><div class="flex flex-col gap-3"><button id="slot-draw-btn" class="pixel-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button><div class="flex gap-2"><button id="slot-check-pool-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white text-xs">🎁 查詢獎項</button><button id="slot-close-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 關閉</button></div></div></div></div>
     <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl">🎁 已中獎項</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border-4 border-black bg-white p-3 mb-4 text-left space-y-3 shadow-[4px_4px_0px_#1a202c]"></div><button id="prize-pool-close-btn" class="pixel-btn w-full py-2 bg-gray-400">關閉</button></div></div>
 
-    <div id="admin-panel" class="absolute top-[260px] right-4 sm:top-[200px] sm:right-4 z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[60vh]"><div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div><div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div><button id="clear-history-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button><button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button><button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button><button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button><button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button><button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button><button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button><button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button><button id="manage-blacklist-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button><button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button><button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button></div>
+    <div id="admin-panel" class="absolute top-4 right-4 z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]"><div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div><div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div><button id="clear-history-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button><button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button><button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button><button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button><button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button><button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button><button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button><button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button><button id="manage-blacklist-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button><button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button><button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button></div>
     
     <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
     <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標</h3><input type="text" id="coord-input-value" class="pixel-input w-full p-3 mb-4 text-center font-mono" placeholder="貼上座標或網址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
     
     <!-- 清理軌跡面板 -->
-    <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">點擊地圖選擇要清除的圓形範圍，重複點擊可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="pixel-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
+    <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">直接在畫面上拖曳塗抹要清除的範圍！點擊或塗抹已標示的紅圈即可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="pixel-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
 
     <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="pixel-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="pixel-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
     <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
@@ -173,7 +174,7 @@
         let viewerPhotos = [], currentViewerIndex = 0, touchStartX = 0, touchEndX = 0, galleryLoadedCount = 0, currentGalleryType = 'photos';
         let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false;
 
-        let isClearingHistory = false;
+        let isClearingHistory = false, isPaintingClear = false, isErasingClear = false, lastPaintLatLng = null;
         let clearHistoryCircles = [];
         let currentClearRadius = 100;
 
@@ -202,6 +203,10 @@
             
             map.on('click', e => { 
                 if(isDrawingRoute){ currentRoutePoints.push([e.latlng.lat, e.latlng.lng]); updateDrawingRoutePreview(); } 
+                resetPowerSavingTimer(); 
+            });
+            
+            map.on('mousedown touchstart', e => {
                 if(isClearingHistory) {
                     let clickedExisting = false;
                     for (let i = 0; i < clearHistoryCircles.length; i++) {
@@ -213,13 +218,43 @@
                             break;
                         }
                     }
-                    if (!clickedExisting) {
+                    if (clickedExisting) {
+                        isErasingClear = true;
+                    } else {
+                        isPaintingClear = true;
                         let layer = L.circle(e.latlng, {radius: currentClearRadius, color: 'red', fillColor: '#ef4444', fillOpacity: 0.4, dashArray: '5,5', weight: 2}).addTo(map);
                         clearHistoryCircles.push({lat: e.latlng.lat, lng: e.latlng.lng, radius: currentClearRadius, layer: layer});
+                        lastPaintLatLng = e.latlng;
                     }
                 }
-                resetPowerSavingTimer(); 
             });
+
+            map.on('mousemove touchmove', e => {
+                if(isClearingHistory) {
+                    if(isPaintingClear) {
+                        if(!lastPaintLatLng || getDistance(lastPaintLatLng.lat, lastPaintLatLng.lng, e.latlng.lat, e.latlng.lng) > currentClearRadius * 0.4) {
+                            let layer = L.circle(e.latlng, {radius: currentClearRadius, color: 'red', fillColor: '#ef4444', fillOpacity: 0.4, dashArray: '5,5', weight: 2}).addTo(map);
+                            clearHistoryCircles.push({lat: e.latlng.lat, lng: e.latlng.lng, radius: currentClearRadius, layer: layer});
+                            lastPaintLatLng = e.latlng;
+                        }
+                    } else if (isErasingClear) {
+                        for (let i = clearHistoryCircles.length - 1; i >= 0; i--) {
+                            let c = clearHistoryCircles[i];
+                            if (getDistance(e.latlng.lat, e.latlng.lng, c.lat, c.lng) <= c.radius) {
+                                map.removeLayer(c.layer);
+                                clearHistoryCircles.splice(i, 1);
+                            }
+                        }
+                    }
+                }
+            });
+
+            map.on('mouseup touchend', e => {
+                isPaintingClear = false;
+                isErasingClear = false;
+                lastPaintLatLng = null;
+            });
+            
             map.on('dragstart zoomstart', ()=>{ isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); });
             map.on('dragend zoomend', ()=>{ mapInteractionTimer=setTimeout(()=>isMapInteracting=false, 900000); renderMap(); resetPowerSavingTimer(); });
             map.createPane('fogPane').style.cssText='z-index:450; pointer-events:none;'; map.createPane('evaPane').style.cssText='z-index:460; pointer-events:none;';
@@ -573,44 +608,51 @@
             if (window.innerWidth > 640) return;
             document.querySelectorAll('.collapsible-btn').forEach(btn => {
                 btn.classList.remove('collapsed');
-                btn.classList.add('expanded');
             });
             if (btnCollapseTimer) clearTimeout(btnCollapseTimer);
             btnCollapseTimer = setTimeout(() => {
                 if (window.innerWidth <= 640) {
                     document.querySelectorAll('.collapsible-btn').forEach(btn => {
                         btn.classList.add('collapsed');
-                        btn.classList.remove('expanded');
+                        btn.classList.remove('show-desc');
                     });
                 }
             }, 30000);
         }
         
+        // 點擊空白處取消按鈕說明
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.collapsible-btn')) {
+                document.querySelectorAll('.collapsible-btn').forEach(b => b.classList.remove('show-desc'));
+            }
+        });
+
         document.querySelectorAll('.collapsible-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                if (window.innerWidth <= 640 && btn.classList.contains('collapsed')) {
-                    btn.classList.remove('collapsed');
-                    btn.classList.add('expanded');
-                    document.querySelectorAll('.collapsible-btn').forEach(other => {
-                        if (other !== btn) {
-                            other.classList.add('collapsed');
-                            other.classList.remove('expanded');
-                        }
-                    });
-                    if (btnCollapseTimer) clearTimeout(btnCollapseTimer);
-                    btnCollapseTimer = setTimeout(() => {
-                        if (window.innerWidth <= 640) {
-                            document.querySelectorAll('.collapsible-btn').forEach(b => {
-                                b.classList.add('collapsed');
-                                b.classList.remove('expanded');
-                            });
-                        }
-                    }, 30000);
+                if (window.innerWidth <= 640) {
+                    if (btn.classList.contains('two-tap') && !btn.classList.contains('show-desc')) {
+                        // 如果有防呆設定且尚未顯示說明，則展開並顯示說明，攔截本次點擊
+                        document.querySelectorAll('.collapsible-btn').forEach(b => {
+                            b.classList.remove('collapsed');
+                            if (b !== btn) b.classList.remove('show-desc');
+                        });
+                        btn.classList.add('show-desc');
 
-                    // 如果是有 two-tap class 的按鈕，則攔截後續點擊事件
-                    if (btn.classList.contains('two-tap')) {
+                        if (btnCollapseTimer) clearTimeout(btnCollapseTimer);
+                        btnCollapseTimer = setTimeout(() => {
+                            if (window.innerWidth <= 640) {
+                                document.querySelectorAll('.collapsible-btn').forEach(b => {
+                                    b.classList.add('collapsed');
+                                    b.classList.remove('show-desc');
+                                });
+                            }
+                        }, 30000);
+
                         e.stopImmediatePropagation();
                         e.preventDefault();
+                    } else {
+                        // 如果沒有防呆，或已經顯示說明，則隱藏說明並允許事件觸發功能
+                        btn.classList.remove('show-desc');
                     }
                 }
             }, true); // 使用 Capture 階段，優先攔截
@@ -625,14 +667,16 @@
         on('clear-history-btn', 'click', () => {
             if(!isAdmin) return;
             isClearingHistory = true;
+            map.dragging.disable(); // 關閉地圖拖曳，專心繪製
             clearHistoryCircles = [];
             show('clear-history-panel');
             hide('admin-panel');
-            showCenterToast("🧹 點擊地圖新增要清除的範圍！\n重複點擊同一個紅圈可取消。");
+            showCenterToast("🧹 直接在畫面上拖曳塗抹要清除的範圍！\n點擊或塗抹已標示的紅圈即可取消。");
         });
 
         const exitClearMode = () => {
             isClearingHistory = false;
+            map.dragging.enable(); // 恢復地圖拖曳
             clearHistoryCircles.forEach(c => map.removeLayer(c.layer));
             clearHistoryCircles = [];
             hide('clear-history-panel');
