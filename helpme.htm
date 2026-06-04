@@ -50,7 +50,7 @@
             <h1 class="text-2xl font-black tracking-widest text-gray-900 cursor-pointer text-center sm:text-left" onclick="switchView('home')">🐾 尋寵地圖申請中心</h1>
             <div class="flex flex-wrap justify-center gap-2">
                 <button onclick="window.location.href='index.htm'" class="pixel-btn px-4 py-2 bg-green-500 text-white text-sm">🌍 回到地圖</button>
-                <button onclick="switchView('apply')" class="pixel-btn px-4 py-2 bg-blue-500 text-white text-sm">📝 新增協尋</button>
+                <button onclick="resetAndGoToApply()" class="pixel-btn px-4 py-2 bg-blue-500 text-white text-sm">📝 新增協尋</button>
                 <button onclick="switchView('owner-login')" class="pixel-btn px-4 py-2 bg-purple-500 text-white text-sm">⚙️ 管理後台</button>
             </div>
         </div>
@@ -70,7 +70,7 @@
                     填寫詳細資料、圈選走失範圍，經管理員審核後即可上架至系統。
                 </p>
                 <div class="flex justify-center gap-4 mt-8">
-                    <button onclick="switchView('apply')" class="pixel-btn px-8 py-4 bg-green-500 text-white text-xl w-64 hover:bg-green-400">立即申請</button>
+                    <button onclick="resetAndGoToApply()" class="pixel-btn px-8 py-4 bg-green-500 text-white text-xl w-64 hover:bg-green-400">立即申請</button>
                 </div>
             </div>
         </div>
@@ -91,7 +91,7 @@
         <div id="view-apply" class="view-section">
             <div class="pixel-panel p-6 sm:p-8">
                 <div class="flex justify-between items-center mb-6 border-b-4 border-black pb-2">
-                    <h2 id="form-title" class="text-2xl font-black text-blue-700">📝 協尋專案資料填寫</h2>
+                    <h2 id="form-title" class="text-2xl font-black text-blue-700 flex items-center">📝 協尋專案資料填寫</h2>
                     <span id="wizard-step-indicator" class="font-black bg-gray-200 px-3 py-1 border-2 border-black text-sm">步驟 1 / 2</span>
                 </div>
                 
@@ -106,8 +106,8 @@
                             <p class="text-xs font-bold text-red-600 mb-4">注意：帳號與密碼不得包含空格，且所有欄位嚴禁輸入特殊符號如 &lt; 或 &gt; 避免系統錯誤。</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div><label class="font-bold text-sm">自訂登入帳號 (必填)</label><input type="text" id="f-account" class="pixel-input" required placeholder="不可有空格，日後登入用"></div>
-                                <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="password" id="f-password" class="pixel-input border-red-500" required placeholder="不可有空格，日後登入用"></div>
-                                <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="password" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
+                                <div><label class="font-bold text-sm text-red-600">自訂登入密碼 (必填)</label><input type="text" id="f-password" class="pixel-input border-red-500" required placeholder="不可有空格，日後登入用"></div>
+                                <div><label class="font-bold text-sm text-red-600">再次確認密碼 (必填)</label><input type="text" id="f-password-confirm" class="pixel-input border-red-500" required placeholder="請重新輸入一次密碼"></div>
                                 <div class="sm:col-span-2"><label class="font-bold text-sm">聯絡電話 (必填)</label><input type="text" id="f-phone" class="pixel-input" required placeholder="0912-345-678"></div>
                                 <div class="sm:col-span-2"><label class="font-bold text-sm">LINE ID (必填)</label><input type="text" id="f-line" class="pixel-input" required placeholder="請輸入 LINE ID"></div>
                             </div>
@@ -343,17 +343,6 @@
         </div>
     </div>
 
-    <!-- 管理員專案詳情 Modal -->
-    <div id="admin-detail-modal" class="hidden fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
-        <div class="pixel-panel p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <h3 class="text-gray-900 font-bold mb-4 text-xl border-b-4 border-black pb-2">📋 專案詳細資料</h3>
-            <div id="admin-detail-content" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-                <!-- 動態載入詳細資料 -->
-            </div>
-            <button onclick="closeAdminDetailModal()" class="pixel-btn w-full py-2 bg-gray-400 text-white">關閉</button>
-        </div>
-    </div>
-
     <!-- 圖片裁剪 Modal -->
     <div id="crop-modal" class="hidden fixed inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md bg-white p-4 pixel-panel">
@@ -412,18 +401,22 @@
 
         let step1Timeout = null;
         let step2Timeout = null;
-        let isMapFullscreen = false; // 控制全螢幕地圖狀態
+        let isMapFullscreen = false; 
         
+        // 管理員編輯狀態變數
+        let isAdminEditing = false;
+        let currentEditingAppStatus = "pending";
+
         // 畫筆 (Canvas Overlay) 變數
         let drawingLayer = null;
         let ctx = null;
-        let canvasPoints = []; // 收集畫布上的 pixel 點
+        let canvasPoints = [];
 
         // 裁剪與影片相關變數
         let cropperInstance = null;
         let croppedMainPhotoBlob = null;
         let videoTrimData = { start: 0, end: null };
-        let isPartialSave = false; // 用於區分步驟 1 註冊與最後送出
+        let isPartialSave = false;
 
         const mockComments = [
             { user: "ffenchen", text: "作者是個有技術又善良的人\n正在尋狗的人可以免費使用\n找自己的狗也能順道找他人的狗\n推推推！" },
@@ -523,7 +516,42 @@
             
             if (viewId === 'apply') {
                 setTimeout(() => { if(map) map.invalidateSize(); else initMap(); }, 100);
+                if (!isAdminEditing && !currentOwnerAcc) {
+                    document.getElementById('form-title').innerHTML = "📝 協尋專案資料填寫";
+                }
+            } else if (viewId === 'admin') {
+                isAdminEditing = false;
+                currentOwnerAcc = null;
+            } else if (viewId === 'home') {
+                isAdminEditing = false;
+                currentOwnerAcc = null;
             }
+        }
+        
+        function resetAndGoToApply() {
+            isAdminEditing = false;
+            currentOwnerAcc = null;
+            currentEditingAppStatus = "pending";
+            
+            document.getElementById('application-form').reset();
+            document.getElementById('app-id').value = "";
+            boundsData = null;
+            document.getElementById('f-bounds').value = "";
+            updateBoundsStatus("❌ 尚未圈選範圍", false);
+            if (drawRectangle) { map.removeLayer(drawRectangle); drawRectangle = null; }
+            document.getElementById('main-photo-preview').classList.add('hidden');
+            document.getElementById('f-main-photo-url').value = "";
+            existingPhotos = [];
+            existingVideos = [];
+            renderPhotos();
+            renderVideos();
+            
+            document.getElementById('wizard-step-2').classList.add('hidden');
+            document.getElementById('wizard-step-1').classList.remove('hidden');
+            document.getElementById('wizard-step-indicator').innerText = "步驟 1 / 2";
+            document.getElementById('form-title').innerHTML = "📝 協尋專案資料填寫";
+            
+            switchView('apply');
         }
 
         // ======= 初始化與讀取 config.json =======
@@ -593,6 +621,11 @@
 
                         currentOwnerAcc = document.getElementById('login-acc').value;
                         loadFormData(res.data);
+                        
+                        document.getElementById('wizard-step-2').classList.add('hidden');
+                        document.getElementById('wizard-step-1').classList.remove('hidden');
+                        document.getElementById('wizard-step-indicator').innerText = "步驟 1 / 2";
+                        
                         switchView('apply');
                         document.getElementById('form-title').innerText = "📝 編輯協尋專案資料";
                         document.getElementById('f-password').value = res.data.ownerInfo.password;
@@ -619,7 +652,11 @@
                             updateProgress(4, 'done', '資料同步完成！');
                             setTimeout(() => {
                                 document.getElementById('upload-progress-modal').classList.add('hidden');
-                                if (currentOwnerAcc) {
+                                if (isAdminEditing) {
+                                    showModal("✅ 管理員編輯成功！已更新至系統。");
+                                    switchView('admin');
+                                    loadAdminApps(currentEditingAppStatus);
+                                } else if (currentOwnerAcc) {
                                      showModal("✅ 資料已成功修改並即時更新至系統！");
                                 } else {
                                      const animalName = document.getElementById('f-animal-name').value;
@@ -728,7 +765,6 @@
             drawingLayer = document.getElementById('drawing-layer');
             ctx = drawingLayer.getContext('2d');
 
-            // 註冊觸控與滑鼠事件 (passive: false 確保可以 preventDefault 阻止畫面滾動)
             drawingLayer.addEventListener('touchstart', handleCanvasDown, {passive: false});
             drawingLayer.addEventListener('touchmove', handleCanvasMove, {passive: false});
             drawingLayer.addEventListener('touchend', handleCanvasUp, {passive: false});
@@ -747,7 +783,7 @@
             if (e.touches && e.touches.length > 0) {
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
-            } else if (e.changedTouches && e.changedTouches.length > 0) { // For touchend
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
                 clientX = e.changedTouches[0].clientX;
                 clientY = e.changedTouches[0].clientY;
             }
@@ -760,13 +796,12 @@
 
         function handleCanvasDown(e) {
             if(drawState !== 1) return;
-            e.preventDefault(); // 阻止頁面滾動與原生事件
+            e.preventDefault(); 
             isDrawing = true;
             canvasPoints = [];
             const pos = getCanvasPos(e);
             canvasPoints.push(pos);
 
-            // 清空畫布並開始畫線
             ctx.clearRect(0, 0, drawingLayer.width, drawingLayer.height);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
@@ -792,7 +827,6 @@
             isDrawing = false;
             e.preventDefault();
 
-            // 畫完後隱藏透明畫布層，將操作權交還給地圖
             drawingLayer.classList.add('hidden');
 
             if (canvasPoints.length < 5) {
@@ -801,10 +835,7 @@
                  return;
             }
 
-            // 將 Canvas 上的 Pixel 點轉換為地圖上的 LatLng 座標
             let latlngs = canvasPoints.map(p => map.containerPointToLatLng(L.point(p.x, p.y)));
-            
-            // 利用 Leaflet 算出這些點的 Bounding Box (最大邊界)
             const tempBounds = L.latLngBounds(latlngs);
             let p1 = tempBounds.getSouthWest();
             let p2 = tempBounds.getNorthEast();
@@ -812,14 +843,12 @@
             
             const dist = getDistance(p1.lat, p1.lng, p2.lat, p2.lng);
             
-            // 防呆：範圍太小
             if (dist < 10) {
                  showModal("⚠️ 範圍太小，請重新畫出較大的範圍！");
                  startDrawing();
                  return;
             }
 
-            // 防呆：範圍過大 (自動以中心點縮小為 500 公尺)
             if (dist > 500) {
                 showModal("⚠️ 圈選範圍過大！系統已自動分析中心點，並縮小至 500 公尺的合理搜尋範圍。");
                 const centerLat = tempBounds.getCenter().lat;
@@ -833,24 +862,21 @@
             document.getElementById('draw-hint').classList.add('hidden');
             document.getElementById('start-draw-btn').innerText = "🖍️ 重新畫圈";
             
-            // 在地圖上畫出系統分析後的標準範圍 (藍色方框)
             if (drawRectangle) map.removeLayer(drawRectangle);
             drawRectangle = L.rectangle([p1, p2], {color: "#3b82f6", weight: 3, fillOpacity: 0.2}).addTo(map);
-            map.fitBounds(drawRectangle.getBounds(), { padding: [20, 20] }); // 自動聚焦縮放至圈選處
+            map.fitBounds(drawRectangle.getBounds(), { padding: [20, 20] }); 
 
             boundsData = [ [p1.lat, p1.lng], [p2.lat, p2.lng] ];
             document.getElementById('f-bounds').value = JSON.stringify(boundsData);
             
             updateBoundsStatus("✅ 已分析並鎖定範圍", true);
             
-            // 解鎖地圖控制
             map.dragging.enable();
             map.touchZoom.enable();
             map.doubleClickZoom.enable();
             map.scrollWheelZoom.enable();
             map.boxZoom.enable();
         }
-
 
         async function searchAddress() {
             const addr = document.getElementById('map-search-input').value;
@@ -878,14 +904,12 @@
             document.getElementById('draw-hint').innerText = "請在圖層上「按住滑鼠或手指隨意畫一個圈」...";
             document.getElementById('draw-hint').classList.remove('hidden');
             
-            // 開啟透明畫布覆蓋層
             const container = document.getElementById('map-container');
             drawingLayer.width = container.offsetWidth;
             drawingLayer.height = container.offsetHeight;
             ctx.clearRect(0, 0, drawingLayer.width, drawingLayer.height);
             drawingLayer.classList.remove('hidden');
 
-            // 鎖定底層地圖
             map.dragging.disable();
             map.touchZoom.disable();
             map.doubleClickZoom.disable();
@@ -986,10 +1010,17 @@
                 finalAnnouncement = `【懸賞金額：${reward}元】\n` + finalAnnouncement;
             }
 
+            let forceStatus = "pending";
+            if (isAdminEditing) {
+                forceStatus = currentEditingAppStatus;
+            } else if (currentOwnerAcc) {
+                forceStatus = "approved";
+            }
+
             return {
                 type: "submit_application",
                 id: document.getElementById('app-id').value || crypto.randomUUID(),
-                forceStatus: currentOwnerAcc ? "approved" : "pending", 
+                forceStatus: forceStatus, 
                 ownerInfo: {
                     account: document.getElementById('f-account').value,
                     password: document.getElementById('f-password').value,
@@ -1032,14 +1063,13 @@
             if (!boundsData) { showModal("⚠️ 請先在地圖上圈選走失範圍！"); return; }
 
             const payload = getBasePayload();
-            document.getElementById('app-id').value = payload.id; // 保存產生的 UUID
+            document.getElementById('app-id').value = payload.id; 
 
             document.getElementById('step1-next-btn').innerText = "⏳ 註冊同步中...";
             document.getElementById('step1-next-btn').disabled = true;
 
             isPartialSave = true;
             
-            // 檢查 WebSocket 連線狀態
             if (ws.readyState !== WebSocket.OPEN) {
                 showModal("⚠️ 伺服器未連線，請重新整理頁面後再試。");
                 document.getElementById('step1-next-btn').innerText = "下一步 👉 (完成初步註冊)";
@@ -1049,7 +1079,6 @@
 
             ws.send(JSON.stringify(payload));
 
-            // 設定 10 秒逾時機制
             clearTimeout(step1Timeout);
             step1Timeout = setTimeout(() => {
                 if (isPartialSave && document.getElementById('step1-next-btn').disabled) {
@@ -1073,7 +1102,6 @@
             
             document.getElementById('submit-form-btn').disabled = true;
             
-            // 初始化進度面板
             updateProgress(1, 'pending', '處理主照片...');
             updateProgress(2, 'pending', '處理額外相片...');
             updateProgress(3, 'pending', '處理影片...');
@@ -1081,7 +1109,6 @@
             document.getElementById('upload-progress-modal').classList.remove('hidden');
 
             try {
-                // 1. 主照片
                 updateProgress(1, 'active', '正在處理主照片...');
                 let mainPhotoUrl = document.getElementById('f-main-photo-url').value;
                 if (croppedMainPhotoBlob) {
@@ -1090,11 +1117,10 @@
                     const urls = await uploadFiles(document.getElementById('f-main-photo'));
                     if(urls.length > 0) mainPhotoUrl = urls[0];
                 }
-                if (!mainPhotoUrl && !currentOwnerAcc) { throw new Error("請上傳主照片！"); }
+                if (!mainPhotoUrl && !currentOwnerAcc && !isAdminEditing) { throw new Error("請上傳主照片！"); }
                 document.getElementById('f-main-photo-url').value = mainPhotoUrl;
                 updateProgress(1, 'done', '主照片處理完成');
 
-                // 2. 額外相片
                 updateProgress(2, 'active', '正在上傳額外相片...');
                 let photosData = JSON.parse(document.getElementById('f-photos-data').value || '[]');
                 if (document.getElementById('f-photos').files.length > 0) {
@@ -1104,7 +1130,6 @@
                 document.getElementById('f-photos-data').value = JSON.stringify(photosData);
                 updateProgress(2, 'done', '額外相片上傳完成');
 
-                // 3. 影片
                 updateProgress(3, 'active', '正在處理與上傳影片...');
                 let videosData = JSON.parse(document.getElementById('f-videos-data').value || '[]');
                 if (document.getElementById('f-videos').files.length > 0) {
@@ -1117,19 +1142,16 @@
                 document.getElementById('f-videos-data').value = JSON.stringify(videosData);
                 updateProgress(3, 'done', '影片處理完成');
 
-                // 4. 同步至伺服器
                 updateProgress(4, 'active', '正在將最終資料同步至伺服器...');
                 const payload = getBasePayload();
                 isPartialSave = false;
                 
-                // 檢查 WebSocket 連線狀態
                 if (ws.readyState !== WebSocket.OPEN) {
                     throw new Error("伺服器連線已斷開，請重新整理頁面。");
                 }
                 
                 ws.send(JSON.stringify(payload));
                 
-                // 設定 15 秒逾時機制 (給予最終寫入較多時間)
                 clearTimeout(step2Timeout);
                 step2Timeout = setTimeout(() => {
                     if (!isPartialSave && document.getElementById('submit-form-btn').disabled) {
@@ -1227,14 +1249,14 @@
 
         function loadFormData(appData) {
             document.getElementById('app-id').value = appData.id;
-            document.getElementById('f-account').value = appData.ownerInfo.account;
+            document.getElementById('f-account').value = appData.ownerInfo.account || "";
             document.getElementById('f-line').value = appData.ownerInfo.lineId || appData.ownerInfo.line_id || "";
             document.getElementById('f-phone').value = appData.ownerInfo.phone || "";
             
             const pd = appData.projectData;
-            document.getElementById('f-proj-name').value = pd.name;
-            document.getElementById('f-animal-name').value = pd.animalName;
-            document.getElementById('f-type').value = pd.type;
+            document.getElementById('f-proj-name').value = pd.name || "";
+            document.getElementById('f-animal-name').value = pd.animalName || "";
+            document.getElementById('f-type').value = pd.type || "other";
             
             document.getElementById('f-lost-date').value = pd.lostDate || "";
             if(pd.lostDate) { document.getElementById('f-lost-date-picker').value = pd.lostDate.replace(/\//g, '-'); }
@@ -1245,7 +1267,7 @@
                 updateBoundsStatus("✅ 已繼承原範圍", true);
             }
             
-            document.getElementById('f-main-photo-url').value = pd.mainPhoto;
+            document.getElementById('f-main-photo-url').value = pd.mainPhoto || "";
             if (pd.mainPhoto) {
                 let previewSrc = pd.mainPhoto;
                 if (previewSrc.startsWith('/images/')) { previewSrc = SERVER_HTTP_URL + previewSrc; }
@@ -1305,8 +1327,8 @@
                 div.innerHTML = `
                     <div class="flex gap-4 items-center w-full sm:w-auto">
                         <img src="${photoSrc}" class="w-16 h-16 object-cover border-2 border-black bg-gray-200">
-                        <div class="flex-1 cursor-pointer hover:bg-gray-100 p-1 -ml-1 transition-colors" onclick="showAdminDetail('${app.id}')" title="點擊查看詳細內容">
-                            <div class="font-black text-lg text-blue-700 underline decoration-blue-300 underline-offset-2">${pd.name} (${pd.animalName})</div>
+                        <div class="flex-1 cursor-pointer hover:bg-gray-100 p-1 -ml-1 transition-colors" onclick="adminEditApp('${app.id}')" title="點擊編輯詳細內容">
+                            <div class="font-black text-lg text-blue-700 underline decoration-blue-300 underline-offset-2">${pd.name || '未命名'} (${pd.animalName || '未知'})</div>
                             <div class="text-xs font-bold text-gray-600 mt-1">申請人 LINE: ${app.ownerInfo.lineId || app.ownerInfo.line_id || '未提供'} | 電話: ${app.ownerInfo.phone || '未提供'}</div>
                             <div class="text-xs font-bold text-gray-600 mt-1">狀態: <span class="${app.status==='approved'?'text-green-600':'text-orange-500'}">${app.status}</span></div>
                         </div>
@@ -1321,59 +1343,28 @@
             });
         }
 
-        function showAdminDetail(appId) {
-            const app = allAdminApps.find(a => a.id === appId);
-            if (!app) return;
-            const pd = app.projectData;
-            const content = document.getElementById('admin-detail-content');
-            
-            const typeStr = pd.type || '未知';
-            const lostDateStr = pd.lostDate || '未知';
-            
-            let announcementStr = pd.announcement || "";
-            let rewardAmount = "無";
-            let rewardMatch = announcementStr.match(/^【懸賞金額：(.*?)元】\n/);
-            if (rewardMatch) { rewardAmount = rewardMatch[1] + " 元"; announcementStr = announcementStr.replace(/^【懸賞金額：.*?元】\n/, ''); }
-            const annStr = announcementStr ? announcementStr.replace(/\n/g, '<br>') : '無公告';
-            
-            let boundsStr = "未設定";
-            if (pd.bounds && pd.bounds.length === 2) { boundsStr = `[${pd.bounds[0][0].toFixed(4)}, ${pd.bounds[0][1].toFixed(4)}] 至 [${pd.bounds[1][0].toFixed(4)}, ${pd.bounds[1][1].toFixed(4)}]`; }
+        function adminEditApp(appId) {
+            const appData = allAdminApps.find(a => a.id === appId);
+            if (!appData) return;
 
-            let photoSrc = pd.mainPhoto;
-            if (photoSrc && photoSrc.startsWith('/images/')) { photoSrc = SERVER_HTTP_URL + photoSrc; }
+            isAdminEditing = true;
+            currentEditingAppStatus = appData.status;
+            currentOwnerAcc = appData.ownerInfo.account || 'admin_edit'; 
+            
+            loadFormData(appData);
+            document.getElementById('f-password').value = appData.ownerInfo.password || '';
+            document.getElementById('f-password-confirm').value = appData.ownerInfo.password || '';
 
-            content.innerHTML = `
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="bg-gray-100 p-3 border-2 border-black">
-                        <h4 class="font-bold text-blue-700 border-b-2 border-gray-300 mb-2">飼主聯絡資訊</h4>
-                        <p class="text-sm font-bold">LINE ID: <span class="text-gray-700">${app.ownerInfo.lineId || app.ownerInfo.line_id || '未提供'}</span></p>
-                        <p class="text-sm font-bold">電話: <span class="text-gray-700">${app.ownerInfo.phone || '未提供'}</span></p>
-                        <p class="text-sm font-bold">登入帳號: <span class="text-gray-700">${app.ownerInfo.account || '未設定'}</span></p>
-                    </div>
-                    <div class="bg-gray-100 p-3 border-2 border-black">
-                        <h4 class="font-bold text-orange-600 border-b-2 border-gray-300 mb-2">寵物基本資料</h4>
-                        <p class="text-sm font-bold">專案名稱: <span class="text-gray-700">${pd.name}</span></p>
-                        <p class="text-sm font-bold">動物稱呼: <span class="text-gray-700">${pd.animalName}</span></p>
-                        <p class="text-sm font-bold">動物類別: <span class="text-gray-700">${typeStr}</span></p>
-                        <p class="text-sm font-bold">走失日期: <span class="text-gray-700">${lostDateStr}</span></p>
-                    </div>
-                </div>
-                <div class="bg-gray-100 p-3 border-2 border-black mt-4">
-                    <h4 class="font-bold text-green-700 border-b-2 border-gray-300 mb-2">懸賞與公告</h4>
-                    <p class="text-sm font-bold text-red-600 mb-2">懸賞金額: ${rewardAmount}</p>
-                    <div class="text-sm font-bold text-gray-700 mb-2 leading-relaxed bg-white p-2 border border-gray-300">${annStr}</div>
-                    ${pd.actionLink && pd.actionLink.url ? `<p class="text-sm font-bold">群組連結: <a href="${pd.actionLink.url}" target="_blank" class="text-blue-500 underline">${pd.actionLink.text || '前往連結'}</a></p>` : '<p class="text-sm text-gray-500 font-bold">無自訂群組連結</p>'}
-                </div>
-                <div class="bg-gray-100 p-3 border-2 border-black mt-4">
-                    <h4 class="font-bold text-purple-700 border-b-2 border-gray-300 mb-2">主照片與範圍</h4>
-                    <img src="${photoSrc}" class="w-full max-w-[200px] border-2 border-black mb-2 aspect-square object-cover">
-                    <p class="text-xs font-bold text-gray-600 break-all">範圍座標: ${boundsStr}</p>
-                    ${pd.videos && pd.videos.length > 0 ? `<p class="text-xs font-bold text-blue-600 mt-2">包含 ${pd.videos.length} 部影片，請至地圖端查看。</p>` : ''}
-                </div>
-            `;
-            document.getElementById('admin-detail-modal').classList.remove('hidden');
+            document.getElementById('wizard-step-2').classList.add('hidden');
+            document.getElementById('wizard-step-1').classList.remove('hidden');
+            document.getElementById('wizard-step-indicator').innerText = "步驟 1 / 2";
+            
+            switchView('apply');
+            
+            let safeName = escapeHTML(appData.projectData.name || '未命名專案');
+            document.getElementById('form-title').innerHTML = `📝 管理員編輯: <span class="text-red-600">${safeName}</span> <button type="button" onclick="switchView('admin')" class="ml-4 text-sm bg-gray-500 text-white px-3 py-1 rounded shadow cursor-pointer border-2 border-black hover:bg-gray-400">返回管理</button>`;
         }
-        function closeAdminDetailModal() { document.getElementById('admin-detail-modal').classList.add('hidden'); }
+
         function adminReview(appId, newStatus) { if (confirm(`確定要將此專案設為 ${newStatus} 嗎？`)) { ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: appId, status: newStatus })); } }
     </script>
 </body>
