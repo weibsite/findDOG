@@ -57,6 +57,9 @@
     <div id="map-container"><div id="map"></div></div>
     <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black/90 touch-none"></div>
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
+    
+    <!-- GPS 斷線警告標示 -->
+    <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
@@ -199,6 +202,7 @@
         
         let currentProjectHasPrize = false, lotteryTickets = 0, lotteryTimeRemaining = 300, isTrackingStarted = false, lastFullSyncTime = 0, slotSpinning = false, slotTimer = null;
         let isMapInteracting = false, mapInteractionTimer = null, powerSavingTimer = null, wakeLock = null, isPowerSaving = false;
+        let geoFailCount = 0;
         let isAnnounceCollapsed = lsGet('dogMap_announceCollapsed') === 'true', animalInfoCollapseTimer = null;
         let viewerPhotos = [], currentViewerIndex = 0, touchStartX = 0, touchEndX = 0, galleryLoadedCount = 0, currentGalleryType = 'photos';
         let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false;
@@ -370,18 +374,64 @@
             if(!navigator.geolocation) return handleGeoError({code:0,message:"瀏覽器不支援"}, auto);
             navigator.geolocation.getCurrentPosition(p=>{handleValidPosition(p.coords.latitude, p.coords.longitude, Date.now()); finishUIReveal();}, e=>handleGeoError(e, auto), {enableHighAccuracy:true, timeout:15000});
             if(watchId) navigator.geolocation.clearWatch(watchId);
-            watchId = navigator.geolocation.watchPosition(p=>{handleValidPosition(p.coords.latitude, p.coords.longitude, Date.now());}, e=>{}, {enableHighAccuracy:true, maximumAge:5000});
+            watchId = navigator.geolocation.watchPosition(p=>{
+                handleValidPosition(p.coords.latitude, p.coords.longitude, Date.now());
+            }, e=>{
+                if(isTrackingStarted && !isSpectatorMode) show('gps-warning');
+            }, {enableHighAccuracy:true, maximumAge:5000});
         }
+        
         function handleGeoError(e, auto) {
-            if(isSpectatorMode) return; $('master-start-btn').innerText="START [重新授權]";
-            if(auto){ $('startup-overlay').style.display='flex'; $('startup-overlay').style.opacity='1'; ['status-toast','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','project-select-wrapper','my-route-btn','eva-grid-btn','floating-gift-container'].forEach(hide); }
+            if(isSpectatorMode) return; 
+            
+            // 將按鈕改為紅色並提示可以免定位進入
+            $('master-start-btn').innerText="直接進入地圖 [無定位]";
+            $('master-start-btn').style.backgroundColor = "#ef4444";
+            $('master-start-btn').style.color = "white";
+            
             let msg = e.code===1 ? "⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。" : (e.code===2 ? "無法獲取位置，請確認 GPS 已開啟。" : "獲取位置逾時，請檢查網路。");
+            
             let em=$('error-msg'); em.innerText=msg.replace(/\n/g,' '); show('error-msg');
-            if(e.code===1){ em.className="text-red-700 font-bold text-sm mt-6 bg-red-100 p-4 rounded-lg cursor-pointer border-2 border-red-500 border-dashed block whitespace-pre-wrap"; em.innerText=msg; em.onclick=()=>{let t=document.createElement("textarea"); t.value=window.location.href; document.body.appendChild(t); t.select(); try{document.execCommand('copy'); showCenterToast("✅ 網址已複製！");}catch(e){} document.body.removeChild(t);}; } else { em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null; }
-            if($('startup-overlay').style.display==='none') showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請使用瀏覽器打開這個網頁。", 6000);
+            if(e.code===1){ 
+                em.className="text-red-700 font-bold text-sm mt-6 bg-red-100 p-4 rounded-lg cursor-pointer border-2 border-red-500 border-dashed block whitespace-pre-wrap"; 
+                em.innerText=msg; 
+                em.onclick=()=>{let t=document.createElement("textarea"); t.value=window.location.href; document.body.appendChild(t); t.select(); try{document.execCommand('copy'); showCenterToast("✅ 網址已複製！");}catch(e){} document.body.removeChild(t);}; 
+            } else { 
+                em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null; 
+            }
+            
+            // 如果已經在主要畫面中 (startup 已經隱藏)，直接顯示上方警告
+            if($('startup-overlay').style.display==='none') {
+                show('gps-warning');
+                if(!auto) showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。", 6000);
+            } else {
+                // 如果是手動點擊開始且失敗
+                if (!auto) {
+                    geoFailCount++;
+                    // 如果使用者已經按過一次被拒絕，第二次點擊就直接放行進入
+                    if (geoFailCount > 1) {
+                        finishUIReveal();
+                        show('gps-warning');
+                        text('toast-text', "GPS未連線");
+                        $('sync-ping').style.backgroundColor = '#ef4444';
+                    }
+                }
+            }
         }
-        function finishUIReveal() { $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} requestWakeLock(); resetPowerSavingTimer(); }
+        
+        function finishUIReveal() { 
+            $('startup-overlay').style.display='none'; 
+            isTrackingStarted=true; 
+            ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); 
+            updateGiftUI(); 
+            text('toast-text',"位置同步成功"); 
+            if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
+            requestWakeLock(); 
+            resetPowerSavingTimer(); 
+        }
+        
         function handleValidPosition(lat, lng, ts) {
+            hide('gps-warning');
             let isFirstLock = !localHistory.length;
             if(isSpectatorMode) return; if(isFirstLock) map.setView([lat,lng], 17);
             
