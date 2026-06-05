@@ -35,11 +35,16 @@
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
         ::-webkit-scrollbar-thumb { background: #1a202c; }
+        
         #animal-info-section.mobile-collapsed { height: 36px !important; }
         #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
         #animal-info-section.mobile-collapsed #animal-name-date { text-align: left; padding-left: 8px; padding-right: 65px; background: transparent; color: #1a202c; line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-        #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
+
+        /* 相簿按鈕在縮小狀態時的隱藏與顯示切換 */
+        #animal-info-section.mobile-collapsed .gallery-btn-overlay { display: none !important; }
+        #header-gallery-btn { display: none; }
+        #animal-info-section.mobile-collapsed + div #header-gallery-btn { display: block; }
 
         /* 左下角按鈕群 - 手機版自動收合與文字簡介 */
         @media (max-width: 640px) {
@@ -88,7 +93,6 @@
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
     
-    <!-- 取消了 expanded 類別，確保載入時只顯示 ICON + 名稱 -->
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
     <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
@@ -110,8 +114,25 @@
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false"><div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div><div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider pointer-events-none z-10" id="animal-name-date"></div><div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] z-10">📸 看相簿</div></div>
-            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div>
+            <!-- 動物資訊與相片卡片 -->
+            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
+                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
+                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
+                <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div>
+                <div class="absolute bottom-0 left-0 right-0 pr-[70px] bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider pointer-events-none z-10" id="animal-name-date"></div>
+                <!-- 一般狀態下：位於最右下角的相簿按鈕 -->
+                <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
+            </div>
+            
+            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2">
+                <span>📢 最新公告</span>
+                <div class="flex items-center gap-1">
+                    <!-- 縮小狀態下：位於文字與展開鈕中間的相簿按鈕 -->
+                    <button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button>
+                    <button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button>
+                </div>
+            </div>
+            
             <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300 text-[11px] max-h-32 overflow-y-auto"></div><div id="announcement-action-container" class="mt-2 hidden"></div>
         </div>
     </div>
@@ -640,7 +661,35 @@
 
         const handleCardSwipe=()=>{ if(Math.abs(cardTouchEndX-cardTouchStartX)>40) switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1); };
         on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
-        ais.addEventListener('click',e=>{ if(isCardSwiping){e.preventDefault(); e.stopPropagation(); return;} if(e.target.classList.contains('gallery-btn-overlay')){ text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal'); } else if(e.target.id==='animal-main-photo') openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000); } });
+
+        // 獨立出開啟相簿的方法，供不同位置的按鈕呼叫
+        const openGallery = () => { 
+            text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); 
+            renderGallery('photos'); 
+            show('gallery-modal'); 
+        };
+
+        ais.addEventListener('click',e=>{ 
+            if(isCardSwiping){e.preventDefault(); e.stopPropagation(); return;} 
+            
+            // 點擊原有的照片內相簿按鈕
+            if(e.target.classList.contains('gallery-btn-overlay')){ 
+                openGallery();
+            } else if(e.target.id==='animal-main-photo') {
+                openCompareModal(); 
+            } else if(ais.classList.contains('mobile-collapsed')){ 
+                ais.classList.remove('mobile-collapsed'); 
+                if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); 
+                animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000); 
+            } 
+        });
+
+        // 綁定縮小時，顯示在最新公告旁的相簿按鈕
+        on('header-gallery-btn', 'click', e => {
+            e.stopPropagation(); 
+            openGallery();
+        });
+
         on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
         
         function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 pixel-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 pixel-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
