@@ -494,8 +494,20 @@
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
             let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
-            let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; html('announcement-text', escapeHTML(a).replace(/\n/g,'<br>'));
-            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
+            let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; 
+            
+            // --- 新增：自動過濾並轉換網址為可點擊連結 ---
+            let escapedText = escapeHTML(a).replace(/\n/g,'<br>');
+            // 使用正則表達式找出 http 或 https 開頭的網址
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            let linkedText = escapedText.replace(urlRegex, function(url) {
+                // 將找到的網址轉換為 <a> 標籤，加入 Tailwind class 讓它更明顯
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`;
+            });
+            html('announcement-text', linkedText);
+            // ------------------------------------------------
+            
+            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
         }
         function drawAllProjects() {
