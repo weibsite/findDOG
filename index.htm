@@ -38,7 +38,7 @@
         
         #animal-info-section.mobile-collapsed { height: 36px !important; }
         #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
-        #animal-info-section.mobile-collapsed #animal-name-date { text-align: left; padding-left: 8px; padding-right: 65px; background: transparent; color: #1a202c; line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
 
         /* 相簿按鈕在縮小狀態時的隱藏與顯示切換 */
@@ -114,26 +114,13 @@
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <!-- 動物資訊與相片卡片 -->
-            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
-                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
-                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
-                <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div>
-                <div class="absolute bottom-0 left-0 right-0 pr-[70px] bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider pointer-events-none z-10" id="animal-name-date"></div>
-                <!-- 一般狀態下：位於最右下角的相簿按鈕 -->
-                <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
+            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false"><div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div><div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] z-10">📸 看相簿</div></div>
+            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
+            <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
+                <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
+                <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
+                <div id="announcement-action-container" class="mt-2 hidden"></div>
             </div>
-            
-            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2">
-                <span>📢 最新公告</span>
-                <div class="flex items-center gap-1">
-                    <!-- 縮小狀態下：位於文字與展開鈕中間的相簿按鈕 -->
-                    <button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button>
-                    <button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button>
-                </div>
-            </div>
-            
-            <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300 text-[11px] max-h-32 overflow-y-auto"></div><div id="announcement-action-container" class="mt-2 hidden"></div>
         </div>
     </div>
     
@@ -498,7 +485,7 @@
         }
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
-            let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date',`${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
+            let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; html('announcement-text', escapeHTML(a).replace(/\n/g,'<br>'));
             let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
@@ -583,12 +570,12 @@
         const offsetLatLng=(lat,lng,dN,dE)=>{ let p=Math.PI; return [lat+(dN/6378137)*(180/p), lng+(dE/(6378137*Math.cos(lat*p/180)))*(180/p)]; };
         const getHexPoints=(cl,cg,R)=>{ let pt=[]; for(let i=0;i<6;i++) pt.push(offsetLatLng(cl,cg,R*Math.sin(Math.PI/180*(60*i-30)),R*Math.cos(Math.PI/180*(60*i-30)))); return pt; };
         function drawEvaGrid() { if(!evaGridLayer)evaGridLayer=L.layerGroup().addTo(map); else evaGridLayer.clearLayers(); if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); let R=300, p=PROJECTS[currentProjectKey]; if(!p)return; let cl=(p.bounds[0][0]+p.bounds[1][0])/2, cg=(p.bounds[0][1]+p.bounds[1][1])/2, cos=Math.cos(cl*Math.PI/180), av=[]; for(let u in allUsersData) if(allUsersData[u].history)av.push(...allUsersData[u].history); let mr=0; av.forEach(pt=>{ let y=(pt.lat-cl)*(6378137*Math.PI/180), x=(pt.lng-cg)*(6378137*cos*Math.PI/180), q=(Math.sqrt(3)/3*x-1/3*y)/R, r=(2/3*y)/R, rq=Math.round(q), rr=Math.round(r), rs=Math.round(-q-r), qd=Math.abs(rq-q), rd=Math.abs(rr-r), sd=Math.abs(rs-(-q-r)); if(qd>rd&&qd>sd)rq=-rr-rs; else if(rd>sd)rr=-rq-rs; let rg=Math.max(Math.abs(rq),Math.abs(rr),Math.abs(-rq-rr)); if(rg>mr)mr=rg; }); let tr=Math.max(3,Math.min(mr+2,12)); map.flyToBounds([[cl-(1500/111000),cg-(1500/(111000*cos))],[cl+(1500/111000),cg+(1500/(111000*cos))]],{animate:true,duration:1}); let cr=0;
-            function nR() { if(!isEvaMode||cr>tr)return; let rh=[]; if(cr===0)rh.push({q:0,r:0}); else for(let q=-cr;q<=cr;q++)for(let r=-cr;r<=cr;r++)if(Math.max(Math.abs(q),Math.abs(r),Math.abs(-q-r))===cr)rh.push({q,r}); rh.forEach(h=>{ let cL=offsetLatLng(cl,cg,1.5*R*h.r, Math.sqrt(3)*R*(h.q+h.r/2)), tp=[cL]; for(let i=0;i<6;i++)tp.push(offsetLatLng(cL[0],cL[1],75*Math.sin(i*Math.PI/3),75*Math.cos(i*Math.PI/3))); for(let i=0;i<12;i++)tp.push(offsetLatLng(cL[0],cL[1],150*Math.sin(i*Math.PI/6),150*Math.cos(i*Math.PI/6))); for(let i=0;i<18;i++)tp.push(offsetLatLng(cL[0],cL[1],225*Math.sin(i*Math.PI/9),225*Math.cos(i*Math.PI/9))); let cc=0, hx=0; for(let t of tp){for(let pt of av){if(getDistance(t[0],t[1],pt.lat,pt.lng)<=60){cc++;if(pt.timestamp>hx)hx=pt.timestamp;break;}}} let th=""; if(cc>0){let d=Math.min(100,Math.floor((cc/tp.length)*100)), df=Math.max(0,Date.now()-hx), dc=d<=50?'#ef4444':d<=98?'#f97316':'#39ff14'; th=`<div class="text-center font-bold" style="color:${dc};text-shadow:1px 1px 0px #000,-1px -1px 0px #000;font-family:monospace;"><div class="text-xl">${d}%</div><div class="text-[10px] text-[#39ff14]">${df>3600000?Math.floor(df/3600000)+'時':''}${Math.floor((df%3600000)/60000)}分前</div></div>`;}else th=`<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow:1px 1px 0px #000;font-size:11px;">未探索</div>`; L.polygon(getHexPoints(cL[0],cL[1],R), {color:'#39ff14',weight:2,fillColor:'#39ff14',fillOpacity:0.05,dashArray:'5, 5',pane:'evaPane'}).addTo(evaGridLayer); L.marker(cL,{icon:L.divIcon({className:'custom-div-icon',html:th,iconSize:[80,50],iconAnchor:[40,25]}),zIndexOffset:-100,pane:'evaPane'}).addTo(evaGridLayer); }); if([2,5,8].includes(cr)){let vr=Math.min(3000,(cr+1.5)*R*1.5); map.flyToBounds([[cl-vr/111000,cg-vr/(111000*cos)],[cl+vr/111000,cg+vr/(111000*cos)]],{animate:true,duration:1.5});} cr++; evaAnimationTimeout=setTimeout(nR, cr>9?1000:cr>6?500:cr>3?250:100); } evaAnimationTimeout=setTimeout(nR, 500);
+        } evaAnimationTimeout=setTimeout(nR, 500);
         }
         on('eva-grid-btn','click',()=>{ isEvaMode=!isEvaMode; let b=$('eva-grid-btn'); if(isEvaMode){b.innerText="❌ 關閉顯示"; b.style.cssText="background-color:#ef4444;color:white;"; drawEvaGrid();} else {b.innerText="🕸️ 完成度"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); if(evaGridLayer){evaGridLayer.clearLayers(); map.removeLayer(evaGridLayer); evaGridLayer=null;}} });
 
         // --- 雜項 UI 與相片對比 ---
-        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-text'); hide('announcement-action-container'); text('toggle-announce-panel-btn','➕');} else {show('announcement-text'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
+        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-content-wrapper'); text('toggle-announce-panel-btn','➕');} else {show('announcement-content-wrapper'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
         on('toggle-announce-panel-btn','click',()=>{ isAnnounceCollapsed=!isAnnounceCollapsed; lsSet('dogMap_announceCollapsed', isAnnounceCollapsed); applyAnnouncePanelCollapseState(); });
         
         $('profile-color').addEventListener('input', e=>$('profile-hex').value=e.target.value.toUpperCase());
