@@ -156,6 +156,25 @@
         let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle = null;
         let PROJECTS = {};
         
+        // 核心邏輯：將所有專案依照距離 (由近到遠) 進行排序，若無定位則依地理排序 (由北到南，再由西到東)
+        const getSortedProjectKeys = () => {
+            return Object.keys(PROJECTS).sort((a, b) => {
+                let pA = PROJECTS[a], pB = PROJECTS[b];
+                let latA = (pA.bounds[0][0] + pA.bounds[1][0]) / 2, lngA = (pA.bounds[0][1] + pA.bounds[1][1]) / 2;
+                let latB = (pB.bounds[0][0] + pB.bounds[1][0]) / 2, lngB = (pB.bounds[0][1] + pB.bounds[1][1]) / 2;
+                
+                // 如果有使用者座標，依照距離由近到遠排序
+                if (lastSavedPos) {
+                    let distA = getDistance(lastSavedPos.lat, lastSavedPos.lng, latA, lngA);
+                    let distB = getDistance(lastSavedPos.lat, lastSavedPos.lng, latB, lngB);
+                    return distA - distB;
+                }
+                
+                // 否則退回預設：由北到南排序
+                return Math.abs(latA - latB) > 0.01 ? latB - latA : lngA - lngB;
+            });
+        };
+
         const getProjectFromURL = () => {
             const params = new URLSearchParams(window.location.search);
             const fromParam = params.get('project');
@@ -358,15 +377,20 @@
         }
         function finishUIReveal() { $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} requestWakeLock(); resetPowerSavingTimer(); }
         function handleValidPosition(lat, lng, ts) {
-            if(isSpectatorMode) return; if(!localHistory.length) map.setView([lat,lng], 17);
+            let isFirstLock = !localHistory.length;
+            if(isSpectatorMode) return; if(isFirstLock) map.setView([lat,lng], 17);
             
             if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().pad(-0.1).contains([lat,lng])) map.setView([lat,lng], map.getZoom()||17, {animate:true});
             
             if(lastSavedPos && getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng)<15 && ts-lastSavedPos.timestamp<180000) return;
             const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory', JSON.stringify(localHistory));
             allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey}; updateStepsCounter();
+            
+            if (isFirstLock) updateProjectDropdown();
+            
             saveLocationToServer(pt, false); renderMap();
         }
+        function saveLocationToServer(pt, force) {
         function saveLocationToServer(pt, force) {
             if(!isSystemReady||isSpectatorMode) return; const n=Date.now();
             if(force||n-lastFullSyncTime>300000){ wsSend("update_location", {data:{userName:currentUserName, color:dbUserColor, history:localHistory, lastUpdate:n}}); lastFullSyncTime=n; } else if(pt) wsSend("append_location", {data:{userName:currentUserName, color:dbUserColor, point:pt}});
@@ -374,9 +398,23 @@
         function updateStepsCounter() { let d=0; if(localHistory?.length>1) for(let i=1;i<localHistory.length;i++){let x=getDistance(localHistory[i-1].lat,localHistory[i-1].lng,localHistory[i].lat,localHistory[i].lng); if(x<1000)d+=x;} text('step-counter-value', Math.floor(d/0.6).toLocaleString()); }
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){ s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return; } show('animal-info-section');
-            Object.keys(PROJECTS).forEach(k=>{ s.innerHTML+=`<option value="${k}">🎯 ${PROJECTS[k].animalName||PROJECTS[k].name}</option>`; });
+            // 取出經過排序的專案
+            let sortedKeys = getSortedProjectKeys();
+            sortedKeys.forEach(k=>{
+                let p = PROJECTS[k];
+                let distText = "";
+                // 距離計算與格式化顯示
+                if (lastSavedPos) {
+                    let cl = (p.bounds[0][0] + p.bounds[1][0]) / 2;
+                    let cg = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+                    let dist = getDistance(lastSavedPos.lat, lastSavedPos.lng, cl, cg);
+                    distText = dist < 1000 ? ` (${Math.round(dist)}m)` : ` (${(dist / 1000).toFixed(1)}km)`;
+                }
+                s.innerHTML+=`<option value="${k}">🎯 ${p.animalName||p.name}${distText}</option>`;
+            });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey]) fk=currentProjectKey; else if(currentProjectKey) { for(let k in PROJECTS) if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey) {fk=k; break;} }
-            if(fk){ currentProjectKey=fk; s.value=currentProjectKey; } else { let ks=Object.keys(PROJECTS); if(ks.length){currentProjectKey=ks[Math.floor(Math.random()*ks.length)]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);} }
+            // 預設選中依照排序後的第一個 (最近的) 專案
+            if(fk){ currentProjectKey=fk; s.value=currentProjectKey; } else { if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);} }
             
             if(currentProjectKey && PROJECTS[currentProjectKey]) {
                 const displayName = PROJECTS[currentProjectKey].animalName || PROJECTS[currentProjectKey].name || currentProjectKey;
@@ -534,7 +572,8 @@
         ais.addEventListener('mousedown',e=>{cardTouchStartX=e.screenX; cardTouchStartY=e.screenY; isCardSwiping=false;}); ais.addEventListener('mousemove',e=>{if(e.buttons===1&&Math.abs(e.screenX-cardTouchStartX)>15)isCardSwiping=true;}); ais.addEventListener('mouseup',e=>{if(isCardSwiping){cardTouchEndX=e.screenX; cardTouchEndY=e.screenY; handleCardSwipe();}});
         
         const switchProjectByDirection = (d, fromCompare = false, startPos = 'first') => { 
-            let k = Object.keys(PROJECTS); if (k.length <= 1) return; 
+            // 替換原本的無序 Array，改為取得地理排序過的 Array
+            let k = getSortedProjectKeys(); if (k.length <= 1) return; 
             let i = k.indexOf(currentProjectKey); 
             i = d < 0 ? (i - 1 + k.length) % k.length : (i + 1) % k.length; 
             $('switch-project-select').value = k[i]; 
