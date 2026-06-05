@@ -35,11 +35,16 @@
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
         ::-webkit-scrollbar-thumb { background: #1a202c; }
+        
         #animal-info-section.mobile-collapsed { height: 36px !important; }
         #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
-        #animal-info-section.mobile-collapsed #animal-name-date { text-align: left; padding-left: 8px; padding-right: 65px; background: transparent; color: #1a202c; line-height: 32px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         #animal-info-section.mobile-collapsed .gallery-btn-overlay { top: 50%; transform: translateY(-50%); }
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
+
+        /* 相簿按鈕在縮小狀態時的隱藏與顯示切換 */
+        #animal-info-section.mobile-collapsed .gallery-btn-overlay { display: none !important; }
+        #header-gallery-btn { display: none; }
+        #animal-info-section.mobile-collapsed + div #header-gallery-btn { display: block; }
 
         /* 左下角按鈕群 - 手機版自動收合與文字簡介 */
         @media (max-width: 640px) {
@@ -88,7 +93,6 @@
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
     
-    <!-- 取消了 expanded 類別，確保載入時只顯示 ICON + 名稱 -->
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
     <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
@@ -110,9 +114,13 @@
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false"><div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div><div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider pointer-events-none z-10" id="animal-name-date"></div><div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] z-10">📸 看相簿</div></div>
-            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div>
-            <div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300 text-[11px] max-h-32 overflow-y-auto"></div><div id="announcement-action-container" class="mt-2 hidden"></div>
+            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false"><div id="card-next-btn" class="absolute right-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div><div class="gallery-btn-overlay absolute top-1 right-9 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] z-10">📸 看相簿</div></div>
+            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
+            <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
+                <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
+                <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
+                <div id="announcement-action-container" class="mt-2 hidden"></div>
+            </div>
         </div>
     </div>
     
@@ -305,59 +313,68 @@
         // --- WebSocket 處理 ---
         function connectWebSocket() {
             if(ws && (ws.readyState===WebSocket.CONNECTING || ws.readyState===WebSocket.OPEN)) return;
-            ws = new WebSocket(NGROK_WS_URL);
-            ws.onopen = () => { isSystemReady=true; $('sync-ping').style.backgroundColor='#10b981'; text('toast-text',"連線成功"); wsReconnectDelay=3000; wsSend("init"); if(localHistory.length) saveLocationToServer(null,true); };
-            ws.onmessage = e => {
-                const res = JSON.parse(e.data);
-                if(['sync','projects_updated'].includes(res.type) && (res.dynamicProjects||res.data?.dynamicProjects)) {
-                    const np = res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{ if(!np[k].isStray) PROJECTS[k]=np[k]; });
-                    Object.keys(PROJECTS).forEach(k=>{ if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。") allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。"; });
-                    let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey && res.type==='sync') wsSend("init"); drawAllProjects(); updateAnimalInfoCard();
-                }
-                if(res.type==='sync') {
-                    allUsersData=res.data.locations||{}; allSightings=res.data.sightings||{}; allRoutes=res.data.routes||{};
-                    if(res.data.announcements) Object.keys(res.data.announcements).forEach(k=>{ if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。") allAnnouncements[k]=res.data.announcements[k]; });
-                    currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; lotteryTickets=res.data.tickets||0;
-                    updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI();
-                    if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
-                    
-                    if (!hasInitialUrlZoomed && getProjectFromURL() && PROJECTS[currentProjectKey]) {
-                        let p = PROJECTS[currentProjectKey];
-                        let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2, cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
-                        let rLat = 300 / 111000, rLng = 300 / (111000 * Math.cos(cLat * Math.PI / 180));
-                        map.flyToBounds([[cLat - rLat, cLng - rLng], [cLat + rLat, cLng + rLng]], { animate: true, duration: 1.5 });
-                        isMapInteracting = true;
-                        if(mapInteractionTimer) clearTimeout(mapInteractionTimer);
-                        mapInteractionTimer = setTimeout(()=>isMapInteracting=false, 30000); 
-                        hasInitialUrlZoomed = true;
+            let wsUrl = NGROK_WS_URL || (window.location.origin.replace('http','ws')+'/ws');
+            if(!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
+                console.warn('無效的 WS 網址:', wsUrl);
+                return;
+            }
+            try {
+                ws = new WebSocket(wsUrl);
+                ws.onopen = () => { isSystemReady=true; $('sync-ping').style.backgroundColor='#10b981'; text('toast-text',"連線成功"); wsReconnectDelay=3000; wsSend("init"); if(localHistory.length) saveLocationToServer(null,true); };
+                ws.onmessage = e => {
+                    const res = JSON.parse(e.data);
+                    if(['sync','projects_updated'].includes(res.type) && (res.dynamicProjects||res.data?.dynamicProjects)) {
+                        const np = res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{ if(!np[k].isStray) PROJECTS[k]=np[k]; });
+                        Object.keys(PROJECTS).forEach(k=>{ if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。") allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。"; });
+                        let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey && res.type==='sync') wsSend("init"); drawAllProjects(); updateAnimalInfoCard();
                     }
-                } else if(res.type==='sync_light') {
-                    let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;}
-                    if(isMe){
-                        if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes;
-                        if(res.data.announcements){ Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects(); }
-                        if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined) currentProjectHasPrize=res.data.has_prize_history[currentProjectKey];
-                        renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
+                    if(res.type==='sync') {
+                        allUsersData=res.data.locations||{}; allSightings=res.data.sightings||{}; allRoutes=res.data.routes||{};
+                        if(res.data.announcements) Object.keys(res.data.announcements).forEach(k=>{ if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。") allAnnouncements[k]=res.data.announcements[k]; });
+                        currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; lotteryTickets=res.data.tickets||0;
+                        updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI();
+                        if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
+                        
+                        if (!hasInitialUrlZoomed && getProjectFromURL() && PROJECTS[currentProjectKey]) {
+                            let p = PROJECTS[currentProjectKey];
+                            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2, cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+                            let rLat = 300 / 111000, rLng = 300 / (111000 * Math.cos(cLat * Math.PI / 180));
+                            map.flyToBounds([[cLat - rLat, cLng - rLng], [cLat + rLat, cLng + rLng]], { animate: true, duration: 1.5 });
+                            isMapInteracting = true;
+                            if(mapInteractionTimer) clearTimeout(mapInteractionTimer);
+                            mapInteractionTimer = setTimeout(()=>isMapInteracting=false, 30000); 
+                            hasInitialUrlZoomed = true;
+                        }
+                    } else if(res.type==='sync_light') {
+                        let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;}
+                        if(isMe){
+                            if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes;
+                            if(res.data.announcements){ Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects(); }
+                            if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined) currentProjectHasPrize=res.data.has_prize_history[currentProjectKey];
+                            renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
+                        }
+                    } else if(res.type==='ticket_update' && res.project===currentProjectKey) { lotteryTickets=res.tickets; updateGiftUI(); }
+                    else if(res.type==='user_appended') { let d=res.data, u=res.uid; if(!allUsersData[u]) allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[]}; else {allUsersData[u].userName=d.userName; allUsersData[u].color=d.color;} allUsersData[u].history.push(d.point); renderMap(); }
+                    else if(res.type==='user_update') { allUsersData[res.uid]=res.data; renderMap(); }
+                    else if(res.type==='prize_won_broadcast') { text('win-marquee-text', `🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); $('win-marquee-text').style.animation='none'; $('win-marquee-text').offsetHeight; $('win-marquee-text').style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000); }
+                    else if(res.type==='admin_login_result') { text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); show('delete-project-btn'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！"); }
+                    else if(res.type==='admin_action_result') { showModal(res.msg); }
+                    else if(res.type==='admin_user_info_result') { let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal'); }
+                    else if(res.type==='admin_prizes_data') {
+                        let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true;
+                        let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length){ av.forEach(i=>{ let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`; }); } else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as);
+                        let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length){ dr.forEach(i=>{ ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`; }); } else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds);
+                        const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`pixel-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？", ()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );
                     }
-                } else if(res.type==='ticket_update' && res.project===currentProjectKey) { lotteryTickets=res.tickets; updateGiftUI(); }
-                else if(res.type==='user_appended') { let d=res.data, u=res.uid; if(!allUsersData[u]) allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[]}; else {allUsersData[u].userName=d.userName; allUsersData[u].color=d.color;} allUsersData[u].history.push(d.point); renderMap(); }
-                else if(res.type==='user_update') { allUsersData[res.uid]=res.data; renderMap(); }
-                else if(res.type==='prize_won_broadcast') { text('win-marquee-text', `🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); $('win-marquee-text').style.animation='none'; $('win-marquee-text').offsetHeight; $('win-marquee-text').style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000); }
-                else if(res.type==='admin_login_result') { text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); show('delete-project-btn'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！"); }
-                else if(res.type==='admin_action_result') { showModal(res.msg); }
-                else if(res.type==='admin_user_info_result') { let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal'); }
-                else if(res.type==='admin_prizes_data') {
-                    let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true;
-                    let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length){ av.forEach(i=>{ let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`; }); } else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as);
-                    let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length){ dr.forEach(i=>{ ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`; }); } else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds);
-                    const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`pixel-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？", ()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );
-                }
-                else if(res.type==='admin_blacklist_data') { if(res.restrict_prob!==undefined)$('restrict-prob-input').value=res.restrict_prob; let c=$('blacklist-container'); c.innerHTML=''; if(!res.data||!res.data.length) c.innerHTML='<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>'; else { res.data.forEach(u=>{ c.innerHTML+=`<div class="border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(u.uid.substring(0,8))}...</div></div><button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap" data-uid="${u.uid}">✅ 解除</button></div>`; }); c.querySelectorAll('.unban-btn').forEach(b=>b.addEventListener('click',e=>{wsSend("admin_remove_blacklist",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="處理中...";})); } show('manage-blacklist-modal'); }
-                else if(res.type==='my_prizes_data') { let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length){ res.data.forEach(i=>{ let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`; }); } else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal'); }
-                else if(res.type==='draw_result') { setTimeout(()=>{ clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);} else {text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{ $('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){ let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`); } else showModal(res.msg||"💨 銘謝惠顧，下次再來！"); }, 800); }, 1500); }
-                else if(res.type==='parse_map_url_result') { if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;} }
-            };
-            ws.onclose = () => { isSystemReady=false; $('sync-ping').style.backgroundColor='#ef4444'; text('toast-text',"重連中..."); setTimeout(connectWebSocket, wsReconnectDelay); wsReconnectDelay=Math.min(wsReconnectDelay*2, 60000); };
+                    else if(res.type==='admin_blacklist_data') { if(res.restrict_prob!==undefined)$('restrict-prob-input').value=res.restrict_prob; let c=$('blacklist-container'); c.innerHTML=''; if(!res.data||!res.data.length) c.innerHTML='<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>'; else { res.data.forEach(u=>{ c.innerHTML+=`<div class="border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(u.uid.substring(0,8))}...</div></div><button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap" data-uid="${u.uid}">✅ 解除</button></div>`; }); c.querySelectorAll('.unban-btn').forEach(b=>b.addEventListener('click',e=>{wsSend("admin_remove_blacklist",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="處理中...";})); } show('manage-blacklist-modal'); }
+                    else if(res.type==='my_prizes_data') { let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length){ res.data.forEach(i=>{ let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`; }); } else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal'); }
+                    else if(res.type==='draw_result') { setTimeout(()=>{ clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);} else {text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{ $('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){ let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`); } else showModal(res.msg||"💨 銘謝惠顧，下次再來！"); }, 800); }, 1500); }
+                    else if(res.type==='parse_map_url_result') { if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;} }
+                };
+                ws.onclose = () => { isSystemReady=false; $('sync-ping').style.backgroundColor='#ef4444'; text('toast-text',"重連中..."); setTimeout(connectWebSocket, wsReconnectDelay); wsReconnectDelay=Math.min(wsReconnectDelay*2, 60000); };
+            } catch (err) {
+                console.error("WS 初始化失敗:", err);
+            }
         }
 
         // --- 定位與系統運作 ---
@@ -477,7 +494,7 @@
         }
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
-            let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date',`${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
+            let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; html('announcement-text', escapeHTML(a).replace(/\n/g,'<br>'));
             let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
@@ -567,7 +584,7 @@
         on('eva-grid-btn','click',()=>{ isEvaMode=!isEvaMode; let b=$('eva-grid-btn'); if(isEvaMode){b.innerText="❌ 關閉顯示"; b.style.cssText="background-color:#ef4444;color:white;"; drawEvaGrid();} else {b.innerText="🕸️ 完成度"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); if(evaGridLayer){evaGridLayer.clearLayers(); map.removeLayer(evaGridLayer); evaGridLayer=null;}} });
 
         // --- 雜項 UI 與相片對比 ---
-        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-text'); hide('announcement-action-container'); text('toggle-announce-panel-btn','➕');} else {show('announcement-text'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
+        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-content-wrapper'); text('toggle-announce-panel-btn','➕');} else {show('announcement-content-wrapper'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
         on('toggle-announce-panel-btn','click',()=>{ isAnnounceCollapsed=!isAnnounceCollapsed; lsSet('dogMap_announceCollapsed', isAnnounceCollapsed); applyAnnouncePanelCollapseState(); });
         
         $('profile-color').addEventListener('input', e=>$('profile-hex').value=e.target.value.toUpperCase());
@@ -640,7 +657,35 @@
 
         const handleCardSwipe=()=>{ if(Math.abs(cardTouchEndX-cardTouchStartX)>40) switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1); };
         on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
-        ais.addEventListener('click',e=>{ if(isCardSwiping){e.preventDefault(); e.stopPropagation(); return;} if(e.target.classList.contains('gallery-btn-overlay')){ text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal'); } else if(e.target.id==='animal-main-photo') openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000); } });
+
+        // 獨立出開啟相簿的方法，供不同位置的按鈕呼叫
+        const openGallery = () => { 
+            text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); 
+            renderGallery('photos'); 
+            show('gallery-modal'); 
+        };
+
+        ais.addEventListener('click',e=>{ 
+            if(isCardSwiping){e.preventDefault(); e.stopPropagation(); return;} 
+            
+            // 點擊原有的照片內相簿按鈕
+            if(e.target.classList.contains('gallery-btn-overlay')){ 
+                openGallery();
+            } else if(e.target.id==='animal-main-photo') {
+                openCompareModal(); 
+            } else if(ais.classList.contains('mobile-collapsed')){ 
+                ais.classList.remove('mobile-collapsed'); 
+                if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); 
+                animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000); 
+            } 
+        });
+
+        // 綁定縮小時，顯示在最新公告旁的相簿按鈕
+        on('header-gallery-btn', 'click', e => {
+            e.stopPropagation(); 
+            openGallery();
+        });
+
         on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
         
         function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 pixel-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 pixel-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
@@ -831,8 +876,10 @@
             if ($('profile-edit-trigger')) $('profile-edit-trigger').style.backgroundColor = dbUserColor;
             
             loadLotteryState();
-            connectWebSocket();
+            
+            // 先啟動定位服務，避免被後方 WebSocket 潛在錯誤阻斷
             startLocationServices(false);
+            connectWebSocket();
         });
 
         // ================= 手機版相機按鈕單擊防誤觸邏輯 =================
