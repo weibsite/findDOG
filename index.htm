@@ -507,7 +507,15 @@
             html('announcement-text', linkedText);
             // ------------------------------------------------
             
-            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
+            let ac=$('announcement-action-container'); ac.innerHTML=''; 
+            if(p?.actionLink?.url){ 
+                // 從 url 屬性中提取實際的網址 (過濾掉夾雜的文字)
+                let rawActionUrl = p.actionLink.url;
+                let extMatch = rawActionUrl.match(/(https?:\/\/[^\s<]+)/);
+                let finalActionUrl = extMatch ? extMatch[1] : rawActionUrl;
+                
+                ac.innerHTML=`<a href="${finalActionUrl}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`; 
+            }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
         }
         function drawAllProjects() {
