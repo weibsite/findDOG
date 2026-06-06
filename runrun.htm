@@ -265,7 +265,117 @@ let foundAddr = window.scrapedData.guessed_address || ""; document.getElementByI
 const originalUrl = document.getElementById('scrape-url-input').value.trim(); if (originalUrl) { document.getElementById('report-ig').value = originalUrl; } else { document.getElementById('report-ig').value = ""; } document.getElementById('report-name').value = ""; document.getElementById('report-notes').value = scrapedText; const contactInfo = extractContactInfo(window.scrapedData.text || ""); document.getElementById('report-contact').value = contactInfo; document.getElementById('report-contact-public').checked = !!contactInfo; document.getElementById('report-type').value = "狗"; currentMediaList = []; if (window.scrapedData.images) { window.scrapedData.images.forEach(img => { currentMediaList.push({ type: 'url', data: img, isVideo: false }); }); } if (window.scrapedData.videos) { window.scrapedData.videos.forEach(vid => { currentMediaList.push({ type: 'url', data: vid, isVideo: true }); }); } renderPhotos(); document.getElementById('report-submit-btn').innerText = "📍 下一步：標記位置 ➡️"; document.getElementById('report-form-back-btn').innerText = "⬅️ 取消抓取"; preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'none'; document.getElementById('toggle-fog-btn').innerText = '🌫️ 開啟迷霧'; } document.getElementById('scrape-stray-btn').classList.add('hidden'); document.getElementById('report-stray-btn').classList.add('hidden'); document.getElementById('quick-camera-btn').classList.add('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.add('hidden'); document.getElementById('project-select-wrapper').classList.add('hidden'); document.getElementById('report-form-modal').classList.remove('hidden'); if(window.scrapedData && window.scrapedData.videos && window.scrapedData.videos.length > 2) { setTimeout(() => { showModal("⚠️ 提示：\n系統已抓取多部影片 (最多5部)。\n有些平台可能會混入不相關的推薦影片，請務必在「額外相片/影片」區檢查是否正確，再確認送出喔！"); }, 800); } }
 document.getElementById('report-stray-btn').addEventListener('click', () => { isReportingMode = true; isQuickReport = false; isScrapeReportMode = false; preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'none'; document.getElementById('toggle-fog-btn').innerText = '🌫️ 開啟迷霧'; } document.body.classList.add('locating-mode'); isSearchResolved = false; document.getElementById('report-search-group').classList.remove('hidden'); document.getElementById('report-crosshair').style.display = 'block'; document.getElementById('report-location-panel').classList.remove('hidden'); document.getElementById('scrape-stray-btn').classList.add('hidden'); document.getElementById('report-stray-btn').classList.add('hidden'); document.getElementById('quick-camera-btn').classList.add('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.add('hidden'); document.getElementById('project-select-wrapper').classList.add('hidden'); const nextBtn = document.getElementById('report-next-btn'); nextBtn.innerText = "下一步 ➡️"; nextBtn.disabled = false; nextBtn.classList.remove('bg-gray-400', 'bg-green-500'); nextBtn.classList.add('bg-blue-500'); document.getElementById('report-cancel-loc-btn').innerText = "取消"; if (lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, { animate: true }); });
 document.getElementById('report-cancel-loc-btn').addEventListener('click', () => { if (isSearchResolved) { isSearchResolved = false; document.getElementById('report-search-group').classList.remove('hidden'); document.getElementById('report-cancel-loc-btn').innerText = isScrapeReportMode ? "⬅️ 上一步" : "取消"; const nextBtn = document.getElementById('report-next-btn'); if(isScrapeReportMode){ nextBtn.innerText = "請先點擊搜尋 🔍"; nextBtn.disabled = true; nextBtn.classList.remove('bg-blue-500', 'bg-green-500'); nextBtn.classList.add('bg-gray-400'); }else{ nextBtn.innerText = "下一步 ➡️"; nextBtn.disabled = false; nextBtn.classList.remove('bg-gray-400', 'bg-green-500'); nextBtn.classList.add('bg-blue-500'); } return; } document.body.classList.remove('locating-mode'); if (isScrapeReportMode) { document.getElementById('report-location-panel').classList.add('hidden'); document.getElementById('report-crosshair').style.display = 'none'; document.getElementById('report-form-modal').classList.remove('hidden'); return; } isReportingMode = false; document.getElementById('report-crosshair').style.display = 'none'; document.getElementById('report-location-panel').classList.add('hidden'); document.getElementById('report-stray-btn').classList.remove('hidden'); document.getElementById('scrape-stray-btn').classList.remove('hidden'); document.getElementById('quick-camera-btn').classList.remove('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden'); if (preReportFogState) { isFogVisible = true; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'block'; document.getElementById('toggle-fog-btn').innerText = '👁️ 關閉迷霧'; requestFogRender(); } });
-document.getElementById('report-search-btn').addEventListener('click', async () => { const query = document.getElementById('report-search-input').value.trim(); if (!query) return; const btn = document.getElementById('report-search-btn'); btn.disabled = true; const progModal = document.getElementById('search-progress-modal'); const progText = document.getElementById('search-progress-text'); const progFill = document.getElementById('search-progress-fill'); progModal.classList.remove('hidden'); progFill.style.width = "5%"; const progressSteps = ["連線地圖解析引擎...", "正在尋找精確座標...", "系統若繁忙將自動排隊 (約 10~30 秒)...", "努力尋找中，請稍候...", "快要完成了..."]; let stepIdx = 0; progText.innerText = progressSteps[stepIdx]; const progressTimer = setInterval(() => { stepIdx++; if (stepIdx < progressSteps.length) { progText.innerText = progressSteps[stepIdx]; progFill.style.width = `${Math.min(95, (stepIdx + 1) * 20)}%`; } else { progText.innerText = "前方排隊人數較多，請耐心等候..."; progFill.style.width = "95%"; } }, 4000); const stopProgress = () => { clearInterval(progressTimer); progModal.classList.add('hidden'); progFill.style.width = "0%"; btn.disabled = false; }; const resolveSearchState = () => { isSearchResolved = true; document.getElementById('report-search-group').classList.add('hidden'); document.getElementById('report-cancel-loc-btn').innerText = "⬅️ 上一步"; const nextBtn = document.getElementById('report-next-btn'); nextBtn.innerText = isScrapeReportMode ? "🚀 確認送出" : "✅ 確認位置"; nextBtn.disabled = false; nextBtn.classList.remove('bg-gray-400', 'bg-blue-500'); nextBtn.classList.add('bg-green-500'); }; const coordMatch = query.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/); if (coordMatch) { let val1 = parseFloat(coordMatch[1]); let val2 = parseFloat(coordMatch[2]); let lat = val1, lng = val2; if (val1 > 100 && val2 < 50) { lat = val2; lng = val1; } map.setView([lat, lng], 18, { animate: true }); resolveSearchState(); stopProgress(); return; } if (query.startsWith('http://') || query.startsWith('https://')) { if (isSystemReady) { ws.send(JSON.stringify({ type: "parse_map_url", url: query })); const res = await waitWsResponse('parse_map_url_result', 30000); if (res && res.success && res.lat && res.lng) { map.setView([res.lat, res.lng], 18, { animate: true }); resolveSearchState(); } else { showHTMLModal(`❌ 網址解析失敗，請確認網址是否有效，或直接輸入地址。<br><br><a href="${query}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往該網址查看</a>`); } } else { showModal('❌ 系統未連線，無法解析網址。'); } stopProgress(); return; } if (isSystemReady) { ws.send(JSON.stringify({ type: "search_address", address: query })); const googleRes = await waitWsResponse('search_address_result', 30000); if (googleRes && googleRes.success && googleRes.lat && googleRes.lng) { map.setView([googleRes.lat, googleRes.lng], 18, { animate: true }); resolveSearchState(); stopProgress(); return; } } clearInterval(progressTimer); btn.innerText = 'OSM 備用搜尋⏳'; try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`); const data = await res.json(); if (data && data.length > 0) { map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, { animate: true }); resolveSearchState(); } else { showHTMLModal(`❌ 沒有搜尋到您的地址<br><br>建議您可以手動搜尋看看<br><br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往 Google Map 手動尋找</a>`); } } catch (e) { showHTMLModal(`❌ 搜尋發生異常<br><br>建議您可以手動搜尋看看<br><br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往 Google Map 手動尋找</a>`); } stopProgress(); });
+
+document.getElementById('report-search-btn').addEventListener('click', async () => { 
+    const query = document.getElementById('report-search-input').value.trim(); 
+    if (!query) return; 
+
+    // 🚀 【新增】當使用者按下搜尋時，立刻將原文與搜尋框內容送出給伺服器學習
+    if (isScrapeReportMode && window.scrapedData && window.scrapedData.text && isSystemReady) {
+        ws.send(JSON.stringify({
+            type: "learn_address",
+            text: window.scrapedData.text,
+            address: query
+        }));
+    }
+
+    const btn = document.getElementById('report-search-btn'); 
+    btn.disabled = true; 
+    const progModal = document.getElementById('search-progress-modal'); 
+    const progText = document.getElementById('search-progress-text'); 
+    const progFill = document.getElementById('search-progress-fill'); 
+    progModal.classList.remove('hidden'); 
+    progFill.style.width = "5%"; 
+    const progressSteps = ["連線地圖解析引擎...", "正在尋找精確座標...", "系統若繁忙將自動排隊 (約 10~30 秒)...", "努力尋找中，請稍候...", "快要完成了..."]; 
+    let stepIdx = 0; 
+    progText.innerText = progressSteps[stepIdx]; 
+    const progressTimer = setInterval(() => { 
+        stepIdx++; 
+        if (stepIdx < progressSteps.length) { 
+            progText.innerText = progressSteps[stepIdx]; 
+            progFill.style.width = `${Math.min(95, (stepIdx + 1) * 20)}%`; 
+        } else { 
+            progText.innerText = "前方排隊人數較多，請耐心等候..."; 
+            progFill.style.width = "95%"; 
+        } 
+    }, 4000); 
+    const stopProgress = () => { 
+        clearInterval(progressTimer); 
+        progModal.classList.add('hidden'); 
+        progFill.style.width = "0%"; 
+        btn.disabled = false; 
+    }; 
+    const resolveSearchState = () => { 
+        isSearchResolved = true; 
+        document.getElementById('report-search-group').classList.add('hidden'); 
+        document.getElementById('report-cancel-loc-btn').innerText = "⬅️ 上一步"; 
+        const nextBtn = document.getElementById('report-next-btn'); 
+        nextBtn.innerText = isScrapeReportMode ? "🚀 確認送出" : "✅ 確認位置"; 
+        nextBtn.disabled = false; 
+        nextBtn.classList.remove('bg-gray-400', 'bg-blue-500'); 
+        nextBtn.classList.add('bg-green-500'); 
+    }; 
+    const coordMatch = query.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/); 
+    if (coordMatch) { 
+        let val1 = parseFloat(coordMatch[1]); 
+        let val2 = parseFloat(coordMatch[2]); 
+        let lat = val1, lng = val2; 
+        if (val1 > 100 && val2 < 50) { 
+            lat = val2; 
+            lng = val1; 
+        } 
+        map.setView([lat, lng], 18, { animate: true }); 
+        resolveSearchState(); 
+        stopProgress(); 
+        return; 
+    } 
+    if (query.startsWith('http://') || query.startsWith('https://')) { 
+        if (isSystemReady) { 
+            ws.send(JSON.stringify({ type: "parse_map_url", url: query })); 
+            const res = await waitWsResponse('parse_map_url_result', 30000); 
+            if (res && res.success && res.lat && res.lng) { 
+                map.setView([res.lat, res.lng], 18, { animate: true }); 
+                resolveSearchState(); 
+            } else { 
+                showHTMLModal(`❌ 網址解析失敗，請確認網址是否有效，或直接輸入地址。<br><br><a href="${query}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往該網址查看</a>`); 
+            } 
+        } else { 
+            showModal('❌ 系統未連線，無法解析網址。'); 
+        } 
+        stopProgress(); 
+        return; 
+    } 
+    if (isSystemReady) { 
+        ws.send(JSON.stringify({ 
+            type: "search_address", 
+            address: query,
+            originalText: (isScrapeReportMode && window.scrapedData) ? window.scrapedData.text : ""
+        })); 
+        const googleRes = await waitWsResponse('search_address_result', 30000); 
+        if (googleRes && googleRes.success && googleRes.lat && googleRes.lng) { 
+            map.setView([googleRes.lat, googleRes.lng], 18, { animate: true }); 
+            resolveSearchState(); 
+            stopProgress(); 
+            return; 
+        } 
+    } 
+    clearInterval(progressTimer); 
+    btn.innerText = 'OSM 備用搜尋⏳'; 
+    try { 
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`); 
+        const data = await res.json(); 
+        if (data && data.length > 0) { 
+            map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 18, { animate: true }); 
+            resolveSearchState(); 
+        } else { 
+            showHTMLModal(`❌ 沒有搜尋到您的地址<br><br>建議您可以手動搜尋看看<br><br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往 Google Map 手動尋找</a>`); 
+        } 
+    } catch (e) { 
+        showHTMLModal(`❌ 搜尋發生異常<br><br>建議您可以手動搜尋看看<br><br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}" target="_blank" class="inline-block pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full" onclick="document.getElementById('custom-modal').classList.add('hidden')">🌍 前往 Google Map 手動尋找</a>`); 
+    } 
+    stopProgress(); 
+});
+
 let reportLat, reportLng; document.getElementById('report-next-btn').addEventListener('click', async () => { const center = map.getCenter(); if(center.lat<20.0||center.lat>27.0||center.lng<118.0||center.lng>123.0){showModal("⚠️ 您標記的座標似乎明顯超出台灣範圍！\n座標有可能錯誤，或請聯繫管理員。\n【禁止送出此座標】，請拖曳地圖重新標記。");return;} document.body.classList.remove('locating-mode'); reportLat = center.lat; reportLng = center.lng; document.getElementById('report-location-panel').classList.add('hidden'); document.getElementById('report-crosshair').style.display = 'none'; if (isScrapeReportMode) { await doFinalSubmit(); } else { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('report-time').value = now.toISOString().slice(0, 16); editingMyStray = null; document.getElementById('report-form-title').innerText = "📝 步驟 2/2：填寫浪浪資訊"; document.getElementById('report-submit-btn').innerText = "🚀 確認送出"; document.getElementById('report-form-back-btn').innerText = "⬅️ 上一步"; document.getElementById('f-main-photo').value = ""; document.getElementById('main-photo-preview').classList.add('hidden'); document.getElementById('report-name').value = ""; document.getElementById('report-notes').value = ""; document.getElementById('report-contact').value = ""; document.getElementById('report-contact-public').checked = false; document.getElementById('report-ig').value = ""; croppedMainPhotoBlob = null; currentMediaList = []; renderPhotos(); document.getElementById('report-form-modal').classList.remove('hidden'); } });
 document.getElementById('report-form-back-btn').addEventListener('click', () => { document.getElementById('report-form-modal').classList.add('hidden'); if (editingMyStray) { editingMyStray = null; } else if (isQuickReport) { isReportingMode = false; isQuickReport = false; document.getElementById('report-stray-btn').classList.remove('hidden'); document.getElementById('scrape-stray-btn').classList.remove('hidden'); document.getElementById('quick-camera-btn').classList.remove('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden'); if (preReportFogState) { isFogVisible = true; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'block'; document.getElementById('toggle-fog-btn').innerText = '👁️ 關閉迷霧'; requestFogRender(); } } else if (isScrapeReportMode) { isReportingMode = false; isScrapeReportMode = false; window.scrapedData = null; window._cropNextStep = null; document.getElementById('report-stray-btn').classList.remove('hidden'); document.getElementById('scrape-stray-btn').classList.remove('hidden'); document.getElementById('quick-camera-btn').classList.remove('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.remove('hidden'); document.getElementById('project-select-wrapper').classList.remove('hidden'); if (preReportFogState) { isFogVisible = true; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'block'; document.getElementById('toggle-fog-btn').innerText = '👁️ 關閉迷霧'; requestFogRender(); } } else { document.getElementById('report-location-panel').classList.remove('hidden'); document.getElementById('report-crosshair').style.display = 'block'; } });
 document.getElementById('quick-camera-btn').addEventListener('click', () => { const center = lastSavedPos ? { lat: lastSavedPos.lat, lng: lastSavedPos.lng } : map.getCenter(); if(center.lat<20.0||center.lat>27.0||center.lng<118.0||center.lng>123.0){showModal("⚠️ 您的當前定位似乎不在台灣範圍內！\n無法使用快速回報。");return;} isReportingMode = true; isQuickReport = true; isScrapeReportMode = false; preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = 'none'; document.getElementById('toggle-fog-btn').innerText = '🌫️ 開啟迷霧'; } document.getElementById('report-stray-btn').classList.add('hidden'); document.getElementById('scrape-stray-btn').classList.add('hidden'); document.getElementById('quick-camera-btn').classList.add('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.add('hidden'); document.getElementById('project-select-wrapper').classList.add('hidden'); reportLat = center.lat; reportLng = center.lng; const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('report-time').value = now.toISOString().slice(0, 16); editingMyStray = null; document.getElementById('report-form-title').innerText = "📝 快速回報：填寫浪浪資訊"; document.getElementById('report-submit-btn').innerText = "🚀 確認送出"; document.getElementById('report-form-back-btn').innerText = "⬅️ 取消"; document.getElementById('f-main-photo').value = ""; document.getElementById('main-photo-preview').classList.add('hidden'); document.getElementById('report-name').value = ""; document.getElementById('report-notes').value = ""; document.getElementById('report-contact').value = ""; document.getElementById('report-contact-public').checked = false; document.getElementById('report-ig').value = ""; croppedMainPhotoBlob = null; currentMediaList = []; renderPhotos(); document.getElementById('report-form-modal').classList.remove('hidden'); openCamera('main'); });
