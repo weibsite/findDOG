@@ -258,6 +258,7 @@
         let currentProjectHasPrize = false, lotteryTickets = 0, lotteryTimeRemaining = 300, isTrackingStarted = false, lastFullSyncTime = 0, slotSpinning = false, slotTimer = null;
         let isMapInteracting = false, mapInteractionTimer = null, powerSavingTimer = null, wakeLock = null, isPowerSaving = false;
         let geoFailCount = 0;
+        let gpsIntervalId = null, lastSetViewTime1 = 0, lastSetViewTime2 = 0;
         let isAnnounceCollapsed = lsGet('dogMap_announceCollapsed') === 'true', animalInfoCollapseTimer = null;
         let viewerPhotos = [], currentViewerIndex = 0, touchStartX = 0, touchEndX = 0, galleryLoadedCount = 0, currentGalleryType = 'photos';
         let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false;
@@ -428,13 +429,47 @@
 
         // --- 定位與系統運作 ---
         async function requestWakeLock(){ try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{}); } }catch(e){} }
-        function enterPowerSavingMode(){ if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); }
-        function exitPowerSavingMode(){ if(!isPowerSaving)return; isPowerSaving=false; hide('power-saving-overlay'); }
+        function enterPowerSavingMode(){ 
+            if(isPowerSaving)return; 
+            isPowerSaving=true; 
+            show('power-saving-overlay'); 
+            requestWakeLock(); 
+            // 優化 4: GPS 降頻策略 (省電模式下改用 15 秒抓取一次)
+            if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+            if(isTrackingStarted && !isSpectatorMode) {
+                gpsIntervalId = setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(
+                        p => handleValidPosition(p.coords.latitude, p.coords.longitude, Date.now()),
+                        e => handleGeoError(e, true),
+                        {enableHighAccuracy: true, timeout: 10000}
+                    );
+                }, 15000);
+            }
+        }
+        function exitPowerSavingMode(){ 
+            if(!isPowerSaving)return; 
+            isPowerSaving=false; 
+            hide('power-saving-overlay'); 
+            // 優化 4: 恢復高頻 GPS
+            if(gpsIntervalId) { clearInterval(gpsIntervalId); gpsIntervalId = null; }
+            if(isTrackingStarted && !isSpectatorMode) startLocationServices(true);
+            // 優化 1: 退出省電時補繪地圖與迷霧
+            renderMap();
+            requestFogRender();
+        }
         function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); resetBtnCollapseTimer(); }
         document.body.addEventListener('touchstart', resetPowerSavingTimer, {passive:true}); document.body.addEventListener('click', resetPowerSavingTimer); document.body.addEventListener('mousemove', resetPowerSavingTimer);
         $('power-saving-overlay').addEventListener('touchstart', e=>{e.preventDefault(); resetPowerSavingTimer();}, {passive:false});
         on('power-saving-btn', 'click', e=>{e.stopPropagation(); enterPowerSavingMode();});
-        document.addEventListener('visibilitychange', async ()=>{ if(wakeLock!==null && document.visibilityState==='visible'){ wakeLock=null; if(isTrackingStarted)requestWakeLock(); } });
+        document.addEventListener('visibilitychange', async ()=>{ 
+            if(document.visibilityState === 'hidden') {
+                // 優化 3: 切換 APP (縮到背景) 時直接進入極致休眠
+                enterPowerSavingMode();
+            } else {
+                if(wakeLock!==null) wakeLock=null; 
+                if(isTrackingStarted) requestWakeLock(); 
+            }
+        });
 
         function startLocationServices(auto) {
             if(!navigator.geolocation) return handleGeoError({code:0,message:"瀏覽器不支援"}, auto);
@@ -496,9 +531,23 @@
         function handleValidPosition(lat, lng, ts) {
             hide('gps-warning');
             let isFirstLock = !localHistory.length;
-            if(isSpectatorMode) return; if(isFirstLock) map.setView([lat,lng], 17);
+            if(isSpectatorMode) return; 
             
-            if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().pad(-0.1).contains([lat,lng])) map.setView([lat,lng], map.getZoom()||17, {animate:true});
+            if(isFirstLock) {
+                map.setView([lat,lng], 17);
+                lastSetViewTime1 = ts;
+            }
+            
+            // 優化 5: 動態關閉平滑動畫 (30秒內連續觸發2次重新置中則關閉動畫)
+            if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().pad(-0.1).contains([lat,lng])) {
+                lastSetViewTime2 = lastSetViewTime1;
+                lastSetViewTime1 = ts;
+                let useAnimation = true;
+                if (lastSetViewTime2 > 0 && (lastSetViewTime1 - lastSetViewTime2) <= 30000) {
+                    useAnimation = false;
+                }
+                map.setView([lat,lng], map.getZoom()||17, {animate: useAnimation});
+            }
             
             if(lastSavedPos && getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng)<15 && ts-lastSavedPos.timestamp<180000) return;
             const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory', JSON.stringify(localHistory));
@@ -578,7 +627,8 @@
             });
         }
         function renderMap() {
-            if(!markersLayer||!map)return; markersLayer.clearLayers(); let n=Date.now(), b=map.getBounds();
+            // 優化 1: 停止「黑畫面」下的無效渲染 (增加 isPowerSaving 判斷)
+            if(!markersLayer||!map||isPowerSaving)return; markersLayer.clearLayers(); let n=Date.now(), b=map.getBounds();
             if(isMyRouteMode) {
                 let td=(targetRouteUid===myUid)?{history:localHistory}:allUsersData[targetRouteUid], hd=[], rc='#ef4444', rn='使用者';
                 if(targetRouteUid===myUid){hd=localHistory; rc=dbUserColor; rn=currentUserName;} else if(td?.history){hd=td.history; rc=td.color||rc; rn=td.userName;}
@@ -711,7 +761,8 @@
         }
         function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{if(isFogVisible)renderFog(); fogRenderPending=false;});} }
         function renderFog() {
-            if(!map||!fogCtx||!isFogVisible)return; let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
+            // 優化 1: 停止「黑畫面」下的無效渲染 (增加 isPowerSaving 判斷)
+            if(!map||!fogCtx||!isFogVisible||isPowerSaving)return; let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
             if(taiwanPolygons.length){ let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');} else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);} } else {lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
             
             let hasActiveNear=false; if(PROJECTS[currentProjectKey]){ let pb=PROJECTS[currentProjectKey].bounds, cl=(pb[0][0]+pb[1][0])/2, cg=(pb[0][1]+pb[1][1])/2; Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}}); }
@@ -757,7 +808,8 @@
         function updateGiftUI() { let gc=$('floating-gift-container'); if(!currentProjectHasPrize)hide('floating-gift-container'); else{show('floating-gift-container'); let t=isAdmin?'無限':lotteryTickets; text('gift-ticket-badge',t); if(!$('slot-machine-modal').classList.contains('hidden'))text('slot-tickets-display',t);} }
         function saveLotteryState() { lsSet('dogMap_lottery_time_'+currentProjectKey, JSON.stringify({r:lotteryTimeRemaining})); }
         function loadLotteryState() { let d=lsGet('dogMap_lottery_time_'+currentProjectKey); lotteryTimeRemaining=d?JSON.parse(d).r||3600:3600; updateGiftUI(); }
-        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted)return; let out=false, cLoc=localHistory?.length?localHistory[localHistory.length-1]:null, p=PROJECTS[currentProjectKey]; if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng, (p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2)>50000)out=true; let tUI=$('gift-timer'); if(out){tUI.style.color='#ef4444'; tUI.innerText="太遠了"; if(!isSpectatorMode)show('spectator-hint'); return;} tUI.style.color=''; hide('spectator-hint'); if(lotteryTimeRemaining===300&&localHistory?.length){ let md=0, n=Date.now()-3000000, val=false; for(let i=localHistory.length-1;i>=0;i--){if(localHistory[i].timestamp>=n){let d=getDistance(cLoc.lat,cLoc.lng,localHistory[i].lat,localHistory[i].lng); if(d>md)md=d; val=true;}else break;} if(val&&md<50){lotteryTimeRemaining=3599; tUI.innerText=`${Math.floor(3599/60).toString().padStart(2,'0')}:${(3599%60).toString().padStart(2,'0')}`; saveLotteryState(); return;} } lotteryTimeRemaining--; tUI.innerText=`${Math.floor(lotteryTimeRemaining/60).toString().padStart(2,'0')}:${(lotteryTimeRemaining%60).toString().padStart(2,'0')}`; if(lotteryTimeRemaining<=0){lotteryTimeRemaining=3600; saveLotteryState(); wsSend("earn_ticket"); show('lottery-marquee-container'); $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation='none'; $('lottery-marquee-container').querySelector('.animate-marquee-text').offsetHeight; $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation=null; setTimeout(()=>hide('lottery-marquee-container'),20000);} saveLotteryState(); }, 1000);
+        // 優化 2: 減少不必要的 DOM 更新 (省電模式下不更新UI數字)
+        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted)return; let out=false, cLoc=localHistory?.length?localHistory[localHistory.length-1]:null, p=PROJECTS[currentProjectKey]; if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng, (p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2)>50000)out=true; let tUI=$('gift-timer'); if(out){tUI.style.color='#ef4444'; tUI.innerText="太遠了"; if(!isSpectatorMode)show('spectator-hint'); return;} tUI.style.color=''; hide('spectator-hint'); if(lotteryTimeRemaining===300&&localHistory?.length){ let md=0, n=Date.now()-3000000, val=false; for(let i=localHistory.length-1;i>=0;i--){if(localHistory[i].timestamp>=n){let d=getDistance(cLoc.lat,cLoc.lng,localHistory[i].lat,localHistory[i].lng); if(d>md)md=d; val=true;}else break;} if(val&&md<50){lotteryTimeRemaining=3599; if(!isPowerSaving) tUI.innerText=`${Math.floor(3599/60).toString().padStart(2,'0')}:${(3599%60).toString().padStart(2,'0')}`; saveLotteryState(); return;} } lotteryTimeRemaining--; if(!isPowerSaving) tUI.innerText=`${Math.floor(lotteryTimeRemaining/60).toString().padStart(2,'0')}:${(lotteryTimeRemaining%60).toString().padStart(2,'0')}`; if(lotteryTimeRemaining<=0){lotteryTimeRemaining=3600; saveLotteryState(); wsSend("earn_ticket"); show('lottery-marquee-container'); $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation='none'; $('lottery-marquee-container').querySelector('.animate-marquee-text').offsetHeight; $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation=null; setTimeout(()=>hide('lottery-marquee-container'),20000);} saveLotteryState(); }, 1000);
         on('slot-draw-btn','click',()=>{ if(!isAdmin&&lotteryTickets<=0)return showCenterToast("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！"); if(!isSystemReady)return showCenterToast("系統目前未連線！"); $('slot-draw-btn').innerText="🎰 抽獎中..."; $('slot-draw-btn').disabled=true; slotSpinning=true; slotTimer=setInterval(()=>{let e=['🐶','🐱']; ['reel-1','reel-2','reel-3'].forEach(id=>text(id,e[Math.floor(Math.random()*2)]));},100); wsSend("draw_gift",{userName:currentUserName}); });
         on('slot-check-pool-btn','click',()=>wsSend("get_prizes"));
 
