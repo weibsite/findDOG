@@ -31,7 +31,7 @@
     <!-- Twitter / 其他平台的分享設定 -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="尋寵地圖 | 找回毛小孩的路" />
-    <meta name="twitter:description" cofntent="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
+    <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
     <meta name="twitter:image" content="https://finddog.online/image_og1.png" />
     <!-- ========================================== -->
 
@@ -55,6 +55,11 @@
         .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
         .pixel-popup .leaflet-popup-content-wrapper { background-color: white; border: 4px solid #1a202c; border-radius: 0; box-shadow: 4px 4px 0px #1a202c; padding: 0; }
         .pixel-popup .leaflet-popup-tip-container { display: none; }
+        
+        /* 新增：深色出沒點 Popup */
+        .pixel-popup-dark .leaflet-popup-content-wrapper { background-color: #1f2937; border: 4px solid #000; border-radius: 0; box-shadow: 4px 4px 0px #000; padding: 0; }
+        .pixel-popup-dark .leaflet-popup-tip-container { display: none; }
+
         .blinking-red-pixel { animation: blink-pixel 1s infinite alternate; }
         @keyframes blink-pixel { 0% { background-color: #ef4444; transform: scale(1); } 100% { background-color: #fca5a5; transform: scale(1.3); } }
         @keyframes pulse-square { 0% { transform: scale(0.5); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 1px; } }
@@ -127,6 +132,7 @@
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
     
+    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
     <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
     <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
@@ -205,6 +211,9 @@
         let hasInitialUrlZoomed = false;
         let NGROK_WS_URL = "", ws, wsReconnectDelay = 3000, isSystemReady = false;
         let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle = null;
+        let sightingTrackLayer; // 軌跡線專用圖層
+        let isSightingTrackVisible = true; // 預設顯示時間線索
+
         let PROJECTS = {};
         
         // 核心邏輯：將所有專案依照距離 (由近到遠) 進行排序，若無定位則依地理排序 (由北到南，再由西到東)
@@ -214,14 +223,12 @@
                 let latA = (pA.bounds[0][0] + pA.bounds[1][0]) / 2, lngA = (pA.bounds[0][1] + pA.bounds[1][1]) / 2;
                 let latB = (pB.bounds[0][0] + pB.bounds[1][0]) / 2, lngB = (pB.bounds[0][1] + pB.bounds[1][1]) / 2;
                 
-                // 如果有使用者座標，依照距離由近到遠排序
                 if (lastSavedPos) {
                     let distA = getDistance(lastSavedPos.lat, lastSavedPos.lng, latA, lngA);
                     let distB = getDistance(lastSavedPos.lat, lastSavedPos.lng, latB, lngB);
                     return distA - distB;
                 }
                 
-                // 否則退回預設：由北到南排序
                 return Math.abs(latA - latB) > 0.01 ? latB - latA : lngA - lngB;
             });
         };
@@ -260,7 +267,6 @@
         let currentClearRadius = 100;
 
         // --- 核心共用模組 ---
-        // 新增防呆機制：判斷座標是否位於台灣（包含離島）的大致範圍內
         const isCoordinateInTaiwan = (lat, lng) => {
             return lat >= 20.0 && lat <= 26.5 && lng >= 118.0 && lng <= 122.5;
         };
@@ -347,7 +353,7 @@
             initFogSystem(); setInterval(renderMap, 15000);
             
             if(isAdmin){ show('admin-panel'); show('delete-project-btn'); }
-            if(lsGet('dogMap_userName')){ currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor')) lsSet('dogMap_userColor', dbUserColor); if(localHistory.length){ allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey}; renderMap(); updateStepsCounter(); } $('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text', "自動定位..."); startLocationServices(true); } else show('startup-overlay');
+            if(lsGet('dogMap_userName')){ currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor')) lsSet('dogMap_userColor', dbUserColor); if(localHistory.length){ allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey, total_steps:0}; renderMap(); updateStepsCounterUI(); } $('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text', "自動定位..."); startLocationServices(true); } else show('startup-overlay');
         }
 
         // --- WebSocket 處理 ---
@@ -372,6 +378,9 @@
                         allUsersData=res.data.locations||{}; allSightings=res.data.sightings||{}; allRoutes=res.data.routes||{};
                         if(res.data.announcements) Object.keys(res.data.announcements).forEach(k=>{ if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。") allAnnouncements[k]=res.data.announcements[k]; });
                         currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; lotteryTickets=res.data.tickets||0;
+                        
+                        updateStepsCounterUI(); // 更新 UI 顯示的步數
+                        
                         updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI();
                         if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
                         
@@ -394,8 +403,8 @@
                             renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
                         }
                     } else if(res.type==='ticket_update' && res.project===currentProjectKey) { lotteryTickets=res.tickets; updateGiftUI(); }
-                    else if(res.type==='user_appended') { let d=res.data, u=res.uid; if(!allUsersData[u]) allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[]}; else {allUsersData[u].userName=d.userName; allUsersData[u].color=d.color;} allUsersData[u].history.push(d.point); renderMap(); }
-                    else if(res.type==='user_update') { allUsersData[res.uid]=res.data; renderMap(); }
+                    else if(res.type==='user_appended') { let d=res.data, u=res.uid; if(!allUsersData[u]) allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else {allUsersData[u].userName=d.userName; allUsersData[u].color=d.color;} allUsersData[u].history.push(d.point); renderMap(); }
+                    else if(res.type==='user_update') { allUsersData[res.uid]=res.data; renderMap(); if(res.uid === myUid) updateStepsCounterUI(); }
                     else if(res.type==='prize_won_broadcast') { text('win-marquee-text', `🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); $('win-marquee-text').style.animation='none'; $('win-marquee-text').offsetHeight; $('win-marquee-text').style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000); }
                     else if(res.type==='admin_login_result') { text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); show('delete-project-btn'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！"); }
                     else if(res.type==='admin_action_result') { showModal(res.msg); }
@@ -457,15 +466,12 @@
                 em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null; 
             }
             
-            // 如果已經在主要畫面中 (startup 已經隱藏)，直接顯示上方警告
             if($('startup-overlay').style.display==='none') {
                 show('gps-warning');
                 if(!auto) showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。", 6000);
             } else {
-                // 如果是手動點擊開始且失敗
                 if (!auto) {
                     geoFailCount++;
-                    // 如果使用者已經按過一次被拒絕，第二次點擊就直接放行進入
                     if (geoFailCount > 1) {
                         finishUIReveal();
                         show('gps-warning');
@@ -496,7 +502,8 @@
             
             if(lastSavedPos && getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng)<15 && ts-lastSavedPos.timestamp<180000) return;
             const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory', JSON.stringify(localHistory));
-            allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey}; updateStepsCounter();
+            allUsersData[myUid]={userName:currentUserName, color:dbUserColor, history:[...localHistory], project:currentProjectKey, total_steps: allUsersData[myUid]?.total_steps || 0}; 
+            updateStepsCounterUI();
             
             if (isFirstLock) updateProjectDropdown();
             
@@ -507,64 +514,21 @@
             if(force||n-lastFullSyncTime>300000){ wsSend("update_location", {data:{userName:currentUserName, color:dbUserColor, history:localHistory, lastUpdate:n}}); lastFullSyncTime=n; } else if(pt) wsSend("append_location", {data:{userName:currentUserName, color:dbUserColor, point:pt}});
         }
 
-        // 新增：29 分鐘定期儲存步數與防作弊過濾邏輯
-        let lastSyncSteps = parseInt(lsGet('dogMap_lastSyncSteps') || '0');
-        setInterval(() => {
-            if(!isTrackingStarted || isSpectatorMode || !isSystemReady) return;
-            let currentSteps = updateStepsCounter();
-            let diff = currentSteps - lastSyncSteps;
-            
-            if (diff > 0) {
-                // 檢查合理性：29分鐘(1740秒) 內如果以極限跑速(5m/s)移動，最大步數約 14500 步。
-                // 若增加的步數小於等於 20000 步(留點容錯)視為合理並上傳；超過則靜默拋棄本次更新
-                if (diff <= 20000) {
-                    wsSend("sync_steps_record", { totalSteps: currentSteps, gainedSteps: diff });
-                }
-                // 無論是否合理，都將最後同步步數更新為當前步數，確保下個 29 分鐘重新計算差異
-                lastSyncSteps = currentSteps;
-                lsSet('dogMap_lastSyncSteps', lastSyncSteps);
+        // 修改：步數純粹由伺服器提供，不再於前端主動計算發送，以杜絕防作弊修改風險
+        function updateStepsCounterUI() { 
+            if(allUsersData && allUsersData[myUid] && allUsersData[myUid].total_steps !== undefined) {
+                text('step-counter-value', allUsersData[myUid].total_steps.toLocaleString()); 
+            } else {
+                text('step-counter-value', '0');
             }
-        }, 29 * 60 * 1000);
-
-        function updateStepsCounter() { 
-            let d = 0; 
-            if(localHistory?.length > 1) {
-                for(let i=1; i<localHistory.length; i++){
-                    let p1 = localHistory[i-1], p2 = localHistory[i];
-                    let x = getDistance(p1.lat, p1.lng, p2.lat, p2.lng); 
-                    let t = (p2.timestamp - p1.timestamp) / 1000; // 兩點間的時間差(秒)
-                    
-                    if (t > 0 && x < 1000) {
-                        let speed = x / t; // m/s
-                        
-                        // 防作弊邏輯：
-                        if (speed > 5) {
-                            // 1. 如果速度高於跑步 (約 5 m/s = 18km/h) 判定為汽機車快速移動
-                            // 懲罰機制：將獲得的距離以「最低散步步數(1m/s)」來計算
-                            x = t * 1.0; 
-                        } else if (x > t * 2.5) {
-                            // 2. 模擬探索迷霧的「最大範圍上限」：每秒最多只能算 2.5 公尺的有效探索
-                            // 避免在原地稍微大一點範圍內瘋狂來回衝刺刷步數
-                            x = t * 2.5; 
-                        }
-                        
-                        d += x;
-                    }
-                }
-            } 
-            let currentSteps = Math.floor(d / 0.6);
-            text('step-counter-value', currentSteps.toLocaleString()); 
-            return currentSteps;
         }
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){ s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return; } show('animal-info-section');
-            // 取出經過排序的專案
             let sortedKeys = getSortedProjectKeys();
             sortedKeys.forEach(k=>{
                 let p = PROJECTS[k];
                 let distText = "";
-                // 距離計算與格式化顯示
                 if (lastSavedPos) {
                     let cl = (p.bounds[0][0] + p.bounds[1][0]) / 2;
                     let cg = (p.bounds[0][1] + p.bounds[1][1]) / 2;
@@ -574,7 +538,6 @@
                 s.innerHTML+=`<option value="${k}">🎯 ${p.animalName||p.name}${distText}</option>`;
             });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey]) fk=currentProjectKey; else if(currentProjectKey) { for(let k in PROJECTS) if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey) {fk=k; break;} }
-            // 預設選中依照排序後的第一個 (最近的) 專案
             if(fk){ currentProjectKey=fk; s.value=currentProjectKey; } else { if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);} }
             
             if(currentProjectKey && PROJECTS[currentProjectKey]) {
@@ -587,24 +550,18 @@
             let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; 
             
-            // --- 新增：自動過濾並轉換網址為可點擊連結 ---
             let escapedText = escapeHTML(a).replace(/\n/g,'<br>');
-            // 使用正則表達式找出 http 或 https 開頭的網址
             const urlRegex = /(https?:\/\/[^\s<]+)/g;
             let linkedText = escapedText.replace(urlRegex, function(url) {
-                // 將找到的網址轉換為 <a> 標籤，加入 Tailwind class 讓它更明顯
                 return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`;
             });
             html('announcement-text', linkedText);
-            // ------------------------------------------------
             
             let ac=$('announcement-action-container'); ac.innerHTML=''; 
             if(p?.actionLink?.url){ 
-                // 從 url 屬性中提取實際的網址 (過濾掉夾雜的文字)
                 let rawActionUrl = p.actionLink.url;
                 let extMatch = rawActionUrl.match(/(https?:\/\/[^\s<]+)/);
                 let finalActionUrl = extMatch ? extMatch[1] : rawActionUrl;
-                
                 ac.innerHTML=`<a href="${finalActionUrl}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`; 
             }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
@@ -649,14 +606,95 @@
             document.querySelectorAll('.marker-name-btn').forEach(t=>t.addEventListener('click', e=>{ e.stopPropagation(); if(isAdmin&&isSystemReady) wsSend("admin_get_user_info",{uid:e.target.getAttribute('data-uid')}); }));
             text('toast-text', `線上探索: ${uc} 人`); requestFogRender();
         }
+
+        // --- 全新出沒點顯示邏輯 (含軌跡線索繪製) ---
         function renderSightings() {
-            if(!sightingsLayer)return; sightingsLayer.clearLayers();
-            Object.values(allSightings).forEach(d=>{
-                if(d.project&&d.project!==currentProjectKey)return;
-                let dt=new Date(d.timestamp), ds=`${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`, sd=escapeHTML(d.description), st=escapeHTML((d.description||"").length>6?(d.description||"").substring(0,6)+"...":d.description||""), pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1">(${escapeHTML(d.project)})</span>`:'';
-                L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:#fef08a;animation:blink-pixel 2s infinite alternate;">⚠️ ${st}${pt}</div><div style="font-size:28px;">🐾</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold"><div class="border-b-2 pb-1 mb-2 text-sm text-blue-600">🕒 時間：${ds}</div><div class="text-sm mb-4 whitespace-pre-wrap">${sd}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline">🚀 開啟導航</a></div>`, {className:'pixel-popup',offset:[0,-30]});
+            if(!sightingsLayer) return;
+            sightingsLayer.clearLayers();
+            if(!sightingTrackLayer) sightingTrackLayer = L.layerGroup().addTo(map);
+            sightingTrackLayer.clearLayers();
+
+            let trackPoints = [];
+            const timeRegex = /(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/;
+
+            Object.values(allSightings).forEach(d => {
+                if(d.project && d.project !== currentProjectKey) return;
+                
+                // 1. 文字最多顯示 10 個字
+                let st = d.description || "";
+                if (st.length > 10) st = st.substring(0, 10) + "...";
+                st = escapeHTML(st);
+                
+                let pt = d.project && d.project !== currentProjectKey ? ` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>` : '';
+                
+                // 2. Popup 不顯示時間，字變白色，有導航按鈕
+                let popupHtml = `<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`;
+
+                L.marker([d.lat, d.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:#fef08a;animation:blink-pixel 2s infinite alternate;">⚠️ ${st}${pt}</div><div style="font-size:28px;">🐾</div></div>`
+                    }),
+                    zIndexOffset: Math.floor(d.timestamp / 1000)
+                }).addTo(sightingsLayer).bindPopup(popupHtml, {className: 'pixel-popup-dark', offset: [0, -30]});
+
+                // 3. 軌跡連線條件：明確日期時間且沒有"疑似"
+                if(!d.description.includes('疑似')) {
+                    let match = d.description.match(timeRegex);
+                    if(match) {
+                        let score = parseInt(match[1])*1000000 + parseInt(match[2])*10000 + parseInt(match[3])*100 + parseInt(match[4]);
+                        trackPoints.push({ lat: d.lat, lng: d.lng, score: score, desc: d.description });
+                    }
+                }
             });
+
+            // 繪製軌跡
+            if(trackPoints.length >= 2) {
+                show('toggle-sighting-track-btn');
+                if(isSightingTrackVisible) {
+                    trackPoints.sort((a, b) => a.score - b.score);
+                    let latlngs = trackPoints.map(p => [p.lat, p.lng]);
+                    
+                    // 繪製虛線
+                    L.polyline(latlngs, {color: '#ef4444', weight: 4, dashArray: '10, 10', opacity: 0.8}).addTo(sightingTrackLayer);
+
+                    // 繪製帶有箭頭的線段方向
+                    for(let i=0; i<latlngs.length-1; i++) {
+                        let p1 = latlngs[i], p2 = latlngs[i+1];
+                        let midLat = (p1[0] + p2[0]) / 2;
+                        let midLng = (p1[1] + p2[1]) / 2;
+                        
+                        // 使用地圖投影計算螢幕角度
+                        let p1Px = map.project(p1, 16); 
+                        let p2Px = map.project(p2, 16);
+                        let angle = Math.atan2(p2Px.y - p1Px.y, p2Px.x - p1Px.x) * 180 / Math.PI;
+
+                        let arrowHtml = `<div style="transform: rotate(${angle}deg); font-size: 20px; color: #ef4444; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; line-height: 1;">➤</div>`;
+                        L.marker([midLat, midLng], {
+                            icon: L.divIcon({className: 'custom-div-icon', html: arrowHtml, iconSize: [20, 20], iconAnchor: [10, 10]}),
+                            interactive: false,
+                            zIndexOffset: -100
+                        }).addTo(sightingTrackLayer);
+                    }
+                }
+            } else {
+                hide('toggle-sighting-track-btn');
+            }
         }
+        
+        on('toggle-sighting-track-btn', 'click', () => {
+            isSightingTrackVisible = !isSightingTrackVisible;
+            let b = $('toggle-sighting-track-btn');
+            if (isSightingTrackVisible) {
+                b.innerText = "👁️ 隱藏線索";
+                b.style.cssText = "background-color: #f59e0b; color: #1a202c;";
+            } else {
+                b.innerText = "❌ 顯示線索";
+                b.style.cssText = "background-color: #ef4444; color: white;";
+            }
+            renderSightings(); 
+        });
+
         function renderRoutes() { if(!routesLayer)return; routesLayer.clearLayers(); Object.values(allRoutes).forEach(r=>{ if(r.project&&r.project!==currentProjectKey||!r.points)return; L.polyline(r.points,{color:r.color||'#ff0000',weight:r.weight||5,opacity:0.9}).addTo(routesLayer).bindPopup(`<div class="font-bold text-center text-sm p-1 border-b-2 mb-1">${escapeHTML(r.name)}${r.project&&r.project!==currentProjectKey?` (${escapeHTML(r.project)})`:''}</div>`,{className:'pixel-popup'}); }); }
 
         function initFogSystem() {
@@ -705,7 +743,7 @@
         
         on('toggle-fog-btn','click',()=>{ isFogVisible=!isFogVisible; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display=isFogVisible?'block':'none'); let b=$('toggle-fog-btn'); if(isFogVisible){b.innerText="👁️ 關閉迷霧"; b.style.backgroundColor="#f59e0b"; requestFogRender();} else {b.innerText="🌫️ 開啟迷霧"; b.style.backgroundColor="#9ca3af";} });
         on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(), {draggable:true, zIndexOffset:10000, icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
-        on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey}; updateStepsCounter(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
+        on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:allUsersData[myUid]?.total_steps||0}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
         on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟配置");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
 
@@ -753,7 +791,6 @@
         ais.addEventListener('mousedown',e=>{cardTouchStartX=e.screenX; cardTouchStartY=e.screenY; isCardSwiping=false;}); ais.addEventListener('mousemove',e=>{if(e.buttons===1&&Math.abs(e.screenX-cardTouchStartX)>15)isCardSwiping=true;}); ais.addEventListener('mouseup',e=>{if(isCardSwiping){cardTouchEndX=e.screenX; cardTouchEndY=e.screenY; handleCardSwipe();}});
         
         const switchProjectByDirection = (d, fromCompare = false, startPos = 'first') => { 
-            // 替換原本的無序 Array，改為取得地理排序過的 Array
             let k = getSortedProjectKeys(); if (k.length <= 1) return; 
             let i = k.indexOf(currentProjectKey); 
             i = d < 0 ? (i - 1 + k.length) % k.length : (i + 1) % k.length; 
@@ -768,7 +805,6 @@
         const handleCardSwipe=()=>{ if(Math.abs(cardTouchEndX-cardTouchStartX)>40) switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1); };
         on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
 
-        // 獨立出開啟相簿的方法，供不同位置的按鈕呼叫
         const openGallery = () => { 
             text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); 
             renderGallery('photos'); 
@@ -778,7 +814,6 @@
         ais.addEventListener('click',e=>{ 
             if(isCardSwiping){e.preventDefault(); e.stopPropagation(); return;} 
             
-            // 點擊原有的照片內相簿按鈕
             if(e.target.classList.contains('gallery-btn-overlay')){ 
                 openGallery();
             } else if(e.target.id==='animal-main-photo') {
@@ -790,7 +825,6 @@
             } 
         });
 
-        // 綁定縮小時，顯示在最新公告旁的相簿按鈕
         on('header-gallery-btn', 'click', e => {
             e.stopPropagation(); 
             openGallery();
