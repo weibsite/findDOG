@@ -8,7 +8,6 @@
     <title>尋寵地圖 | 找回毛小孩的路</title>
     
     <!-- 2. 瀏覽器標籤頁的 ICON (Favicon) -->
-    <!-- 請將下載的 ICON 圖片命名為 icon.png 並放在與網頁同一層目錄 -->
     <link href="icon1_32.ico" rel="icon">
     <link rel="icon" href="icon1.png" type="image/png">
     <link rel="apple-touch-icon" href="icon2.png">
@@ -16,31 +15,24 @@
     <!-- 3. SEO 與基礎網頁簡介 -->
     <meta name="description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！">
 
-    <!-- ========================================== -->
-    <!-- 4. 社群分享設定 (Open Graph) - 給 LINE, FB 看的 -->
-    <!-- ========================================== -->
+    <!-- 4. 社群分享設定 (Open Graph) -->
     <meta property="og:title" content="尋寵地圖 | 找回毛小孩的路" />
     <meta property="og:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！點擊進入加入搜索行列。" />
     <meta property="og:type" content="website" />
-    <!-- ⚠️ 關鍵：這裡「必須」是包含 https:// 的完整絕對網址！不能用相對路徑 -->
-    <!-- 請換成您實際託管圖片的網址，建議尺寸為 1200x630 或 1:1 的正方形圖 -->
     <meta property="og:image" content="https://finddog.online/image_og1.png" /> 
     <meta property="og:url" content="https://finddog.online/" />
     <meta property="og:site_name" content="尋寵地圖" />
 
-    <!-- Twitter / 其他平台的分享設定 -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="尋寵地圖 | 找回毛小孩的路" />
     <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
     <meta name="twitter:image" content="https://finddog.online/image_og1.png" />
-    <!-- ========================================== -->
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* 新增 touch-action: none 徹底阻擋手機瀏覽器原生放大畫面 */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; touch-action: none; -webkit-text-size-adjust: none; }
-        input, textarea, select { touch-action: manipulation; } /* 確保輸入框正常運作 */
+        input, textarea, select { touch-action: manipulation; }
         
         #map-container { position: relative; width: 100vw; height: 100vh; }
         #map { width: 100%; height: 100%; background-color: #1a202c; }
@@ -56,7 +48,6 @@
         .pixel-popup .leaflet-popup-content-wrapper { background-color: white; border: 4px solid #1a202c; border-radius: 0; box-shadow: 4px 4px 0px #1a202c; padding: 0; }
         .pixel-popup .leaflet-popup-tip-container { display: none; }
         
-        /* 新增：深色出沒點 Popup */
         .pixel-popup-dark .leaflet-popup-content-wrapper { background-color: #1f2937; border: 4px solid #000; border-radius: 0; box-shadow: 4px 4px 0px #000; padding: 0; }
         .pixel-popup-dark .leaflet-popup-tip-container { display: none; }
 
@@ -74,25 +65,21 @@
         #animal-info-section.mobile-collapsed { height: 36px !important; }
         #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
         
-        /* 縮小時，右箭頭長長滿版，並顯示「照片」字樣 */
         #animal-info-section.mobile-collapsed #card-next-btn { bottom: 0 !important; }
         #animal-info-section.mobile-collapsed #collapsed-photo-label { opacity: 1 !important; }
 
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
 
-        /* 相簿按鈕在縮小狀態時的隱藏與顯示切換 */
         #animal-info-section.mobile-collapsed .gallery-btn-overlay { display: none !important; }
         #header-gallery-btn { display: none; }
         #animal-info-section.mobile-collapsed + div #header-gallery-btn { display: block; }
 
-        /* 左下角按鈕群 - 手機版自動收合與文字簡介 */
         @media (max-width: 640px) {
             .collapsible-btn { transition: all 0.3s ease; white-space: nowrap; overflow: hidden; text-align: left; }
             .collapsible-btn.collapsed { width: 38px !important; padding-left: 8px !important; padding-right: 0 !important; }
             .collapsible-btn.show-desc::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
         }
 
-        /* 底部中間相機按鈕強制展開狀態 */
         #quick-camera-btn.expanded-mode { width: 9rem !important; }
         #quick-camera-btn.expanded-mode .camera-text { max-width: 80px !important; opacity: 1 !important; margin-left: 0.25rem !important; }
     </style>
@@ -102,7 +89,6 @@
     <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black/90 touch-none"></div>
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
     
-    <!-- GPS 斷線警告標示 -->
     <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
@@ -181,11 +167,13 @@
 
     <div id="admin-panel" class="absolute top-4 right-4 z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]"><div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div><div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div><button id="clear-history-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button><button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button><button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button><button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button><button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button><button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button><button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button><button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button><button id="manage-blacklist-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button><button id="set-ws-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-gray-700 text-white">🔗 變更伺服器</button><button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button></div>
     
-    <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
-    <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標</h3><input type="text" id="coord-input-value" class="pixel-input w-full p-3 mb-4 text-center font-mono" placeholder="貼上座標或網址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
+    
+    <!-- 💡 修改點：加入地址提示 -->
+    <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標或地址</h3><input type="text" id="coord-input-value" class="pixel-input w-full p-3 mb-4 text-center font-mono text-sm" placeholder="貼上座標、網址或輸入地址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    
     <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
     
-    <!-- 清理軌跡面板 -->
     <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">直接在畫面上拖曳塗抹要清除的範圍！點擊或塗抹已標示的紅圈即可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="pixel-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
 
     <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="pixel-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="pixel-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
@@ -211,12 +199,11 @@
         let hasInitialUrlZoomed = false;
         let NGROK_WS_URL = "", ws, wsReconnectDelay = 3000, isSystemReady = false;
         let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle = null;
-        let sightingTrackLayer; // 軌跡線專用圖層
-        let isSightingTrackVisible = true; // 預設顯示時間線索
+        let sightingTrackLayer;
+        let isSightingTrackVisible = true;
 
         let PROJECTS = {};
         
-        // 核心邏輯：將所有專案依照距離 (由近到遠) 進行排序，若無定位則依地理排序 (由北到南，再由西到東)
         const getSortedProjectKeys = () => {
             return Object.keys(PROJECTS).sort((a, b) => {
                 let pA = PROJECTS[a], pB = PROJECTS[b];
@@ -269,7 +256,7 @@
 
         // --- 核心共用模組 ---
         const isCoordinateInTaiwan = (lat, lng) => {
-            return lat >= 20.0 && lat <= 26.5 && lng >= 118.0 && lng <= 122.5;
+            return lat >= 20.0 && lat <= 27.0 && lng >= 118.0 && lng <= 123.0; // 稍微放寬以防邊界問題
         };
 
         let centerToastTimer = null;
@@ -380,7 +367,7 @@
                         if(res.data.announcements) Object.keys(res.data.announcements).forEach(k=>{ if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。") allAnnouncements[k]=res.data.announcements[k]; });
                         currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; lotteryTickets=res.data.tickets||0;
                         
-                        updateStepsCounterUI(); // 更新 UI 顯示的步數
+                        updateStepsCounterUI();
                         
                         updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI();
                         if(!$('manage-sightings-modal').classList.contains('hidden')) renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden')) renderManageRoutesList();
@@ -420,6 +407,8 @@
                     else if(res.type==='my_prizes_data') { let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length){ res.data.forEach(i=>{ let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`; }); } else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal'); }
                     else if(res.type==='draw_result') { setTimeout(()=>{ clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);} else {text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{ $('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){ let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`); } else showModal(res.msg||"💨 銘謝惠顧，下次再來！"); }, 800); }, 1500); }
                     else if(res.type==='parse_map_url_result') { if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;} }
+                    // 💡 新增：攔截地址搜尋結果
+                    else if(res.type==='search_address_result') { if(window.addressResolver){window.addressResolver(res); window.addressResolver=null;} }
                 };
                 ws.onclose = () => { isSystemReady=false; $('sync-ping').style.backgroundColor='#ef4444'; text('toast-text',"重連中..."); setTimeout(connectWebSocket, wsReconnectDelay); wsReconnectDelay=Math.min(wsReconnectDelay*2, 60000); };
             } catch (err) {
@@ -434,7 +423,6 @@
             isPowerSaving=true; 
             show('power-saving-overlay'); 
             requestWakeLock(); 
-            // 優化 4: GPS 降頻策略 (省電模式下改用 15 秒抓取一次)
             if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
             if(isTrackingStarted && !isSpectatorMode) {
                 gpsIntervalId = setInterval(() => {
@@ -450,10 +438,8 @@
             if(!isPowerSaving)return; 
             isPowerSaving=false; 
             hide('power-saving-overlay'); 
-            // 優化 4: 恢復高頻 GPS
             if(gpsIntervalId) { clearInterval(gpsIntervalId); gpsIntervalId = null; }
             if(isTrackingStarted && !isSpectatorMode) startLocationServices(true);
-            // 優化 1: 退出省電時補繪地圖與迷霧
             renderMap();
             requestFogRender();
         }
@@ -463,7 +449,6 @@
         on('power-saving-btn', 'click', e=>{e.stopPropagation(); enterPowerSavingMode();});
         document.addEventListener('visibilitychange', async ()=>{ 
             if(document.visibilityState === 'hidden') {
-                // 優化 3: 切換 APP (縮到背景) 時直接進入極致休眠
                 enterPowerSavingMode();
             } else {
                 if(wakeLock!==null) wakeLock=null; 
@@ -485,7 +470,6 @@
         function handleGeoError(e, auto) {
             if(isSpectatorMode) return; 
             
-            // 將按鈕改為紅色並提示可以免定位進入
             $('master-start-btn').innerText="直接進入地圖 [無定位]";
             $('master-start-btn').style.backgroundColor = "#ef4444";
             $('master-start-btn').style.color = "white";
@@ -538,7 +522,6 @@
                 lastSetViewTime1 = ts;
             }
             
-            // 優化 5: 動態關閉平滑動畫 (30秒內連續觸發2次重新置中則關閉動畫)
             if(!isMapInteracting && map && !isMyRouteMode && !map.getBounds().pad(-0.1).contains([lat,lng])) {
                 lastSetViewTime2 = lastSetViewTime1;
                 lastSetViewTime1 = ts;
@@ -563,7 +546,6 @@
             if(force||n-lastFullSyncTime>300000){ wsSend("update_location", {data:{userName:currentUserName, color:dbUserColor, history:localHistory, lastUpdate:n}}); lastFullSyncTime=n; } else if(pt) wsSend("append_location", {data:{userName:currentUserName, color:dbUserColor, point:pt}});
         }
 
-        // 修改：步數純粹由伺服器提供，不再於前端主動計算發送，以杜絕防作弊修改風險
         function updateStepsCounterUI() { 
             if(allUsersData && allUsersData[myUid] && allUsersData[myUid].total_steps !== undefined) {
                 text('step-counter-value', allUsersData[myUid].total_steps.toLocaleString()); 
@@ -627,7 +609,6 @@
             });
         }
         function renderMap() {
-            // 優化 1: 停止「黑畫面」下的無效渲染 (增加 isPowerSaving 判斷)
             if(!markersLayer||!map||isPowerSaving)return; markersLayer.clearLayers(); let n=Date.now(), b=map.getBounds();
             if(isMyRouteMode) {
                 let td=(targetRouteUid===myUid)?{history:localHistory}:allUsersData[targetRouteUid], hd=[], rc='#ef4444', rn='使用者';
@@ -657,7 +638,6 @@
             text('toast-text', `線上探索: ${uc} 人`); requestFogRender();
         }
 
-        // --- 全新出沒點顯示邏輯 (含軌跡線索繪製) ---
         function renderSightings() {
             if(!sightingsLayer) return;
             sightingsLayer.clearLayers();
@@ -670,14 +650,12 @@
             Object.values(allSightings).forEach(d => {
                 if(d.project && d.project !== currentProjectKey) return;
                 
-                // 1. 文字最多顯示 10 個字
                 let st = d.description || "";
                 if (st.length > 10) st = st.substring(0, 10) + "...";
                 st = escapeHTML(st);
                 
                 let pt = d.project && d.project !== currentProjectKey ? ` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>` : '';
                 
-                // 2. Popup 不顯示時間，字變白色，有導航按鈕
                 let popupHtml = `<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`;
 
                 L.marker([d.lat, d.lng], {
@@ -688,7 +666,6 @@
                     zIndexOffset: Math.floor(d.timestamp / 1000)
                 }).addTo(sightingsLayer).bindPopup(popupHtml, {className: 'pixel-popup-dark', offset: [0, -30]});
 
-                // 3. 軌跡連線條件：明確日期時間且沒有"疑似"
                 if(!d.description.includes('疑似')) {
                     let match = d.description.match(timeRegex);
                     if(match) {
@@ -698,28 +675,23 @@
                 }
             });
 
-            // 繪製軌跡
             if(trackPoints.length >= 2) {
                 show('toggle-sighting-track-btn');
                 if(isSightingTrackVisible) {
                     trackPoints.sort((a, b) => a.score - b.score);
                     let latlngs = trackPoints.map(p => [p.lat, p.lng]);
                     
-                    // 🌈 視覺優化：定義一組鮮明的顏色來區分不同的線段，避免交叉時難以判斷
                     const trackColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
-                    // 繪製帶有箭頭的線段方向
                     for(let i=0; i<latlngs.length-1; i++) {
                         let p1 = latlngs[i], p2 = latlngs[i+1];
                         let segColor = trackColors[i % trackColors.length];
                         
-                        // 分段繪製不同顏色的虛線
                         L.polyline([p1, p2], {color: segColor, weight: 4, dashArray: '10, 10', opacity: 0.8}).addTo(sightingTrackLayer);
 
                         let midLat = (p1[0] + p2[0]) / 2;
                         let midLng = (p1[1] + p2[1]) / 2;
                         
-                        // 使用地圖投影計算螢幕角度
                         let p1Px = map.project(p1, 16); 
                         let p2Px = map.project(p2, 16);
                         let angle = Math.atan2(p2Px.y - p1Px.y, p2Px.x - p1Px.x) * 180 / Math.PI;
@@ -761,13 +733,11 @@
         }
         function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{if(isFogVisible)renderFog(); fogRenderPending=false;});} }
         function renderFog() {
-            // 優化 1: 停止「黑畫面」下的無效渲染 (增加 isPowerSaving 判斷)
             if(!map||!fogCtx||!isFogVisible||isPowerSaving)return; let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
             if(taiwanPolygons.length){ let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');} else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);} } else {lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
             
             let hasActiveNear=false; if(PROJECTS[currentProjectKey]){ let pb=PROJECTS[currentProjectKey].bounds, cl=(pb[0][0]+pb[1][0])/2, cg=(pb[0][1]+pb[1][1])/2; Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}}); }
             
-            // 💡 將原本有人時的 5% 調整為 35%
             let bO=hasActiveNear?0.35:0.5, mO=hasActiveNear?0.35:0.5;
 
             const dr=(hp,i)=>{ let r=Math.max(0,Math.min(1,((i<hp.length-1?hp[i+1].timestamp:n)-hp[i].timestamp)/60000)); return ((8+(117*r))/mpp)*FOG_SCALE; };
@@ -808,7 +778,6 @@
         function updateGiftUI() { let gc=$('floating-gift-container'); if(!currentProjectHasPrize)hide('floating-gift-container'); else{show('floating-gift-container'); let t=isAdmin?'無限':lotteryTickets; text('gift-ticket-badge',t); if(!$('slot-machine-modal').classList.contains('hidden'))text('slot-tickets-display',t);} }
         function saveLotteryState() { lsSet('dogMap_lottery_time_'+currentProjectKey, JSON.stringify({r:lotteryTimeRemaining})); }
         function loadLotteryState() { let d=lsGet('dogMap_lottery_time_'+currentProjectKey); lotteryTimeRemaining=d?JSON.parse(d).r||3600:3600; updateGiftUI(); }
-        // 優化 2: 減少不必要的 DOM 更新 (省電模式下不更新UI數字)
         setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted)return; let out=false, cLoc=localHistory?.length?localHistory[localHistory.length-1]:null, p=PROJECTS[currentProjectKey]; if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng, (p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2)>50000)out=true; let tUI=$('gift-timer'); if(out){tUI.style.color='#ef4444'; tUI.innerText="太遠了"; if(!isSpectatorMode)show('spectator-hint'); return;} tUI.style.color=''; hide('spectator-hint'); if(lotteryTimeRemaining===300&&localHistory?.length){ let md=0, n=Date.now()-3000000, val=false; for(let i=localHistory.length-1;i>=0;i--){if(localHistory[i].timestamp>=n){let d=getDistance(cLoc.lat,cLoc.lng,localHistory[i].lat,localHistory[i].lng); if(d>md)md=d; val=true;}else break;} if(val&&md<50){lotteryTimeRemaining=3599; if(!isPowerSaving) tUI.innerText=`${Math.floor(3599/60).toString().padStart(2,'0')}:${(3599%60).toString().padStart(2,'0')}`; saveLotteryState(); return;} } lotteryTimeRemaining--; if(!isPowerSaving) tUI.innerText=`${Math.floor(lotteryTimeRemaining/60).toString().padStart(2,'0')}:${(lotteryTimeRemaining%60).toString().padStart(2,'0')}`; if(lotteryTimeRemaining<=0){lotteryTimeRemaining=3600; saveLotteryState(); wsSend("earn_ticket"); show('lottery-marquee-container'); $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation='none'; $('lottery-marquee-container').querySelector('.animate-marquee-text').offsetHeight; $('lottery-marquee-container').querySelector('.animate-marquee-text').style.animation=null; setTimeout(()=>hide('lottery-marquee-container'),20000);} saveLotteryState(); }, 1000);
         on('slot-draw-btn','click',()=>{ if(!isAdmin&&lotteryTickets<=0)return showCenterToast("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！"); if(!isSystemReady)return showCenterToast("系統目前未連線！"); $('slot-draw-btn').innerText="🎰 抽獎中..."; $('slot-draw-btn').disabled=true; slotSpinning=true; slotTimer=setInterval(()=>{let e=['🐶','🐱']; ['reel-1','reel-2','reel-3'].forEach(id=>text(id,e[Math.floor(Math.random()*2)]));},100); wsSend("draw_gift",{userName:currentUserName}); });
         on('slot-check-pool-btn','click',()=>wsSend("get_prizes"));
@@ -934,16 +903,101 @@
         const setWsUrl = ()=>{ showInputModal("🔗 設定伺服器連線網址", "wss://...", NGROK_WS_URL, u=>{ if(u.startsWith("ws://")||u.startsWith("wss://")){NGROK_WS_URL=u; if(ws?.readyState===WebSocket.OPEN)ws.close(); else connectWebSocket(); showCenterToast("✅ 網址已更新！");}else showCenterToast("⚠️ 格式錯誤！"); }); };
         on('set-ws-btn','click',setWsUrl); on('status-toast','dblclick',setWsUrl);
         on('delete-project-btn','click',()=>showConfirm(`確定刪除專案「${currentProjectKey}」？\n軌跡與獎品將被保留！`, ()=>wsSend("admin_delete_project")));
-        on('add-sighting-btn','click',()=>showInputModal(`📍 新增出沒點`, "描述...", "", desc=>{ show('position-method-modal'); replaceBtn('pos-method-map-btn',()=>{hide('position-method-modal'); showCenterToast("📍 請在地圖上點擊！"); map.once('click',e=>{
-            if (!isCoordinateInTaiwan(e.latlng.lat, e.latlng.lng)) return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
-            wsSend("add_sighting",{data:{lat:e.latlng.lat,lng:e.latlng.lng,description:desc,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！");
-        }); }); replaceBtn('pos-method-input-btn',()=>{hide('position-method-modal'); $('coord-input-value').value=""; show('coordinate-input-modal'); replaceBtn('coord-submit-btn',async ()=>{ let rv=$('coord-input-value').value.trim(); if(!rv)return showCenterToast("⚠️ 請輸入內容！"); if(rv.startsWith("http://")||rv.startsWith("https://")){ if(!isSystemReady)return showCenterToast("⚠️ 未連線！"); let b=$('coord-submit-btn'); b.innerText="⏳ 解析中..."; b.disabled=true; try{ let r=await new Promise((res,rej)=>{ let t=setTimeout(()=>rej("timeout"),8000); window.mapUrlResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("parse_map_url",{url:rv}); }); if(r.success&&r.lat&&r.lng){ 
-            if (!isCoordinateInTaiwan(r.lat, r.lng)) return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
-            hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！"); 
-        }else showCenterToast("⚠️ 解析失敗："+(r.msg||"未知錯誤")); }catch(e){ showCenterToast("⚠️ 解析超時或失敗！請直接輸入座標。"); window.mapUrlResolver=null; }finally{ b.innerText="確定"; b.disabled=false; } }else{ let p=rv.replace(/[()]/g, '').split(/[,;\s]+/).filter(Boolean).map(Number); if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])){ 
-            if (!isCoordinateInTaiwan(p[0], p[1])) return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
-            hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:p[0],lng:p[1],description:desc,timestamp:Date.now(),project:currentProjectKey}}); map.setView([p[0],p[1]],16); showCenterToast("✅ 成功！"); 
-        }else showCenterToast("⚠️ 格式錯誤！"); } }); replaceBtn('coord-cancel-btn',()=>hide('coordinate-input-modal')); }); replaceBtn('pos-method-cancel-btn',()=>hide('position-method-modal')); }));
+        
+        // 💡 核心修改：增設出沒點的混合地址解析與錯誤備援
+        on('add-sighting-btn','click',()=>showInputModal(`📍 新增出沒點`, "描述...", "", desc=>{
+            show('position-method-modal');
+            
+            replaceBtn('pos-method-map-btn',()=>{
+                hide('position-method-modal');
+                showCenterToast("📍 請在地圖上點擊！");
+                map.once('click',e=>{
+                    if (!isCoordinateInTaiwan(e.latlng.lat, e.latlng.lng)) return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
+                    wsSend("add_sighting",{data:{lat:e.latlng.lat,lng:e.latlng.lng,description:desc,timestamp:Date.now(),project:currentProjectKey}});
+                    showCenterToast("✅ 成功！");
+                });
+            });
+            
+            replaceBtn('pos-method-input-btn',()=>{
+                hide('position-method-modal');
+                $('coord-input-value').value="";
+                show('coordinate-input-modal');
+                
+                replaceBtn('coord-submit-btn', async ()=>{
+                    let rv=$('coord-input-value').value.trim();
+                    if(!rv)return showCenterToast("⚠️ 請輸入內容！");
+                    
+                    let b=$('coord-submit-btn');
+                    b.innerText="⏳ 解析中...";
+                    b.disabled=true;
+                    
+                    try {
+                        if(rv.startsWith("http://") || rv.startsWith("https://")) {
+                            if(!isSystemReady) throw new Error("伺服器未連線！");
+                            let r = await new Promise((res,rej)=>{
+                                let t=setTimeout(()=>rej(new Error("timeout")),8000);
+                                window.mapUrlResolver=(d)=>{clearTimeout(t);res(d);};
+                                wsSend("parse_map_url",{url:rv});
+                            });
+                            if(r.success && r.lat && r.lng){
+                                if (!isCoordinateInTaiwan(r.lat, r.lng)) throw new Error("座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
+                                hide('coordinate-input-modal');
+                                wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,timestamp:Date.now(),project:currentProjectKey}});
+                                map.setView([r.lat,r.lng],16);
+                                showCenterToast("✅ 成功！");
+                            } else throw new Error(r.msg || "未知錯誤");
+                        } else {
+                            // 檢查是否為純座標 (例: 25.033, 121.565)
+                            let p = rv.replace(/[()]/g, '').split(/[,;\s]+/).filter(Boolean).map(Number);
+                            if(p.length >= 2 && !isNaN(p[0]) && !isNaN(p[1]) && p[0] < 90 && p[1] > 100){ 
+                                if (!isCoordinateInTaiwan(p[0], p[1])) throw new Error("座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
+                                hide('coordinate-input-modal');
+                                wsSend("add_sighting",{data:{lat:p[0],lng:p[1],description:desc,timestamp:Date.now(),project:currentProjectKey}});
+                                map.setView([p[0],p[1]],16);
+                                showCenterToast("✅ 成功！"); 
+                            } else {
+                                // 當作中文地址來搜尋
+                                if(!isSystemReady) throw new Error("伺服器未連線！");
+                                let r = await new Promise((res,rej)=>{
+                                    let t=setTimeout(()=>rej(new Error("timeout")),8000);
+                                    window.addressResolver=(d)=>{clearTimeout(t);res(d);};
+                                    wsSend("search_address",{address:rv});
+                                });
+                                if(r.success && r.lat && r.lng){
+                                    if (!isCoordinateInTaiwan(r.lat, r.lng)) throw new Error("座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。");
+                                    hide('coordinate-input-modal');
+                                    wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,timestamp:Date.now(),project:currentProjectKey}});
+                                    map.setView([r.lat,r.lng],16);
+                                    showCenterToast("✅ 成功！");
+                                } else throw new Error(r.msg || "無法解析該地址");
+                            }
+                        }
+                    } catch(e) {
+                        let errorMsg = e.message || e || "解析失敗";
+                        if (errorMsg === "timeout") errorMsg = "請求處理超時！伺服器可能正忙碌中。";
+                        let encodedQuery = encodeURIComponent(rv);
+                        
+                        // 使用特製的 HTMLModal 來顯示錯誤，並提供手動搜尋按鈕
+                        showHTMLModal(`
+                            <div class="text-lg font-black text-red-600 mb-2 border-b-2 border-black pb-1">⚠️ 解析失敗</div>
+                            <div class="text-sm font-bold text-gray-800 mb-3">${errorMsg}</div>
+                            <p class="text-xs text-gray-600 mb-4 text-left leading-relaxed">請檢查輸入格式，或是您可以點擊下方按鈕前往 Google Maps 手動搜尋。<br>找到正確位置後，<span class="text-red-600 font-bold">長按地圖獲得紅點座標</span> 或 <span class="text-red-600 font-bold">複製分享網址</span>，再回來貼上即可！</p>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodedQuery}" target="_blank" class="pixel-btn block text-center py-3 bg-green-500 text-white mb-2 no-underline text-sm shadow-[2px_2px_0px_#000]">🌍 在 Google Maps 手動找</a>
+                        `);
+                        
+                        window.mapUrlResolver = null;
+                        window.addressResolver = null;
+                    } finally {
+                        b.innerText="確定";
+                        b.disabled=false;
+                    }
+                });
+                
+                replaceBtn('coord-cancel-btn',()=>hide('coordinate-input-modal'));
+            });
+            replaceBtn('pos-method-cancel-btn',()=>hide('position-method-modal'));
+        }));
+
         on('manage-sightings-btn','click',()=>{ renderManageSightingsList(); show('manage-sightings-modal'); }); on('close-manage-modal-btn','click',()=>hide('manage-sightings-modal'));
         function renderManageSightingsList() { let c=$('sightings-list-container'); c.innerHTML=''; let id=Object.keys(allSightings).filter(i=>allSightings[i].project===currentProjectKey).sort((a,b)=>allSightings[b].timestamp-allSightings[a].timestamp); if(!id.length)return html('sightings-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allSightings[i], dt=new Date(d.timestamp); c.innerHTML+=`<div class="border-4 border-black p-3 bg-white mb-2"><div class="font-bold text-sm">🕒 ${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}</div><div class="text-sm mb-2">${escapeHTML(d.description)}</div><div class="flex gap-2"><button class="edit-s-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 編輯</button><button class="del-s-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-s-btn').forEach(b=>b.addEventListener('click',e=>showInputModal("編輯","描述...",allSightings[e.target.getAttribute('data-id')].description, nd=>wsSend("edit_sighting",{id:e.target.getAttribute('data-id'), data:{description:nd}})))); c.querySelectorAll('.del-s-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_sighting",{id:e.target.getAttribute('data-id')})))); }
         
@@ -962,7 +1016,6 @@
         on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
         on('slot-close-btn','click',()=>hide('slot-machine-modal')); on('floating-gift-container','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法參與抽獎！"); text('slot-machine-title',`🎰 抽獎`); updateGiftUI(); show('slot-machine-modal'); }); on('prize-pool-close-btn','click',()=>hide('prize-pool-modal'));
 
-        // ================= 左下按鈕自動收合邏輯 =================
         let btnCollapseTimer = null;
         function resetBtnCollapseTimer() {
             if (window.innerWidth > 640) return;
@@ -980,7 +1033,6 @@
             }, 30000);
         }
         
-        // 點擊空白處取消按鈕說明
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.collapsible-btn')) {
                 document.querySelectorAll('.collapsible-btn').forEach(b => b.classList.remove('show-desc'));
@@ -991,7 +1043,6 @@
             btn.addEventListener('click', (e) => {
                 if (window.innerWidth <= 640) {
                     if (btn.classList.contains('two-tap') && !btn.classList.contains('show-desc')) {
-                        // 如果有防呆設定且尚未顯示說明，則展開並顯示說明，攔截本次點擊
                         document.querySelectorAll('.collapsible-btn').forEach(b => {
                             b.classList.remove('collapsed');
                             if (b !== btn) b.classList.remove('show-desc');
@@ -1011,14 +1062,12 @@
                         e.stopImmediatePropagation();
                         e.preventDefault();
                     } else {
-                        // 如果沒有防呆，或已經顯示說明，則隱藏說明並允許事件觸發功能
                         btn.classList.remove('show-desc');
                     }
                 }
-            }, true); // 使用 Capture 階段，優先攔截
+            }, true);
         });
 
-        // ================= 新增清理軌跡邏輯 =================
         $('clear-radius').addEventListener('input', e => {
             currentClearRadius = parseInt(e.target.value);
             text('clear-radius-val', currentClearRadius);
@@ -1027,7 +1076,7 @@
         on('clear-history-btn', 'click', () => {
             if(!isAdmin) return;
             isClearingHistory = true;
-            map.dragging.disable(); // 關閉地圖拖曳，專心繪製
+            map.dragging.disable(); 
             clearHistoryCircles = [];
             show('clear-history-panel');
             hide('admin-panel');
@@ -1036,7 +1085,7 @@
 
         const exitClearMode = () => {
             isClearingHistory = false;
-            map.dragging.enable(); // 恢復地圖拖曳
+            map.dragging.enable(); 
             clearHistoryCircles.forEach(c => map.removeLayer(c.layer));
             clearHistoryCircles = [];
             hide('clear-history-panel');
@@ -1051,7 +1100,6 @@
                 let areas = clearHistoryCircles.map(c => ({lat: c.lat, lng: c.lng, radius: c.radius}));
                 wsSend("admin_clear_history", { areas: areas, project: currentProjectKey });
                 
-                // 本地立即過濾
                 Object.values(allUsersData).forEach(u => {
                     if (u.history) {
                         u.history = u.history.filter(pt => !areas.some(a => getDistance(pt.lat, pt.lng, a.lat, a.lng) <= a.radius));
@@ -1067,7 +1115,6 @@
             });
         });
 
-        // ================= 修復加入的開始按鈕點擊事件 =================
         on('master-start-btn', 'click', e => {
             e.preventDefault();
             hide('error-msg');
@@ -1080,12 +1127,10 @@
             
             loadLotteryState();
             
-            // 先啟動定位服務，避免被後方 WebSocket 潛在錯誤阻斷
             startLocationServices(false);
             connectWebSocket();
         });
 
-        // ================= 手機版相機按鈕單擊防誤觸邏輯 =================
         let qcb = $('quick-camera-btn');
         if(qcb) {
             qcb.addEventListener('click', function(e) {
