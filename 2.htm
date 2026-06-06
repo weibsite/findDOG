@@ -38,6 +38,11 @@
         
         #animal-info-section.mobile-collapsed { height: 36px !important; }
         #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
+        
+        /* 縮小時，右箭頭長長滿版，並顯示「照片」字樣 */
+        #animal-info-section.mobile-collapsed #card-next-btn { bottom: 0 !important; }
+        #animal-info-section.mobile-collapsed #collapsed-photo-label { opacity: 1 !important; }
+
         .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
 
         /* 相簿按鈕在縮小狀態時的隱藏與顯示切換 */
@@ -113,13 +118,19 @@
     <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
         <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
         <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false"><div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&gt;</div><div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div></div>
+            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
+                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
+                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
+                <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
+                <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
+                <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+            </div>
             <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
             <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
                 <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
                 <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
-                <div id="announcement-action-container" class="mt-2 hidden"></div>
             </div>
+            <div id="announcement-action-container" class="mt-2 hidden"></div>
         </div>
     </div>
     
@@ -465,7 +476,57 @@
             if(!isSystemReady||isSpectatorMode) return; const n=Date.now();
             if(force||n-lastFullSyncTime>300000){ wsSend("update_location", {data:{userName:currentUserName, color:dbUserColor, history:localHistory, lastUpdate:n}}); lastFullSyncTime=n; } else if(pt) wsSend("append_location", {data:{userName:currentUserName, color:dbUserColor, point:pt}});
         }
-        function updateStepsCounter() { let d=0; if(localHistory?.length>1) for(let i=1;i<localHistory.length;i++){let x=getDistance(localHistory[i-1].lat,localHistory[i-1].lng,localHistory[i].lat,localHistory[i].lng); if(x<1000)d+=x;} text('step-counter-value', Math.floor(d/0.6).toLocaleString()); }
+
+        // 新增：29 分鐘定期儲存步數與防作弊過濾邏輯
+        let lastSyncSteps = parseInt(lsGet('dogMap_lastSyncSteps') || '0');
+        setInterval(() => {
+            if(!isTrackingStarted || isSpectatorMode || !isSystemReady) return;
+            let currentSteps = updateStepsCounter();
+            let diff = currentSteps - lastSyncSteps;
+            
+            if (diff > 0) {
+                // 檢查合理性：29分鐘(1740秒) 內如果以極限跑速(5m/s)移動，最大步數約 14500 步。
+                // 若增加的步數小於等於 20000 步(留點容錯)視為合理並上傳；超過則靜默拋棄本次更新
+                if (diff <= 20000) {
+                    wsSend("sync_steps_record", { totalSteps: currentSteps, gainedSteps: diff });
+                }
+                // 無論是否合理，都將最後同步步數更新為當前步數，確保下個 29 分鐘重新計算差異
+                lastSyncSteps = currentSteps;
+                lsSet('dogMap_lastSyncSteps', lastSyncSteps);
+            }
+        }, 29 * 60 * 1000);
+
+        function updateStepsCounter() { 
+            let d = 0; 
+            if(localHistory?.length > 1) {
+                for(let i=1; i<localHistory.length; i++){
+                    let p1 = localHistory[i-1], p2 = localHistory[i];
+                    let x = getDistance(p1.lat, p1.lng, p2.lat, p2.lng); 
+                    let t = (p2.timestamp - p1.timestamp) / 1000; // 兩點間的時間差(秒)
+                    
+                    if (t > 0 && x < 1000) {
+                        let speed = x / t; // m/s
+                        
+                        // 防作弊邏輯：
+                        if (speed > 5) {
+                            // 1. 如果速度高於跑步 (約 5 m/s = 18km/h) 判定為汽機車快速移動
+                            // 懲罰機制：將獲得的距離以「最低散步步數(1m/s)」來計算
+                            x = t * 1.0; 
+                        } else if (x > t * 2.5) {
+                            // 2. 模擬探索迷霧的「最大範圍上限」：每秒最多只能算 2.5 公尺的有效探索
+                            // 避免在原地稍微大一點範圍內瘋狂來回衝刺刷步數
+                            x = t * 2.5; 
+                        }
+                        
+                        d += x;
+                    }
+                }
+            } 
+            let currentSteps = Math.floor(d / 0.6);
+            text('step-counter-value', currentSteps.toLocaleString()); 
+            return currentSteps;
+        }
+
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){ s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return; } show('animal-info-section');
             // 取出經過排序的專案
@@ -494,8 +555,28 @@
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
             let u=p.mainPhoto; if(u?.startsWith('/images/')) u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
-            let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; html('announcement-text', escapeHTML(a).replace(/\n/g,'<br>'));
-            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){ ac.innerHTML=`<a href="${p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline">🔗 ${p.actionLink.text||"前往連結"}</a>`; }
+            let a=allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。"; 
+            
+            // --- 新增：自動過濾並轉換網址為可點擊連結 ---
+            let escapedText = escapeHTML(a).replace(/\n/g,'<br>');
+            // 使用正則表達式找出 http 或 https 開頭的網址
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            let linkedText = escapedText.replace(urlRegex, function(url) {
+                // 將找到的網址轉換為 <a> 標籤，加入 Tailwind class 讓它更明顯
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`;
+            });
+            html('announcement-text', linkedText);
+            // ------------------------------------------------
+            
+            let ac=$('announcement-action-container'); ac.innerHTML=''; 
+            if(p?.actionLink?.url){ 
+                // 從 url 屬性中提取實際的網址 (過濾掉夾雜的文字)
+                let rawActionUrl = p.actionLink.url;
+                let extMatch = rawActionUrl.match(/(https?:\/\/[^\s<]+)/);
+                let finalActionUrl = extMatch ? extMatch[1] : rawActionUrl;
+                
+                ac.innerHTML=`<a href="${finalActionUrl}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`; 
+            }
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){ $('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'), 5000); }
         }
         function drawAllProjects() {
@@ -583,7 +664,7 @@
         on('eva-grid-btn','click',()=>{ isEvaMode=!isEvaMode; let b=$('eva-grid-btn'); if(isEvaMode){b.innerText="❌ 關閉顯示"; b.style.cssText="background-color:#ef4444;color:white;"; drawEvaGrid();} else {b.innerText="🕸️ 完成度"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); if(evaGridLayer){evaGridLayer.clearLayers(); map.removeLayer(evaGridLayer); evaGridLayer=null;}} });
 
         // --- 雜項 UI 與相片對比 ---
-        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-content-wrapper'); text('toggle-announce-panel-btn','➕');} else {show('announcement-content-wrapper'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
+        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-content-wrapper'); hide('announcement-action-container'); text('toggle-announce-panel-btn','➕');} else {show('announcement-content-wrapper'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
         on('toggle-announce-panel-btn','click',()=>{ isAnnounceCollapsed=!isAnnounceCollapsed; lsSet('dogMap_announceCollapsed', isAnnounceCollapsed); applyAnnouncePanelCollapseState(); });
         
         $('profile-color').addEventListener('input', e=>$('profile-hex').value=e.target.value.toUpperCase());
@@ -595,7 +676,7 @@
         on('toggle-fog-btn','click',()=>{ isFogVisible=!isFogVisible; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display=isFogVisible?'block':'none'); let b=$('toggle-fog-btn'); if(isFogVisible){b.innerText="👁️ 關閉迷霧"; b.style.backgroundColor="#f59e0b"; requestFogRender();} else {b.innerText="🌫️ 開啟迷霧"; b.style.backgroundColor="#9ca3af";} });
         on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(), {draggable:true, zIndexOffset:10000, icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey}; updateStepsCounter(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
-        on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟動");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
+        on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟配置");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
 
         function updateGiftUI() { let gc=$('floating-gift-container'); if(!currentProjectHasPrize)hide('floating-gift-container'); else{show('floating-gift-container'); let t=isAdmin?'無限':lotteryTickets; text('gift-ticket-badge',t); if(!$('slot-machine-modal').classList.contains('hidden'))text('slot-tickets-display',t);} }
@@ -722,7 +803,7 @@
         });
 
         // --- 管理員操作 ---
-        on('step-panel','click',()=>{ $('admin-pwd-input').value=""; show('admin-login-modal'); }); on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
+        on('status-toast','click',()=>{ $('admin-pwd-input').value=""; show('admin-login-modal'); }); on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
         on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
         on('close-admin-btn','click',()=>{ hide('admin-panel'); hide('delete-project-btn'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
         on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
