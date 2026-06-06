@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <!-- 1. 瀏覽器標籤頁的標題 -->
-    <title>尋寵地圖 | 主人找回毛小孩的路</title>
+    <title>尋寵地圖 | 找回毛小孩的路</title>
     
     <!-- 2. 瀏覽器標籤頁的 ICON (Favicon) -->
-    <!-- 請將下載的 ICON 圖片命名為 icon.png 並放在與網頁同一層目錄 -->
-    <link rel="icon" href="icon.png" type="image/png">
-    <link rel="apple-touch-icon" href="icon.png">
+    <!-- 請將下載的 ICON 圖片命名為 icon1.png / icon2.png 並放在與網頁同一層目錄 -->
+    <link rel="icon" href="icon1.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon2.png">
 
     <!-- 3. SEO 與基礎網頁簡介 -->
     <meta name="description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！">
@@ -18,19 +18,19 @@
     <!-- ========================================== -->
     <!-- 4. 社群分享設定 (Open Graph) - 給 LINE, FB 看的 -->
     <!-- ========================================== -->
-    <meta property="og:title" content="尋寵地圖 | 幫毛小孩找回家的路" />
+    <meta property="og:title" content="尋寵地圖 | 找回毛小孩的路" />
     <meta property="og:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！點擊進入加入搜索行列。" />
     <meta property="og:type" content="website" />
     <!-- ⚠️ 關鍵：這裡「必須」是包含 https:// 的完整絕對網址！不能用相對路徑 -->
     <!-- 請換成您實際託管圖片的網址，建議尺寸為 1200x630 或 1:1 的正方形圖 -->
-    <meta property="og:image" content="https://您的網址.com/og-image.png" /> 
-    <meta property="og:url" content="https://您的網址.com/" />
+    <meta property="og:image" content="https://finddog.online/image_og1.png" /> 
+    <meta property="og:url" content="https://finddog.online/" />
     <meta property="og:site_name" content="尋寵地圖" />
 
     <!-- Twitter / 其他平台的分享設定 -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="尋寵地圖 | 幫毛小孩找回家的路" />
-    <meta name="twitter:description" cofntent="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
+    <meta name="twitter:title" content="尋寵地圖 | 找回毛小孩的路" />
+    <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
     <meta name="twitter:image" content="https://finddog.online/og-image.png" />
     <!-- ========================================== -->
 
@@ -505,8 +505,8 @@
             if(!isSystemReady||isSpectatorMode) return; const n=Date.now();
             if(force||n-lastFullSyncTime>300000){ wsSend("update_location", {data:{userName:currentUserName, color:dbUserColor, history:localHistory, lastUpdate:n}}); lastFullSyncTime=n; } else if(pt) wsSend("append_location", {data:{userName:currentUserName, color:dbUserColor, point:pt}});
         }
-
-        // 新增：29 分鐘定期儲存步數與防作弊過濾邏輯
+        
+        // 29 分鐘定期儲存步數與防作弊過濾邏輯
         let lastSyncSteps = parseInt(lsGet('dogMap_lastSyncSteps') || '0');
         setInterval(() => {
             if(!isTrackingStarted || isSpectatorMode || !isSystemReady) return;
@@ -514,16 +514,37 @@
             let diff = currentSteps - lastSyncSteps;
             
             if (diff > 0) {
-                // 檢查合理性：29分鐘(1740秒) 內如果以極限跑速(5m/s)移動，最大步數約 14500 步。
-                // 若增加的步數小於等於 20000 步(留點容錯)視為合理並上傳；超過則靜默拋棄本次更新
                 if (diff <= 20000) {
                     wsSend("sync_steps_record", { totalSteps: currentSteps, gainedSteps: diff });
                 }
-                // 無論是否合理，都將最後同步步數更新為當前步數，確保下個 29 分鐘重新計算差異
                 lastSyncSteps = currentSteps;
                 lsSet('dogMap_lastSyncSteps', lastSyncSteps);
             }
         }, 29 * 60 * 1000);
+
+        let targetSteps = 0, displayedSteps = 0, stepAnimationTimer = null, isFirstStepRender = true;
+        
+        function startStepAnimation() {
+            if (stepAnimationTimer) clearTimeout(stepAnimationTimer);
+            function nextStep() {
+                if (displayedSteps < targetSteps) {
+                    let diff = targetSteps - displayedSteps;
+                    // 超過 30 步才加速，否則偽裝成每步每步增加
+                    let inc = diff > 30 ? Math.ceil(diff / 30) : 1; 
+                    displayedSteps += inc;
+                    if (displayedSteps > targetSteps) displayedSteps = targetSteps;
+                    text('step-counter-value', displayedSteps.toLocaleString());
+
+                    // 計算延遲：預計在 3~4 秒內跑完，不低於 80ms 不高於 600ms (大約 1.5 步/秒 的散步感)
+                    let delay = Math.max(80, Math.min(600, Math.floor(4000 / diff)));
+                    stepAnimationTimer = setTimeout(nextStep, delay);
+                } else if (displayedSteps > targetSteps) {
+                    displayedSteps = targetSteps;
+                    text('step-counter-value', displayedSteps.toLocaleString());
+                }
+            }
+            nextStep();
+        }
 
         function updateStepsCounter() { 
             let d = 0; 
@@ -531,29 +552,31 @@
                 for(let i=1; i<localHistory.length; i++){
                     let p1 = localHistory[i-1], p2 = localHistory[i];
                     let x = getDistance(p1.lat, p1.lng, p2.lat, p2.lng); 
-                    let t = (p2.timestamp - p1.timestamp) / 1000; // 兩點間的時間差(秒)
+                    let t = (p2.timestamp - p1.timestamp) / 1000; 
                     
                     if (t > 0 && x < 1000) {
-                        let speed = x / t; // m/s
-                        
-                        // 防作弊邏輯：
+                        let speed = x / t;
                         if (speed > 5) {
-                            // 1. 如果速度高於跑步 (約 5 m/s = 18km/h) 判定為汽機車快速移動
-                            // 懲罰機制：將獲得的距離以「最低散步步數(1m/s)」來計算
                             x = t * 1.0; 
                         } else if (x > t * 2.5) {
-                            // 2. 模擬探索迷霧的「最大範圍上限」：每秒最多只能算 2.5 公尺的有效探索
-                            // 避免在原地稍微大一點範圍內瘋狂來回衝刺刷步數
                             x = t * 2.5; 
                         }
-                        
                         d += x;
                     }
                 }
             } 
-            let currentSteps = Math.floor(d / 0.6);
-            text('step-counter-value', currentSteps.toLocaleString()); 
-            return currentSteps;
+            targetSteps = Math.floor(d / 0.6);
+            
+            // 初次載入直接顯示，不從 0 開始爬升
+            if (isFirstStepRender) {
+                displayedSteps = targetSteps;
+                text('step-counter-value', displayedSteps.toLocaleString());
+                isFirstStepRender = false;
+            } else {
+                startStepAnimation();
+            }
+            
+            return targetSteps;
         }
 
         function updateProjectDropdown() {
@@ -688,7 +711,28 @@
         const offsetLatLng=(lat,lng,dN,dE)=>{ let p=Math.PI; return [lat+(dN/6378137)*(180/p), lng+(dE/(6378137*Math.cos(lat*p/180)))*(180/p)]; };
         const getHexPoints=(cl,cg,R)=>{ let pt=[]; for(let i=0;i<6;i++) pt.push(offsetLatLng(cl,cg,R*Math.sin(Math.PI/180*(60*i-30)),R*Math.cos(Math.PI/180*(60*i-30)))); return pt; };
         function drawEvaGrid() { if(!evaGridLayer)evaGridLayer=L.layerGroup().addTo(map); else evaGridLayer.clearLayers(); if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); let R=300, p=PROJECTS[currentProjectKey]; if(!p)return; let cl=(p.bounds[0][0]+p.bounds[1][0])/2, cg=(p.bounds[0][1]+p.bounds[1][1])/2, cos=Math.cos(cl*Math.PI/180), av=[]; for(let u in allUsersData) if(allUsersData[u].history)av.push(...allUsersData[u].history); let mr=0; av.forEach(pt=>{ let y=(pt.lat-cl)*(6378137*Math.PI/180), x=(pt.lng-cg)*(6378137*cos*Math.PI/180), q=(Math.sqrt(3)/3*x-1/3*y)/R, r=(2/3*y)/R, rq=Math.round(q), rr=Math.round(r), rs=Math.round(-q-r), qd=Math.abs(rq-q), rd=Math.abs(rr-r), sd=Math.abs(rs-(-q-r)); if(qd>rd&&qd>sd)rq=-rr-rs; else if(rd>sd)rr=-rq-rs; let rg=Math.max(Math.abs(rq),Math.abs(rr),Math.abs(-rq-rr)); if(rg>mr)mr=rg; }); let tr=Math.max(3,Math.min(mr+2,12)); map.flyToBounds([[cl-(1500/111000),cg-(1500/(111000*cos))],[cl+(1500/111000),cg+(1500/(111000*cos))]],{animate:true,duration:1}); let cr=0;
-            function nR() { if(!isEvaMode||cr>tr)return; let rh=[]; if(cr===0)rh.push({q:0,r:0}); else for(let q=-cr;q<=cr;q++)for(let r=-cr;r<=cr;r++)if(Math.max(Math.abs(q),Math.abs(r),Math.abs(-q-r))===cr)rh.push({q,r}); rh.forEach(h=>{ let cL=offsetLatLng(cl,cg,1.5*R*h.r, Math.sqrt(3)*R*(h.q+h.r/2)), tp=[cL]; for(let i=0;i<6;i++)tp.push(offsetLatLng(cL[0],cL[1],75*Math.sin(i*Math.PI/3),75*Math.cos(i*Math.PI/3))); for(let i=0;i<12;i++)tp.push(offsetLatLng(cL[0],cL[1],150*Math.sin(i*Math.PI/6),150*Math.cos(i*Math.PI/6))); for(let i=0;i<18;i++)tp.push(offsetLatLng(cL[0],cL[1],225*Math.sin(i*Math.PI/9),225*Math.cos(i*Math.PI/9))); let cc=0, hx=0; for(let t of tp){for(let pt of av){if(getDistance(t[0],t[1],pt.lat,pt.lng)<=60){cc++;if(pt.timestamp>hx)hx=pt.timestamp;break;}}} let th=""; if(cc>0){let d=Math.min(100,Math.floor((cc/tp.length)*100)), df=Math.max(0,Date.now()-hx), dc=d<=50?'#ef4444':d<=98?'#f97316':'#39ff14'; th=`<div class="text-center font-bold" style="color:${dc};text-shadow:1px 1px 0px #000,-1px -1px 0px #000;font-family:monospace;"><div class="text-xl">${d}%</div><div class="text-[10px] text-[#39ff14]">${df>3600000?Math.floor(df/3600000)+'時':''}${Math.floor((df%3600000)/60000)}分前</div></div>`;}else th=`<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow:1px 1px 0px #000;font-size:11px;">未探索</div>`; L.polygon(getHexPoints(cL[0],cL[1],R), {color:'#39ff14',weight:2,fillColor:'#39ff14',fillOpacity:0.05,dashArray:'5, 5',pane:'evaPane'}).addTo(evaGridLayer); L.marker(cL,{icon:L.divIcon({className:'custom-div-icon',html:th,iconSize:[80,50],iconAnchor:[40,25]}),zIndexOffset:-100,pane:'evaPane'}).addTo(evaGridLayer); }); if([2,5,8].includes(cr)){let vr=Math.min(3000,(cr+1.5)*R*1.5); map.flyToBounds([[cl-vr/111000,cg-vr/(111000*cos)],[cl+vr/111000,cg+vr/(111000*cos)]],{animate:true,duration:1.5});} cr++; evaAnimationTimeout=setTimeout(nR, cr>9?1000:cr>6?500:cr>3?250:100); } evaAnimationTimeout=setTimeout(nR, 500);
+            function nR() { 
+                if(!isEvaMode||cr>tr)return; 
+                let rh=[]; if(cr===0)rh.push({q:0,r:0}); else for(let q=-cr;q<=cr;q++)for(let r=-cr;r<=cr;r++)if(Math.max(Math.abs(q),Math.abs(r),Math.abs(-q-r))===cr)rh.push({q,r}); 
+                rh.forEach(h=>{ 
+                    let cL=offsetLatLng(cl,cg,1.5*R*h.r, Math.sqrt(3)*R*(h.q+h.r/2)), tp=[cL]; 
+                    for(let i=0;i<6;i++)tp.push(offsetLatLng(cL[0],cL[1],75*Math.sin(i*Math.PI/3),75*Math.cos(i*Math.PI/3))); 
+                    for(let i=0;i<12;i++)tp.push(offsetLatLng(cL[0],cL[1],150*Math.sin(i*Math.PI/6),150*Math.cos(i*Math.PI/6))); 
+                    for(let i=0;i<18;i++)tp.push(offsetLatLng(cL[0],cL[1],225*Math.sin(i*Math.PI/9),225*Math.cos(i*Math.PI/9))); 
+                    let cc=0, hx=0; 
+                    for(let t of tp){for(let pt of av){if(getDistance(t[0],t[1],pt.lat,pt.lng)<=60){cc++;if(pt.timestamp>hx)hx=pt.timestamp;break;}}} 
+                    let th=""; 
+                    if(cc>0){
+                        let d=Math.min(100,Math.floor((cc/tp.length)*100)), df=Math.max(0,Date.now()-hx), dc=d<=50?'#ef4444':d<=98?'#f97316':'#39ff14'; 
+                        th=`<div class="text-center font-bold" style="color:${dc};text-shadow:1px 1px 0px #000,-1px -1px 0px #000;font-family:monospace;"><div class="text-xl">${d}%</div><div class="text-[10px] text-[#39ff14]">${df>3600000?Math.floor(df/3600000)+'時':''}${Math.floor((df%3600000)/60000)}分前</div></div>`;
+                    }else th=`<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow:1px 1px 0px #000;font-size:11px;">未探索</div>`; 
+                    L.polygon(getHexPoints(cL[0],cL[1],R), {color:'#39ff14',weight:2,fillColor:'#39ff14',fillOpacity:0.05,dashArray:'5, 5',pane:'evaPane'}).addTo(evaGridLayer); 
+                    L.marker(cL,{icon:L.divIcon({className:'custom-div-icon',html:th,iconSize:[80,50],iconAnchor:[40,25]}),zIndexOffset:-100,pane:'evaPane'}).addTo(evaGridLayer); 
+                }); 
+                if([2,5,8].includes(cr)){let vr=Math.min(3000,(cr+1.5)*R*1.5); map.flyToBounds([[cl-vr/111000,cg-vr/(111000*cos)],[cl+vr/111000,cg+vr/(111000*cos)]],{animate:true,duration:1.5});} 
+                cr++; evaAnimationTimeout=setTimeout(nR, cr>9?1000:cr>6?500:cr>3?250:100); 
+            } 
+            evaAnimationTimeout=setTimeout(nR, 500);
         }
         on('eva-grid-btn','click',()=>{ isEvaMode=!isEvaMode; let b=$('eva-grid-btn'); if(isEvaMode){b.innerText="❌ 關閉顯示"; b.style.cssText="background-color:#ef4444;color:white;"; drawEvaGrid();} else {b.innerText="🕸️ 完成度"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); if(evaGridLayer){evaGridLayer.clearLayers(); map.removeLayer(evaGridLayer); evaGridLayer=null;}} });
 
