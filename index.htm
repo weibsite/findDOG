@@ -80,7 +80,7 @@
             .collapsible-btn.show-desc::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
         }
 
-        #quick-camera-btn.expanded-mode { width: 9rem !important; }
+        #quick-camera-btn.expanded-mode { width: 10rem !important; }
         #quick-camera-btn.expanded-mode .camera-text { max-width: 80px !important; opacity: 1 !important; margin-left: 0.25rem !important; }
     </style>
 </head>
@@ -131,36 +131,56 @@
 
     <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]"><button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
 
-    <!-- 快速捕捉浪浪按鈕 -->
-    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[2500] bg-yellow-400 border-4 border-black rounded-full h-14 w-14 hover:w-36 flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
-        <span class="text-2xl shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
+    <!-- 快速捕捉浪浪按鈕：放大為 h-20 w-20，圖層 z-[2000] 改為原本在 step-panel 後面的 z-[2000]，將包含 step-panel 的容器提高 z-index -->
+    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border-4 border-black rounded-full h-20 w-20 hover:w-36 flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
+        <span class="text-4xl shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
         <span class="camera-text max-w-0 opacity-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out group-hover:max-w-[80px] group-hover:opacity-100 group-hover:ml-1 font-black text-sm tracking-widest pointer-events-none">回報浪浪</span>
     </a>
 
-    <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none">
-        <div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
-        <div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
-            <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
-                <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
-                <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
-                <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
-                <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
-                <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+    <!-- 右下角 UI 容器：提高 z-index 為 2500，確保在相機按鈕之上 -->
+    <div class="absolute bottom-10 right-4 z-[2500] flex flex-col gap-2 items-end pointer-events-none">
+        <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2">
+            <div class="relative">
+                <div style="font-size:38px;filter:drop-shadow(2px 2px 0px #1a202c);line-height:1;">🎁</div>
+                <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
             </div>
-            <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
-            <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
-                <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
-                <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
-            </div>
-            <div id="announcement-action-container" class="mt-2 hidden"></div>
+            <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
+        
+        <!-- 將省電按鈕移動到累積步數上方，這兩個按鈕放在同一個 col 容器內 -->
+        <div class="flex flex-col gap-2 items-end pointer-events-auto">
+            <button id="power-saving-btn" class="sm:hidden pixel-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col items-center justify-center min-w-[75px] border-gray-600">
+                <div class="text-xl mb-0.5">🌙</div>
+                <div class="tracking-widest">省電</div>
+            </button>
+            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]">
+                👣 累積步數<br>
+                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-toast" class="absolute top-4 right-4 z-[3000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
+    
+    <div id="announcement-panel" class="absolute top-16 right-4 z-[3000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
+        <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
+            <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
+            <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
+            <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
+            <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
+            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+        </div>
+        <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
+        <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
+            <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
+            <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
+        </div>
+        <div id="announcement-action-container" class="mt-2 hidden"></div>
     </div>
     
     <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4"><button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] cursor-pointer">✕</button><div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2"><div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg"><input type="file" id="compare-file-input" accept="image/*" class="hidden"><div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors"><div class="text-5xl sm:text-6xl mb-4">📸</div><div class="text-white font-bold text-sm sm:text-lg mb-2">點擊選擇本機照片</div><div class="text-gray-400 text-[10px] sm:text-xs font-bold whitespace-pre-wrap leading-relaxed">上傳後會出現在左邊</div></div><div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container"><img id="compare-local-img" src=""></div><button id="compare-reselect-btn" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 pixel-btn px-4 py-2 bg-blue-500 text-white text-xs z-10 shadow-[2px_2px_0px_#000]">🔄 重新選擇</button></div><div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg"><div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap border border-gray-500">放大的目標照片</div><button id="compare-prev-btn" class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&lt;</button><button id="compare-next-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&gt;</button><div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center"><img id="compare-main-img" src=""></div></div></div><button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 pixel-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button></div>
     <div id="gallery-modal" class="hidden absolute inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4"><div class="w-full max-w-md bg-white border-4 border-black p-4 flex flex-col h-[80vh] pixel-panel"><h3 class="text-xl font-bold mb-2 border-b-2 border-black pb-2 text-center" id="gallery-title">動物相簿</h3><div class="flex gap-2 mb-2"><button id="tab-photos" class="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black">📸 相片</button><button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black">🎥 影片</button></div><div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div><button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button></div></div>
     <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container"><img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-transform duration-300 pointer-events-none"><div id="viewer-title" class="absolute top-4 left-0 w-full text-center text-white text-lg font-bold drop-shadow-[2px_2px_0px_#000] z-10 px-4 pointer-events-none"></div><button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer shadow-[2px_2px_0px_#000]">關閉 ✕</button><div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4"><button id="viewer-prev-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c] text-sm whitespace-nowrap">&lt; 上一張</button><button id="viewer-next-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c] text-sm whitespace-nowrap">下一張 &gt;</button></div></div></div>
-
-    <div class="absolute bottom-10 right-4 z-[2000] flex flex-col gap-2 items-end pointer-events-none"><div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2"><div class="relative"><div style="font-size:38px;filter:drop-shadow(2px 2px 0px #1a202c);line-height:1;">🎁</div><div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div></div><div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div></div><div class="flex gap-2 pointer-events-auto"><button id="power-saving-btn" class="sm:hidden pixel-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col items-center justify-center min-w-[65px] border-gray-600"><div class="text-xl mb-0.5">🌙</div><div class="tracking-widest">省電</div></button><div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]">👣 累積步數<br><span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span></div></div></div>
 
     <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3><p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p><div class="bg-gray-200 border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_#1a202c]"><div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div><div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2"><div id="reel-1" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-2" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-3" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div></div></div><div class="flex flex-col gap-3"><button id="slot-draw-btn" class="pixel-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button><div class="flex gap-2"><button id="slot-check-pool-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white text-xs">🎁 查詢獎項</button><button id="slot-close-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 關閉</button></div></div></div></div>
     <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl">🎁 已中獎項</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border-4 border-black bg-white p-3 mb-4 text-left space-y-3 shadow-[4px_4px_0px_#1a202c]"></div><button id="prize-pool-close-btn" class="pixel-btn w-full py-2 bg-gray-400">關閉</button></div></div>
@@ -443,13 +463,23 @@
             renderMap();
             requestFogRender();
         }
-        function resetPowerSavingTimer(){ if(isPowerSaving) exitPowerSavingMode(); if(powerSavingTimer) clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); resetBtnCollapseTimer(); }
+        function resetPowerSavingTimer(){ 
+            if(isPowerSaving) exitPowerSavingMode(); 
+            if(powerSavingTimer) clearTimeout(powerSavingTimer); 
+            // 💡 僅在手機版寬度時啟動定時省電功能
+            if(isTrackingStarted && !isSpectatorMode && window.innerWidth <= 640) {
+                powerSavingTimer = setTimeout(enterPowerSavingMode, 300000); 
+            }
+            resetBtnCollapseTimer(); 
+        }
         document.body.addEventListener('touchstart', resetPowerSavingTimer, {passive:true}); document.body.addEventListener('click', resetPowerSavingTimer); document.body.addEventListener('mousemove', resetPowerSavingTimer);
         $('power-saving-overlay').addEventListener('touchstart', e=>{e.preventDefault(); resetPowerSavingTimer();}, {passive:false});
         on('power-saving-btn', 'click', e=>{e.stopPropagation(); enterPowerSavingMode();});
         document.addEventListener('visibilitychange', async ()=>{ 
             if(document.visibilityState === 'hidden') {
-                enterPowerSavingMode();
+                if (window.innerWidth <= 640) { // 同樣隱藏時也只針對手機版進省電
+                    enterPowerSavingMode();
+                }
             } else {
                 if(wakeLock!==null) wakeLock=null; 
                 if(isTrackingStarted) requestWakeLock(); 
@@ -508,6 +538,15 @@
             updateGiftUI(); 
             text('toast-text',"位置同步成功"); 
             if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
+            
+            // 💡 如果是第一次使用者（總步數不到 100），自動縮合按鈕
+            if (window.innerWidth <= 640 && (allUsersData[myUid]?.total_steps || 0) < 100) {
+                document.querySelectorAll('.collapsible-btn').forEach(btn => {
+                    btn.classList.add('collapsed');
+                    btn.classList.remove('show-desc');
+                });
+            }
+            
             requestWakeLock(); 
             resetPowerSavingTimer(); 
         }
