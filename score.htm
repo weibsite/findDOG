@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>探索分析 | 尋寵地圖</title>
+    <meta name="theme-color" content="#1a202c">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: #2d3748; 
+            font-family: 'Courier New', Courier, monospace; 
+            -webkit-text-size-adjust: none; 
+            color: #1a202c;
+        }
+        
+        /* 像素風 UI 基礎類別 */
+        .pixel-panel { 
+            background-color: white; 
+            border: 4px solid #1a202c; 
+            box-shadow: 6px 6px 0px #1a202c; 
+            border-radius: 0px !important; 
+        }
+        .pixel-btn { 
+            background-color: #f59e0b; 
+            color: #1a202c; 
+            border: 4px solid #1a202c; 
+            box-shadow: 4px 4px 0px #1a202c; 
+            border-radius: 0px !important; 
+            transition: all 0.1s; 
+            text-transform: uppercase; 
+            font-weight: 900; 
+            cursor: pointer; 
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .pixel-btn:active { 
+            transform: translate(2px, 2px); 
+            box-shadow: 2px 2px 0px #1a202c; 
+        }
+        .pixel-input { 
+            border: 4px solid #1a202c; 
+            border-radius: 0px !important; 
+            outline: none; 
+            font-weight: bold; 
+        }
+        .pixel-input:focus { background-color: #fef3c7; }
+
+        /* 今日進度條 */
+        .progress-bg {
+            background-color: #e5e7eb;
+            border: 4px solid #1a202c;
+            height: 28px;
+            width: 100%;
+            position: relative;
+        }
+        .progress-fill {
+            background-color: #10b981;
+            height: 100%;
+            width: 0%;
+            transition: width 1s ease-in-out;
+            background-image: repeating-linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.2) 0px,
+                rgba(255, 255, 255, 0.2) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+        }
+        
+        /* 長條圖動畫與樣式 */
+        .chart-scroll-wrapper {
+            overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 10px;
+        }
+        .chart-scroll-wrapper::-webkit-scrollbar { height: 6px; }
+        .chart-scroll-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border: 1px solid #1a202c; }
+        .chart-scroll-wrapper::-webkit-scrollbar-thumb { background: #1a202c; }
+
+        .bar-container { display: flex; align-items: flex-end; height: 120px; padding-top: 10px; border-bottom: 4px solid #1a202c; margin-bottom: 10px; min-width: 100%; }
+        .bar-wrapper { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; transition: width 0.3s; }
+        .bar-value { font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #4b5563; }
+        .bar { width: 80%; background-color: #3b82f6; border: 2px solid #1a202c; border-bottom: none; transition: height 0.8s ease-out; height: 0px; }
+        .bar.today { background-color: #ef4444; }
+        .bar-label { font-size: 10px; font-weight: 900; margin-top: 8px; white-space: nowrap; }
+
+        /* 徽章與成就櫃樣式 */
+        .badge { display: inline-block; padding: 4px 8px; background-color: #fef08a; border: 2px solid #1a202c; font-weight: 900; font-size: 12px; box-shadow: 2px 2px 0px #1a202c; }
+        
+        .achievement-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 2px dashed #9ca3af; padding: 10px 5px; background-color: #f3f4f6;
+            transition: all 0.3s; text-align: center;
+        }
+        .achievement-icon { font-size: 28px; filter: grayscale(100%); opacity: 0.3; transition: all 0.5s; margin-bottom: 4px; line-height: 1;}
+        .achievement-name { font-size: 10px; font-weight: bold; color: #9ca3af; }
+        
+        .achievement-item.unlocked {
+            border: 2px solid #1a202c; background-color: #fef3c7; box-shadow: 2px 2px 0px #1a202c;
+        }
+        .achievement-item.unlocked .achievement-icon { filter: grayscale(0%); opacity: 1; transform: scale(1.1); drop-shadow: 1px 1px 0px #000; }
+        .achievement-item.unlocked .achievement-name { color: #1a202c; }
+
+        /* 時段分析橫條 */
+        .time-bar-bg { background-color: #f3f4f6; border: 2px solid #1a202c; height: 16px; flex-grow: 1; margin: 0 10px; position: relative; }
+        .time-bar-fill { height: 100%; transition: width 1s ease-in-out; width: 0%; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 overflow-y-auto pb-20">
+
+    <div class="max-w-md mx-auto relative">
+        
+        <!-- 標題與設定按鈕 -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-xl font-black text-white tracking-widest drop-shadow-[2px_2px_0px_#1a202c]">🐾 探索計步分析</h1>
+            <button id="open-settings-btn" class="pixel-btn px-3 py-2 bg-gray-200 text-xs">⚙️ 設定</button>
+        </div>
+
+        <!-- 角色狀態與今日目標 -->
+        <div class="pixel-panel p-4 mb-6 bg-white border-b-8">
+            <div class="flex justify-between items-center mb-4 border-b-4 border-black pb-3">
+                <div class="font-bold text-lg">🎖️ 探索者階級</div>
+                <div id="rank-badge" class="badge animate-pulse">計算中...</div>
+            </div>
+
+            <!-- 今日目標進度 -->
+            <div class="mb-2">
+                <div class="flex justify-between font-bold text-sm mb-1 text-gray-800">
+                    <span>🚩 今日目標 (<span id="daily-goal-display">5,000</span>步)</span>
+                    <span id="today-progress-text" class="text-green-600">0%</span>
+                </div>
+                <div class="progress-bg">
+                    <div id="today-progress-bar" class="progress-fill"></div>
+                </div>
+                <div class="text-right text-xs font-bold text-gray-500 mt-1">
+                    今天已走：<span id="today-steps" class="text-black text-sm">0</span> 步
+                </div>
+            </div>
+        </div>
+
+        <!-- 全新：每日體重紀錄 -->
+        <div class="pixel-panel p-4 mb-6 bg-pink-50 border-b-4">
+            <div class="flex justify-between items-center border-b-4 border-black pb-2 mb-3">
+                <h2 class="text-lg font-bold text-pink-700">⚖️ 每日體重日誌</h2>
+                <div id="weight-trend-badge" class="text-xs font-bold bg-white px-2 py-1 border-2 border-black hidden">--</div>
+            </div>
+            <div class="flex gap-2 items-center">
+                <input type="number" id="quick-weight-input" class="pixel-input flex-1 p-3 text-center text-lg" placeholder="今日體重 (kg)" step="0.1">
+                <button id="save-weight-btn" class="pixel-btn px-4 py-3 bg-pink-500 text-white">紀錄</button>
+            </div>
+            <div class="text-xs font-bold text-gray-500 mt-2 text-right">
+                最後紀錄：<span id="last-weight-display" class="text-black">尚未紀錄</span>
+            </div>
+        </div>
+
+        <!-- 成就櫃 -->
+        <div class="pixel-panel p-4 mb-6 bg-white">
+            <h2 class="text-lg font-bold border-b-4 border-black pb-2 mb-4">🏅 探險家成就櫃</h2>
+            <div class="grid grid-cols-3 gap-2" id="achievements-container">
+                <div class="achievement-item" id="ach-1">
+                    <div class="achievement-icon">🌱</div>
+                    <div class="achievement-name">踏出第一步</div>
+                </div>
+                <div class="achievement-item" id="ach-2">
+                    <div class="achievement-icon">🔥</div>
+                    <div class="achievement-name">連續7天</div>
+                </div>
+                <div class="achievement-item" id="ach-3">
+                    <div class="achievement-icon">🦵</div>
+                    <div class="achievement-name">單日破萬步</div>
+                </div>
+                <div class="achievement-item" id="ach-4">
+                    <div class="achievement-icon">🦉</div>
+                    <div class="achievement-name">夜貓守護者</div>
+                </div>
+                <div class="achievement-item" id="ach-5">
+                    <div class="achievement-icon">🌅</div>
+                    <div class="achievement-name">晨光搜索者</div>
+                </div>
+                <div class="achievement-item" id="ach-6">
+                    <div class="achievement-icon">💯</div>
+                    <div class="achievement-name">百公里成就</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 進階數據網格 -->
+        <div class="pixel-panel p-4 mb-6 bg-yellow-50">
+            <h2 class="text-lg font-bold border-b-4 border-black pb-2 mb-4">🏆 生涯探索數據</h2>
+            
+            <div class="grid grid-cols-2 gap-3 mb-2">
+                <div class="border-2 border-black p-3 text-center bg-white shadow-[2px_2px_0px_#1a202c] col-span-2 flex justify-around items-center">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 mb-1">🔥 連續探索</div>
+                        <div class="text-2xl font-black text-red-500"><span id="stat-streak">0</span> <span class="text-sm text-gray-700">天</span></div>
+                    </div>
+                    <div class="border-l-2 border-dashed border-gray-300 pl-4">
+                        <div class="text-xs font-bold text-gray-500 mb-1">🐾 預估搜索面積</div>
+                        <div class="text-2xl font-black text-blue-800"><span id="stat-area">0.0</span> <span class="text-sm text-gray-700">km²</span></div>
+                    </div>
+                </div>
+
+                <div class="border-2 border-black p-3 text-center bg-white shadow-[2px_2px_0px_#1a202c]">
+                    <div class="text-[11px] font-bold text-gray-500 mb-1">⏱️ 總活動時間</div>
+                    <div class="text-lg font-black text-purple-600"><span id="stat-active-time">0</span> <span class="text-xs text-gray-700">小時</span></div>
+                </div>
+                <div class="border-2 border-black p-3 text-center bg-white shadow-[2px_2px_0px_#1a202c]">
+                    <div class="text-[11px] font-bold text-gray-500 mb-1">👟 總累積步數</div>
+                    <div class="text-lg font-black text-blue-600" id="stat-total-steps">0</div>
+                </div>
+                <div class="border-2 border-black p-3 text-center bg-white shadow-[2px_2px_0px_#1a202c]">
+                    <div class="text-[11px] font-bold text-gray-500 mb-1">🌍 總移動里程</div>
+                    <div class="text-lg font-black text-green-600"><span id="stat-total-km">0.0</span> <span class="text-xs text-gray-700">km</span></div>
+                </div>
+                <div class="border-2 border-black p-3 text-center bg-white shadow-[2px_2px_0px_#1a202c]">
+                    <div class="text-[11px] font-bold text-gray-500 mb-1">🍔 消耗總熱量</div>
+                    <div class="text-lg font-black text-orange-500"><span id="stat-total-kcal">0</span> <span class="text-xs text-gray-700">kcal</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 活躍時段分析 -->
+        <div class="pixel-panel p-4 mb-6 bg-white">
+            <h2 class="text-lg font-bold border-b-4 border-black pb-2 mb-4">🕰️ 活躍時段偏好</h2>
+            <div class="space-y-3">
+                <div class="flex items-center text-sm font-bold text-gray-700">
+                    <span class="w-12">🌅 晨間</span>
+                    <div class="time-bar-bg"><div id="time-bar-morning" class="time-bar-fill bg-blue-400"></div></div>
+                    <span id="time-pct-morning" class="w-10 text-right">0%</span>
+                </div>
+                <div class="flex items-center text-sm font-bold text-gray-700">
+                    <span class="w-12">☀️ 午後</span>
+                    <div class="time-bar-bg"><div id="time-bar-afternoon" class="time-bar-fill bg-orange-400"></div></div>
+                    <span id="time-pct-afternoon" class="w-10 text-right">0%</span>
+                </div>
+                <div class="flex items-center text-sm font-bold text-gray-700">
+                    <span class="w-12">🌙 夜晚</span>
+                    <div class="time-bar-bg"><div id="time-bar-evening" class="time-bar-fill bg-indigo-500"></div></div>
+                    <span id="time-pct-evening" class="w-10 text-right">0%</span>
+                </div>
+                <div class="flex items-center text-sm font-bold text-gray-700">
+                    <span class="w-12">🦉 深夜</span>
+                    <div class="time-bar-bg"><div id="time-bar-night" class="time-bar-fill bg-gray-800"></div></div>
+                    <span id="time-pct-night" class="w-10 text-right">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 歷史趨勢圖表 -->
+        <div class="pixel-panel p-4 mb-6 bg-white border-b-8">
+            <div class="flex justify-between items-center border-b-4 border-black pb-2 mb-4">
+                <h2 class="text-lg font-bold">📊 步行趨勢</h2>
+                <div class="flex gap-2">
+                    <button id="tab-7" class="pixel-btn px-2 py-1 bg-blue-500 text-white text-[10px]">近 7 日</button>
+                    <button id="tab-30" class="pixel-btn px-2 py-1 bg-gray-300 text-black text-[10px]">近 30 日</button>
+                </div>
+            </div>
+            
+            <div class="chart-scroll-wrapper" id="chart-scroll-area">
+                <div class="bar-container" id="chart-container">
+                    <!-- 長條圖將由 JS 動態生成 -->
+                </div>
+            </div>
+            <div class="text-center font-bold text-xs text-gray-600 mt-2">
+                此區間最高紀錄：<span id="chart-max-val" class="text-blue-600 text-sm">0</span> 步
+            </div>
+        </div>
+
+        <!-- 功能與返回區 -->
+        <div class="flex gap-4">
+            <a href="javascript:history.back()" class="pixel-btn flex-1 py-4 bg-gray-400 text-white text-sm">⬅️ 返回地圖</a>
+            <!-- 分享按鈕改為打開總結戰報面板 -->
+            <button id="share-btn" class="pixel-btn flex-1 py-4 bg-blue-500 text-white text-sm">🌟 結算與分享</button>
+        </div>
+
+    </div>
+
+    <!-- 🌟 全新：戰報總結 Modal (適合截圖的區域) -->
+    <div id="share-modal" class="hidden fixed inset-0 z-[11000] bg-black/90 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center bg-white relative">
+            <div id="capture-area" class="bg-white p-4">
+                <h2 class="text-2xl font-black mb-1 text-blue-600 drop-shadow-[2px_2px_0px_#1a202c]">🌟 探索戰報</h2>
+                <div class="text-xs font-bold text-gray-500 mb-4 border-b-4 border-black pb-2" id="share-date-display">202X-XX-XX</div>
+
+                <!-- 戰報核心資訊區 -->
+                <div class="bg-yellow-50 border-4 border-black p-4 mb-4 text-left shadow-[4px_4px_0px_#1a202c]">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-bold text-gray-700">階級：</span>
+                        <span id="share-rank-badge" class="badge">--</span>
+                    </div>
+                    <div class="flex items-center justify-between mb-3 border-b-2 border-dashed border-gray-400 pb-3">
+                        <span class="font-bold text-gray-700">今日步數：</span>
+                        <span class="font-black text-2xl text-blue-600" id="share-today-steps">0</span>
+                    </div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-gray-700">目標達成：</span>
+                        <span class="font-black text-lg text-green-600" id="share-progress">0%</span>
+                    </div>
+                    
+                    <div class="text-sm font-bold mb-3 mt-1" id="share-compare-text">比昨天多走了 -- 步！</div>
+                    
+                    <!-- 虛擬 PR 值估算，極大增強炫耀感 -->
+                    <div class="bg-red-100 border-2 border-red-500 p-2 text-center mb-3">
+                        <div class="text-sm font-black text-red-600" id="share-pr-text">🔥 活躍度擊敗全台 --% 的志工！</div>
+                    </div>
+
+                    <div class="text-xs font-bold text-gray-600 text-center">
+                        我已經累計搜索了 <span id="share-area-text" class="text-blue-700 text-sm font-black">--</span> km² 的面積🐾
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+                <button id="close-share-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white text-xs">關閉</button>
+                <button id="capture-share-btn" class="pixel-btn flex-1 py-3 bg-blue-500 text-white text-xs">📸 儲存為圖片</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 個人化設定 Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center bg-white relative">
+            <h3 class="text-gray-900 font-bold mb-4 text-xl border-b-4 border-black pb-2">⚙️ 目標設定</h3>
+            <div class="text-left mb-6 mt-4">
+                <label class="block text-sm font-bold text-gray-700 mb-1">每日目標步數</label>
+                <input type="number" id="input-goal" class="pixel-input w-full p-3 text-center text-lg text-blue-600" placeholder="預設 5000" min="1000" step="500">
+            </div>
+            <div class="flex gap-2">
+                <button id="cancel-settings-btn" class="pixel-btn flex-1 py-3 bg-gray-400">取消</button>
+                <button id="save-settings-btn" class="pixel-btn flex-1 py-3 bg-green-500 text-white">💾 儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示框 -->
+    <div id="toast" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center hidden shadow-[4px_4px_0px_#000]"></div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        const showToast = (msg) => {
+            $('toast').innerText = msg;
+            $('toast').style.display = 'block';
+            setTimeout(() => $('toast').style.display = 'none', 3000);
+        };
+
+        // 格式化日期字串 YYYY-MM-DD
+        function getDateStr(dateObj) {
+            return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+        }
+
+        // 全域變數
+        let userDailyGoal = 5000;
+        let globalDailyStepsMap = {};
+        let currentChartMode = 7;
+        let weightHistory = [];
+
+        // ================= 體重管理系統 =================
+        function loadWeightSystem() {
+            let savedData = localStorage.getItem('dogMap_weightHistory');
+            if (savedData) {
+                try { weightHistory = JSON.parse(savedData); } catch(e) { weightHistory = []; }
+            }
+            updateWeightUI();
+        }
+
+        function updateWeightUI() {
+            if (weightHistory.length === 0) return;
+            let latest = weightHistory[weightHistory.length - 1];
+            $('last-weight-display').innerText = `${latest.weight} kg (${latest.date})`;
+            $('quick-weight-input').value = latest.weight;
+
+            let badge = $('weight-trend-badge');
+            if (weightHistory.length >= 2) {
+                let prev = weightHistory[weightHistory.length - 2];
+                let diff = (latest.weight - prev.weight).toFixed(1);
+                
+                badge.classList.remove('hidden', 'text-green-600', 'text-red-600', 'text-gray-600');
+                if (diff < 0) { badge.innerText = `⬇️ ${Math.abs(diff)} kg`; badge.classList.add('text-green-600'); } 
+                else if (diff > 0) { badge.innerText = `⬆️ ${diff} kg`; badge.classList.add('text-red-600'); } 
+                else { badge.innerText = `➖ 持平`; badge.classList.add('text-gray-600'); }
+            }
+        }
+
+        $('save-weight-btn').addEventListener('click', () => {
+            let w = parseFloat($('quick-weight-input').value);
+            if (!w || w < 20 || w > 300) return showToast("⚠️ 請輸入合理的體重");
+
+            let todayStr = getDateStr(new Date());
+            let existingIdx = weightHistory.findIndex(item => item.date === todayStr);
+            if (existingIdx !== -1) weightHistory[existingIdx].weight = w;
+            else weightHistory.push({ date: todayStr, weight: w });
+
+            localStorage.setItem('dogMap_weightHistory', JSON.stringify(weightHistory));
+            updateWeightUI(); showToast("✅ 體重紀錄成功！卡路里將依最新體重計算。"); processData(); 
+        });
+
+        // ================= 設定與基礎演算法 =================
+        function loadSettings() {
+            let savedG = localStorage.getItem('dogMap_dailyGoal');
+            if (savedG && !isNaN(savedG)) userDailyGoal = parseInt(savedG);
+            $('daily-goal-display').innerText = userDailyGoal.toLocaleString();
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const p = Math.PI / 180; const a = 0.5 - Math.cos((lat2 - lat1) * p) / 2 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lon2 - lon1) * p)) / 2;
+            return 12742e3 * Math.asin(Math.sqrt(a)); 
+        }
+
+        function calculateAddedSteps(pt1, pt2) {
+            if (!pt1 || !pt2) return 0;
+            let dist = getDistance(pt1.lat, pt1.lng, pt2.lat, pt2.lng);
+            let dt = (pt2.timestamp - pt1.timestamp) / 1000.0;
+            if (dt > 0 && (dist / dt) <= 5.0 && dist > 0.5) return Math.floor(dist / 0.6); 
+            return 0;
+        }
+
+        // ================= 數據與成就處理 =================
+        function processData() {
+            let history = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith('dogMap_localHistory')) {
+                    try {
+                        let parsed = JSON.parse(localStorage.getItem(key));
+                        if (Array.isArray(parsed)) history = history.concat(parsed);
+                    } catch(e) {}
+                }
+            }
+            history.sort((a, b) => a.timestamp - b.timestamp);
+
+            let totalSteps = 0; let activeSeconds = 0; globalDailyStepsMap = {}; let timeDist = { morning: 0, afternoon: 0, evening: 0, night: 0 }; let maxSingleDaySteps = 0;
+            const today = new Date(); const todayStr = getDateStr(today);
+            
+            for(let i=30; i>=0; i--) { let d = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000)); globalDailyStepsMap[getDateStr(d)] = 0; }
+
+            for (let i = 1; i < history.length; i++) {
+                let pt1 = history[i-1]; let pt2 = history[i]; let steps = calculateAddedSteps(pt1, pt2);
+                if (steps > 0) {
+                    totalSteps += steps;
+                    let dt = (pt2.timestamp - pt1.timestamp) / 1000; if (dt < 300) activeSeconds += dt;
+                    let ptDate = new Date(pt2.timestamp); let dateStr = getDateStr(ptDate);
+                    
+                    if (globalDailyStepsMap[dateStr] !== undefined) globalDailyStepsMap[dateStr] += steps; else globalDailyStepsMap[dateStr] = steps;
+
+                    let hour = ptDate.getHours();
+                    if (hour >= 5 && hour < 12) timeDist.morning += steps; else if (hour >= 12 && hour < 18) timeDist.afternoon += steps; else if (hour >= 18 && hour < 23) timeDist.evening += steps; else timeDist.night += steps;
+                }
+            }
+
+            for (let date in globalDailyStepsMap) { if (globalDailyStepsMap[date] > maxSingleDaySteps) maxSingleDaySteps = globalDailyStepsMap[date]; }
+
+            let currentStreak = 0; let checkDate = new Date(); 
+            if (globalDailyStepsMap[todayStr] === 0) checkDate = new Date(today.getTime() - (24 * 60 * 60 * 1000));
+
+            for(let i=0; i<30; i++) { 
+                let dStr = getDateStr(checkDate);
+                if (globalDailyStepsMap[dStr] > 0) { currentStreak++; checkDate = new Date(checkDate.getTime() - (24 * 60 * 60 * 1000)); } else break;
+            }
+
+            unlockAchievements(totalSteps, maxSingleDaySteps, currentStreak, timeDist);
+            updateUI(totalSteps, timeDist, activeSeconds, currentStreak, todayStr);
+            drawChart(currentChartMode);
+        }
+
+        function unlockAchievements(totalSteps, maxSingleDay, streak, timeDist) {
+            if (totalSteps > 0) $('ach-1').classList.add('unlocked');
+            if (streak >= 7) $('ach-2').classList.add('unlocked');
+            if (maxSingleDay >= 10000) $('ach-3').classList.add('unlocked');
+            let total = timeDist.morning + timeDist.afternoon + timeDist.evening + timeDist.night;
+            if (total > 0 && timeDist.night > total * 0.4) $('ach-4').classList.add('unlocked');
+            if (total > 0 && timeDist.morning > total * 0.4) $('ach-5').classList.add('unlocked');
+            if ((totalSteps * 0.6 / 1000) >= 100) $('ach-6').classList.add('unlocked');
+        }
+
+        function updateUI(totalSteps, timeDist, activeSeconds, streak, todayStr) {
+            let totalKm = (totalSteps * 0.6 / 1000);
+            let currentWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : 60;
+            let totalKcal = Math.floor(currentWeight * totalKm * 1.036); 
+            let coveredArea = (totalKm * 0.03).toFixed(2);
+            let activeHours = (activeSeconds / 3600).toFixed(1);
+
+            $('stat-total-steps').innerText = totalSteps.toLocaleString();
+            $('stat-total-km').innerText = totalKm.toFixed(2);
+            $('stat-total-kcal').innerText = totalKcal.toLocaleString();
+            $('stat-area').innerText = coveredArea;
+            $('stat-active-time').innerText = activeHours;
+            $('stat-streak').innerText = streak;
+
+            let todaySteps = globalDailyStepsMap[todayStr] || 0;
+            let progressPct = Math.min(100, Math.floor((todaySteps / userDailyGoal) * 100));
+            
+            $('today-steps').innerText = todaySteps.toLocaleString();
+            $('today-progress-text').innerText = `${progressPct}%`;
+            setTimeout(() => {
+                $('today-progress-bar').style.width = `${progressPct}%`;
+                $('today-progress-bar').style.backgroundColor = progressPct >= 100 ? '#3b82f6' : '#10b981';
+            }, 300);
+
+            let badgeText = "🐾 新手探險者"; let badgeColor = "#fef08a"; 
+            if (totalSteps > 100000) { badgeText = "👑 尋蹤大師"; badgeColor = "#fca5a5"; } 
+            else if (totalSteps > 50000) { badgeText = "🏃 城市快腿"; badgeColor = "#a7f3d0"; } 
+            else if (totalSteps > 10000) { badgeText = "🐕 尋寵小幫手"; badgeColor = "#bfdbfe"; } 
+
+            let badgeEl = $('rank-badge'); badgeEl.innerText = badgeText; badgeEl.style.backgroundColor = badgeColor; badgeEl.classList.remove('animate-pulse');
+
+            let timeTotal = timeDist.morning + timeDist.afternoon + timeDist.evening + timeDist.night;
+            if (timeTotal > 0) {
+                let mPct = Math.floor((timeDist.morning / timeTotal) * 100); let aPct = Math.floor((timeDist.afternoon / timeTotal) * 100);
+                let ePct = Math.floor((timeDist.evening / timeTotal) * 100); let nPct = Math.floor((timeDist.night / timeTotal) * 100);
+                setTimeout(() => {
+                    $('time-bar-morning').style.width = `${mPct}%`; $('time-pct-morning').innerText = `${mPct}%`;
+                    $('time-bar-afternoon').style.width = `${aPct}%`; $('time-pct-afternoon').innerText = `${aPct}%`;
+                    $('time-bar-evening').style.width = `${ePct}%`; $('time-pct-evening').innerText = `${ePct}%`;
+                    $('time-bar-night').style.width = `${nPct}%`; $('time-pct-night').innerText = `${nPct}%`;
+                }, 400);
+            }
+        }
+
+        function drawChart(days) {
+            let chartContainer = $('chart-container'); chartContainer.innerHTML = ''; 
+            let targetDays = []; const today = new Date(); const todayStr = getDateStr(today);
+            for(let i = days - 1; i >= 0; i--) {
+                let d = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000));
+                targetDays.push({ dateStr: getDateStr(d), dateObj: d, steps: globalDailyStepsMap[getDateStr(d)] || 0 });
+            }
+
+            let maxSteps = 100; targetDays.forEach(d => { if(d.steps > maxSteps) maxSteps = d.steps; });
+            $('chart-max-val').innerText = maxSteps.toLocaleString();
+
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            let wrapperWidth = days === 7 ? '14.28%' : '32px';
+            if (days === 30) chartContainer.style.justifyContent = 'flex-start'; else chartContainer.style.justifyContent = 'space-between';
+
+            targetDays.forEach(data => {
+                let steps = data.steps; let heightPercent = (steps / maxSteps) * 100; if (heightPercent < 5 && steps > 0) heightPercent = 5; 
+                let dayLabel = days === 7 ? weekdays[data.dateObj.getDay()] : `${String(data.dateObj.getMonth()+1).padStart(2,'0')}/${String(data.dateObj.getDate()).padStart(2,'0')}`;
+                let isToday = (data.dateStr === todayStr); if (isToday && days === 7) dayLabel = "今";
+                let displaySteps = steps >= 1000 ? (steps/1000).toFixed(1) + 'k' : steps; if (days === 30 && steps === 0) displaySteps = '';
+
+                let barWrapper = document.createElement('div');
+                barWrapper.className = 'bar-wrapper'; barWrapper.style.width = wrapperWidth;
+                barWrapper.innerHTML = `
+                    <div class="bar-value" style="${days === 30 ? 'font-size:8px; transform:rotate(-45deg); margin-bottom:8px;' : ''}">${steps > 0 ? displaySteps : ''}</div>
+                    <div class="bar ${isToday ? 'today' : ''}" style="height: 0%; ${days === 30 ? 'width: 12px;' : ''}"></div>
+                    <div class="bar-label ${isToday ? 'text-red-600' : ''}" style="${days === 30 ? 'font-size:8px;' : ''}">${dayLabel}</div>
+                `;
+                chartContainer.appendChild(barWrapper);
+                setTimeout(() => barWrapper.querySelector('.bar').style.height = `${heightPercent}%`, 100 + (Math.random() * 200)); 
+            });
+
+            if (days === 30) setTimeout(() => { let scrollArea = $('chart-scroll-area'); scrollArea.scrollLeft = scrollArea.scrollWidth; }, 100);
+        }
+
+        // --- 事件綁定 ---
+        $('tab-7').addEventListener('click', () => { currentChartMode = 7; $('tab-7').className = "pixel-btn px-2 py-1 bg-blue-500 text-white text-[10px]"; $('tab-30').className = "pixel-btn px-2 py-1 bg-gray-300 text-black text-[10px]"; drawChart(7); });
+        $('tab-30').addEventListener('click', () => { currentChartMode = 30; $('tab-30').className = "pixel-btn px-2 py-1 bg-blue-500 text-white text-[10px]"; $('tab-7').className = "pixel-btn px-2 py-1 bg-gray-300 text-black text-[10px]"; drawChart(30); });
+
+        $('open-settings-btn').addEventListener('click', () => {
+            $('input-goal').value = userDailyGoal; $('settings-modal').classList.remove('hidden');
+        });
+        $('cancel-settings-btn').addEventListener('click', () => $('settings-modal').classList.add('hidden'));
+        $('save-settings-btn').addEventListener('click', () => {
+            let g = parseInt($('input-goal').value);
+            if (g && g >= 1000) { userDailyGoal = g; localStorage.setItem('dogMap_dailyGoal', g); }
+            $('settings-modal').classList.add('hidden'); $('daily-goal-display').innerText = userDailyGoal.toLocaleString();
+            showToast("✅ 設定已儲存！"); processData(); 
+        });
+
+        // ================= 🌟 戰報總結面板邏輯 =================
+        $('share-btn').addEventListener('click', () => {
+            let todayStr = getDateStr(new Date());
+            
+            // 計算昨天日期
+            let yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            let yesterdayStr = getDateStr(yesterday);
+
+            let todaySteps = globalDailyStepsMap[todayStr] || 0;
+            let yesterdaySteps = globalDailyStepsMap[yesterdayStr] || 0;
+            let diff = todaySteps - yesterdaySteps;
+
+            let progressPct = Math.min(100, Math.floor((todaySteps / userDailyGoal) * 100));
+
+            // 估算虛擬 PR 值：用一種有趣的非線性公式讓使用者覺得自己很強
+            // 例如：只要走超過 1,000 步就打敗 20%，超過 5,000 步打敗 60%，超過 10,000 打敗 92%
+            let pr = 0;
+            if (todaySteps > 0) {
+                pr = Math.min(99, Math.max(1, Math.floor((todaySteps / 12000) * 85 + 10)));
+            }
+
+            // 更新 Modal 內容
+            $('share-date-display').innerText = todayStr;
+            
+            let rankBadge = $('rank-badge');
+            $('share-rank-badge').innerText = rankBadge.innerText;
+            $('share-rank-badge').style.backgroundColor = rankBadge.style.backgroundColor;
+            
+            $('share-today-steps').innerText = todaySteps.toLocaleString() + ' 步';
+            $('share-progress').innerText = progressPct + '%';
+
+            if (diff > 0) {
+                $('share-compare-text').innerHTML = `⬆️ 比昨天多走了 <span class="text-green-600">${diff.toLocaleString()}</span> 步！`;
+            } else if (diff < 0) {
+                $('share-compare-text').innerHTML = `⬇️ 比昨天少走了 <span class="text-red-500">${Math.abs(diff).toLocaleString()}</span> 步`;
+            } else {
+                $('share-compare-text').innerText = `➖ 與昨天步數持平`;
+            }
+
+            $('share-pr-text').innerText = `🔥 活躍度擊敗全台 ${pr}% 的志工！`;
+            $('share-area-text').innerText = $('stat-area').innerText;
+
+            $('share-modal').classList.remove('hidden');
+        });
+
+        $('close-share-btn').addEventListener('click', () => {
+            $('share-modal').classList.add('hidden');
+        });
+
+        $('capture-share-btn').addEventListener('click', () => {
+            let captureArea = $('capture-area');
+            let btn = $('capture-share-btn');
+            let originalText = btn.innerText;
+            
+            btn.innerText = "處理中...";
+            btn.disabled = true;
+
+            // 使用 html2canvas 將指定的 div 轉成 canvas
+            html2canvas(captureArea, {
+                scale: 2, // 提高解析度
+                backgroundColor: "#ffffff",
+                logging: false,
+                useCORS: true // 允許載入外部圖片 (如果有)
+            }).then(canvas => {
+                try {
+                    // 將 canvas 轉為圖片的 DataURL
+                    let imgData = canvas.toDataURL("image/png");
+                    
+                    // 建立一個隱藏的 a 標籤來觸發下載
+                    let link = document.createElement('a');
+                    link.download = `尋寵地圖戰報_${getDateStr(new Date())}.png`;
+                    link.href = imgData;
+                    link.click();
+                    
+                    showToast("✅ 戰報圖片已下載，快去分享吧！");
+                } catch (err) {
+                    console.error("截圖失敗:", err);
+                    showToast("⚠️ 截圖失敗，請檢查瀏覽器權限或手動截圖。");
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            }).catch(err => {
+                console.error("html2canvas 錯誤:", err);
+                showToast("⚠️ 截圖服務暫時無法使用。");
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadWeightSystem();
+            processData();
+        });
+
+    </script>
+</body>
+</html>
