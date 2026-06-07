@@ -263,7 +263,7 @@
             map.on('mousemove touchmove',e=>{if(isClearingHistory){if(isPaintingClear){if(!lastPaintLatLng||getDistance(lastPaintLatLng.lat,lastPaintLatLng.lng,e.latlng.lat,e.latlng.lng)>currentClearRadius*0.4){let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}} else if(isErasingClear){for(let i=clearHistoryCircles.length-1;i>=0;i--){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1);}}}}});
             map.on('mouseup touchend',e=>{isPaintingClear=false; isErasingClear=false; lastPaintLatLng=null;});
             map.on('dragstart zoomstart',()=>{isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer();});
-            map.on('dragend zoomend',()=>{mapInteractionTimer=setTimeout(()=>isMapInteracting=false,900000); renderMap(); resetPowerSavingTimer();});
+            map.on('dragend zoomend',()=>{mapInteractionTimer=setTimeout(()=>isMapInteracting=false,15000); renderMap(); resetPowerSavingTimer();});
             map.createPane('fogPane').style.cssText='z-index:450;pointer-events:none;'; map.createPane('evaPane').style.cssText='z-index:460;pointer-events:none;'; map.createPane('trackPane').style.cssText='z-index:470;pointer-events:none;';
             initFogSystem(); setInterval(renderMap,15000);
             
