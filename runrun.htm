@@ -308,11 +308,24 @@ function formatScrapeTime(postTimeStr) { if (!postTimeStr) return ""; const d = 
 document.getElementById('scrape-stray-btn').addEventListener('click', () => { preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = 'none'; document.getElementById('toggle-fog-btn').innerText = '🌫️ 開啟迷霧'; } document.getElementById('scrape-input-modal').classList.remove('hidden'); document.getElementById('scrape-url-input').value = ""; document.getElementById('scrape-error').classList.add('hidden'); });
 document.getElementById('scrape-cancel-btn').addEventListener('click', () => { document.getElementById('scrape-input-modal').classList.add('hidden'); if (preReportFogState) { isFogVisible = true; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = 'block'; document.getElementById('toggle-fog-btn').innerText = '👁️ 關閉迷霧'; requestFogRender(); } });
 document.getElementById('scrape-submit-btn').addEventListener('click', async () => { const url = document.getElementById('scrape-url-input').value.trim(); const errEl = document.getElementById('scrape-error'); if (!url) { errEl.innerText = "請輸入網址"; errEl.classList.remove('hidden'); return; } if (!url.includes('threads.net') && !url.includes('threads.com') && !url.includes('instagram.com') && !url.includes('facebook.com') && !url.includes('fb.watch')) { errEl.innerText = "目前僅支援 Threads, Instagram, 或 Facebook 的網址"; errEl.classList.remove('hidden'); return; } try { const pU = new URL(url); const cU = pU.origin + pU.pathname; let isD = false; Object.values(PROJECTS).forEach(p => { if (p.announcement && p.announcement.includes(cU)) isD = true; }); if (isD) { document.getElementById('scrape-input-modal').classList.add('hidden'); showModal("🙏 感謝你的協助！\n這個專案已經有人上傳過囉！"); return; } } catch (e) {} const btn = document.getElementById('scrape-submit-btn'); btn.disabled = true; errEl.classList.add('hidden'); const progModal = document.getElementById('scrape-progress-modal'); const progText = document.getElementById('scrape-progress-text'); const progFill = document.getElementById('scrape-progress-fill'); progModal.classList.remove('hidden'); progFill.style.width = "5%"; const progressSteps = ["正在連線並尋找文章內容...", "正在解析圖片與影片資訊...", "若無照片，等待下載影片請稍等...", "正在打包資料，即將完成..."]; let stepIdx = 0; progText.innerText = progressSteps[stepIdx]; const progressTimer = setInterval(() => { stepIdx++; if (stepIdx < progressSteps.length) { progText.innerText = progressSteps[stepIdx]; progFill.style.width = `${Math.min(95, (stepIdx + 1) * 25)}%`; } else { progText.innerText = "等待下載影片請稍等..."; progFill.style.width = "95%"; } }, 4000); const stopProgress = () => { clearInterval(progressTimer); progModal.classList.add('hidden'); progFill.style.width = "0%"; btn.disabled = false; }; try { const baseUrl = getBaseHttpUrl(); const response = await fetch(`${baseUrl}/api/scrape`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }); const data = await response.json(); if (data.success) { window.scrapedData = data.data; window.scrapedData.images = (window.scrapedData.images || []).map(img => { let p = img.replace(/\\/g, '/'); try { if (p.startsWith('http')) { const u = new URL(p); if (u.pathname.startsWith('/downloads/')) return u.pathname; } } catch (e) {} return p; }); window.scrapedData.videos = window.scrapedData.videos || []; scrapedMedia = []; 
-    if (window.scrapedData.images.length > 0) {
+    
+    if (window.scrapedData.images.length === 1 && window.scrapedData.videos.length > 0) {
+        window.scrapedData.images.forEach(img => scrapedMedia.push({type:'img', url:img}));
+        window.scrapedData.videos.forEach(vid => scrapedMedia.push({type:'vid', url:vid}));
+    } else if (window.scrapedData.images.length > 0) {
         window.scrapedData.images.forEach(img => scrapedMedia.push({type:'img', url:img}));
     } else if (window.scrapedData.videos.length > 0) {
         window.scrapedData.videos.forEach(vid => scrapedMedia.push({type:'vid', url:vid}));
     }
+    
+    if (scrapedMedia.length <= 1) {
+        document.getElementById('scrape-photo-prev-btn').classList.add('hidden');
+        document.getElementById('scrape-photo-next-btn').classList.add('hidden');
+    } else {
+        document.getElementById('scrape-photo-prev-btn').classList.remove('hidden');
+        document.getElementById('scrape-photo-next-btn').classList.remove('hidden');
+    }
+
     stopProgress(); if (scrapedMedia.length === 0) { errEl.innerText = "抓取成功，但沒有找到照片或影片。請使用手動回報。"; errEl.classList.remove('hidden'); } else { document.getElementById('scrape-input-modal').classList.add('hidden'); isScrapeReportMode = true; isReportingMode = true; scrapePhotoIndex = 0; scrapedPreloadedImages = []; window.scrapedData.images.forEach(imgUrl => { const img = new Image(); img.src = getMediaUrl(imgUrl); scrapedPreloadedImages.push(img); }); updateScrapePhotoPreview(); document.getElementById('scrape-photo-select-modal').classList.remove('hidden'); } } else { stopProgress(); errEl.innerText = data.error || "抓取失敗"; errEl.classList.remove('hidden'); } } catch (e) { stopProgress(); errEl.innerText = "連線伺服器失敗，請確認後端已啟動。"; errEl.classList.remove('hidden'); } });
 let scrapePhotoLoadTimer = null;
 function updateScrapePhotoPreview() { 
@@ -321,9 +334,16 @@ function updateScrapePhotoPreview() {
     const vidEl = document.getElementById('scrape-preview-vid');
     const loadEl = document.getElementById('scrape-photo-loading');
     const confirmBtn = document.getElementById('scrape-photo-confirm-btn');
-    if (loadEl) { loadEl.classList.remove('hidden'); loadEl.style.opacity = '1'; loadEl.innerText = '讀取中請稍後...'; }
+    
+    if (loadEl) { 
+        loadEl.classList.remove('hidden'); 
+        loadEl.style.opacity = '1'; 
+        loadEl.innerText = media.type === 'vid' ? '影片下載/準備中，請稍後...' : '圖片讀取中，請稍後...'; 
+    }
+    
     if (scrapePhotoLoadTimer) clearTimeout(scrapePhotoLoadTimer);
     const hideLoader = () => { if (loadEl) { scrapePhotoLoadTimer = setTimeout(() => { loadEl.style.opacity = '0'; setTimeout(() => { if (loadEl.style.opacity === '0') loadEl.classList.add('hidden'); }, 300); }, 1000); } };
+    
     if (media.type === 'vid') {
         imgEl.classList.add('hidden');
         vidEl.classList.remove('hidden');
