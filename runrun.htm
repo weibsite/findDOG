@@ -55,14 +55,20 @@
 <div id="scrape-photo-select-modal" class="hidden fixed inset-0 z-[16500] bg-black/95 flex flex-col items-center justify-center p-0 touch-none">
     <div class="relative w-full h-full flex items-center justify-center overflow-hidden">
         <h3 class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20">請選擇一張作為主照片</h3>
-        <div id="scrape-photo-loading" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[30] text-center text-lg pointer-events-none transition-opacity duration-300">下載圖片中請稍後...</div>
         
-        <img id="scrape-preview-img" src="" class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-none">
-        <!-- 移除原生 controls 屬性 -->
-        <video id="scrape-preview-vid" crossorigin="anonymous" playsinline class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-auto hidden"></video>
+        <!-- 新增的狀態與進度計數器 -->
+        <div id="scrape-media-counter" class="absolute top-4 right-4 z-20 text-white font-bold drop-shadow-md text-sm bg-black/50 px-3 py-1 rounded border border-white/20 pointer-events-none"></div>
+
+        <div id="scrape-photo-loading" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[30] text-center text-lg pointer-events-none transition-opacity duration-300">下載/準備中請稍後...</div>
         
-        <button id="scrape-photo-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&lt;</button>
-        <button id="scrape-photo-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&gt;</button>
+        <img id="scrape-preview-img" src="" class="max-w-full max-h-[75vh] object-contain transition-all duration-300 pointer-events-none">
+        
+        <!-- 移除原生 controls 屬性，加入 pointer-events-auto 以支援點擊影片暫停/播放 -->
+        <video id="scrape-preview-vid" crossorigin="anonymous" playsinline class="max-w-full max-h-[75vh] object-contain transition-all duration-300 pointer-events-auto hidden cursor-pointer"></video>
+        
+        <!-- 加入明顯的 active 點擊視覺回饋，讓使用者知道按鈕確實有被點到 -->
+        <button id="scrape-photo-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black active:bg-gray-400 active:scale-95 transition-all">&lt;</button>
+        <button id="scrape-photo-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black active:bg-gray-400 active:scale-95 transition-all">&gt;</button>
         
         <!-- 自訂的無干擾影片控制條 -->
         <div id="scrape-vid-controls" class="hidden absolute bottom-24 left-0 w-full px-6 flex items-center gap-3 z-[40]">
@@ -351,6 +357,7 @@ document.getElementById('scrape-submit-btn').addEventListener('click', async () 
     }
 
     stopProgress(); if (scrapedMedia.length === 0) { errEl.innerText = "抓取成功，但沒有找到照片或影片。請使用手動回報。"; errEl.classList.remove('hidden'); } else { document.getElementById('scrape-input-modal').classList.add('hidden'); isScrapeReportMode = true; isReportingMode = true; scrapePhotoIndex = 0; scrapedPreloadedImages = []; window.scrapedData.images.forEach(imgUrl => { const img = new Image(); img.src = getMediaUrl(imgUrl); scrapedPreloadedImages.push(img); }); updateScrapePhotoPreview(); document.getElementById('scrape-photo-select-modal').classList.remove('hidden'); } } else { stopProgress(); errEl.innerText = data.error || "抓取失敗"; errEl.classList.remove('hidden'); } } catch (e) { stopProgress(); errEl.innerText = "連線伺服器失敗，請確認後端已啟動。"; errEl.classList.remove('hidden'); } });
+
 let scrapePhotoLoadTimer = null;
 function updateScrapePhotoPreview() { 
     const media = scrapedMedia[scrapePhotoIndex];
@@ -359,28 +366,47 @@ function updateScrapePhotoPreview() {
     const loadEl = document.getElementById('scrape-photo-loading');
     const confirmBtn = document.getElementById('scrape-photo-confirm-btn');
     const vidControls = document.getElementById('scrape-vid-controls');
-    
+    const counterEl = document.getElementById('scrape-media-counter');
+
+    // 1. 更新右上角計數器
+    if (counterEl) {
+        let label = media.type === 'vid' ? '影片' : '圖片';
+        counterEl.innerText = `${label} ${scrapePhotoIndex + 1} / ${scrapedMedia.length}`;
+    }
+
+    // 2. 切換時加入透明度淡出動畫，給予明確的視覺回饋
+    imgEl.style.opacity = '0.5';
+    vidEl.style.opacity = '0.5';
+
     if (loadEl) { 
         loadEl.classList.remove('hidden'); 
         loadEl.style.opacity = '1'; 
-        loadEl.innerText = media.type === 'vid' ? '影片下載/準備中，請稍後...' : '圖片讀取中，請稍後...'; 
+        loadEl.innerText = media.type === 'vid' ? '影片載入/準備中...' : '圖片讀取中...'; 
     }
     
     if (scrapePhotoLoadTimer) clearTimeout(scrapePhotoLoadTimer);
     const hideLoader = () => { 
         if (loadEl) { 
             loadEl.style.opacity = '0'; 
-            setTimeout(() => { loadEl.classList.add('hidden'); }, 300); 
-        } 
+            setTimeout(() => { if (loadEl.style.opacity === '0') loadEl.classList.add('hidden'); }, 300); 
+        }
+        // 載入完成，恢復不透明度 
+        imgEl.style.opacity = '1';
+        vidEl.style.opacity = '1';
     };
     
+    // 保底機制：不管怎樣，5秒後強制隱藏提示框，避免死當
+    scrapePhotoLoadTimer = setTimeout(hideLoader, 5000);
+
     if (media.type === 'vid') {
         imgEl.classList.add('hidden');
         vidEl.classList.remove('hidden');
         vidControls.classList.remove('hidden');
         vidEl.src = getMediaUrl(media.url);
         
-        // 增強型影片載入判定，確保提示能夠消失
+        vidEl.load(); // 強制觸發讀取
+        
+        // 增強型影片載入判定
         vidEl.onloadeddata = hideLoader;
         vidEl.oncanplay = hideLoader;
         vidEl.onplaying = hideLoader;
@@ -394,14 +420,32 @@ function updateScrapePhotoPreview() {
         vidControls.classList.add('hidden');
         vidEl.pause();
         imgEl.classList.remove('hidden');
+        
         imgEl.onload = hideLoader;
         imgEl.onerror = () => { if(loadEl) loadEl.innerText = '圖片載入失敗'; hideLoader(); };
         imgEl.src = getMediaUrl(media.url); 
+        
+        // 若圖片已在快取中，立刻隱藏
+        if (imgEl.complete) { hideLoader(); }
+
         confirmBtn.innerText = "✅ 設為主照片並裁切";
     }
 }
-document.getElementById('scrape-photo-prev-btn').addEventListener('click', () => { if (scrapedMedia.length === 0) return; scrapePhotoIndex = (scrapePhotoIndex - 1 + scrapedMedia.length) % scrapedMedia.length; updateScrapePhotoPreview(); });
-document.getElementById('scrape-photo-next-btn').addEventListener('click', () => { if (scrapedMedia.length === 0) return; scrapePhotoIndex = (scrapePhotoIndex + 1) % scrapedMedia.length; updateScrapePhotoPreview(); });
+
+// 加入 e.preventDefault() 避免手機上的異常觸控事件
+document.getElementById('scrape-photo-prev-btn').addEventListener('click', (e) => { 
+    e.preventDefault(); e.stopPropagation();
+    if (scrapedMedia.length === 0) return; 
+    scrapePhotoIndex = (scrapePhotoIndex - 1 + scrapedMedia.length) % scrapedMedia.length; 
+    updateScrapePhotoPreview(); 
+});
+document.getElementById('scrape-photo-next-btn').addEventListener('click', (e) => { 
+    e.preventDefault(); e.stopPropagation();
+    if (scrapedMedia.length === 0) return; 
+    scrapePhotoIndex = (scrapePhotoIndex + 1) % scrapedMedia.length; 
+    updateScrapePhotoPreview(); 
+});
+
 document.getElementById('scrape-photo-confirm-btn').addEventListener('click', () => { 
     const media = scrapedMedia[scrapePhotoIndex];
     document.getElementById('scrape-photo-select-modal').classList.add('hidden'); 
@@ -435,6 +479,12 @@ const scrapeVid = document.getElementById('scrape-preview-vid');
 const scrapeVidPlayBtn = document.getElementById('scrape-vid-play-btn');
 const scrapeVidProgress = document.getElementById('scrape-vid-progress');
 
+// 直接點擊影片也能暫停/播放
+scrapeVid.addEventListener('click', () => {
+    if (scrapeVid.paused) { scrapeVid.play(); } 
+    else { scrapeVid.pause(); }
+});
+
 scrapeVidPlayBtn.addEventListener('click', () => {
     if (scrapeVid.paused) { scrapeVid.play(); } 
     else { scrapeVid.pause(); }
@@ -452,6 +502,8 @@ scrapeVid.addEventListener('loadedmetadata', () => {
     scrapeVidProgress.value = 0;
 });
 scrapeVidProgress.addEventListener('input', (e) => {
+    // 拖曳時自動暫停，方便精準選畫面
+    if (!scrapeVid.paused) scrapeVid.pause();
     scrapeVid.currentTime = e.target.value;
 });
 
