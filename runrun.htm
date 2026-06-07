@@ -51,7 +51,31 @@
 <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]"><button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到最前面">&lt;&lt;</button><button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white" title="回到上一格">&lt;</button><button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black" title="暫停/播放">=</button><button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white" title="加倍速度前進">&gt;</button><button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white" title="直接完成">&gt;&gt;</button></div>
 <button id="quick-camera-btn" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[2000] w-16 h-16 rounded-full bg-yellow-400 border-4 border-black shadow-[4px_4px_0px_#1a202c] flex items-center justify-center text-3xl active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all hidden" title="快速回報浪浪">📷</button>
 <div id="scrape-input-modal" class="hidden absolute inset-0 z-[16000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">🕸️ 網路貼文抓取</h3><p class="text-xs font-bold text-gray-600 mb-4">輸入 Threads, IG, 或 FB 的貼文網址，<br>系統將自動幫您抓取圖文、影片與發布時間。</p><input type="url" id="scrape-url-input" class="pixel-input w-full p-3 mb-4 text-sm font-sans" placeholder="https://..."><div id="scrape-error" class="hidden text-red-600 font-bold text-xs mb-3"></div><div class="flex gap-2"><button id="scrape-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="scrape-submit-btn" class="pixel-btn flex-1 py-2 bg-purple-600 text-white">開始抓取</button></div></div></div>
-<div id="scrape-photo-select-modal" class="hidden fixed inset-0 z-[16500] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden"><h3 class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20">請選擇一張作為主照片</h3><div id="scrape-photo-loading" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[30] text-center text-lg pointer-events-none transition-opacity duration-300">下載圖片中請稍後...</div><img id="scrape-preview-img" src="" class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-none"><video id="scrape-preview-vid" controls crossorigin="anonymous" playsinline class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-auto hidden"></video><button id="scrape-photo-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&lt;</button><button id="scrape-photo-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&gt;</button><div class="absolute bottom-6 left-0 w-full flex justify-center z-20 px-4"><button id="scrape-photo-confirm-btn" class="pixel-btn px-6 py-3 bg-blue-500 text-white border-2 border-black shadow-[4px_4px_0px_#1a202c] text-lg w-full max-w-sm active:translate-y-1">✅ 設為主照片並裁切</button></div></div></div>
+
+<div id="scrape-photo-select-modal" class="hidden fixed inset-0 z-[16500] bg-black/95 flex flex-col items-center justify-center p-0 touch-none">
+    <div class="relative w-full h-full flex items-center justify-center overflow-hidden">
+        <h3 class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20">請選擇一張作為主照片</h3>
+        <div id="scrape-photo-loading" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[30] text-center text-lg pointer-events-none transition-opacity duration-300">下載圖片中請稍後...</div>
+        
+        <img id="scrape-preview-img" src="" class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-none">
+        <!-- 移除原生 controls 屬性 -->
+        <video id="scrape-preview-vid" crossorigin="anonymous" playsinline class="max-w-full max-h-[75vh] object-contain transition-transform duration-300 pointer-events-auto hidden"></video>
+        
+        <button id="scrape-photo-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&lt;</button>
+        <button id="scrape-photo-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 pixel-btn px-4 py-4 bg-gray-200 text-black border-2 border-black z-20 text-xl font-black">&gt;</button>
+        
+        <!-- 自訂的無干擾影片控制條 -->
+        <div id="scrape-vid-controls" class="hidden absolute bottom-24 left-0 w-full px-6 flex items-center gap-3 z-[40]">
+            <button id="scrape-vid-play-btn" class="w-10 h-10 shrink-0 bg-yellow-400 border-2 border-black rounded-full flex items-center justify-center font-black shadow-[2px_2px_0px_#000] active:scale-95 text-xl pb-1 cursor-pointer">▶</button>
+            <input type="range" id="scrape-vid-progress" class="w-full accent-yellow-400 h-3 bg-black/50 rounded-full outline-none border border-white/50 shadow-[1px_1px_0px_#000]" min="0" max="100" value="0" step="0.01">
+        </div>
+
+        <div class="absolute bottom-6 left-0 w-full flex justify-center z-20 px-4">
+            <button id="scrape-photo-confirm-btn" class="pixel-btn px-6 py-3 bg-blue-500 text-white border-2 border-black shadow-[4px_4px_0px_#1a202c] text-lg w-full max-w-sm active:translate-y-1">✅ 設為主照片並裁切</button>
+        </div>
+    </div>
+</div>
+
 <div class="absolute top-4 right-4 z-[3000] flex flex-col items-end gap-3 pointer-events-none top-right-ui-group"><div class="pointer-events-auto flex gap-2"><div id="status-toast" class="pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]" title="設定個人資料"></div></div></div><div id="announcement-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden"><div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]"><img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" title="點擊檢視照片" draggable="false"><button id="prev-stray-btn" class="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-6 h-6 flex items-center justify-center rounded-full font-black text-xs hover:bg-black shadow-[1px_1px_0px_#1a202c] pointer-events-auto hidden z-20" title="上一個浪浪">&lt;</button><button id="next-stray-btn" class="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-6 h-6 flex items-center justify-center rounded-full font-black text-xs hover:bg-black shadow-[1px_1px_0px_#1a202c] pointer-events-auto hidden z-20" title="下一個浪浪">&gt;</button><div class="absolute bottom-0 left-0 w-full bg-black/70 text-white text-center text-[10px] py-1 font-black tracking-wider transition-all duration-500 pointer-events-none" id="animal-name-date">載入中...</div><div class="gallery-btn-overlay absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-1 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] transition-all duration-500 hover:bg-blue-700 z-10">📸 看相簿</div></div><a id="animal-ig-btn" href="#" target="_blank" class="hidden block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center shadow-[2px_2px_0px_#1a202c]">🐾 回報人 IG</a><div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 浪浪資訊</span><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div><div id="announcement-text" class="leading-relaxed mt-2 whitespace-pre-wrap transition-all duration-300 text-[11px] max-h-32 overflow-y-auto">載入中...</div></div></div>
 <div id="gallery-modal" class="hidden absolute inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4"><div class="w-full max-w-md bg-white border-4 border-black p-4 flex flex-col h-[80vh] pixel-panel"><h3 class="text-xl font-bold mb-2 border-b-2 border-black pb-2 text-center" id="gallery-title">相簿</h3><div class="flex gap-2 mb-2"><button id="tab-photos" class="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none">📸 相片</button><button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none">🎥 影片</button></div><div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div><button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button></div></div>
 <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container"><div id="viewer-title" class="absolute top-4 left-4 z-20 text-white font-bold drop-shadow-md text-lg bg-black/50 px-2 py-1 rounded border border-white/20 pointer-events-none"></div><img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain pointer-events-none origin-center"><video id="viewer-vid" src="" controls playsinline class="max-w-full max-h-[85vh] object-contain hidden origin-center"></video><div class="absolute top-4 left-1/2 -translate-x-1/2 z-[35] flex flex-col items-center gap-2"><div class="flex gap-2 bg-black/80 p-2 rounded-full border-2 border-white shadow-[0px_4px_0px_rgba(0,0,0,0.5)] pointer-events-auto"><button id="t-zoom" class="text-xl p-2 bg-white/20 rounded-full active:scale-95 transition" title="放大鏡">🔍</button><button id="t-bright" class="text-xl p-2 bg-white/20 rounded-full active:scale-95 transition" title="亮度">☀️</button><button id="t-contrast" class="text-xl p-2 bg-white/20 rounded-full active:scale-95 transition" title="對比">🌓</button><button id="t-sharp" class="text-xl p-2 bg-white/20 rounded-full active:scale-95 transition" title="銳利度">✨</button><button id="t-reset" class="text-xl p-2 bg-red-500 text-white rounded-full active:scale-95 transition" title="重置">🔄</button></div><div id="t-panel" class="hidden bg-black/80 p-4 rounded-xl border-2 border-white shadow-[0px_4px_0px_rgba(0,0,0,0.5)] w-64 pointer-events-auto"><div class="flex justify-between text-white text-sm font-bold mb-2"><span id="t-lbl"></span><span id="t-val" class="text-yellow-400"></span></div><input type="range" id="t-input" class="w-full accent-yellow-400"></div></div><button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border border-white px-3 py-1 text-sm font-bold cursor-pointer active:scale-95 shadow-[2px_2px_0px_#000]">關閉 ✕</button><div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4"><button id="viewer-prev-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c]">&lt; 上一張</button><button id="viewer-next-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c]">下一張 &gt;</button></div><div id="viewer-toast" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[100] text-center text-lg transition-opacity duration-300 pointer-events-none"></div></div></div>
@@ -334,6 +358,7 @@ function updateScrapePhotoPreview() {
     const vidEl = document.getElementById('scrape-preview-vid');
     const loadEl = document.getElementById('scrape-photo-loading');
     const confirmBtn = document.getElementById('scrape-photo-confirm-btn');
+    const vidControls = document.getElementById('scrape-vid-controls');
     
     if (loadEl) { 
         loadEl.classList.remove('hidden'); 
@@ -342,17 +367,31 @@ function updateScrapePhotoPreview() {
     }
     
     if (scrapePhotoLoadTimer) clearTimeout(scrapePhotoLoadTimer);
-    const hideLoader = () => { if (loadEl) { scrapePhotoLoadTimer = setTimeout(() => { loadEl.style.opacity = '0'; setTimeout(() => { if (loadEl.style.opacity === '0') loadEl.classList.add('hidden'); }, 300); }, 1000); } };
+    const hideLoader = () => { 
+        if (loadEl) { 
+            loadEl.style.opacity = '0'; 
+            setTimeout(() => { loadEl.classList.add('hidden'); }, 300); 
+        } 
+    };
     
     if (media.type === 'vid') {
         imgEl.classList.add('hidden');
         vidEl.classList.remove('hidden');
+        vidControls.classList.remove('hidden');
         vidEl.src = getMediaUrl(media.url);
+        
+        // 增強型影片載入判定，確保提示能夠消失
+        vidEl.onloadeddata = hideLoader;
         vidEl.oncanplay = hideLoader;
+        vidEl.onplaying = hideLoader;
+        if (vidEl.readyState >= 3) { hideLoader(); }
+        
         vidEl.onerror = () => { if(loadEl) loadEl.innerText = '影片載入失敗'; hideLoader(); };
         confirmBtn.innerText = "✅ 擷取目前畫面並裁切";
+        document.getElementById('scrape-vid-play-btn').innerText = "▶";
     } else {
         vidEl.classList.add('hidden');
+        vidControls.classList.add('hidden');
         vidEl.pause();
         imgEl.classList.remove('hidden');
         imgEl.onload = hideLoader;
@@ -390,6 +429,32 @@ document.getElementById('scrape-photo-confirm-btn').addEventListener('click', ()
         window._cropNextStep = 'scrape_form'; 
     }
 });
+
+// 自訂影片播放器拖曳功能
+const scrapeVid = document.getElementById('scrape-preview-vid');
+const scrapeVidPlayBtn = document.getElementById('scrape-vid-play-btn');
+const scrapeVidProgress = document.getElementById('scrape-vid-progress');
+
+scrapeVidPlayBtn.addEventListener('click', () => {
+    if (scrapeVid.paused) { scrapeVid.play(); } 
+    else { scrapeVid.pause(); }
+});
+scrapeVid.addEventListener('play', () => scrapeVidPlayBtn.innerText = '⏸');
+scrapeVid.addEventListener('pause', () => scrapeVidPlayBtn.innerText = '▶');
+scrapeVid.addEventListener('timeupdate', () => {
+    if (scrapeVid.duration) {
+        scrapeVidProgress.max = scrapeVid.duration;
+        scrapeVidProgress.value = scrapeVid.currentTime;
+    }
+});
+scrapeVid.addEventListener('loadedmetadata', () => {
+    scrapeVidProgress.max = scrapeVid.duration;
+    scrapeVidProgress.value = 0;
+});
+scrapeVidProgress.addEventListener('input', (e) => {
+    scrapeVid.currentTime = e.target.value;
+});
+
 function openScrapeReportForm() { editingMyStray = null; document.getElementById('report-form-title').innerText = "📝 網路尋找：確認浪浪資訊"; const formattedTime = formatScrapeTime(window.scrapedData.post_time); let baseDateStr = formattedTime ? formattedTime.split('T')[0] : new Date().toISOString().slice(0, 10); let scrapedText = window.scrapedData.text || ""; const timeMatch = scrapedText.match(/([0-1]?[0-9]|2[0-3])[:：]([0-5][0-9])/); if (timeMatch) { const timeStr = String(timeMatch[1]).padStart(2, '0') + ':' + String(timeMatch[2]).padStart(2, '0'); document.getElementById('report-time').value = baseDateStr + 'T' + timeStr; } else { if (formattedTime) { document.getElementById('report-time').value = formattedTime; } else { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('report-time').value = now.toISOString().slice(0, 16); } } 
 let foundAddr = window.scrapedData.guessed_address || ""; document.getElementById('report-search-input').value = foundAddr;
 const originalUrl = document.getElementById('scrape-url-input').value.trim(); if (originalUrl) { document.getElementById('report-ig').value = originalUrl; } else { document.getElementById('report-ig').value = ""; } document.getElementById('report-name').value = ""; document.getElementById('report-notes').value = scrapedText; const contactInfo = extractContactInfo(window.scrapedData.text || ""); document.getElementById('report-contact').value = contactInfo; document.getElementById('report-contact-public').checked = !!contactInfo; document.getElementById('report-type').value = "狗"; currentMediaList = []; if (window.scrapedData.images) { window.scrapedData.images.forEach(img => { currentMediaList.push({ type: 'url', data: img, isVideo: false }); }); } if (window.scrapedData.videos) { window.scrapedData.videos.forEach(vid => { currentMediaList.push({ type: 'url', data: vid, isVideo: true }); }); } renderPhotos(); document.getElementById('report-submit-btn').innerText = "📍 下一步：標記位置 ➡️"; document.getElementById('report-form-back-btn').innerText = "⬅️ 取消抓取"; preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'none'; document.getElementById('toggle-fog-btn').innerText = '🌫️ 開啟迷霧'; } document.getElementById('scrape-stray-btn').classList.add('hidden'); document.getElementById('report-stray-btn').classList.add('hidden'); document.getElementById('quick-camera-btn').classList.add('hidden'); document.getElementById('user-manage-trigger-btn-left').classList.add('hidden'); document.getElementById('project-select-wrapper').classList.add('hidden'); document.getElementById('report-form-modal').classList.remove('hidden'); if(window.scrapedData && window.scrapedData.videos && window.scrapedData.videos.length > 2) { setTimeout(() => { showModal("⚠️ 提示：\n系統已抓取多部影片 (最多5部)。\n有些平台可能會混入不相關的推薦影片，請務必在「額外相片/影片」區檢查是否正確，再確認送出喔！"); }, 800); } }
