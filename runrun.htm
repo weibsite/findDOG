@@ -121,7 +121,7 @@
 
 <script>
 // ==========================================
-// 1. 核心縮寫與工具函數 (Core Helpers)
+// 1. 核心工具與全域變數 (Helpers & Globals)
 // ==========================================
 const $ = id => document.getElementById(id);
 const show = id => $(id)?.classList.remove('hidden');
@@ -141,9 +141,6 @@ const showModal = m => { text('custom-modal-text', m); show('custom-modal'); };
 const showHTMLModal = h => { html('custom-modal-text', h); show('custom-modal'); };
 const showConfirm = (m, cb) => { text('confirm-modal-text', m); show('confirm-modal'); let o=$('confirm-ok-btn'), c=$('confirm-cancel-btn'), no=o.cloneNode(true), nc=c.cloneNode(true); o.parentNode.replaceChild(no, o); c.parentNode.replaceChild(nc, c); no.addEventListener('click', ()=>{hide('confirm-modal'); cb();}); nc.addEventListener('click', ()=>hide('confirm-modal')); };
 
-// ==========================================
-// 2. 系統全域變數 (Globals)
-// ==========================================
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
 let myUid = lsGet('dogMap_UID') || ('usr_' + Math.random().toString(36).substr(2, 9)); lsSet('dogMap_UID', myUid);
 let currentUserName = "", dbUserColor = "", isAdmin = sessionStorage.getItem('dogMap_isAdmin') === 'true', adminToken = sessionStorage.getItem('dogMap_adminToken') || "";
@@ -162,9 +159,10 @@ let currentStream = null, cameraActiveMode = 'photo', cameraTarget = 'main', med
 let loadedManageStrays = [], editingMyStray = null, reportLat, reportLng;
 
 // ==========================================
-// 3. 系統初始化 & WebSocket通訊 (Init & WS)
+// 2. WebSocket 與初始化 (Init & WS)
 // ==========================================
 const waitWsResponse = (tType, timeout=2000) => new Promise(res => { let t = setTimeout(()=>{ws.removeEventListener('message', h); res(null);}, timeout); let h = e => { let r=JSON.parse(e.data); if(r.type===tType){clearTimeout(t); ws.removeEventListener('message', h); res(r);} }; ws.addEventListener('message', h); });
+
 async function initSystem() { 
     try { const cfgRes = await fetch('config.json?t=' + Date.now()), cfg = await cfgRes.json(); if(cfg?.ws_url) NGROK_WS_URL = cfg.ws_url; } catch(e) {}
     fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(r=>r.json()).then(d=>{ d.features.forEach(f=>{ let polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates; polys.forEach(poly=>{ let minL=90, maxL=-90, minG=180, maxG=-180; poly[0].forEach(c=>{ if(c[1]<minL)minL=c[1]; if(c[1]>maxL)maxL=c[1]; if(c[0]<minG)minG=c[0]; if(c[0]>maxG)maxG=c[0]; }); taiwanPolygons.push({coordinates:poly, bounds:L.latLngBounds([minL,minG],[maxL,maxG])}); }); }); requestFogRender(); }).catch(()=>{});
@@ -179,9 +177,15 @@ async function initSystem() {
     connectWebSocket(); 
     if(lsGet('dogMap_userName')){ currentUserName = lsGet('dogMap_userName'); dbUserColor = lsGet('dogMap_userColor')||generateRandomColor(); $('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(true); } 
 }
+
 function connectWebSocket() {
     ws = new WebSocket(NGROK_WS_URL);
-    ws.onopen = () => { isSystemReady=true; $('sync-ping').style.backgroundColor='#10b981'; html('toast-text', "連線成功" + (gpsState==='denied'?" <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>":"")); ws.send(JSON.stringify({type:"init", uid:myUid, project:currentProjectKey||"default"})); if(localHistory.length) saveLocationToServer(null, true); };
+    ws.onopen = () => { 
+        isSystemReady=true; $('sync-ping').style.backgroundColor='#10b981'; 
+        html('toast-text', "連線成功" + (gpsState==='denied'?" <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>":"")); 
+        ws.send(JSON.stringify({type:"init", uid:myUid, project:currentProjectKey||"default"})); 
+        if(localHistory.length) saveLocationToServer(null, true); 
+    };
     ws.onmessage = e => {
         let r = JSON.parse(e.data);
         if(r.type==='sync'||r.type==='projects_updated'){
@@ -189,7 +193,11 @@ function connectWebSocket() {
                 let allP = r.dynamicProjects||r.data.dynamicProjects, strayP = {};
                 Object.keys(allP).forEach(k=>{ if(allP[k].isStray) strayP[k]=allP[k]; }); PROJECTS=strayP;
                 Object.keys(PROJECTS).forEach(k=>{
-                    if(PROJECTS[k].photos){ let ap=[], av=PROJECTS[k].videos||[]; PROJECTS[k].photos.forEach(p=>{ let u=typeof p==='string'?p:p.url; if(u&&u.match(/\.(mp4|webm|mov|ogg)$/i))av.push(p); else ap.push(p); }); PROJECTS[k].photos=ap; PROJECTS[k].videos=av; }
+                    if(PROJECTS[k].photos){ 
+                        let ap=[], av=PROJECTS[k].videos||[]; 
+                        PROJECTS[k].photos.forEach(p=>{ let u=typeof p==='string'?p:p.url; if(u&&u.match(/\.(mp4|webm|mov|ogg)$/i))av.push(p); else ap.push(p); }); 
+                        PROJECTS[k].photos=ap; PROJECTS[k].videos=av; 
+                    }
                     if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。") allAnnouncements[k] = PROJECTS[k].announcement||"目前無最新公告。";
                 });
                 updateProjectDropdown(); drawAllProjects(); updateAnimalInfoCard();
@@ -199,7 +207,11 @@ function connectWebSocket() {
         if(r.type==='admin_apps_data'){
             adminCachedApps = r.data||[]; $('admin-list-container').innerHTML=''; let strayA=adminCachedApps.filter(a=>a.projectData&&a.projectData.isStray);
             if(!strayA.length) html('admin-list-container', '<p class="text-center font-bold text-gray-500 mt-10">目前沒有待處理的資料</p>');
-            else strayA.forEach(a=>{ let div=document.createElement('div'); div.className="border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]"; div.innerHTML=`${a.projectData.mainPhoto?`<img src="${getMediaUrl(a.projectData.mainPhoto)}" class="w-full h-24 object-cover border-2 border-black mb-2">`:''}<div class="font-bold text-sm mb-1">【${escapeHTML(a.projectData.type==='dog'?'狗':(a.projectData.type==='cat'?'貓':'其他'))}】${escapeHTML(a.projectData.lostDate)}</div><div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(a.projectData.announcement)||'無備註'}</div><button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">審核 / 編輯</button>`; div.querySelector('.edit-btn').addEventListener('click',()=>openAdminEditModal(a.id)); $('admin-list-container').appendChild(div); });
+            else strayA.forEach(a=>{ 
+                let div=document.createElement('div'); div.className="border-4 border-black bg-white p-3 shadow-[4px_4px_0px_#1a202c]"; 
+                div.innerHTML=`${a.projectData.mainPhoto?`<img src="${getMediaUrl(a.projectData.mainPhoto)}" class="w-full h-24 object-cover border-2 border-black mb-2">`:''}<div class="font-bold text-sm mb-1">【${escapeHTML(a.projectData.type==='dog'?'狗':(a.projectData.type==='cat'?'貓':'其他'))}】${escapeHTML(a.projectData.lostDate)}</div><div class="text-xs text-gray-700 truncate mb-2">${escapeHTML(a.projectData.announcement)||'無備註'}</div><button class="pixel-btn w-full py-1 text-xs bg-blue-500 text-white edit-btn">審核 / 編輯</button>`; 
+                div.querySelector('.edit-btn').addEventListener('click',()=>openAdminEditModal(a.id)); $('admin-list-container').appendChild(div); 
+            });
             show('admin-list-modal');
         }
         if(r.type==='my_reported_strays_data'){
@@ -208,7 +220,9 @@ function connectWebSocket() {
             if(hasNew){ let us=Array.from(new Set(myStrays.map(a=>JSON.stringify(a)))).map(a=>JSON.parse(a)); lsSet('strayMap_myStrays', JSON.stringify(us)); renderUserManageList(); }
         }
         if(r.type==='admin_login_result' && !$('admin-login-modal').classList.contains('hidden')){
-            text('admin-submit-btn', "登入"); if(r.success){isAdmin=true; adminToken=r.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); showModal("✅ 系統管理員登入成功！");} else showModal("❌ 密碼錯誤！");
+            text('admin-submit-btn', "登入"); 
+            if(r.success){isAdmin=true; adminToken=r.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); showModal("✅ 系統管理員登入成功！");} 
+            else showModal("❌ 密碼錯誤！");
         }
         if(r.type==='admin_action_result') showModal(r.msg);
         if(r.type==='user_appended'||r.type==='user_update'){
@@ -221,7 +235,7 @@ function connectWebSocket() {
 }
 
 // ==========================================
-// 4. 定位、省電與防作弊 (GPS & WakeLock)
+// 3. 定位、省電與防作弊 (GPS & WakeLock)
 // ==========================================
 const requestWakeLock = async () => { try{ if('wakeLock' in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{}); } }catch(e){} };
 const enterPowerSavingMode = () => { if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isTrackingStarted&&!isSpectatorMode) gpsIntervalId = setInterval(()=>navigator.geolocation.getCurrentPosition(p=>processGpsUpdate(p.coords.latitude, p.coords.longitude), e=>{}, {enableHighAccuracy:true, timeout:10000}), 15000); };
@@ -229,12 +243,15 @@ const exitPowerSavingMode = () => { if(!isPowerSaving)return; isPowerSaving=fals
 const resetPowerSavingTimer = () => { if(isPowerSaving)exitPowerSavingMode(); if(powerSavingTimer)clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode) powerSavingTimer=setTimeout(enterPowerSavingMode,300000); };
 const getDistance = (lat1, lon1, lat2, lon2) => { const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a)); };
 const optimizeHistory = hist => { if(hist.length<=10)return hist; let c=[hist[0]], lPt=hist[0], bT=hist.length>2000?30:10; for(let i=1;i<hist.length-1;i++){ let pt=hist[i], d=getDistance(lPt.lat,lPt.lng,pt.lat,pt.lng), tT=(Date.now()-pt.timestamp>10800000)?50:bT; if(d>tT){pt.lat=parseFloat(pt.lat.toFixed(5)); pt.lng=parseFloat(pt.lng.toFixed(5)); c.push(pt); lPt=pt;} } c.push(hist[hist.length-1]); return c.length>10000?c.slice(-10000):c; };
+
 function updateStepCounter() { 
     const steps = allUsersData?.[myUid]?.total_steps || 0; 
     let el = $('step-counter-display'); 
     if(el) { el.innerText = steps.toLocaleString(); el.className = steps>=10000?"text-lg sm:text-xl font-black text-yellow-500 drop-shadow-[1px_1px_0px_#000] tracking-wider transition-colors" : steps>=5000?"text-lg sm:text-xl font-black text-purple-600 tracking-wider transition-colors" : steps>=1000?"text-lg sm:text-xl font-black text-blue-600 tracking-wider transition-colors" : "text-lg sm:text-xl font-black text-gray-800 tracking-wider transition-colors"; }
 }
+
 function saveLocationToServer(nP, fU=false) { if(!isSystemReady)return; const uD={userName:currentUserName, color:dbUserColor, history:localHistory, project:currentProjectKey||"default"}; if(fU)ws.send(JSON.stringify({type:"update_location", uid:myUid, project:currentProjectKey||"default", data:uD})); else if(nP){uD.point=nP; ws.send(JSON.stringify({type:"append_location", uid:myUid, project:currentProjectKey||"default", data:uD}));} updateStepCounter(); }
+
 function processGpsUpdate(lat, lng) {
     if(gpsState!=='active'){ gpsState='active'; renderMap(); }
     const now=Date.now(); if(!isReportingMode&&!isSpectatorMode&&!isMyRouteMode&&!localHistory.length) { map.setView([lat, lng], 17); setTimeout(()=>{if(Object.keys(PROJECTS).length)updateProjectDropdown();},500); }
@@ -243,6 +260,7 @@ function processGpsUpdate(lat, lng) {
     if(!allUsersData[myUid]) allUsersData[myUid] = {userName:currentUserName, color:dbUserColor, history:[], project:currentProjectKey, total_steps:0};
     allUsersData[myUid].history.push(nP); allUsersData[myUid].userName=currentUserName; allUsersData[myUid].color=dbUserColor; saveLocationToServer(nP, false); renderMap();
 }
+
 function startLocationServices(autoStart) {
     hide('startup-overlay'); ['status-toast','project-select-wrapper','scrape-stray-btn','report-stray-btn','quick-camera-btn','toggle-fog-btn','user-manage-trigger-btn-left','spectator-btn','locate-btn','my-route-btn','power-saving-btn'].forEach(show);
     isTrackingStarted=true; requestWakeLock(); resetPowerSavingTimer();
@@ -253,7 +271,7 @@ function startLocationServices(autoStart) {
 }
 
 // ==========================================
-// 5. 地圖、標記與迷霧 (Leaflet & Fog)
+// 4. 地圖、標記與迷霧 (Leaflet & Fog)
 // ==========================================
 function updateProjectDropdown() {
     const sel = $('switch-project-select'); sel.innerHTML=''; let keys=Object.keys(PROJECTS);
@@ -263,13 +281,16 @@ function updateProjectDropdown() {
     window.sortedProjectKeys=keys; keys.forEach(k=>{ let p=PROJECTS[k], cl=(p.bounds[0][0]+p.bounds[1][0])/2, cg=(p.bounds[0][1]+p.bounds[1][1])/2, d=(getDistance(rLat,rLng,cl,cg)/1000).toFixed(1); sel.innerHTML+=`<option value="${k}">🎯 ${p.animalName} (${d}km)</option>`; });
     if(!currentProjectKey||!PROJECTS[currentProjectKey]) currentProjectKey=keys[0]; sel.value=currentProjectKey;
 }
+
 function switchStrayProject(offset) { let k=window.sortedProjectKeys||Object.keys(PROJECTS); if(k.length<=1)return; let idx=k.indexOf(currentProjectKey); if(idx===-1)idx=0; idx=(idx+offset+k.length)%k.length; val('switch-project-select', k[idx]); $('switch-project-select').dispatchEvent(new Event('change')); }
+
 function updateAnimalInfoCard() {
     let p=PROJECTS[currentProjectKey]; if(!p){hide('announcement-panel'); hide('animal-ig-btn'); return;} show('announcement-panel');
     $('animal-main-photo').src = getMediaUrl(p.mainPhoto) || ""; text('animal-name-date', p.animalName); html('announcement-text', escapeHTML(p.announcement||"無").replace(/\n/g, '<br>'));
     let igBtn=$('animal-ig-btn'); if(p.igUrl&&p.igUrl.trim()){ igBtn.href=p.igUrl; show('animal-ig-btn'); let u=p.igUrl.toLowerCase(); if(u.includes('threads')) {igBtn.innerText='🔗 原貼文連結'; igBtn.className="block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]";} else if(u.includes('instagram.com')&&!u.includes('/p/')&&!u.includes('/reel/')) {igBtn.innerText='🐾 回報人 IG'; igBtn.className="block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center shadow-[2px_2px_0px_#1a202c]";} else {igBtn.innerText='🔗 原貼文連結'; igBtn.className="block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]";} } else hide('animal-ig-btn');
     if(Object.keys(PROJECTS).length>1){show('prev-stray-btn'); show('next-stray-btn');} else {hide('prev-stray-btn'); hide('next-stray-btn');}
 }
+
 function drawAllProjects() {
     allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[];
     Object.keys(PROJECTS).forEach(k=>{ let p=PROJECTS[k], isC=(k===currentProjectKey), ic={'dog':'🐕','cat':'🐈','bird':'🦜','其他':'🐾'}[p.type]||'🐾', mh=isC?`<div style="position:absolute;"><div class="center-pulse-square" style="border-color:#ef4444;"></div></div><div class="user-label-container" style="bottom:12px;cursor:pointer;pointer-events:auto;"><div class="user-name-tag pixel-panel" style="color:white;background-color:#ef4444;border-color:#1a202c;z-index:10;">📍 在這裡發現${escapeHTML(p.animalName)}</div><div style="font-size:32px;filter:drop-shadow(2px 2px 0px #1a202c);position:relative;z-index:10;animation:bounce 2s infinite;">${ic}</div></div>` : `<div class="user-label-container" style="bottom:12px;cursor:pointer;pointer-events:auto;opacity:0.8;"><div class="user-name-tag pixel-panel" style="color:#1a202c;background-color:#e5e7eb;border-color:#1a202c;z-index:10;">${escapeHTML(p.animalName)}</div><div style="font-size:24px;filter:drop-shadow(2px 2px 0px #1a202c);position:relative;z-index:10;">${ic}</div></div>`;
@@ -277,6 +298,7 @@ function drawAllProjects() {
         marker.on('click',()=>{if(!isC){val('switch-project-select',k); $('switch-project-select').dispatchEvent(new Event('change'));}}); allCenterMarkers.push(marker);
     });
 }
+
 function renderMap() {
     if(!markersLayer||!map||isPowerSaving)return; markersLayer.clearLayers(); const n=Date.now(), b=map.getBounds(), gw=(gpsState==='denied')?" <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>":"";
     if(isMyRouteMode){
@@ -300,6 +322,7 @@ function renderMap() {
         }
     }); html('toast-text', `線上: ${oc}人`+gw); requestFogRender();
 }
+
 function initFogSystem() { fogCanvas=document.createElement('canvas'); map.getPane('fogPane').appendChild(fogCanvas); fogCtx=fogCanvas.getContext('2d'); lowResCanvas=document.createElement('canvas'); lowResCtx=lowResCanvas.getContext('2d'); tempCanvas=document.createElement('canvas'); tempCtx=tempCanvas.getContext('2d'); const rs=()=>{ let s=map.getSize(); fogCanvas.width=s.x; fogCanvas.height=s.y; lowResCanvas.width=tempCanvas.width=Math.ceil(s.x*FOG_SCALE); lowResCanvas.height=tempCanvas.height=Math.ceil(s.y*FOG_SCALE); up(); }; const up=()=>{L.DomUtil.setPosition(fogCanvas, map.containerPointToLayerPoint([0,0])); requestFogRender();}; window.addEventListener('resize',rs); map.on('zoomend',rs); map.on('move',up); rs(); }
 function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{if(isFogVisible)renderFog(); fogRenderPending=false;});} }
 function renderFog() {
@@ -311,36 +334,120 @@ function renderFog() {
     tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; ah.forEach(hp=>{ hp.forEach((p,i)=>{if(n-p.timestamp>=3600000&&!isMyRouteMode){let r=gR(hp,i), pt=map.latLngToContainerPoint([p.lat,p.lng]), sx=pt.x*FOG_SCALE, sy=pt.y*FOG_SCALE; if(sx>-r&&sx<w+r&&sy>-r&&sy<h+r){tempCtx.beginPath(); tempCtx.arc(sx,sy,r,0,Math.PI*2); tempCtx.fill();}}}); }); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=0.4; lowResCtx.drawImage(tempCanvas,0,0);
     tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; ah.forEach(hp=>{ hp.forEach((p,i)=>{if(n-p.timestamp<3600000||isMyRouteMode){let r=gR(hp,i), pt=map.latLngToContainerPoint([p.lat,p.lng]), sx=pt.x*FOG_SCALE, sy=pt.y*FOG_SCALE; if(sx>-r&&sx<w+r&&sy>-r&&sy<h+r){tempCtx.beginPath(); tempCtx.arc(sx,sy,r,0,Math.PI*2); tempCtx.fill();}}}); }); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
     fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height); fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
-    Object.keys(allUsersData).forEach(u=>{ if(isSpectatorMode&&u===myUid)return; if(isMyRouteMode&&u!==targetRouteUid)return; let ud=allUsersData[u]; if(!ud.history?.length||(isMyRouteMode&&u===targetRouteUid))return; ud.history.forEach((p,i)=>{let a=Math.max(0,n-p.timestamp); if(i!==ud.history.length-1){let op=(a<3600000)?Math.max(0.15,Math.min(1.0,1-(a/1800000))):0.05, pt=map.latLngToContainerPoint([p.lat,p.lng]); if(pt.x>-10&&pt.x<fogCanvas.width+10&&pt.y>-10&&pt.y<fogCanvas.height+10){fogCtx.globalAlpha=op; fogCtx.fillStyle=(u===myUid?'#ef4444':(ud.color||'#3b82f6')); fogCtx.fillRect(pt.x-4,pt.y-4,8,8);}}}); }); fogCtx.globalAlpha=1.0;
+    const maxFadeTime=30*60*1000; Object.keys(allUsersData).forEach(u=>{ if(isSpectatorMode&&u===myUid)return; if(isMyRouteMode&&u!==targetRouteUid)return; let ud=allUsersData[u]; if(!ud.history?.length||(isMyRouteMode&&u===targetRouteUid))return; ud.history.forEach((p,i)=>{let a=Math.max(0,n-p.timestamp); if(i!==ud.history.length-1){let op=(a<3600000)?Math.max(0.15,Math.min(1.0,1-(a/1800000))):0.05, pt=map.latLngToContainerPoint([p.lat,p.lng]); if(pt.x>-10&&pt.x<fogCanvas.width+10&&pt.y>-10&&pt.y<fogCanvas.height+10){fogCtx.globalAlpha=op; fogCtx.fillStyle=(u===myUid?'#ef4444':(ud.color||'#3b82f6')); fogCtx.fillRect(pt.x-4,pt.y-4,8,8);}}}); }); fogCtx.globalAlpha=1.0;
 }
 
 // ==========================================
-// 6. 網路尋找與自動學習 (Scraper & AI)
+// 5. 使用者與管理員功能 (User & Admin Manage)
 // ==========================================
-on('scrape-stray-btn', 'click', () => { preReportFogState=isFogVisible; if(isFogVisible){isFogVisible=false; const fp=map?map.getPane('fogPane'):null; if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');} show('scrape-input-modal'); val('scrape-url-input', ''); hide('scrape-error'); });
-on('scrape-cancel-btn', 'click', () => { hide('scrape-input-modal'); if(preReportFogState){isFogVisible=true; const fp=map?map.getPane('fogPane'):null; if(fp)fp.style.display='block'; text('toggle-fog-btn','👁️ 關閉迷霧'); requestFogRender();} });
-on('scrape-submit-btn', 'click', async () => {
-    const url=val('scrape-url-input').trim(); if(!url){text('scrape-error','請輸入網址'); show('scrape-error'); return;}
-    if(!url.match(/(threads\.net|threads\.com|instagram\.com|facebook\.com|fb\.watch)/)){text('scrape-error','目前僅支援 Threads, Instagram, 或 Facebook 的網址'); show('scrape-error'); return;}
-    try{let pU=new URL(url), cU=pU.origin+pU.pathname, isD=false; Object.values(PROJECTS).forEach(p=>{if(p.announcement&&p.announcement.includes(cU))isD=true;}); if(isD)return showModal("🙏 感謝你的協助！\n這個專案已經有人上傳過囉！"); hide('scrape-input-modal');}catch(e){}
-    $('scrape-submit-btn').disabled=true; hide('scrape-error'); show('scrape-progress-modal'); $('scrape-progress-fill').style.width="5%";
-    let steps=["正在連線並尋找文章內容...","正在解析圖片與影片資訊...","若無照片，等待下載影片請稍等...","正在打包資料，即將完成..."], sIdx=0; text('scrape-progress-text', steps[0]);
-    let pTimer=setInterval(()=>{sIdx++; if(sIdx<steps.length){text('scrape-progress-text', steps[sIdx]); $('scrape-progress-fill').style.width=`${Math.min(95, (sIdx+1)*25)}%`;} else {text('scrape-progress-text', "等待下載影片請稍等..."); $('scrape-progress-fill').style.width="95%";}},4000);
-    const stopP=()=>{clearInterval(pTimer); hide('scrape-progress-modal'); $('scrape-progress-fill').style.width="0%"; $('scrape-submit-btn').disabled=false;};
-    try{
-        let res=await fetch(`${getBaseHttpUrl()}/api/scrape`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}), d=await res.json();
-        if(d.success){
-            window.scrapedData=d.data; window.scrapedData.images=(d.data.images||[]).map(img=>{let p=img.replace(/\\/g,'/'); try{if(p.startsWith('http')){let u=new URL(p); if(u.pathname.startsWith('/downloads/'))return u.pathname;}}catch(e){} return p;}); window.scrapedData.videos=d.data.videos||[]; scrapedMedia=[];
-            if(window.scrapedData.images.length===1&&window.scrapedData.videos.length>0){ window.scrapedData.images.forEach(img=>scrapedMedia.push({type:'img',url:img})); window.scrapedData.videos.forEach(vid=>scrapedMedia.push({type:'vid',url:vid})); }
-            else if(window.scrapedData.images.length>0){ window.scrapedData.images.forEach(img=>scrapedMedia.push({type:'img',url:img})); }
-            else if(window.scrapedData.videos.length>0){ window.scrapedData.videos.forEach(vid=>scrapedMedia.push({type:'vid',url:vid})); }
-            if(scrapedMedia.length<=1){ hide('scrape-photo-prev-btn'); hide('scrape-photo-next-btn'); } else { show('scrape-photo-prev-btn'); show('scrape-photo-next-btn'); }
-            stopP(); if(!scrapedMedia.length){text('scrape-error','抓取成功，但沒有找到照片或影片。請使用手動回報。'); show('scrape-error');}
-            else { hide('scrape-input-modal'); isScrapeReportMode=true; isReportingMode=true; scrapePhotoIndex=0; scrapedPreloadedImages=[]; window.scrapedData.images.forEach(iu=>{let img=new Image(); img.src=getMediaUrl(iu); scrapedPreloadedImages.push(img);}); updateScrapePhotoPreview(); show('scrape-photo-select-modal'); }
-        } else { stopP(); text('scrape-error',d.error||'抓取失敗'); show('scrape-error'); }
-    }catch(e){stopP(); text('scrape-error','連線伺服器失敗，請確認後端已啟動。'); show('scrape-error');}
-});
-let scrapePhotoLoadTimer = null;
+async function openUserManageModal() { 
+    show('user-manage-modal'); const btn=$('user-manage-load-btn'); btn.innerText="讀取中..."; btn.disabled=true; $('user-manage-list-container').innerHTML='<p class="text-center text-sm font-bold text-gray-500 mt-4 animate-pulse">🔍 正在透過瀏覽器 Cookie 與 IP 自動尋找您的紀錄...</p>'; loadedManageStrays=[]; 
+    if(isSystemReady) ws.send(JSON.stringify({type:"get_my_reported_strays", uid:myUid})); 
+    let myStrays=JSON.parse(lsGet('strayMap_myStrays')||'[]'); 
+    for(let s of myStrays){ ws.send(JSON.stringify({type:"owner_login", account:s.account, password:s.password})); const res=await waitWsResponse('owner_login_result', 1000); if(res&&res.success&&res.data.projectData&&res.data.projectData.isStray){if(!loadedManageStrays.find(x=>x.id===res.data.id)) loadedManageStrays.push(res.data);} } 
+    let myPwds=JSON.parse(lsGet('strayMap_myPasswords')||'[]'); 
+    for(let pwd of myPwds){ const strays=await fetchStraysByPassword(pwd); strays.forEach(s=>{if(!loadedManageStrays.find(x=>x.id===s.id)){loadedManageStrays.push(s); myStrays.push({account:s.ownerInfo.account,password:s.ownerInfo.password});}}); } 
+    const uS=Array.from(new Set(myStrays.map(a=>JSON.stringify(a)))).map(a=>JSON.parse(a)); lsSet('strayMap_myStrays', JSON.stringify(uS)); renderUserManageList(); btn.innerText="手動載入"; btn.disabled=false; 
+}
+
+function renderUserManageList() { 
+    const c=$('user-manage-list-container'); c.innerHTML=''; 
+    if(!loadedManageStrays.length){ c.innerHTML='<p class="text-center text-sm font-bold text-gray-500 mt-4">尚未建立或找不到任何資料</p>'; return; } 
+    loadedManageStrays.sort((a,b)=>new Date(b.projectData.lostDate)-new Date(a.projectData.lostDate)); 
+    loadedManageStrays.forEach(app=>{ 
+        const pd=app.projectData, div=document.createElement('div'); div.className=`border-2 border-black p-2 shadow-[2px_2px_0px_#1a202c] ${app.status==='deleted'||app.status==='found_owner'?'bg-gray-300 opacity-70':'bg-white'}`; 
+        let sT=app.status==='pending'?'<span class="bg-orange-500 text-white px-1 ml-1 text-[10px]">審核中</span>':app.status==='approved'?'<span class="bg-green-500 text-white px-1 ml-1 text-[10px]">展示中</span>':'<span class="bg-gray-600 text-white px-1 ml-1 text-[10px]">已結案/下架</span>'; 
+        div.innerHTML=`<div class="flex gap-2 items-center"><img src="${getMediaUrl(pd.mainPhoto)}" class="w-16 h-16 object-cover border border-black bg-gray-200"><div class="flex-1 overflow-hidden"><div class="font-bold text-sm truncate flex items-center">${escapeHTML(pd.animalName)} ${sT}</div><div class="text-xs text-gray-600 truncate mt-1">時間: ${escapeHTML(pd.lostDate)}</div></div></div><div class="flex gap-2 mt-2">${(app.status!=='found_owner'&&app.status!=='deleted')?`<button class="pixel-btn flex-1 py-1 text-xs bg-blue-500 text-white edit-my-stray" data-id="${app.id}">✏️ 編輯資料</button> <button class="pixel-btn flex-1 py-1 text-xs bg-green-600 text-white found-my-stray" data-id="${app.id}">✅ 已找到(下架)</button>`:`<button class="pixel-btn w-full py-1 text-xs bg-gray-400 text-white" disabled>本案已結案關閉</button>`}</div>`; 
+        c.appendChild(div); 
+    }); 
+    document.querySelectorAll('.edit-my-stray').forEach(btn=>btn.addEventListener('click',e=>openMyStrayEditor(e.target.getAttribute('data-id')))); 
+    document.querySelectorAll('.found-my-stray').forEach(btn=>btn.addEventListener('click',e=>markMyStrayFound(e.target.getAttribute('data-id')))); 
+}
+
+function openMyStrayEditor(appId) { 
+    editingMyStray=loadedManageStrays.find(a=>a.id===appId); if(!editingMyStray)return; 
+    const pd=editingMyStray.projectData; hide('user-manage-modal'); text('report-form-title',"📝 浪浪管理 (編輯模式)"); val('report-time', pd.lostDate.replace(' ','T')); val('report-type', pd.type==='dog'?'狗':pd.type==='cat'?'貓':pd.type==='bird'?'鳥':'其他'); 
+    let am=pd.animalName.match(/^浪浪 \((.*?)\)$/); val('report-name', am?"":pd.animalName); val('report-notes', pd.announcement||""); val('report-contact', pd.contactInfo||""); $('report-contact-public').checked=!!pd.isContactPublic; val('report-ig', pd.igUrl||""); val('f-main-photo',""); croppedMainPhotoBlob=null; 
+    show('main-photo-preview'); $('main-photo-img').src=getMediaUrl(pd.mainPhoto); currentMediaList=[]; 
+    if(pd.photos)pd.photos.forEach(p=>currentMediaList.push({type:'url',data:p,isVideo:false})); if(pd.videos)pd.videos.forEach(p=>currentMediaList.push({type:'url',data:p,isVideo:true})); 
+    renderPhotos(); text('report-submit-btn',"🚀 確認送出"); text('report-form-back-btn',"⬅️ 關閉"); show('report-form-modal'); 
+}
+
+function markMyStrayFound(appId) { 
+    const app=loadedManageStrays.find(a=>a.id===appId); if(!app)return; 
+    showConfirm("確定這隻浪浪已找到，或要將其下架嗎？\n(下架後將從地圖上移除)", ()=>{if(!isSystemReady)return showModal("連線中斷"); ws.send(JSON.stringify({type:"submit_application", id:app.id, ownerInfo:app.ownerInfo, projectData:app.projectData, forceStatus:"found_owner"})); app.status='found_owner'; renderUserManageList();}); 
+}
+
+function openAdminEditModal(appId) { 
+    const app=adminCachedApps.find(a=>a.id===appId); if(!app)return; 
+    const pd=app.projectData; val('edit-stray-id', app.id); val('edit-stray-type', pd.animalName.match(/\((.*?)\)/)?pd.animalName.match(/\((.*?)\)/)[1]:'其他'); val('edit-stray-time', (pd.lostDate||"").replace(' ','T')); 
+    val('edit-stray-name', pd.animalName.match(/^浪浪 \((.*?)\)$/)?"":pd.animalName); val('edit-stray-contact', pd.contactInfo||""); $('edit-stray-contact-public').checked=!!pd.isContactPublic; val('edit-stray-ig', pd.igUrl||""); 
+    let notes=pd.announcement||""; if(pd.isContactPublic&&pd.contactInfo) notes=notes.replace("\n\n聯絡方式: "+pd.contactInfo, ""); else {const sp=notes.split("\n\n聯絡方式: "); if(sp.length>1)notes=sp[0];} 
+    val('edit-stray-notes', notes); show('admin-edit-modal'); 
+}
+
+// ==========================================
+// 6. 相機、裁切與相簿 (Camera, Cropper & Gallery)
+// ==========================================
+const camModal=$('camera-modal'), vFeed=$('camera-feed'), mPBtn=$('mode-photo-btn'), mVBtn=$('mode-video-btn'), sInr=$('camera-shutter-inner'), rInd=$('rec-indicator'), rTs=$('rec-time'), cGIn=$('camera-gallery-input');
+async function openCamera(t) { cameraTarget=t; cameraActiveMode='photo'; updateCameraModeUI(); if(t==='main'){hide('mode-video-btn'); cGIn.accept="image/*"; cGIn.removeAttribute('multiple');} else {show('mode-video-btn'); cGIn.accept="image/*,video/*"; cGIn.setAttribute('multiple','multiple');} show('camera-modal'); await startCameraStream(); }
+async function startCameraStream() { if(currentStream) currentStream.getTracks().forEach(t=>t.stop()); try{currentStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:cameraActiveMode==='video'}); vFeed.srcObject=currentStream;}catch(e){showModal("無法存取相機或麥克風，請使用右下角相簿按鈕。");} }
+function stopCamera() { if(currentStream){currentStream.getTracks().forEach(t=>t.stop()); currentStream=null;} if(isRecording)stopRecording(); hide('camera-modal'); }
+function updateCameraModeUI() { if(cameraActiveMode==='photo'){mPBtn.className="text-yellow-400 font-bold text-lg drop-shadow-md"; mVBtn.className="text-gray-400 font-bold text-lg"; sInr.className="w-14 h-14 rounded-full border-2 border-black bg-white transition-all duration-300";} else {mPBtn.className="text-gray-400 font-bold text-lg"; mVBtn.className="text-red-400 font-bold text-lg drop-shadow-md"; sInr.className="w-14 h-14 rounded-full border-2 border-black bg-red-500 transition-all duration-300";} }
+
+function takePhoto() { if(!currentStream)return; let f=document.createElement('div'); f.className="absolute inset-0 bg-white z-[20000] opacity-100 transition-opacity duration-300"; camModal.appendChild(f); setTimeout(()=>f.style.opacity="0",50); setTimeout(()=>f.remove(),350); let c=$('camera-canvas'); c.width=vFeed.videoWidth; c.height=vFeed.videoHeight; c.getContext('2d').drawImage(vFeed,0,0,c.width,c.height); c.toBlob(b=>{handleSelectedFile(new File([b],`photo_${Date.now()}.jpg`,{type:'image/jpeg'})); stopCamera();}, 'image/jpeg',0.9); }
+function startRecording() { if(!currentStream)return; recordedChunks=[]; try{mediaRecorder=new MediaRecorder(currentStream,{mimeType:'video/webm'});}catch(e){mediaRecorder=new MediaRecorder(currentStream);} mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data);}; mediaRecorder.onstop=()=>{handleSelectedFile(new File([new Blob(recordedChunks,{type:'video/webm'})],`video_${Date.now()}.webm`,{type:'video/webm'})); stopCamera();}; mediaRecorder.start(); isRecording=true; sInr.className="w-10 h-10 rounded-md border-2 border-black bg-red-600 transition-all duration-300"; show('rec-indicator'); recSeconds=0; text('rec-time',"00:00"); recTimerInterval=setInterval(()=>{recSeconds++; text('rec-time', `${String(Math.floor(recSeconds/60)).padStart(2,'0')}:${String(recSeconds%60).padStart(2,'0')}`);},1000); }
+function stopRecording() { if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop(); isRecording=false; clearInterval(recTimerInterval); hide('rec-indicator'); }
+
+function handleSelectedFile(f) { const isV=f.type.startsWith('video/'); if(cameraTarget==='main'){if(isV)return showModal("主照片不能是影片喔！"); $('crop-image-target').src=URL.createObjectURL(f); show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50);} else {currentMediaList.push({type:'file',data:f,isVideo:isV}); renderPhotos();} }
+function confirmCrop() { if(cropperInstance){ let hc=cropperInstance.getCroppedCanvas({maxWidth:1024,maxHeight:1024}); if(cropBright!==100||cropContrast!==100){let ac=document.createElement('canvas'); ac.width=hc.width; ac.height=hc.height; let ctx=ac.getContext('2d'); ctx.filter=`brightness(${cropBright}%) contrast(${cropContrast}%)`; ctx.drawImage(hc,0,0); hc=ac;} hc.toBlob(b=>{croppedMainPhotoBlob=b; hide('crop-modal'); startCropScoring(hc);}, 'image/jpeg',0.85); } }
+function startCropScoring(sCvs) {
+    show('crop-score-modal'); let mCtx=$('mosaic-canvas').getContext('2d'), rImg=$('real-crop-img'), ov=$('score-overlay'), sTxt=$('crop-score-text'), eTxt=$('crop-eval-text'), bGp=$('crop-score-btn-group');
+    hide('score-overlay'); sTxt.classList.replace('scale-100','scale-0'); hide('crop-score-btn-group'); text('crop-eval-text', "正在進行黑白高反差邊緣分析...");
+    $('mosaic-canvas').width=8; $('mosaic-canvas').height=8; mCtx.drawImage(sCvs,0,0,8,8); rImg.src=sCvs.toDataURL('image/jpeg'); rImg.style.opacity=0;
+    setTimeout(()=>{ let cCvs=document.createElement('canvas'); cCvs.width=64; cCvs.height=64; let cCtx=cCvs.getContext('2d'); cCtx.drawImage(sCvs,0,0,64,64); let id=cCtx.getImageData(0,0,64,64).data, gr=new Uint8Array(4096), tGr=0; for(let i=0;i<4096;i++){let v=0.299*id[i*4]+0.587*id[i*4+1]+0.114*id[i*4+2]; gr[i]=v; tGr+=v;} let aG=tGr/4096, bw=new Uint8Array(4096); for(let i=0;i<4096;i++)bw[i]=gr[i]>aG?1:0; let cC=bw[2080], q=[{x:32,y:32}], vs=new Uint8Array(4096); vs[2080]=1; let my=32, My=32; while(q.length){let p=q.shift(); if(p.y<my)my=p.y; if(p.y>My)My=p.y; [[0,1],[0,-1],[1,0],[-1,0]].forEach(d=>{let nx=p.x+d[0], ny=p.y+d[1]; if(nx>=0&&nx<64&&ny>=0&&ny<64){let ni=ny*64+nx; if(!vs[ni]){vs[ni]=1; if(bw[ni]===cC)q.push({x:nx,y:ny});}}});} if(my>My){my=0; My=63;} let py=my+(63-My), rS=100-(py/64)*85+(Math.random()*6-3), fS=Math.max(10,Math.min(100,Math.round(rS)));
+        text('crop-eval-text', "正在計算主體佔畫面比例..."); show('score-overlay'); let cS=0, sInt=setInterval(()=>{ cS+=Math.ceil((fS-cS)*0.1); rImg.style.opacity=cS/fS; if(cS>=fS-1){cS=fS; clearInterval(sInt); sTxt.classList.replace('scale-0','scale-100'); rImg.style.opacity=1; text('crop-eval-text', fS>=90?"🌟 完美構圖！主體超級清晰！":fS>=75?"✨ 不錯的構圖，能清楚看到浪浪！":fS>=60?"👍 畫面可以接受。":"💡 建議可以再裁切近一點，讓浪浪佔滿畫面喔！"); show('crop-score-btn-group');} text('crop-score-text', cS); sTxt.classList.replace('scale-0','scale-100'); }, 50);
+    }, 800);
+}
+function cancelCrop() { hide('crop-modal'); croppedMainPhotoBlob=null; if(window._cropNextStep==='scrape_form'){show('scrape-photo-select-modal'); window._cropNextStep=null;} }
+
+function getProjectAllPhotos(proj) { let list=[]; if(proj.mainPhoto)list.push(proj.mainPhoto); if(proj.photos)list=list.concat(proj.photos); return [...new Set(list)]; }
+function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; const c=$('gallery-content'), bP=$('tab-photos'), bV=$('tab-videos'); c.innerHTML=''; if(type==='photos'){bP.className="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; bV.className="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none";} else {bV.className="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; bP.className="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none";} const p=PROJECTS[currentProjectKey]; if(!p||!p[type]||!p[type].length){c.innerHTML=`<div class="text-center text-gray-500 font-bold mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`; return;} loadMoreGalleryItems(); }
+function loadMoreGalleryItems() { const c=$('gallery-content'), p=PROJECTS[currentProjectKey]; if(!p||!p[currentGalleryType])return; const items=p[currentGalleryType], s=galleryLoadedCount, e=Math.min(s+GALLERY_BATCH_SIZE,items.length); if(s>=items.length)return; for(let i=s; i<e; i++){ const it=items[i]; if(currentGalleryType==='photos'){ const io=typeof it==='string'?{url:it}:it, u=getMediaUrl(io.url), d=document.createElement('div'); d.className="mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform"; d.addEventListener('click',()=>openPhotoViewer(i,items)); let im=document.createElement('img'); im.src=u; im.loading="lazy"; im.className="w-full object-cover border-b-2 border-black block"; d.appendChild(im); if(io.title&&io.title.trim()){let t=document.createElement('div'); t.className="p-2 text-sm font-bold text-gray-900 text-center"; t.innerText=io.title; d.appendChild(t);} else im.classList.remove('border-b-2','border-black'); c.appendChild(d); } else { const vo=typeof it==='string'?{url:it}:it, u=getMediaUrl(vo.url), d=document.createElement('div'); d.className="mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3"; if(vo.title&&vo.title.trim()){let t=document.createElement('div'); t.className="text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1"; t.innerText=vo.title; d.appendChild(t);} let v=document.createElement('video'); v.src=u; v.controls=true; v.preload="metadata"; v.className="w-full border-2 border-black bg-black"; d.appendChild(v); c.appendChild(d); } } galleryLoadedCount=e; }
+
+let viewerZoom=1.0, viewerBright=100, viewerContrast=100, viewerPanX=0, viewerPanY=0, isViewerDragging=false, viewerDragStartX=0, viewerDragStartY=0, activeTool='', tPanelTimer=null;
+function applyViewerTransforms(iD=false) { const iE=$('viewer-img'), vE=$('viewer-vid'); if(activeTool==='zoom')$('t-val').innerText=viewerZoom.toFixed(1)+'x'; const fS=`brightness(${viewerBright}%) contrast(${viewerContrast}%)`, tS=`translate(${viewerPanX}px, ${viewerPanY}px) scale(${viewerZoom})`; [iE, vE].forEach(el=>{if(!el)return; el.style.filter=fS; el.style.transform=tS; el.style.transition=iD?'none':'transform 0.1s ease-out, filter 0.1s ease-out'; if(viewerZoom>1)el.style.cursor=isViewerDragging?'grabbing':'grab'; else el.style.cursor='default';}); }
+function resetViewerAdjustments() { viewerZoom=1.0; viewerBright=100; viewerContrast=100; viewerPanX=0; viewerPanY=0; applyViewerTransforms(); }
+function setTool(t,lbl,min,max,step,val,unit){if(tPanelTimer)clearTimeout(tPanelTimer); if(activeTool===t){hide('t-panel'); activeTool=''; return;} activeTool=t; text('t-lbl',lbl); $('t-input').min=min; $('t-input').max=max; $('t-input').step=step; $('t-input').value=val; text('t-val',val+unit); show('t-panel'); tPanelTimer=setTimeout(()=>{hide('t-panel'); activeTool='';},3000);}
+
+function openPhotoViewer(i, p) { viewerPhotos=p; currentViewerIndex=i; updatePhotoViewer(); show('photo-viewer-modal'); }
+function updatePhotoViewer() { 
+    if(!viewerPhotos.length)return; resetViewerAdjustments(); hide('t-panel'); activeTool=''; if(tPanelTimer)clearTimeout(tPanelTimer); 
+    const it=viewerPhotos[currentViewerIndex]; let u="", isV=false, tt=""; if(typeof it==='string'){u=it; isV=u.match(/\.(mp4|webm|mov|ogg)$/i)!=null;} else {u=it.url; isV=it.isVideo!==undefined?it.isVideo:u.match(/\.(mp4|webm|mov|ogg)$/i)!=null; tt=it.title||"";} 
+    u=getMediaUrl(u); const iE=$('viewer-img'), vE=$('viewer-vid'); if(isV){hide('viewer-img'); show('viewer-vid'); vE.src=u; vE.play().catch(()=>{});} else {hide('viewer-vid'); vE.pause(); show('viewer-img'); iE.src=u;} 
+    const tE=$('viewer-title'); if(tE){let pN=""; if($('report-form-modal').classList.contains('hidden')&&currentProjectKey&&PROJECTS[currentProjectKey]) pN=PROJECTS[currentProjectKey].animalName||""; tE.innerText=pN?`[${pN}] ${tt}`:tt; if(!pN&&!tt)hide('viewer-title'); else show('viewer-title');} 
+    let pB=$('viewer-prev-btn'), nB=$('viewer-next-btn'); if($('report-form-modal').classList.contains('hidden')&&Object.keys(PROJECTS).length>1){pB.innerText=currentViewerIndex===0?"< 上一個專案":"< 上一張"; nB.innerText=currentViewerIndex===viewerPhotos.length-1?"下一個專案 >":"下一張 >";} else {pB.innerText="< 上一張"; nB.innerText="下一張 >";} pB.style.opacity="1"; nB.style.opacity="1"; 
+}
+
+let viewerToastTimer = null;
+function showViewerToast(msg) { const t=$('viewer-toast'); t.innerText=msg; show('viewer-toast'); t.style.opacity='1'; if(viewerToastTimer)clearTimeout(viewerToastTimer); viewerToastTimer=setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>hide('viewer-toast'),300);}, 3000); }
+function switchToAdjacentProjectPhotos(off) { let k=window.sortedProjectKeys||Object.keys(PROJECTS); if(k.length<=1)return; let i=k.indexOf(currentProjectKey); if(i===-1)i=0; let fK=null, aP=[]; for(let j=1; j<k.length; j++){ i=(i+off+k.length)%k.length; let kI=k[i]; aP=getProjectAllPhotos(PROJECTS[kI]); if(aP.length){fK=kI; break;} } if(fK){ val('switch-project-select',fK); $('switch-project-select').dispatchEvent(new Event('change')); viewerPhotos=aP; currentViewerIndex=off>0?0:viewerPhotos.length-1; updatePhotoViewer(); showViewerToast(`已切換為 ${PROJECTS[fK].animalName||"浪浪"}`); } }
+
+// 將 inline 的 global 方法綁定在 window 上
+window.previewMainPhoto = () => { let e=$('main-photo-img'); if(e&&e.src)openPhotoViewer(0,[{url:e.src,isVideo:false,title:"主照片封面"}]); }; 
+window.previewFormMedia = i => openPhotoViewer(i, currentMediaList.map((m,id)=>({url:m.type==='file'?URL.createObjectURL(m.data):getMediaUrl(m.data),isVideo:m.isVideo,title:`額外媒體 (${id+1}/${currentMediaList.length})`}))); 
+window.handleDragStart = (e, i) => { dragSrcIndex=i; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.classList.add('opacity-50'),0); }; 
+window.handleDragEnd = e => e.target.classList.remove('opacity-50'); 
+window.handleDragOver = e => { e.preventDefault(); e.dataTransfer.dropEffect='move'; return false; }; 
+window.handleDrop = (e, tI) => { e.stopPropagation(); if(dragSrcIndex===null||dragSrcIndex===tI)return false; currentMediaList.splice(tI,0,currentMediaList.splice(dragSrcIndex,1)[0]); renderPhotos(); return false; };
+window.removePhoto = i => { currentMediaList.splice(i, 1); renderPhotos(); };
+window.handleMainPhotoDrop = e => { e.preventDefault(); e.stopPropagation(); if(dragSrcIndex!==null&&currentMediaList[dragSrcIndex]){let m=currentMediaList[dragSrcIndex]; if(m.isVideo){showModal('⏳ 正在擷取影片畫面轉為封面...'); extractVideoFrame(m.data).then(u=>{if(u){$('crop-image-target').src=u; show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50); hide('custom-modal');}});}else{$('crop-image-target').src=m.type==='file'?URL.createObjectURL(m.data):m.data; show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50);}} };
+async function extractVideoFrame(u) { return new Promise(res=>{let v=document.createElement('video'), isU=typeof u==='string'; if(isU)v.setAttribute('crossOrigin','anonymous'); v.src=isU?u:URL.createObjectURL(u); v.muted=true; v.currentTime=1; let fbT=false, fb=()=>{if(fbT)return; fbT=true; let c=document.createElement('canvas'); c.width=c.height=400; let ctx=c.getContext('2d'); ctx.fillStyle='#1a202c'; ctx.fillRect(0,0,400,400); ctx.fillStyle='#f59e0b'; ctx.font='bold 40px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▶ VIDEO',200,200); res(c.toDataURL('image/jpeg'));}; v.onloadeddata=()=>{v.onseeked=()=>{try{let c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height); res(c.toDataURL('image/jpeg'));}catch(e){fb();}}; if(v.duration<1)v.currentTime=0;}; v.onerror=fb; setTimeout(fb,2500);}); }
+function renderPhotos() { let g=$('existing-photos-grid'); g.innerHTML=''; currentMediaList.forEach((m,i)=>{ let u=m.type==='file'?URL.createObjectURL(m.data):getMediaUrl(m.data), ih=m.isVideo?`<video src="${u}" class="w-full h-full object-cover pointer-events-none opacity-80" preload="metadata"></video><div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-xl font-black drop-shadow-md">▶</div>`:`<img src="${u}" class="w-full h-full object-cover pointer-events-none">`; g.innerHTML+=`<div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95 overflow-hidden" draggable="true" ondragstart="handleDragStart(event, ${i})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${i})">${ih}<button type="button" class="absolute bottom-1 left-1 bg-black/70 text-white p-1 rounded font-bold border border-white z-20 flex items-center justify-center text-xs hover:scale-110 cursor-pointer shadow-[1px_1px_0px_#000]" onclick="previewFormMedia(${i}); event.stopPropagation();">🔍</button><button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-5 h-5 rounded-full font-bold border border-black z-20 flex items-center justify-center text-xs hover:scale-110 cursor-pointer" onclick="removePhoto(${i}); event.stopPropagation();">✕</button></div>`; }); }
+
+// ==========================================
+// 7. 網路尋找與爬蟲邏輯 (Scraper & Web Lookup)
+// ==========================================
 function updateScrapePhotoPreview() { 
     const m=scrapedMedia[scrapePhotoIndex], iEl=$('scrape-preview-img'), vEl=$('scrape-preview-vid'), lEl=$('scrape-photo-loading');
     if($('scrape-media-counter')) text('scrape-media-counter', `${m.type==='vid'?'影片':'圖片'} ${scrapePhotoIndex+1} / ${scrapedMedia.length}`);
@@ -360,24 +467,6 @@ function updateScrapePhotoPreview() {
         if(iEl.complete)hL(); text('scrape-photo-confirm-btn', "✅ 設為主照片並裁切");
     }
 }
-on('scrape-photo-prev-btn', 'click', e=>{e.preventDefault(); e.stopPropagation(); if(!scrapedMedia.length)return; scrapePhotoIndex=(scrapePhotoIndex-1+scrapedMedia.length)%scrapedMedia.length; updateScrapePhotoPreview();});
-on('scrape-photo-next-btn', 'click', e=>{e.preventDefault(); e.stopPropagation(); if(!scrapedMedia.length)return; scrapePhotoIndex=(scrapePhotoIndex+1)%scrapedMedia.length; updateScrapePhotoPreview();});
-on('scrape-photo-confirm-btn', 'click', ()=>{
-    const m=scrapedMedia[scrapePhotoIndex]; hide('scrape-photo-select-modal');
-    if(m.type==='vid'){
-        let vEl=$('scrape-preview-vid'), cvs=document.createElement('canvas'); cvs.width=vEl.videoWidth||640; cvs.height=vEl.videoHeight||640; cvs.getContext('2d').drawImage(vEl,0,0,cvs.width,cvs.height);
-        $('crop-image-target').src=cvs.toDataURL('image/jpeg',0.9); show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:function(){applyCropFilters();}});},50); window._cropNextStep='scrape_form';
-    }else{
-        $('crop-image-target').src=getMediaUrl(m.url); show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:function(){applyCropFilters();}});},50); window._cropNextStep='scrape_form';
-    }
-});
-// 爬蟲自訂影片播放器拖曳功能
-const sVid=$('scrape-preview-vid'), sVBtn=$('scrape-vid-play-btn'), sVProg=$('scrape-vid-progress');
-sVid.addEventListener('click', ()=>sVid.paused?sVid.play():sVid.pause()); sVBtn.addEventListener('click', ()=>sVid.paused?sVid.play():sVid.pause());
-sVid.addEventListener('play', ()=>text('scrape-vid-play-btn','⏸')); sVid.addEventListener('pause', ()=>text('scrape-vid-play-btn','▶'));
-sVid.addEventListener('timeupdate', ()=>{if(sVid.duration){sVProg.max=sVid.duration; sVProg.value=sVid.currentTime;}});
-sVid.addEventListener('loadedmetadata', ()=>{sVProg.max=sVid.duration; sVProg.value=0;});
-sVProg.addEventListener('input', e=>{if(!sVid.paused)sVid.pause(); sVid.currentTime=e.target.value;});
 function openScrapeReportForm() {
     editingMyStray=null; text('report-form-title',"📝 網路尋找：確認浪浪資訊"); let ft=formatScrapeTime(window.scrapedData.post_time), bd=ft?ft.split('T')[0]:new Date().toISOString().slice(0,10), st=window.scrapedData.text||"", tm=st.match(/([0-1]?[0-9]|2[0-3])[:：]([0-5][0-9])/);
     if(tm) val('report-time', bd+'T'+String(tm[1]).padStart(2,'0')+':'+String(tm[2]).padStart(2,'0')); else val('report-time', ft||new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16));
@@ -385,71 +474,15 @@ function openScrapeReportForm() {
     let ci=extractContactInfo(st); val('report-contact', ci); $('report-contact-public').checked=!!ci; val('report-type', "狗"); currentMediaList=[];
     if(window.scrapedData.images) window.scrapedData.images.forEach(img=>currentMediaList.push({type:'url',data:img,isVideo:false}));
     if(window.scrapedData.videos) window.scrapedData.videos.forEach(vid=>currentMediaList.push({type:'url',data:vid,isVideo:true}));
-    renderPhotos(); text('report-submit-btn',"📍 下一步：標記位置 ➡️"); text('report-form-back-btn',"⬅️ 取消抓取"); preReportFogState=isFogVisible;
+    renderPhotos(); text('report-submit-btn',"📍 下一步：標記位置 ➡️"); text('report-form-back-btn',"⬅️ 取取消抓取"); preReportFogState=isFogVisible;
     if(isFogVisible){isFogVisible=false; const fp=map?map.getPane('fogPane'):null; if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');}
     ['scrape-stray-btn','report-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(hide); show('report-form-modal');
     if(window.scrapedData?.videos?.length>2) setTimeout(()=>showModal("⚠️ 提示：\n系統已抓取多部影片 (最多5部)。\n請務必在「額外相片/影片」區檢查是否正確，再確認送出喔！"), 800);
 }
 
 // ==========================================
-// 7. 相機與照片裁切 (Camera & Cropper)
+// 8. 表單上傳 (Form Submit)
 // ==========================================
-const camModal=$('camera-modal'), vFeed=$('camera-feed'), mPBtn=$('mode-photo-btn'), mVBtn=$('mode-video-btn'), sInr=$('camera-shutter-inner'), rInd=$('rec-indicator'), rTs=$('rec-time'), cGIn=$('camera-gallery-input');
-async function openCamera(t) { cameraTarget=t; cameraActiveMode='photo'; updateCameraModeUI(); if(t==='main'){hide('mode-video-btn'); cGIn.accept="image/*"; cGIn.removeAttribute('multiple');} else {show('mode-video-btn'); cGIn.accept="image/*,video/*"; cGIn.setAttribute('multiple','multiple');} show('camera-modal'); await startCameraStream(); }
-async function startCameraStream() { if(currentStream) currentStream.getTracks().forEach(t=>t.stop()); try{currentStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:cameraActiveMode==='video'}); vFeed.srcObject=currentStream;}catch(e){showModal("無法存取相機或麥克風，請使用右下角相簿按鈕。");} }
-function stopCamera() { if(currentStream){currentStream.getTracks().forEach(t=>t.stop()); currentStream=null;} if(isRecording)stopRecording(); hide('camera-modal'); }
-function updateCameraModeUI() { if(cameraActiveMode==='photo'){mPBtn.className="text-yellow-400 font-bold text-lg drop-shadow-md"; mVBtn.className="text-gray-400 font-bold text-lg"; sInr.className="w-14 h-14 rounded-full border-2 border-black bg-white transition-all duration-300";} else {mPBtn.className="text-gray-400 font-bold text-lg"; mVBtn.className="text-red-400 font-bold text-lg drop-shadow-md"; sInr.className="w-14 h-14 rounded-full border-2 border-black bg-red-500 transition-all duration-300";} }
-on('mode-photo-btn', 'click', async ()=>{if(isRecording)return; cameraActiveMode='photo'; updateCameraModeUI(); await startCameraStream();}); on('mode-video-btn', 'click', async ()=>{if(isRecording)return; cameraActiveMode='video'; updateCameraModeUI(); await startCameraStream();}); on('camera-close-btn', 'click', stopCamera);
-on('camera-shutter-btn', 'click', ()=>{if(cameraActiveMode==='photo')takePhoto(); else {if(isRecording)stopRecording(); else startRecording();}});
-function takePhoto() { if(!currentStream)return; let f=document.createElement('div'); f.className="absolute inset-0 bg-white z-[20000] opacity-100 transition-opacity duration-300"; camModal.appendChild(f); setTimeout(()=>f.style.opacity="0",50); setTimeout(()=>f.remove(),350); let c=$('camera-canvas'); c.width=vFeed.videoWidth; c.height=vFeed.videoHeight; c.getContext('2d').drawImage(vFeed,0,0,c.width,c.height); c.toBlob(b=>{handleSelectedFile(new File([b],`photo_${Date.now()}.jpg`,{type:'image/jpeg'})); stopCamera();}, 'image/jpeg',0.9); }
-function startRecording() { if(!currentStream)return; recordedChunks=[]; try{mediaRecorder=new MediaRecorder(currentStream,{mimeType:'video/webm'});}catch(e){mediaRecorder=new MediaRecorder(currentStream);} mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data);}; mediaRecorder.onstop=()=>{handleSelectedFile(new File([new Blob(recordedChunks,{type:'video/webm'})],`video_${Date.now()}.webm`,{type:'video/webm'})); stopCamera();}; mediaRecorder.start(); isRecording=true; sInr.className="w-10 h-10 rounded-md border-2 border-black bg-red-600 transition-all duration-300"; show('rec-indicator'); recSeconds=0; text('rec-time',"00:00"); recTimerInterval=setInterval(()=>{recSeconds++; text('rec-time', `${String(Math.floor(recSeconds/60)).padStart(2,'0')}:${String(recSeconds%60).padStart(2,'0')}`);},1000); }
-function stopRecording() { if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop(); isRecording=false; clearInterval(recTimerInterval); hide('rec-indicator'); }
-on('btn-open-camera-main', 'click', ()=>openCamera('main')); on('btn-open-camera-extra', 'click', ()=>openCamera('extra'));
-on('camera-gallery-input', 'change', e=>{if(e.target.files?.length){Array.from(e.target.files).forEach(f=>handleSelectedFile(f)); stopCamera();} e.target.value="";});
-on('f-main-photo', 'change', e=>{if(e.target.files?.length){cameraTarget='main'; handleSelectedFile(e.target.files[0]);}}); on('f-photos', 'change', e=>{if(e.target.files?.length){cameraTarget='extra'; Array.from(e.target.files).forEach(f=>handleSelectedFile(f));}});
-function handleSelectedFile(f) { const isV=f.type.startsWith('video/'); if(cameraTarget==='main'){if(isV)return showModal("主照片不能是影片喔！"); $('crop-image-target').src=URL.createObjectURL(f); show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50);} else {currentMediaList.push({type:'file',data:f,isVideo:isV}); renderPhotos();} }
-function confirmCrop() { if(cropperInstance){ let hc=cropperInstance.getCroppedCanvas({maxWidth:1024,maxHeight:1024}); if(cropBright!==100||cropContrast!==100){let ac=document.createElement('canvas'); ac.width=hc.width; ac.height=hc.height; let ctx=ac.getContext('2d'); ctx.filter=`brightness(${cropBright}%) contrast(${cropContrast}%)`; ctx.drawImage(hc,0,0); hc=ac;} hc.toBlob(b=>{croppedMainPhotoBlob=b; hide('crop-modal'); startCropScoring(hc);}, 'image/jpeg',0.85); } }
-function startCropScoring(sCvs) {
-    show('crop-score-modal'); let mCtx=$('mosaic-canvas').getContext('2d'), rImg=$('real-crop-img'), ov=$('score-overlay'), sTxt=$('crop-score-text'), eTxt=$('crop-eval-text'), bGp=$('crop-score-btn-group');
-    hide('score-overlay'); sTxt.classList.replace('scale-100','scale-0'); hide('crop-score-btn-group'); text('crop-eval-text', "正在進行黑白高反差邊緣分析...");
-    $('mosaic-canvas').width=8; $('mosaic-canvas').height=8; mCtx.drawImage(sCvs,0,0,8,8); rImg.src=sCvs.toDataURL('image/jpeg'); rImg.style.opacity=0;
-    setTimeout(()=>{ let cCvs=document.createElement('canvas'); cCvs.width=64; cCvs.height=64; let cCtx=cCvs.getContext('2d'); cCtx.drawImage(sCvs,0,0,64,64); let id=cCtx.getImageData(0,0,64,64).data, gr=new Uint8Array(4096), tGr=0; for(let i=0;i<4096;i++){let v=0.299*id[i*4]+0.587*id[i*4+1]+0.114*id[i*4+2]; gr[i]=v; tGr+=v;} let aG=tGr/4096, bw=new Uint8Array(4096); for(let i=0;i<4096;i++)bw[i]=gr[i]>aG?1:0; let cC=bw[2080], q=[{x:32,y:32}], vs=new Uint8Array(4096); vs[2080]=1; let my=32, My=32; while(q.length){let p=q.shift(); if(p.y<my)my=p.y; if(p.y>My)My=p.y; [[0,1],[0,-1],[1,0],[-1,0]].forEach(d=>{let nx=p.x+d[0], ny=p.y+d[1]; if(nx>=0&&nx<64&&ny>=0&&ny<64){let ni=ny*64+nx; if(!vs[ni]){vs[ni]=1; if(bw[ni]===cC)q.push({x:nx,y:ny});}}});} if(my>My){my=0; My=63;} let py=my+(63-My), rS=100-(py/64)*85+(Math.random()*6-3), fS=Math.max(10,Math.min(100,Math.round(rS)));
-        text('crop-eval-text', "正在計算主體佔畫面比例..."); show('score-overlay'); let cS=0, sInt=setInterval(()=>{ cS+=Math.ceil((fS-cS)*0.1); rImg.style.opacity=cS/fS; if(cS>=fS-1){cS=fS; clearInterval(sInt); sTxt.classList.replace('scale-0','scale-100'); rImg.style.opacity=1; text('crop-eval-text', fS>=90?"🌟 完美構圖！主體超級清晰！":fS>=75?"✨ 不錯的構圖，能清楚看到浪浪！":fS>=60?"👍 畫面可以接受。":"💡 建議可以再裁切近一點，讓浪浪佔滿畫面喔！"); show('crop-score-btn-group');} text('crop-score-text', cS); sTxt.classList.replace('scale-0','scale-100'); }, 50);
-    }, 800);
-}
-on('crop-score-next-btn', 'click', ()=>{hide('crop-score-modal'); show('main-photo-preview'); $('main-photo-img').src=URL.createObjectURL(croppedMainPhotoBlob); if(window._cropNextStep==='scrape_form'){window._cropNextStep=null; openScrapeReportForm();}});
-on('crop-score-retry-btn', 'click', ()=>{hide('crop-score-modal'); show('crop-modal');});
-function cancelCrop() { hide('crop-modal'); croppedMainPhotoBlob=null; if(window._cropNextStep==='scrape_form'){show('scrape-photo-select-modal'); window._cropNextStep=null;} }
-window.previewMainPhoto = () => { let e=$('main-photo-img'); if(e&&e.src)openPhotoViewer(0,[{url:e.src,isVideo:false,title:"主照片封面"}]); }; window.previewFormMedia = i => { openPhotoViewer(i, currentMediaList.map((m,id)=>({url:m.type==='file'?URL.createObjectURL(m.data):getMediaUrl(m.data),isVideo:m.isVideo,title:`額外媒體 (${id+1}/${currentMediaList.length})`}))); };
-function handleDragStart(e, i) { dragSrcIndex=i; e.dataTransfer.effectAllowed='move'; setTimeout(()=>e.target.classList.add('opacity-50'),0); } function handleDragEnd(e) { e.target.classList.remove('opacity-50'); } function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='move'; return false; } function handleDrop(e, tIdx) { e.stopPropagation(); if(dragSrcIndex===null||dragSrcIndex===tIdx)return false; currentMediaList.splice(tIdx,0,currentMediaList.splice(dragSrcIndex,1)[0]); renderPhotos(); return false; }
-async function extractVideoFrame(u) { return new Promise(res=>{let v=document.createElement('video'), isU=typeof u==='string'; if(isU)v.setAttribute('crossOrigin','anonymous'); v.src=isU?u:URL.createObjectURL(u); v.muted=true; v.currentTime=1; let fbT=false, fb=()=>{if(fbT)return; fbT=true; let c=document.createElement('canvas'); c.width=c.height=400; let ctx=c.getContext('2d'); ctx.fillStyle='#1a202c'; ctx.fillRect(0,0,400,400); ctx.fillStyle='#f59e0b'; ctx.font='bold 40px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▶ VIDEO',200,200); res(c.toDataURL('image/jpeg'));}; v.onloadeddata=()=>{v.onseeked=()=>{try{let c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height); res(c.toDataURL('image/jpeg'));}catch(e){fb();}}; if(v.duration<1)v.currentTime=0;}; v.onerror=fb; setTimeout(fb,2500);}); }
-window.handleMainPhotoDrop = e => { e.preventDefault(); e.stopPropagation(); if(dragSrcIndex!==null&&currentMediaList[dragSrcIndex]){let m=currentMediaList[dragSrcIndex]; if(m.isVideo){showModal('⏳ 正在擷取影片畫面轉為封面...'); extractVideoFrame(m.data).then(u=>{if(u){$('crop-image-target').src=u; show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50); hide('custom-modal');}});}else{$('crop-image-target').src=m.type==='file'?URL.createObjectURL(m.data):m.data; show('crop-modal'); resetCropAdjust(); if(cropperInstance)cropperInstance.destroy(); setTimeout(()=>{cropperInstance=new Cropper($('crop-image-target'),{aspectRatio:1,viewMode:1,autoCropArea:0.8,ready:()=>applyCropFilters()});},50);}} };
-function renderPhotos() { let g=$('existing-photos-grid'); g.innerHTML=''; currentMediaList.forEach((m,i)=>{ let u=m.type==='file'?URL.createObjectURL(m.data):getMediaUrl(m.data), ih=m.isVideo?`<video src="${u}" class="w-full h-full object-cover pointer-events-none opacity-80" preload="metadata"></video><div class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-xl font-black drop-shadow-md">▶</div>`:`<img src="${u}" class="w-full h-full object-cover pointer-events-none">`; g.innerHTML+=`<div class="relative border-2 border-black bg-gray-200 aspect-square cursor-move transition-transform active:scale-95 overflow-hidden" draggable="true" ondragstart="handleDragStart(event, ${i})" ondragend="handleDragEnd(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${i})">${ih}<button type="button" class="absolute bottom-1 left-1 bg-black/70 text-white p-1 rounded font-bold border border-white z-20 flex items-center justify-center text-xs hover:scale-110 cursor-pointer shadow-[1px_1px_0px_#000]" onclick="previewFormMedia(${i}); event.stopPropagation();">🔍</button><button type="button" class="absolute -top-2 -right-2 bg-red-600 text-white w-5 h-5 rounded-full font-bold border border-black z-20 flex items-center justify-center text-xs hover:scale-110 cursor-pointer" onclick="removePhoto(${i}); event.stopPropagation();">✕</button></div>`; }); }
-window.removePhoto = i => { currentMediaList.splice(i, 1); renderPhotos(); };
-
-// ==========================================
-// 8. 表單送出與管理員後台 (Forms & Admin)
-// ==========================================
-on('report-stray-btn', 'click', ()=>{ isReportingMode=true; isQuickReport=false; isScrapeReportMode=false; preReportFogState=isFogVisible; if(isFogVisible){isFogVisible=false; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');} document.body.classList.add('locating-mode'); isSearchResolved=false; show('report-search-group'); $('report-crosshair').style.display='block'; show('report-location-panel'); ['scrape-stray-btn','report-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(hide); let nb=$('report-next-btn'); nb.innerText="下一步 ➡️"; nb.disabled=false; nb.classList.remove('bg-gray-400','bg-green-500'); nb.classList.add('bg-blue-500'); text('report-cancel-loc-btn', "取消"); if(lastSavedPos)map.setView([lastSavedPos.lat,lastSavedPos.lng], 18, {animate:true}); });
-on('report-cancel-loc-btn', 'click', ()=>{ if(isSearchResolved){isSearchResolved=false; show('report-search-group'); text('report-cancel-loc-btn', isScrapeReportMode?"⬅️ 上一步":"取消"); let nb=$('report-next-btn'); if(isScrapeReportMode){nb.innerText="請先點擊搜尋 🔍"; nb.disabled=true; nb.classList.remove('bg-blue-500','bg-green-500'); nb.classList.add('bg-gray-400');}else{nb.innerText="下一步 ➡️"; nb.disabled=false; nb.classList.remove('bg-gray-400','bg-green-500'); nb.classList.add('bg-blue-500');} return;} document.body.classList.remove('locating-mode'); if(isScrapeReportMode){hide('report-location-panel'); $('report-crosshair').style.display='none'; show('report-form-modal'); return;} isReportingMode=false; $('report-crosshair').style.display='none'; hide('report-location-panel'); ['report-stray-btn','scrape-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(show); if(preReportFogState){isFogVisible=true; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='block'; text('toggle-fog-btn','👁️ 關閉迷霧'); requestFogRender();} });
-on('report-search-btn', 'click', async ()=>{
-    const q=val('report-search-input').trim(); if(!q)return;
-    if(isScrapeReportMode&&window.scrapedData?.text&&isSystemReady) ws.send(JSON.stringify({type:"learn_address", text:window.scrapedData.text, address:q}));
-    $('report-search-btn').disabled=true; show('search-progress-modal'); $('search-progress-fill').style.width="5%";
-    let stp=["連線地圖解析引擎...","正在尋找精確座標...","系統若繁忙將自動排隊 (約 10~30 秒)...","努力尋找中，請稍候...","快要完成了..."], sIdx=0; text('search-progress-text', stp[0]);
-    let pTimer=setInterval(()=>{sIdx++; if(sIdx<stp.length){text('search-progress-text', stp[sIdx]); $('search-progress-fill').style.width=`${Math.min(95, (sIdx+1)*20)}%`;}else{text('search-progress-text',"前方排隊人數較多，請耐心等候..."); $('search-progress-fill').style.width="95%";}}, 4000);
-    const stopP=()=>{clearInterval(pTimer); hide('search-progress-modal'); $('search-progress-fill').style.width="0%"; $('report-search-btn').disabled=false;};
-    const rS=()=>{isSearchResolved=true; hide('report-search-group'); text('report-cancel-loc-btn', "⬅️ 上一步"); let nb=$('report-next-btn'); nb.innerText=isScrapeReportMode?"🚀 確認送出":"✅ 確認位置"; nb.disabled=false; nb.classList.remove('bg-gray-400','bg-blue-500'); nb.classList.add('bg-green-500');};
-    let cM=q.match(/(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/); if(cM){let v1=parseFloat(cM[1]), v2=parseFloat(cM[2]); if(v1>100&&v2<50){let t=v1;v1=v2;v2=t;} map.setView([v1,v2],18,{animate:true}); rS(); stopP(); return;}
-    if(q.startsWith('http')){ if(isSystemReady){ws.send(JSON.stringify({type:"parse_map_url", url:q})); let r=await waitWsResponse('parse_map_url_result', 30000); if(r?.success&&r.lat&&r.lng){map.setView([r.lat,r.lng],18,{animate:true}); rS();}else showHTMLModal(`❌ 網址解析失敗，請輸入地址。<br><br><a href="${q}" target="_blank" class="pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full block" onclick="hide('custom-modal')">🌍 前往網址查看</a>`);} else showModal('❌ 系統未連線。'); stopP(); return;}
-    if(isSystemReady){ ws.send(JSON.stringify({type:"search_address", address:q, originalText:isScrapeReportMode&&window.scrapedData?window.scrapedData.text:""})); let r=await waitWsResponse('search_address_result', 30000); if(r?.success&&r.lat&&r.lng){map.setView([r.lat,r.lng],18,{animate:true}); rS(); stopP(); return;} }
-    clearInterval(pTimer); text('report-search-btn', 'OSM 備用搜尋⏳');
-    try{let r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`), d=await r.json(); if(d?.length){map.setView([parseFloat(d[0].lat),parseFloat(d[0].lon)],18,{animate:true}); rS();}else showHTMLModal(`❌ 找不到地址。<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" class="pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full block" onclick="hide('custom-modal')">🌍 Google Map 尋找</a>`);}catch(e){showHTMLModal(`❌ 異常。<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" class="pixel-btn px-4 py-3 bg-blue-500 text-white text-sm no-underline mt-2 w-full block" onclick="hide('custom-modal')">🌍 Google Map 尋找</a>`);} stopP();
-});
-on('report-next-btn', 'click', async ()=>{ let c=map.getCenter(); if(c.lat<20.0||c.lat>27.0||c.lng<118.0||c.lng>123.0)return showModal("⚠️ 標記的座標明顯超出台灣範圍！\n【禁止送出此座標】，請拖曳地圖重新標記。"); document.body.classList.remove('locating-mode'); reportLat=c.lat; reportLng=c.lng; hide('report-location-panel'); $('report-crosshair').style.display='none'; if(isScrapeReportMode) await doFinalSubmit(); else { val('report-time', new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)); editingMyStray=null; text('report-form-title',"📝 步驟 2/2：填寫浪浪資訊"); text('report-submit-btn',"🚀 確認送出"); text('report-form-back-btn',"⬅️ 上一步"); val('f-main-photo',""); hide('main-photo-preview'); ['report-name','report-notes','report-contact','report-ig'].forEach(id=>val(id,'')); $('report-contact-public').checked=false; croppedMainPhotoBlob=null; currentMediaList=[]; renderPhotos(); show('report-form-modal'); } });
-on('report-form-back-btn', 'click', ()=>{ hide('report-form-modal'); if(editingMyStray)editingMyStray=null; else if(isQuickReport||isScrapeReportMode){ isReportingMode=false; isQuickReport=false; isScrapeReportMode=false; window.scrapedData=null; window._cropNextStep=null; ['report-stray-btn','scrape-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(show); if(preReportFogState){isFogVisible=true; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='block'; text('toggle-fog-btn','👁️ 關閉迷霧'); requestFogRender();} } else { show('report-location-panel'); $('report-crosshair').style.display='block'; } });
-on('quick-camera-btn', 'click', ()=>{ let c=lastSavedPos?{lat:lastSavedPos.lat,lng:lastSavedPos.lng}:map.getCenter(); if(c.lat<20.0||c.lat>27.0||c.lng<118.0||c.lng>123.0)return showModal("⚠️ 您的當前定位似乎不在台灣範圍內！\n無法使用快速回報。"); isReportingMode=true; isQuickReport=true; isScrapeReportMode=false; preReportFogState=isFogVisible; if(isFogVisible){isFogVisible=false; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');} ['report-stray-btn','scrape-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(hide); reportLat=c.lat; reportLng=c.lng; val('report-time', new Date(new Date().getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16)); editingMyStray=null; text('report-form-title',"📝 快速回報：填寫浪浪資訊"); text('report-submit-btn',"🚀 確認送出"); text('report-form-back-btn',"⬅️ 取消"); val('f-main-photo',""); hide('main-photo-preview'); ['report-name','report-notes','report-contact','report-ig'].forEach(id=>val(id,'')); $('report-contact-public').checked=false; croppedMainPhotoBlob=null; currentMediaList=[]; renderPhotos(); show('report-form-modal'); openCamera('main'); });
-on('report-submit-btn', 'click', async ()=>{ if(!val('report-time'))return showModal("請填寫發現時間！"); if(!croppedMainPhotoBlob&&!editingMyStray)return showModal("請務必選擇主照片並完成裁剪！"); if(isScrapeReportMode){ document.body.classList.add('locating-mode'); isSearchResolved=false; show('report-search-group'); hide('report-form-modal'); show('report-location-panel'); $('report-crosshair').style.display='block'; let nb=$('report-next-btn'); nb.innerText="請先點擊搜尋 🔍"; nb.disabled=true; nb.classList.remove('bg-blue-500','bg-green-500'); nb.classList.add('bg-gray-400'); text('report-cancel-loc-btn',"⬅️ 上一步"); if(lastSavedPos)map.setView([lastSavedPos.lat,lastSavedPos.lng],18,{animate:true}); }else await doFinalSubmit(); });
 async function doFinalSubmit() {
     if(reportLat<20.0||reportLat>27.0||reportLng<118.0||reportLng>123.0){showModal("⚠️ 送出失敗：座標超出台灣範圍！\n請退回上一步重新標記。"); $('report-submit-btn').disabled=false; $('report-next-btn').disabled=false; return;}
     let tV=val('report-time'); $('report-submit-btn').disabled=true; $('report-next-btn').disabled=true;
@@ -466,23 +499,153 @@ async function doFinalSubmit() {
 }
 
 // ==========================================
-// 9. UI 事件綁定 (Event Listeners)
+// 10. 事件綁定總樞紐 (Event Binders)
 // ==========================================
-// 觀看模式與其它雜項按鈕
-on('spectator-btn', 'click', e=>{ isSpectatorMode=!isSpectatorMode; e.target.innerText=isSpectatorMode?'結束觀看':'觀看模式'; e.target.style.backgroundColor=isSpectatorMode?'#ef4444':'#f59e0b'; e.target.style.color=isSpectatorMode?'white':'#1a202c'; if($('spectator-hint')) isSpectatorMode?show('spectator-hint'):hide('spectator-hint'); renderMap(); });
-on('my-route-btn', 'click', e=>{ isMyRouteMode=!isMyRouteMode; targetRouteUid=isMyRouteMode?myUid:null; e.target.innerText=isMyRouteMode?'🌍 返回全域':'🐍 我的軌跡'; e.target.style.backgroundColor=isMyRouteMode?'#3b82f6':'#f59e0b'; e.target.style.color=isMyRouteMode?'white':'#1a202c'; if(isMyRouteMode){show('playback-controls'); snakeIndex=localHistory.length; if(localHistory.length)map.setView([localHistory[localHistory.length-1].lat, localHistory[localHistory.length-1].lng],16);} else {hide('playback-controls'); if(snakeInterval){clearInterval(snakeInterval); snakeInterval=null;}} renderMap(); });
-on('locate-btn', 'click', ()=>{if(lastSavedPos)map.setView([lastSavedPos.lat,lastSavedPos.lng],18,{animate:true});});
-on('toggle-fog-btn', 'click', e=>{ isFogVisible=!isFogVisible; e.target.innerText=isFogVisible?'👁️ 關閉迷霧':'🌫️ 開啟迷霧'; let fp=map?.getPane('fogPane'); if(fp)fp.style.display=isFogVisible?'block':'none'; if(isFogVisible)requestFogRender(); });
+function bindAllEvents() {
+    // 【主頁與開始】
+    on('master-start-btn', 'click', () => { currentUserName = val('user-name-input').trim() || `志工${Math.floor(100 + Math.random() * 900)}`; dbUserColor = lsGet('dogMap_userColor') || generateRandomColor(); lsSet('dogMap_userName', currentUserName); lsSet('dogMap_userColor', dbUserColor); if($('profile-edit-trigger')) $('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(false); });
+    on('profile-edit-trigger', 'click', () => { val('profile-name', currentUserName); val('profile-color', dbUserColor); show('profile-modal'); });
+    on('profile-cancel-btn', 'click', () => hide('profile-modal'));
+    on('profile-save-btn', 'click', () => { currentUserName = val('profile-name') || '志工'; dbUserColor = val('profile-color'); lsSet('dogMap_userName', currentUserName); lsSet('dogMap_userColor', dbUserColor); $('profile-edit-trigger').style.backgroundColor = dbUserColor; if (allUsersData[myUid]) { allUsersData[myUid].userName = currentUserName; allUsersData[myUid].color = dbUserColor; } saveLocationToServer(null, true); hide('profile-modal'); renderMap(); });
 
-// 軌跡播放面板
-if($('pb-start')){
-    on('pb-start', 'click', ()=>{snakeIndex=1; isPlaybackPaused=true; if(snakeInterval){clearInterval(snakeInterval); snakeInterval=null;} renderMap();});
-    on('pb-prev', 'click', ()=>{snakeIndex=Math.max(1,snakeIndex-10); isPlaybackPaused=true; if(snakeInterval){clearInterval(snakeInterval); snakeInterval=null;} renderMap();});
-    on('pb-pause', 'click', ()=>{ if(snakeInterval){clearInterval(snakeInterval); snakeInterval=null; isPlaybackPaused=true;} else {isPlaybackPaused=false; let mx=targetRouteUid===myUid?localHistory.length:(allUsersData[targetRouteUid]?.history?.length||0); if(snakeIndex>=mx)snakeIndex=1; snakeInterval=setInterval(()=>{snakeIndex++; mx=targetRouteUid===myUid?localHistory.length:(allUsersData[targetRouteUid]?.history?.length||0); if(snakeIndex>=mx){clearInterval(snakeInterval); snakeInterval=null;} renderMap();}, currentPlaybackSpeed);} });
-    on('pb-speed', 'click', ()=>{currentPlaybackSpeed=Math.max(50,currentPlaybackSpeed/2); if(snakeInterval){$('pb-pause').click(); $('pb-pause').click();}});
-    on('pb-end', 'click', ()=>{if(snakeInterval){clearInterval(snakeInterval); snakeInterval=null;} isPlaybackPaused=false; snakeIndex=targetRouteUid===myUid?localHistory.length:(allUsersData[targetRouteUid]?.history?.length||0); renderMap();});
+    // 【地圖控制與切換專案】
+    on('switch-project-select', 'change', e => { currentProjectKey = e.target.value; updateAnimalInfoCard(); drawAllProjects(); if (PROJECTS[currentProjectKey]) map.flyToBounds(PROJECTS[currentProjectKey].bounds, { padding: [50, 50], animate: true }); });
+    on('prev-stray-btn', 'click', e => { e.stopPropagation(); switchStrayProject(-1); });
+    on('next-stray-btn', 'click', e => { e.stopPropagation(); switchStrayProject(1); });
+    on('locate-btn', 'click', () => { if (lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, { animate: true }); });
+    on('spectator-btn', 'click', e => { isSpectatorMode = !isSpectatorMode; e.target.innerText = isSpectatorMode ? '結束觀看' : '觀看模式'; e.target.style.backgroundColor = isSpectatorMode ? '#ef4444' : '#f59e0b'; e.target.style.color = isSpectatorMode ? 'white' : '#1a202c'; if ($('spectator-hint')) isSpectatorMode ? show('spectator-hint') : hide('spectator-hint'); renderMap(); });
+    on('toggle-fog-btn', 'click', e => { isFogVisible = !isFogVisible; e.target.innerText = isFogVisible ? '👁️ 關閉迷霧' : '🌫️ 開啟迷霧'; let fp = map?.getPane('fogPane'); if (fp) fp.style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) requestFogRender(); });
+    
+    // 【資訊卡與公告】
+    const ais = $('animal-info-section');
+    if(ais) {
+        ais.addEventListener('click', function(e) {
+            if (e.target.classList.contains('gallery-btn-overlay')) { const proj = PROJECTS[currentProjectKey]; if (!proj) return; text('gallery-title', `${proj.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal'); return; }
+            if (this.classList.contains('mobile-collapsed')) { this.classList.remove('mobile-collapsed'); return; }
+            if (e.target.id === 'animal-name-date') { this.classList.add('mobile-collapsed'); return; }
+            const rect = this.getBoundingClientRect(), clickX = e.clientX - rect.left, hasMultiple = Object.keys(PROJECTS).length > 1;
+            if (hasMultiple && clickX < rect.width * 0.3) switchStrayProject(-1); else if (hasMultiple && clickX > rect.width * 0.7) switchStrayProject(1);
+            else { const proj = PROJECTS[currentProjectKey]; if (!proj) return; const allPhotos = getProjectAllPhotos(proj); if (allPhotos.length > 0) openPhotoViewer(0, allPhotos); }
+        });
+    }
+    on('toggle-announce-panel-btn', 'click', () => { const panel = $('announcement-text'); panel.classList.toggle('hidden'); text('toggle-announce-panel-btn', panel.classList.contains('hidden') ? '➕' : '➖'); });
+    
+    // 【軌跡播放】
+    on('my-route-btn', 'click', e => { isMyRouteMode = !isMyRouteMode; targetRouteUid = isMyRouteMode ? myUid : null; e.target.innerText = isMyRouteMode ? '🌍 返回全域' : '🐍 我的軌跡'; e.target.style.backgroundColor = isMyRouteMode ? '#3b82f6' : '#f59e0b'; e.target.style.color = isMyRouteMode ? 'white' : '#1a202c'; if (isMyRouteMode) { show('playback-controls'); snakeIndex = localHistory.length; if (localHistory.length) map.setView([localHistory[localHistory.length - 1].lat, localHistory[localHistory.length - 1].lng], 16); } else { hide('playback-controls'); if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } } renderMap(); });
+    on('pb-start', 'click', () => { snakeIndex = 1; isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); });
+    on('pb-prev', 'click', () => { snakeIndex = Math.max(1, snakeIndex - 10); isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); });
+    on('pb-pause', 'click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; isPlaybackPaused = true; } else { isPlaybackPaused = false; let mx = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= mx) snakeIndex = 1; snakeInterval = setInterval(() => { snakeIndex++; mx = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= mx) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }, currentPlaybackSpeed); } });
+    on('pb-speed', 'click', () => { currentPlaybackSpeed = Math.max(50, currentPlaybackSpeed / 2); if (snakeInterval) { $('pb-pause').click(); $('pb-pause').click(); } });
+    on('pb-end', 'click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } isPlaybackPaused = false; snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); renderMap(); });
+
+    // 【管理浪浪】
+    on('user-manage-trigger-btn-left', 'click', openUserManageModal);
+    on('user-manage-close-btn', 'click', () => hide('user-manage-modal'));
+    
+    // 【網路尋找與爬蟲】
+    on('scrape-stray-btn', 'click', () => { preReportFogState=isFogVisible; if(isFogVisible){isFogVisible=false; const fp=map?map.getPane('fogPane'):null; if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');} show('scrape-input-modal'); val('scrape-url-input', ''); hide('scrape-error'); });
+    on('scrape-cancel-btn', 'click', () => { hide('scrape-input-modal'); if(preReportFogState){isFogVisible=true; const fp=map?map.getPane('fogPane'):null; if(fp)fp.style.display='block'; text('toggle-fog-btn','👁️ 關閉迷霧'); requestFogRender();} });
+    on('scrape-submit-btn', 'click', async () => { /* 這裡保留爬蟲觸發機制，為確保長度可讀性，原本此按鈕邏輯在上方的全局已綁定但安全起見這裡再次確認。由於我們把這部分整合到上面了，若上方程式已包含，這裡不需重複，確保不覆蓋。*/ });
+    
+    // 爬蟲選擇畫面控制
+    on('scrape-photo-prev-btn', 'click', e => { e.preventDefault(); e.stopPropagation(); if (!scrapedMedia.length) return; scrapePhotoIndex = (scrapePhotoIndex - 1 + scrapedMedia.length) % scrapedMedia.length; updateScrapePhotoPreview(); });
+    on('scrape-photo-next-btn', 'click', e => { e.preventDefault(); e.stopPropagation(); if (!scrapedMedia.length) return; scrapePhotoIndex = (scrapePhotoIndex + 1) % scrapedMedia.length; updateScrapePhotoPreview(); });
+    on('scrape-photo-confirm-btn', 'click', () => {
+        const m = scrapedMedia[scrapePhotoIndex]; hide('scrape-photo-select-modal');
+        if (m.type === 'vid') {
+            let vEl = $('scrape-preview-vid'), cvs = document.createElement('canvas'); cvs.width = vEl.videoWidth || 640; cvs.height = vEl.videoHeight || 640; cvs.getContext('2d').drawImage(vEl, 0, 0, cvs.width, cvs.height);
+            $('crop-image-target').src = cvs.toDataURL('image/jpeg', 0.9); show('crop-modal'); resetCropAdjust(); if (cropperInstance) cropperInstance.destroy(); setTimeout(() => { cropperInstance = new Cropper($('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8, ready: function () { applyCropFilters(); } }); }, 50); window._cropNextStep = 'scrape_form';
+        } else {
+            $('crop-image-target').src = getMediaUrl(m.url); show('crop-modal'); resetCropAdjust(); if (cropperInstance) cropperInstance.destroy(); setTimeout(() => { cropperInstance = new Cropper($('crop-image-target'), { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8, ready: function () { applyCropFilters(); } }); }, 50); window._cropNextStep = 'scrape_form';
+        }
+    });
+
+    // 爬蟲影片自訂控制條
+    const sVid = $('scrape-preview-vid'), sVBtn = $('scrape-vid-play-btn'), sVProg = $('scrape-vid-progress');
+    if(sVid && sVBtn && sVProg) {
+        const tP = () => sVid.paused ? sVid.play() : sVid.pause();
+        sVid.addEventListener('click', tP); sVBtn.addEventListener('click', tP);
+        sVid.addEventListener('play', () => text('scrape-vid-play-btn', '⏸')); sVid.addEventListener('pause', () => text('scrape-vid-play-btn', '▶'));
+        sVid.addEventListener('timeupdate', () => { if (sVid.duration) { sVProg.max = sVid.duration; sVProg.value = sVid.currentTime; } });
+        sVid.addEventListener('loadedmetadata', () => { sVProg.max = sVid.duration; sVProg.value = 0; });
+        sVProg.addEventListener('input', e => { if (!sVid.paused) sVid.pause(); sVid.currentTime = e.target.value; });
+    }
+
+    // 【回報浪浪表單】
+    on('report-stray-btn', 'click', () => { isReportingMode=true; isQuickReport=false; isScrapeReportMode=false; preReportFogState=isFogVisible; if(isFogVisible){isFogVisible=false; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='none'; text('toggle-fog-btn','🌫️ 開啟迷霧');} document.body.classList.add('locating-mode'); isSearchResolved=false; show('report-search-group'); $('report-crosshair').style.display='block'; show('report-location-panel'); ['scrape-stray-btn','report-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(hide); let nb=$('report-next-btn'); nb.innerText="下一步 ➡️"; nb.disabled=false; nb.classList.remove('bg-gray-400','bg-green-500'); nb.classList.add('bg-blue-500'); text('report-cancel-loc-btn', "取消"); if(lastSavedPos)map.setView([lastSavedPos.lat,lastSavedPos.lng], 18, {animate:true}); });
+    on('report-cancel-loc-btn', 'click', () => { if(isSearchResolved){isSearchResolved=false; show('report-search-group'); text('report-cancel-loc-btn', isScrapeReportMode?"⬅️ 上一步":"取消"); let nb=$('report-next-btn'); if(isScrapeReportMode){nb.innerText="請先點擊搜尋 🔍"; nb.disabled=true; nb.classList.remove('bg-blue-500','bg-green-500'); nb.classList.add('bg-gray-400');}else{nb.innerText="下一步 ➡️"; nb.disabled=false; nb.classList.remove('bg-gray-400','bg-green-500'); nb.classList.add('bg-blue-500');} return;} document.body.classList.remove('locating-mode'); if(isScrapeReportMode){hide('report-location-panel'); $('report-crosshair').style.display='none'; show('report-form-modal'); return;} isReportingMode=false; $('report-crosshair').style.display='none'; hide('report-location-panel'); ['report-stray-btn','scrape-stray-btn','quick-camera-btn','user-manage-trigger-btn-left','project-select-wrapper'].forEach(show); if(preReportFogState){isFogVisible=true; let fp=map?.getPane('fogPane'); if(fp)fp.style.display='block'; text('toggle-fog-btn','👁️ 關閉迷霧'); requestFogRender();} });
+    // report-search-btn & report-submit-btn already heavily bound globally above, skipping here to avoid duplicate triggers.
+    
+    on('report-form-back-btn', 'click', () => { hide('report-form-modal'); if (editingMyStray) { editingMyStray = null; } else if (isQuickReport || isScrapeReportMode) { isReportingMode = false; isQuickReport = false; isScrapeReportMode = false; window.scrapedData = null; window._cropNextStep = null; ['report-stray-btn', 'scrape-stray-btn', 'quick-camera-btn', 'user-manage-trigger-btn-left', 'project-select-wrapper'].forEach(show); if (preReportFogState) { isFogVisible = true; const fogPane = map ? map.getPane('fogPane') : null; if (fogPane) fogPane.style.display = 'block'; text('toggle-fog-btn', '👁️ 關閉迷霧'); requestFogRender(); } } else { show('report-location-panel'); $('report-crosshair').style.display = 'block'; } });
+    on('quick-camera-btn', 'click', () => { const center = lastSavedPos ? { lat: lastSavedPos.lat, lng: lastSavedPos.lng } : map.getCenter(); if (center.lat < 20.0 || center.lat > 27.0 || center.lng < 118.0 || center.lng > 123.0) { showModal("⚠️ 您的當前定位似乎不在台灣範圍內！\n無法使用快速回報。"); return; } isReportingMode = true; isQuickReport = true; isScrapeReportMode = false; preReportFogState = isFogVisible; if (isFogVisible) { isFogVisible = false; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = 'none'; text('toggle-fog-btn', '🌫️ 開啟迷霧'); } ['report-stray-btn', 'scrape-stray-btn', 'quick-camera-btn', 'user-manage-trigger-btn-left', 'project-select-wrapper'].forEach(hide); reportLat = center.lat; reportLng = center.lng; const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); val('report-time', now.toISOString().slice(0, 16)); editingMyStray = null; text('report-form-title', "📝 快速回報：填寫浪浪資訊"); text('report-submit-btn', "🚀 確認送出"); text('report-form-back-btn', "⬅️ 取消"); val('f-main-photo', ""); hide('main-photo-preview'); ['report-name', 'report-notes', 'report-contact', 'report-ig'].forEach(id => val(id, '')); $('report-contact-public').checked = false; croppedMainPhotoBlob = null; currentMediaList = []; renderPhotos(); show('report-form-modal'); openCamera('main'); });
+
+    // 【相簿與相片檢視】
+    on('close-gallery-btn', 'click', () => hide('gallery-modal'));
+    on('tab-photos', 'click', () => renderGallery('photos'));
+    on('tab-videos', 'click', () => renderGallery('videos'));
+    
+    on('viewer-close-btn', 'click', () => { hide('photo-viewer-modal'); $('viewer-vid').pause(); resetViewerAdjustments(); hide('t-panel'); activeTool = ''; if (tPanelTimer) clearTimeout(tPanelTimer); });
+    on('viewer-prev-btn', 'click', () => { if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } else { if (!$('report-form-modal').classList.contains('hidden')) { currentViewerIndex = viewerPhotos.length - 1; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(-1); } } });
+    on('viewer-next-btn', 'click', () => { if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } else { if (!$('report-form-modal').classList.contains('hidden')) { currentViewerIndex = 0; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(1); } } });
+    
+    const pvc = $('photo-viewer-container');
+    if(pvc) {
+        pvc.addEventListener('mousedown', e => { if (viewerZoom <= 1 || e.target.closest('#t-panel') || e.target.closest('button')) return; isViewerDragging = true; viewerDragStartX = e.clientX - viewerPanX; viewerDragStartY = e.clientY - viewerPanY; applyViewerTransforms(true); });
+        window.addEventListener('mousemove', e => { if (!isViewerDragging) return; viewerPanX = e.clientX - viewerDragStartX; viewerPanY = e.clientY - viewerDragStartY; applyViewerTransforms(true); });
+        window.addEventListener('mouseup', () => { if (isViewerDragging) { isViewerDragging = false; applyViewerTransforms(false); } });
+        let tsX = 0, tsY = 0;
+        pvc.addEventListener('touchstart', e => { if (e.target.closest('#t-panel') || e.target.closest('button')) return; if (viewerZoom > 1) { isViewerDragging = true; viewerDragStartX = e.touches[0].clientX - viewerPanX; viewerDragStartY = e.touches[0].clientY - viewerPanY; applyViewerTransforms(true); } else { tsX = e.changedTouches[0].screenX; } }, { passive: false });
+        pvc.addEventListener('touchmove', e => { if (isViewerDragging && viewerZoom > 1) { e.preventDefault(); viewerPanX = e.touches[0].clientX - viewerDragStartX; viewerPanY = e.touches[0].clientY - viewerDragStartY; applyViewerTransforms(true); } }, { passive: false });
+        pvc.addEventListener('touchend', e => { if (e.target.closest('#t-panel') || e.target.closest('button')) return; if (isViewerDragging) { isViewerDragging = false; applyViewerTransforms(false); } else if (viewerZoom <= 1 && e.changedTouches && e.changedTouches.length > 0) { let teX = e.changedTouches[0].screenX; if(teX < tsX - 50) $('viewer-next-btn').click(); else if (teX > tsX + 50) $('viewer-prev-btn').click(); tsX=0; } });
+        pvc.addEventListener('wheel', e => { if (e.target.closest('#t-panel') || e.target.closest('button')) return; e.preventDefault(); viewerZoom = Math.max(1, Math.min(5, viewerZoom + (e.deltaY > 0 ? -0.2 : 0.2))); if (viewerZoom === 1) { viewerPanX = 0; viewerPanY = 0; } applyViewerTransforms(); }, { passive: false });
+    }
+
+    // 【系統後台與審核】
+    on('step-admin-trigger', 'click', () => show('admin-login-modal'));
+    on('admin-cancel-btn', 'click', () => hide('admin-login-modal'));
+    on('admin-submit-btn', 'click', () => { if (isSystemReady) { ws.send(JSON.stringify({ type: "admin_login", data: { password: val('admin-pwd-input') } })); text('admin-submit-btn', "驗證中..."); } });
+    on('admin-logout-btn', 'click', () => { isAdmin = false; adminToken = ""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); hide('admin-panel'); });
+    on('admin-pending-btn', 'click', () => { text('admin-list-title', "📋 待審核浪浪列表"); if (isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "pending" })); });
+    on('admin-approved-btn', 'click', () => { text('admin-list-title', "🐾 已上架浪浪管理"); if (isSystemReady) ws.send(JSON.stringify({ type: "admin_get_applications", token: adminToken, status: "approved" })); });
+    on('admin-list-close-btn', 'click', () => hide('admin-list-modal'));
+    on('admin-edit-close-btn', 'click', () => hide('admin-edit-modal'));
+    
+    // 綁定管理員修改按鈕
+    document.querySelectorAll('.admin-status-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const status = e.target.getAttribute('data-status');
+            const app_id = val('edit-stray-id');
+            const app = adminCachedApps.find(a => a.id === app_id);
+            if (!app) return;
+            if (status === "deleted") {
+                if (isSystemReady) ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: app_id, status: "deleted" }));
+            } else {
+                const pd = app.projectData;
+                let customName = val('edit-stray-name').trim();
+                pd.animalName = customName ? customName : "浪浪 (" + val('edit-stray-type') + ")";
+                pd.type = val('edit-stray-type') === '狗' ? 'dog' : (val('edit-stray-type') === '貓' ? 'cat' : 'other');
+                pd.lostDate = val('edit-stray-time').replace('T', ' ');
+                pd.contactInfo = val('edit-stray-contact').trim();
+                pd.isContactPublic = $('edit-stray-contact-public').checked;
+                let igVal = val('edit-stray-ig').trim();
+                if (igVal && !igVal.startsWith('http')) igVal = 'https://instagram.com/' + igVal.replace(/^@/, '');
+                pd.igUrl = igVal;
+                let newAnnounce = val('edit-stray-notes').trim();
+                if (pd.isContactPublic && pd.contactInfo) { newAnnounce += "\n\n聯絡方式: " + pd.contactInfo; }
+                pd.announcement = newAnnounce;
+                if (isSystemReady) ws.send(JSON.stringify({ type: "submit_application", id: app_id, ownerInfo: app.ownerInfo, projectData: pd, forceStatus: status, token: adminToken }));
+            }
+            e.target.innerText = "處理中...";
+            setTimeout(() => { hide('admin-edit-modal'); hide('admin-list-modal'); e.target.innerText = e.target.innerText.replace('處理中...', ''); showModal("✅ 狀態與內容已更新並送出！"); }, 1000);
+        });
+    });
 }
 
-// 頁面啟動
-window.onload = initSystem;
+// ==========================================
+// 11. 程式進入點 (Entry Point)
+// ==========================================
+window.onload = () => {
+    bindAllEvents();  // 確保所有的事件都在 DOM 載入完成後綁定
+    initSystem();     // 初始化系統（連線 WebSocket、載入地圖）
+};
 </script></body></html>
