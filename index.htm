@@ -329,8 +329,10 @@
             if(isFirstLock)updateProjectDropdown(); saveLocationToServer(pt,false); renderMap();
         }
         function saveLocationToServer(pt,force){if(!isSystemReady||isSpectatorMode)return; const n=Date.now(); if(force||n-lastFullSyncTime>300000){wsSend("update_location",{data:{userName:currentUserName,color:dbUserColor,history:localHistory,lastUpdate:n}}); lastFullSyncTime=n;}else if(pt)wsSend("append_location",{data:{userName:currentUserName,color:dbUserColor,point:pt}});}
-        let displayedSteps=0, lastServerSteps=0, stepSpeedPerSecond=0, lastStepSyncTime=Date.now();
-        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(displayedSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let d=Math.max(0,ns-lastServerSteps), dt=(n-lastStepSyncTime)/1000; if(dt>60||dt<=0)dt=15; let req=(ns+d-displayedSteps)/dt; stepSpeedPerSecond=req<0?0:Math.min(req,10); lastServerSteps=ns; lastStepSyncTime=n; }
+        
+        let displayedSteps=0, lastServerSteps=0, targetVirtualSteps=0, rollSpeed=0, lastStepSyncTime=Date.now();
+        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(displayedSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; targetVirtualSteps=ns; lastStepSyncTime=n; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let d=Math.max(0,ns-lastServerSteps), dt=(n-lastStepSyncTime)/1000; if(dt>60||dt<=0)dt=15; lastServerSteps=ns; lastStepSyncTime=n; targetVirtualSteps=ns+d; rollSpeed=Math.max(0.05,(targetVirtualSteps-displayedSteps)/(dt*25)); }
+        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||displayedSteps>=targetVirtualSteps)return; let limit=lastServerSteps+1000; if(displayedSteps<limit){ displayedSteps+=rollSpeed; if(displayedSteps>limit)displayedSteps=limit; if(displayedSteps>targetVirtualSteps)displayedSteps=targetVirtualSteps; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); } }, 40);
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return;} show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
@@ -417,7 +419,6 @@
         let lastStepCount=0, lastStepTime=Date.now();
         setInterval(()=>{ 
             if(isSpectatorMode||!isTrackingStarted)return; 
-            if(displayedSteps-lastServerSteps<1000 && stepSpeedPerSecond>0){displayedSteps+=stepSpeedPerSecond; text('step-counter-value',Math.floor(displayedSteps).toLocaleString());}
             let out=false, cLoc=localHistory?.length?localHistory[localHistory.length-1]:null, p=PROJECTS[currentProjectKey]; 
             if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2)>5000)out=true; 
             let tUI=$('gift-timer'); 
