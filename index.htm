@@ -162,7 +162,7 @@
         </div>
     </div>
 
-    <div id="status-toast" class="absolute top-4 right-4 z-[3000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
+    <div id="status-toast" class="absolute top-4 right-4 z-[3000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap cursor-pointer">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
     
     <div id="announcement-panel" class="absolute top-16 right-4 z-[3000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
         <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
@@ -325,14 +325,14 @@
             if(isFirstLock){map.setView([lat,lng],17); lastSetViewTime1=ts;}
             if(!isMapInteracting&&map&&!isMyRouteMode&&!map.getBounds().pad(-0.1).contains([lat,lng])){lastSetViewTime2=lastSetViewTime1; lastSetViewTime1=ts; let useAnimation=!(lastSetViewTime2>0&&(lastSetViewTime1-lastSetViewTime2)<=30000); map.setView([lat,lng],map.getZoom()||17,{animate:useAnimation});}
             if(lastSavedPos&&getDistance(lastSavedPos.lat,lastSavedPos.lng,lat,lng)<15&&ts-lastSavedPos.timestamp<180000)return;
-            const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:allUsersData[myUid]?.total_steps||0};
+            const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:allUsersData[myUid]?.total_steps||0}; updateStepsCounterUI();
             if(isFirstLock)updateProjectDropdown(); saveLocationToServer(pt,false); renderMap();
         }
         function saveLocationToServer(pt,force){if(!isSystemReady||isSpectatorMode)return; const n=Date.now(); if(force||n-lastFullSyncTime>300000){wsSend("update_location",{data:{userName:currentUserName,color:dbUserColor,history:localHistory,lastUpdate:n}}); lastFullSyncTime=n;}else if(pt)wsSend("append_location",{data:{userName:currentUserName,color:dbUserColor,point:pt}});}
         
-        let displayedSteps=0, lastServerSteps=0, stepSpeedPerMs=0, lastStepSyncTime=0;
-        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(lastServerSteps===0||ns===0||lastStepSyncTime===0){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; stepSpeedPerMs=0; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let delta=ns-lastServerSteps, dt=n-lastStepSyncTime; if(dt<=0)dt=1000; if(dt>300000){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; stepSpeedPerMs=0; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let error=ns-displayedSteps, stepsToCover=delta+error; stepSpeedPerMs=stepsToCover/dt; if(stepSpeedPerMs<0)stepSpeedPerMs=0; if(stepSpeedPerMs>0.02)stepSpeedPerMs=0.02; lastServerSteps=ns; lastStepSyncTime=n; }
-        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||stepSpeedPerMs<=0)return; displayedSteps+=stepSpeedPerMs*40; let limit=lastServerSteps+1000; if(displayedSteps>limit)displayedSteps=limit; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); }, 40);
+        let displayedSteps=0, lastServerSteps=0, stepSpeedPerSecond=0, lastStepSyncTime=Date.now();
+        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(lastServerSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; stepSpeedPerSecond=0; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let actual_delta=ns-lastServerSteps, dt=(n-lastStepSyncTime)/1000; if(dt<=0)dt=1; if(dt>300)dt=15; let error=ns-displayedSteps; stepSpeedPerSecond=(actual_delta+error)/dt; if(stepSpeedPerSecond<0)stepSpeedPerSecond=0; if(stepSpeedPerSecond>20)stepSpeedPerSecond=20; lastServerSteps=ns; lastStepSyncTime=n; }
+        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||stepSpeedPerSecond<=0)return; displayedSteps+=stepSpeedPerSecond/25; let limit=lastServerSteps+1000; if(displayedSteps>limit)displayedSteps=limit; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); }, 40);
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return;} show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
@@ -466,7 +466,8 @@
         $('switch-project-select').addEventListener('change', e=>{currentProjectKey=e.target.value; lsSet('dogMap_currentProject',currentProjectKey); window.history.replaceState(null,'','?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); loadLotteryState(); updateAnimalInfoCard(); drawAllProjects(); zoomToProject(currentProjectKey); if(isMyRouteMode)$('my-route-btn').click(); wsSend("init");});
 
         // --- 管理員與定位操作 ---
-        on('status-toast','click',()=>{ $('admin-pwd-input').value=""; show('admin-login-modal'); }); on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
+        on('toast-text','click',()=>{ if($('toast-text').innerText.includes('線上探索')){ $('admin-pwd-input').value=""; show('admin-login-modal'); } });
+        on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
         on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
         on('close-admin-btn','click',()=>{ hide('admin-panel'); hide('delete-project-btn'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
         on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
