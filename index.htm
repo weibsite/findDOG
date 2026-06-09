@@ -330,9 +330,9 @@
         }
         function saveLocationToServer(pt,force){if(!isSystemReady||isSpectatorMode)return; const n=Date.now(); if(force||n-lastFullSyncTime>300000){wsSend("update_location",{data:{userName:currentUserName,color:dbUserColor,history:localHistory,lastUpdate:n}}); lastFullSyncTime=n;}else if(pt)wsSend("append_location",{data:{userName:currentUserName,color:dbUserColor,point:pt}});}
         
-        let displayedSteps=0, lastServerSteps=0, targetVirtualSteps=0, rollSpeed=0, lastStepSyncTime=Date.now();
-        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(displayedSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; targetVirtualSteps=ns; lastStepSyncTime=n; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let d=Math.max(0,ns-lastServerSteps), dt=(n-lastStepSyncTime)/1000; if(dt>60||dt<=0)dt=15; lastServerSteps=ns; lastStepSyncTime=n; targetVirtualSteps=ns+d; rollSpeed=Math.max(0.05,(targetVirtualSteps-displayedSteps)/(dt*25)); }
-        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||displayedSteps>=targetVirtualSteps)return; let limit=lastServerSteps+1000; if(displayedSteps<limit){ displayedSteps+=rollSpeed; if(displayedSteps>limit)displayedSteps=limit; if(displayedSteps>targetVirtualSteps)displayedSteps=targetVirtualSteps; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); } }, 40);
+        let displayedSteps=0, lastServerSteps=0, stepSpeedPerSecond=0, lastStepSyncTime=Date.now();
+        function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(lastServerSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; stepSpeedPerSecond=0; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let actual_delta=ns-lastServerSteps, dt=(n-lastStepSyncTime)/1000; if(dt<=0)dt=1; if(dt>300)dt=15; let error=ns-displayedSteps; stepSpeedPerSecond=(actual_delta+error)/dt; if(stepSpeedPerSecond<0)stepSpeedPerSecond=0; lastServerSteps=ns; lastStepSyncTime=n; }
+        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||stepSpeedPerSecond<=0)return; displayedSteps+=stepSpeedPerSecond/25; let limit=lastServerSteps+1000; if(displayedSteps>limit)displayedSteps=limit; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); }, 40);
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return;} show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
@@ -423,7 +423,7 @@
             if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2)>5000)out=true; 
             let tUI=$('gift-timer'); 
             if(out){tUI.style.color='#ef4444'; tUI.innerText="超出範圍"; if(!isSpectatorMode)show('spectator-hint'); return;} 
-            let cSteps=allUsersData[myUid]?.total_steps||0; 
+            let cSteps=targetSteps; 
             if(cSteps>lastStepCount){lastStepCount=cSteps; lastStepTime=Date.now();} 
             if(Date.now()-lastStepTime>180000){tUI.style.color='#f59e0b'; tUI.innerText="停止"; hide('spectator-hint'); return;} 
             tUI.style.color=''; hide('spectator-hint'); 
