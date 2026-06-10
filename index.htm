@@ -86,6 +86,10 @@
 
         #quick-camera-btn.expanded-mode { width: 108px !important; }
         #quick-camera-btn.expanded-mode .camera-text { max-width: 60px !important; opacity: 1 !important; margin-left: 0.25rem !important; font-size: 0.75rem !important; }
+
+        /* 新增：中央獨立的 GPS 錯誤公告彈窗樣式 */
+        #central-gps-error-modal { display: none; }
+        #central-gps-error-modal.show { display: flex; }
     </style>
 </head>
 <body>
@@ -94,6 +98,18 @@
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
     
     <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
+
+    <!-- 新增：中央獨立的 GPS 錯誤公告彈窗 -->
+    <div id="central-gps-error-modal" class="fixed inset-0 z-[30000] bg-black/80 items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center relative shadow-[8px_8px_0px_rgba(0,0,0,0.8)] border-4 border-red-600 bg-white">
+            <h2 class="text-2xl font-black text-red-600 mb-4 border-b-4 border-red-600 pb-2">⚠️ 缺少定位權限</h2>
+            <p class="text-gray-900 font-bold mb-4 leading-relaxed text-sm">由於您可能是透過 LINE 內部開啟本網頁，導致無法取得 GPS 定位。</p>
+            <button id="copy-url-btn" class="pixel-btn w-full py-4 bg-blue-600 text-white font-black text-lg mb-4 animate-pulse">👉 點此複製網址 👈</button>
+            <p class="text-gray-800 font-bold text-sm leading-relaxed mb-4 bg-yellow-200 p-2 border-2 border-black">請改用 <span class="text-blue-600">Safari</span> 或 <span class="text-green-600">Chrome</span> 貼上開啟。</p>
+            <p class="text-gray-700 font-bold text-[11px] mt-2 border-t-2 border-dashed border-gray-400 pt-2">💡 或點擊右上角/右下角的 ︙ 選擇「在瀏覽器中開啟」</p>
+            <button id="close-gps-modal-btn" class="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 border-4 border-black font-black text-xl shadow-[4px_4px_0px_#000]">X</button>
+        </div>
+    </div>
 
     <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
@@ -135,8 +151,9 @@
 
     <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]"><button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
 
-    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border-4 border-black rounded-full h-[60px] w-[60px] hover:w-[108px] flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
-        <span class="text-[27px] shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
+    <!-- 調整：相機按鈕增加 5% 大小 (從 60px -> 63px) -->
+    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border-4 border-black rounded-full h-[63px] w-[63px] hover:w-[113px] flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
+        <span class="text-[28px] shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
         <span class="camera-text max-w-0 opacity-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out group-hover:max-w-[60px] group-hover:opacity-100 group-hover:ml-1 font-black text-xs tracking-widest pointer-events-none">回報浪浪</span>
     </a>
 
@@ -204,7 +221,8 @@
     <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
     <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
     <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
-    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">回報浪浪</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+    <!-- 調整：右下角回報浪浪改為 浪浪地圖 -->
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -317,10 +335,34 @@
         function handleGeoError(e,auto) {
             if(isSpectatorMode)return; $('master-start-btn').innerText="直接進入地圖 [無定位]"; $('master-start-btn').style.cssText="background-color:#ef4444;color:white;";
             let msg=e.code===1?"⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。":(e.code===2?"無法獲取位置，請確認 GPS 已開啟。":"獲取位置逾時，請檢查網路。"), em=$('error-msg'); em.innerText=msg.replace(/\n/g,' '); show('error-msg');
-            if(e.code===1){em.className="text-red-700 font-bold text-sm mt-6 bg-red-100 p-4 rounded-lg cursor-pointer border-2 border-red-500 border-dashed block whitespace-pre-wrap"; em.innerText=msg; em.onclick=()=>{let t=document.createElement("textarea"); t.value=window.location.href; document.body.appendChild(t); t.select(); try{document.execCommand('copy'); showCenterToast("✅ 網址已複製！");}catch(err){} document.body.removeChild(t);};}else{em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;}
-            if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
+            
+            // 調整：如果是權限問題 (e.code === 1)，顯示中央的獨立警告彈窗
+            if(e.code===1){
+                $('central-gps-error-modal').classList.add('show');
+                // 為複製按鈕綁定事件
+                on('copy-url-btn','click',()=>{
+                    let t=document.createElement("textarea"); t.value=window.location.href; document.body.appendChild(t); t.select(); try{document.execCommand('copy'); $('copy-url-btn').innerText="✅ 已複製！請前往瀏覽器貼上"; $('copy-url-btn').classList.remove('bg-blue-600'); $('copy-url-btn').classList.add('bg-green-600'); setTimeout(()=>{ $('copy-url-btn').innerText="👉 點此複製網址 👈"; $('copy-url-btn').classList.remove('bg-green-600'); $('copy-url-btn').classList.add('bg-blue-600'); },3000); }catch(err){} document.body.removeChild(t);
+                });
+                on('close-gps-modal-btn','click',()=>{ $('central-gps-error-modal').classList.remove('show'); finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444'; });
+            }else{
+                em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;
+            }
+
+            if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
         }
-        function finishUIReveal() { $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} if(window.innerWidth<=640&&(allUsersData[myUid]?.total_steps||0)<100)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');}); requestWakeLock(); resetPowerSavingTimer(); }
+        function finishUIReveal() { 
+            $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
+            if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
+            
+            // 調整：手機版只要是開啟網頁都會自動隱藏左下工作列
+            if(window.innerWidth<=640) {
+                // 給一個短暫的延遲，讓使用者有機會看一眼圖標是什麼，然後自動收起
+                setTimeout(()=>{
+                    document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});
+                }, 1000);
+            }
+            requestWakeLock(); resetPowerSavingTimer(); 
+        }
         
         function handleValidPosition(lat,lng,ts) {
             hide('gps-warning'); let isFirstLock=!localHistory.length; if(isSpectatorMode)return;
@@ -514,9 +556,46 @@
         on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
         on('slot-close-btn','click',()=>hide('slot-machine-modal')); on('floating-gift-container','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法參與抽獎！"); text('slot-machine-title',`🎰 抽獎`); updateGiftUI(); show('slot-machine-modal'); }); on('prize-pool-close-btn','click',()=>hide('prize-pool-modal'));
         
-        let btnCollapseTimer=null; function resetBtnCollapseTimer() { if(window.innerWidth>640)return; document.querySelectorAll('.collapsible-btn').forEach(b=>b.classList.remove('collapsed')); if(btnCollapseTimer)clearTimeout(btnCollapseTimer); btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); }
+        let btnCollapseTimer=null; 
+        function resetBtnCollapseTimer() { 
+            if(window.innerWidth>640)return; 
+            // 調整：滑動地圖時不自動展開按鈕，只有在點擊按鈕本身時才展開
+            // document.querySelectorAll('.collapsible-btn').forEach(b=>b.classList.remove('collapsed')); 
+            if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+            btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+        }
         document.addEventListener('click',e=>{if(!e.target.closest('.collapsible-btn'))document.querySelectorAll('.collapsible-btn').forEach(b=>b.classList.remove('show-desc'));});
-        document.querySelectorAll('.collapsible-btn').forEach(btn=>{ btn.addEventListener('click',e=>{if(window.innerWidth<=640){if(btn.classList.contains('two-tap')&&!btn.classList.contains('show-desc')){document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.remove('collapsed'); if(b!==btn)b.classList.remove('show-desc');}); btn.classList.add('show-desc'); if(btnCollapseTimer)clearTimeout(btnCollapseTimer); btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); e.stopImmediatePropagation(); e.preventDefault();}else btn.classList.remove('show-desc');}},true); });
+        document.querySelectorAll('.collapsible-btn').forEach(btn=>{ 
+            btn.addEventListener('click',e=>{
+                if(window.innerWidth<=640){
+                    // 調整：如果按鈕是收起的狀態，第一次點擊先展開它 (移除 collapsed 類別)
+                    if(btn.classList.contains('collapsed')) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        btn.classList.remove('collapsed');
+                        btn.classList.add('show-desc');
+                        
+                        // 重置其他按鈕的狀態
+                        document.querySelectorAll('.collapsible-btn').forEach(b=>{
+                            if(b!==btn) { b.classList.add('collapsed'); b.classList.remove('show-desc'); }
+                        });
+                        
+                        // 設定 30 秒後重新收起
+                        if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+                        btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+                        return;
+                    }
+                    
+                    if(btn.classList.contains('two-tap')&&!btn.classList.contains('show-desc')){
+                        document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.remove('collapsed'); if(b!==btn)b.classList.remove('show-desc');}); 
+                        btn.classList.add('show-desc'); 
+                        if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+                        btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+                        e.stopImmediatePropagation(); e.preventDefault();
+                    }else btn.classList.remove('show-desc');
+                }
+            },true); 
+        });
 
         $('clear-radius').addEventListener('input',e=>{currentClearRadius=parseInt(e.target.value); text('clear-radius-val',currentClearRadius);});
         on('clear-history-btn','click',()=>{ if(!isAdmin)return; isClearingHistory=true; map.dragging.disable(); clearHistoryCircles=[]; show('clear-history-panel'); hide('admin-panel'); showCenterToast("🧹 直接在畫面上拖曳塗抹要清除的範圍！\n點擊或塗抹已標示的紅圈即可取消。"); });
