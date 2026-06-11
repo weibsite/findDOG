@@ -94,7 +94,15 @@
 </head>
 <body>
     <div id="map-container"><div id="map"></div></div>
-    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[15000] bg-black/95 touch-none"></div>
+    
+    <!-- 修正：升級為全黑背景，最高 z-index，並加上專屬省電 UI 提示 -->
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
+        <div class="text-6xl mb-6 opacity-50 animate-pulse">🌙</div>
+        <div class="text-2xl font-black tracking-widest mb-2 text-gray-400">省電模式運作中</div>
+        <div class="text-sm font-bold text-gray-600 mb-8">GPS 定位仍在背景上傳</div>
+        <div class="text-sm text-gray-500 font-bold border-2 border-gray-800 px-6 py-3 rounded-full mt-10 shadow-[0_0_15px_rgba(255,255,255,0.1)]">👆 輕觸畫面任意處喚醒</div>
+    </div>
+
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
     
     <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
@@ -151,7 +159,6 @@
 
     <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]"><button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
 
-    <!-- 調整：相機按鈕增加 5% 大小 (從 60px -> 63px) -->
     <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border-4 border-black rounded-full h-[63px] w-[63px] hover:w-[113px] flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
         <span class="text-[28px] shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
         <span class="camera-text max-w-0 opacity-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out group-hover:max-w-[60px] group-hover:opacity-100 group-hover:ml-1 font-black text-xs tracking-widest pointer-events-none">回報浪浪</span>
@@ -324,7 +331,11 @@
         function enterPowerSavingMode(){ if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isTrackingStarted&&!isSpectatorMode) gpsIntervalId=setInterval(()=>{navigator.geolocation.getCurrentPosition(p=>handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()),e=>handleGeoError(e,true),{enableHighAccuracy:true,timeout:10000});},15000); }
         function exitPowerSavingMode(){ if(!isPowerSaving)return; isPowerSaving=false; hide('power-saving-overlay'); if(gpsIntervalId){clearInterval(gpsIntervalId); gpsIntervalId=null;} if(isTrackingStarted&&!isSpectatorMode)startLocationServices(true); renderMap(); requestFogRender(); }
         function resetPowerSavingTimer(){ if(isPowerSaving)exitPowerSavingMode(); if(powerSavingTimer)clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode&&isMobileDevice&&window.innerWidth<=768)powerSavingTimer=setTimeout(enterPowerSavingMode,180000); resetBtnCollapseTimer(); }
-        document.body.addEventListener('touchstart',resetPowerSavingTimer,{passive:true}); document.body.addEventListener('click',resetPowerSavingTimer); document.body.addEventListener('mousemove',resetPowerSavingTimer); $('power-saving-overlay').addEventListener('touchstart',e=>{e.preventDefault(); resetPowerSavingTimer();},{passive:false}); on('power-saving-btn','click',e=>{e.stopPropagation(); enterPowerSavingMode();});
+        
+        // 修正：確保點擊黑屏或滑動黑屏都會觸發喚醒 (加入 click 事件保險)
+        document.body.addEventListener('touchstart',resetPowerSavingTimer,{passive:true}); document.body.addEventListener('click',resetPowerSavingTimer); document.body.addEventListener('mousemove',resetPowerSavingTimer); 
+        $('power-saving-overlay').addEventListener('touchstart',e=>{e.preventDefault(); resetPowerSavingTimer();},{passive:false}); $('power-saving-overlay').addEventListener('click',resetPowerSavingTimer);
+        on('power-saving-btn','click',e=>{e.stopPropagation(); enterPowerSavingMode();});
         document.addEventListener('visibilitychange',async ()=>{if(document.visibilityState==='hidden'){if(isMobileDevice&&window.innerWidth<=768)enterPowerSavingMode();}else{if(wakeLock!==null)wakeLock=null; if(isTrackingStarted)requestWakeLock();}});
 
         function startLocationServices(auto) {
@@ -376,7 +387,9 @@
         
         let displayedSteps=0, lastServerSteps=0, stepSpeedPerSecond=0, lastStepSyncTime=Date.now();
         function updateStepsCounterUI() { let ns=allUsersData?.[myUid]?.total_steps||0, n=Date.now(); if(lastServerSteps===0||ns===0){displayedSteps=ns; lastServerSteps=ns; lastStepSyncTime=n; stepSpeedPerSecond=0; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); return;} let actual_delta=ns-lastServerSteps, dt=(n-lastStepSyncTime)/1000; if(dt<=0)dt=1; if(dt>300)dt=15; let error=ns-displayedSteps; stepSpeedPerSecond=(actual_delta+error)/dt; if(stepSpeedPerSecond<0)stepSpeedPerSecond=0; if(stepSpeedPerSecond>20)stepSpeedPerSecond=20; lastServerSteps=ns; lastStepSyncTime=n; }
-        setInterval(()=>{ if(isSpectatorMode||!isTrackingStarted||stepSpeedPerSecond<=0)return; displayedSteps+=stepSpeedPerSecond/25; let limit=lastServerSteps+1000; if(displayedSteps>limit)displayedSteps=limit; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); }, 40);
+        
+        // 修正：徹底防堵！若 isPowerSaving 為 true，背景更新 UI 計步數字的迴圈也要暫停，以釋放 CPU 計算。
+        setInterval(()=>{ if(isPowerSaving||isSpectatorMode||!isTrackingStarted||stepSpeedPerSecond<=0)return; displayedSteps+=stepSpeedPerSecond/25; let limit=lastServerSteps+1000; if(displayedSteps>limit)displayedSteps=limit; text('step-counter-value',Math.floor(displayedSteps).toLocaleString()); }, 40);
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return;} show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
