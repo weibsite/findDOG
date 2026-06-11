@@ -420,12 +420,18 @@
         function saveLocationToServer(pt,force){if(!isSystemReady||isSpectatorMode)return; const n=Date.now(); if(force||n-lastFullSyncTime>300000){wsSend("update_location",{data:{userName:currentUserName,color:dbUserColor,history:localHistory,lastUpdate:n}}); lastFullSyncTime=n;}else if(pt)wsSend("append_location",{data:{userName:currentUserName,color:dbUserColor,point:pt}});}
         
         // --- 修正：動畫平滑追趕伺服器/本地步數邏輯 ---
-        let displayedSteps = 0;
-        let targetSteps = 0;
+        let displayedSteps = myTotalSteps; // 初始化時直接讀取本地已儲存的步數，避免從 0 開始
+        let targetSteps = myTotalSteps;
 
         function updateStepsCounterUI() { 
             // 更新目標步數
             targetSteps = allUsersData?.[myUid]?.total_steps || 0; 
+            
+            // 防呆：如果伺服器同步的步數與畫面差距過大 (大於 100 步)，直接跳到該數字，避免動畫跑太久
+            if (Math.abs(targetSteps - displayedSteps) > 100) {
+                displayedSteps = targetSteps;
+                text('step-counter-value', Math.floor(displayedSteps).toLocaleString());
+            }
         }
         
         setInterval(()=>{ 
@@ -433,9 +439,7 @@
             
             if (displayedSteps < targetSteps) {
                 let diff = targetSteps - displayedSteps;
-                let stepInc = diff * 0.05; // 每次補足 5% 差距
-                if (stepInc < 0.1) stepInc = 0.1; 
-                if (stepInc > 10) stepInc = 10;   
+                let stepInc = Math.max(0.1, diff * 0.1); // 使用 10% 差距平滑補足，移除寫死的僵硬上限
                 
                 displayedSteps += stepInc;
                 if (displayedSteps >= targetSteps) displayedSteps = targetSteps; // 追趕完成即停止
