@@ -142,7 +142,16 @@
     <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3><p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p><input type="text" id="profile-name" class="pixel-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱" maxlength="15"><div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black"><label class="text-sm font-bold text-gray-800">代表色:</label><input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer"><input type="text" id="profile-hex" class="pixel-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7"></div><div class="flex gap-2"><button id="profile-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="profile-save-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button></div></div></div>
 
     <!-- UI -->
-    <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="delete-project-btn" class="pixel-btn p-3 bg-red-600 text-white hidden shadow-[4px_4px_0px_#1a202c]" title="刪除此專案">🗑️</button></div>
+    <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all">
+        <div class="relative w-full">
+            <div class="pixel-btn p-3 pr-2 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] w-full text-left sm:text-center flex items-center justify-between pointer-events-none overflow-hidden h-[52px]">
+                <span id="project-display-text" class="truncate mr-2 flex-1 text-center">載入中...</span>
+                <span class="font-black text-black shrink-0">▼</span>
+            </div>
+            <select id="switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
+        </div>
+        <button id="lock-project-btn" class="pixel-btn bg-blue-600 text-white shadow-[4px_4px_0px_#1a202c] transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔓</button>
+    </div>
     
     <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
@@ -252,6 +261,17 @@
         let allUsersData={}, allSightings={}, allRoutes={}, allAnnouncements={}, allCenterMarkers=[], taiwanPolygons=[];
         let localHistory=JSON.parse(lsGet('dogMap_localHistory')||lsGet('dogMap_localHistory_'+currentProjectKey)||"[]"), lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null, watchId=null;
         
+        // 💡 鎖定區域相關變數與高效率過濾器
+        let isProjectLocked = false;
+        const getFilteredHistory = (hp, p) => {
+            if (!isProjectLocked || !p) return hp;
+            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
+            let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+            let dLat = 0.45; // 約 50km
+            let dLng = 0.45 / Math.cos(cLat * Math.PI / 180);
+            return hp.filter(pt => Math.abs(pt.lat - cLat) <= dLat && Math.abs(pt.lng - cLng) <= dLng && getDistance(cLat, cLng, pt.lat, pt.lng) <= 50000);
+        };
+
         // 新增全域變數：用於效能優化與計步器
         let userMarkers = {};
         let myTotalSteps = lsGet('dogMap_myTotalSteps') ? parseFloat(lsGet('dogMap_myTotalSteps')) : 0;
@@ -305,7 +325,7 @@
                 }
             });
             
-            if(isAdmin){show('admin-panel'); show('delete-project-btn');}
+            if(isAdmin){show('admin-panel');} // 移除原先 delete-project-btn 邏輯
             if(lsGet('dogMap_userName')){currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor'))lsSet('dogMap_userColor',dbUserColor); if(localHistory.length){allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; renderMap(); updateStepsCounterUI();} if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text',"自動定位..."); startLocationServices(true);} else show('startup-overlay');
         }
 
@@ -324,7 +344,7 @@
                     else if(res.type==='user_appended'){let d=res.data, u=res.uid; if(!allUsersData[u])allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else{allUsersData[u].userName=d.userName; allUsersData[u].color=d.color; if(d.total_steps!==undefined)allUsersData[u].total_steps=d.total_steps;} allUsersData[u].history.push(d.point); if(u===myUid)updateStepsCounterUI(); renderMap();}
                     else if(res.type==='user_update'){allUsersData[res.uid]=res.data; renderMap(); if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[...res.data.history]; lsSet('dogMap_localHistory',JSON.stringify(localHistory)); lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null;}}}
                     else if(res.type==='prize_won_broadcast'){text('win-marquee-text',`🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); let t=$('win-marquee-text'); t.style.animation='none'; t.offsetHeight; t.style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000);}
-                    else if(res.type==='admin_login_result'){text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); show('delete-project-btn'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！");}
+                    else if(res.type==='admin_login_result'){text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！");}
                     else if(res.type==='admin_action_result'){showModal(res.msg);}
                     else if(res.type==='admin_user_info_result'){let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal');}
                     else if(res.type==='admin_prizes_data'){let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true; let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length)av.forEach(i=>{let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`;}); else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as); let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length)dr.forEach(i=>{ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`;}); else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds); const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`pixel-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？",()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );}
@@ -448,13 +468,58 @@
             }
         }, 40);
 
+        function updateVisualSelectText() {
+            let s = $('switch-project-select');
+            if(s.selectedIndex < 0) return;
+            let opt = s.options[s.selectedIndex];
+            if (!opt) return;
+            let rawName = opt.getAttribute('data-rawname');
+            let dt = opt.getAttribute('data-dist');
+            if (window.innerWidth <= 640) {
+                text('project-display-text', rawName);
+            } else {
+                text('project-display-text', `🎯 ${rawName}${dt}`);
+            }
+        }
+        window.addEventListener('resize', () => { if (currentProjectKey) updateVisualSelectText(); });
+
         function updateProjectDropdown() {
-            let s=$('switch-project-select'); s.innerHTML=''; if(!Object.keys(PROJECTS).length){s.innerHTML='<option value="">目前無協尋專案</option>'; currentProjectKey=null; hide('animal-info-section'); return;} show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
-            sortedKeys.forEach(k=>{ let p=PROJECTS[k], dt=""; if(lastSavedPos){let dist=getDistance(lastSavedPos.lat,lastSavedPos.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2); dt=dist<1000?` (${Math.round(dist)}m)`:` (${(dist/1000).toFixed(1)}km)`;} s.innerHTML+=`<option value="${k}">🎯 ${p.animalName||p.name}${dt}</option>`;});
+            let s=$('switch-project-select'); s.innerHTML=''; 
+            if(!Object.keys(PROJECTS).length){
+                s.innerHTML='<option value="">目前無協尋專案</option>'; 
+                text('project-display-text', '目前無協尋專案');
+                currentProjectKey=null; hide('animal-info-section'); return;
+            } 
+            show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
+            sortedKeys.forEach(k=>{ 
+                let p=PROJECTS[k], dt=""; 
+                if(lastSavedPos){
+                    let dist=getDistance(lastSavedPos.lat,lastSavedPos.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2); 
+                    dt=dist<1000?` (${Math.round(dist)}m)`:` (${(dist/1000).toFixed(1)}km)`;
+                } 
+                s.innerHTML+=`<option value="${k}" data-rawname="${escapeHTML(p.animalName||p.name)}" data-dist="${dt}">🎯 ${escapeHTML(p.animalName||p.name)}${dt}</option>`;
+            });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey])fk=currentProjectKey; else if(currentProjectKey){for(let k in PROJECTS)if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey){fk=k; break;}}
             if(fk){currentProjectKey=fk; s.value=currentProjectKey;}else{if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);}}
-            if(currentProjectKey&&PROJECTS[currentProjectKey])window.history.replaceState(null,'',`?${encodeURIComponent(PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name||currentProjectKey)}`);
+            if(currentProjectKey&&PROJECTS[currentProjectKey]){
+                window.history.replaceState(null,'',`?${encodeURIComponent(PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name||currentProjectKey)}`);
+                updateVisualSelectText();
+            }
         }
+        
+        $('switch-project-select').addEventListener('change', e=>{
+            currentProjectKey=e.target.value; 
+            lsSet('dogMap_currentProject',currentProjectKey); 
+            window.history.replaceState(null,'','?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); 
+            loadLotteryState(); 
+            updateAnimalInfoCard(); 
+            drawAllProjects(); 
+            zoomToProject(currentProjectKey); 
+            if(isMyRouteMode)$('my-route-btn').click(); 
+            updateVisualSelectText();
+            wsSend("init");
+        });
+
         function updateAnimalInfoCard() {
             let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
             let u=p.mainPhoto; if(u?.startsWith('/images/'))u=getBaseHttpUrl()+u; $('animal-main-photo').src=u||""; text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
@@ -465,6 +530,7 @@
         function drawAllProjects() {
             allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
             Object.keys(PROJECTS).forEach(k=>{
+                if (isProjectLocked && k !== currentProjectKey) return; // 💡鎖定區域模式：隱藏其他專案標記
                 let p=PROJECTS[k], c=[(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2], cur=(k===currentProjectKey), ic={'dog':'🐕','cat':'🐈','bird':'🦜','rabbit':'🐇','turtle':'🐢'}[p.type]||'🐾';
                 let rm=(allAnnouncements[k]||p.announcement||"").match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/), rh=rm?`<div class="user-name-tag pixel-panel" style="color:#000;background-color:#fef08a;margin-bottom:2px;padding:2px 4px;">💰 $${rm[1]}</div>`:'';
                 let mh=cur?`<div style="position:absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom:12px;pointer-events:auto;">${rh}<div class="user-name-tag pixel-panel" style="color:white;background-color:#ef4444;">📍 ${escapeHTML(p.animalName)}遺失中心</div><div style="font-size:32px;animation:bounce 2s infinite;">${ic}</div></div>`:`<div class="user-label-container" style="bottom:12px;pointer-events:auto;opacity:0.8;">${rh}<div class="user-name-tag pixel-panel" style="background-color:#e5e7eb;">找 ${escapeHTML(p.animalName)}</div><div style="font-size:24px;">${ic}</div></div>`;
@@ -477,13 +543,14 @@
         // --- 修正：使用 Data Binding 優化地圖渲染效能 ---
         function renderMap() {
             if(!markersLayer||!map||isPowerSaving)return; 
-            let n=Date.now();
+            let n=Date.now(), pProj = PROJECTS[currentProjectKey];
 
             if(isMyRouteMode){ 
                 // 軌跡重現模式下使用傳統渲染
                 Object.values(userMarkers).forEach(m=>map.removeLayer(m)); userMarkers={}; markersLayer.clearLayers();
                 let td=(targetRouteUid===myUid)?{history:localHistory}:allUsersData[targetRouteUid], hd=[], rc='#ef4444', rn='使用者'; 
                 if(targetRouteUid===myUid){hd=localHistory; rc=dbUserColor; rn=currentUserName;}else if(td?.history){hd=td.history; rc=td.color||rc; rn=td.userName;} 
+                hd = getFilteredHistory(hd, pProj); // 💡過濾器：處理軌跡模式下的 50KM 限制
                 if(hd.length){ 
                     if(!snakeInterval&&!isPlaybackPaused&&snakeIndex<hd.length)snakeIndex=hd.length; 
                     let ch=hd.slice(0,Math.max(1,snakeIndex)); 
@@ -506,7 +573,10 @@
             Object.keys(allUsersData).forEach(u=>{
                 let ud=allUsersData[u]; 
                 if(!ud.history?.length)return; 
-                let isS=(u===myUid), lp=ud.history[ud.history.length-1]; 
+                let hp = getFilteredHistory(ud.history, pProj); // 💡過濾器：過濾 50km
+                if(!hp.length) return; // 若此人沒有在 50km 內的足跡則直接隱藏
+                
+                let isS=(u===myUid), lp=hp[hp.length-1]; 
                 if(n-lp.timestamp<3600000)uc++; 
                 if(isSpectatorMode&&isS)return; 
 
@@ -515,7 +585,7 @@
                     let rc=isS?dbUserColor:(ud.color||'#3b82f6'), nc=isS?`color:${rc};`:'color:#1a202c;', ts=''; 
                     if(isAdmin&&ud.blacklisted){nc='color:#fff;background-color:#ef4444;border-color:#7f1d1d;'; ts=' (黑名單)';} 
                     
-                    let htmlContent = `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${u}" style="${nc}">${escapeHTML(ud.userName)}${ts}</div><div class="user-avatar-pixel ${isS?'blinking-red-pixel':''}" style="background-color:${rc};"></div></div>`;
+                    let htmlContent = `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${u}" style="${nc} pointer-events:auto;">${escapeHTML(ud.userName)}${ts}</div><div class="user-avatar-pixel ${isS?'blinking-red-pixel':''}" style="background-color:${rc};"></div></div>`;
                     let zIndex = isS?Math.floor(Date.now()/1000)+20000:Math.floor(lp.timestamp/1000);
 
                     if (userMarkers[u]) {
@@ -559,10 +629,13 @@
             if(taiwanPolygons.length){let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');}else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}}else{lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
             let hasActiveNear=false; if(PROJECTS[currentProjectKey]){let pb=PROJECTS[currentProjectKey].bounds, cl=(pb[0][0]+pb[1][0])/2, cg=(pb[0][1]+pb[1][1])/2; Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}});}
             let bO=hasActiveNear?0.35:0.5, mO=hasActiveNear?0.35:0.5; const dr=(hp,i)=>{let r=Math.max(0,Math.min(1,((i<hp.length-1?hp[i+1].timestamp:n)-hp[i].timestamp)/60000)); return ((8+(117*r))/mpp)*FOG_SCALE;};
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
+            
+            let pProj = PROJECTS[currentProjectKey];
+            
+            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
+            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
             fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height); fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
-            Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; ud.history.forEach((pt,i)=>{let a=Math.max(0,n-pt.timestamp); if(i!==ud.history.length-1){let o=bO; if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); let p=map.latLngToContainerPoint([pt.lat,pt.lng]); if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}}});}); fogCtx.globalAlpha=1.0;
+            Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; let hp = getFilteredHistory(ud.history, pProj); hp.forEach((pt,i)=>{let a=Math.max(0,n-pt.timestamp); if(i!==hp.length-1){let o=bO; if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); let p=map.latLngToContainerPoint([pt.lat,pt.lng]); if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}}});}); fogCtx.globalAlpha=1.0;
         }
 
         // --- 軌跡/EVA ---
@@ -589,6 +662,24 @@
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
         on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟動");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
+        
+        // 💡 鎖定按鈕邏輯
+        on('lock-project-btn', 'click', () => {
+            isProjectLocked = !isProjectLocked;
+            let b = $('lock-project-btn');
+            if (isProjectLocked) {
+                b.innerText = "🔒";
+                b.classList.replace('bg-blue-600', 'bg-red-600');
+                showCenterToast("🔒 已鎖定專案！\n地圖將隱藏其他專案標記，並只顯示 50 公里內的足跡。");
+            } else {
+                b.innerText = "🔓";
+                b.classList.replace('bg-red-600', 'bg-blue-600');
+                showCenterToast("🔓 解除鎖定！\n已恢復顯示全區所有專案與足跡。");
+            }
+            drawAllProjects();
+            renderMap();
+            requestFogRender();
+        });
 
         function updateGiftUI() { let gc=$('floating-gift-container'); if(!currentProjectHasPrize)hide('floating-gift-container'); else{show('floating-gift-container'); let t=isAdmin?'無限':lotteryTickets; text('gift-ticket-badge',t); if(!$('slot-machine-modal').classList.contains('hidden'))text('slot-tickets-display',t);} }
         function saveLotteryState() { lsSet('dogMap_lottery_time_'+currentProjectKey, JSON.stringify({r:lotteryTimeRemaining})); }
@@ -641,16 +732,14 @@
         let vc=$('photo-viewer-container'); vc.addEventListener('touchstart',e=>touchStartX=e.changedTouches[0].screenX); vc.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX; if(touchEndX<touchStartX-50&&currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}else if(touchEndX>touchStartX+50&&currentViewerIndex>0){currentViewerIndex--;updatePhotoViewer();} });
         
         const zoomToProject=(key)=>{ let p=PROJECTS[key]; if(!p)return; let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); };
-        $('switch-project-select').addEventListener('change', e=>{currentProjectKey=e.target.value; lsSet('dogMap_currentProject',currentProjectKey); window.history.replaceState(null,'','?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); loadLotteryState(); updateAnimalInfoCard(); drawAllProjects(); zoomToProject(currentProjectKey); if(isMyRouteMode)$('my-route-btn').click(); wsSend("init");});
 
         // --- 管理員與定位操作 ---
         on('sync-ping','click',e=>{ e.stopPropagation(); $('admin-pwd-input').value=""; show('admin-login-modal'); });
         on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
         on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
-        on('close-admin-btn','click',()=>{ hide('admin-panel'); hide('delete-project-btn'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
+        on('close-admin-btn','click',()=>{ hide('admin-panel'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
         on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
         on('manage-blacklist-btn','click',()=>{ html('blacklist-container','<p class="text-center mt-4">載入中...</p>'); wsSend("admin_get_blacklist"); show('manage-blacklist-modal'); }); on('close-blacklist-btn','click',()=>hide('manage-blacklist-modal')); on('save-restrict-prob-btn','click',()=>{ wsSend("admin_update_restrict_prob",{prob:$('restrict-prob-input').value}); text('save-restrict-prob-btn',"⏳"); setTimeout(()=>text('save-restrict-prob-btn',"儲存"),1000); });
-        on('delete-project-btn','click',()=>showConfirm(`確定刪除專案「${currentProjectKey}」？\n軌跡與獎品將被保留！`, ()=>wsSend("admin_delete_project")));
         
         const SIGHTING_ICONS = ['🐾', '❓', '❌', '💩', '🦴', '🩸', '👀', '📷'];
         on('add-sighting-btn','click',()=>{
