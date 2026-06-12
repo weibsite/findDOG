@@ -262,14 +262,51 @@
         let localHistory=JSON.parse(lsGet('dogMap_localHistory')||lsGet('dogMap_localHistory_'+currentProjectKey)||"[]"), lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null, watchId=null;
         
         // 💡 鎖定區域相關變數與高效率過濾器
-        let isProjectLocked = false;
+        let isProjectLocked = lsGet('dogMap_isProjectLocked') === 'true';
+        let cachedMaxDist = null;
+        let lastCacheTime = 0;
+
+        function getConcentricMaxDistance(p) {
+            if (!p) return 50000;
+            let now = Date.now();
+            if (cachedMaxDist !== null && (now - lastCacheTime < 5000)) {
+                return cachedMaxDist;
+            }
+            lastCacheTime = now;
+            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
+            let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+            let distances = [];
+            let dLat_50k = 0.45;
+            let dLng_50k = 0.45 / Math.cos(cLat * Math.PI / 180);
+
+            for (let u in allUsersData) {
+                let hp = allUsersData[u].history;
+                if (!hp) continue;
+                for(let i=0; i<hp.length; i++) {
+                    let pt = hp[i];
+                    if (Math.abs(pt.lat - cLat) <= dLat_50k && Math.abs(pt.lng - cLng) <= dLng_50k) {
+                        distances.push(getDistance(cLat, cLng, pt.lat, pt.lng));
+                    }
+                }
+            }
+
+            if (distances.length <= 10000) {
+                cachedMaxDist = 50000;
+            } else {
+                distances.sort((a, b) => a - b);
+                cachedMaxDist = distances[9999];
+            }
+            return cachedMaxDist;
+        }
+
         const getFilteredHistory = (hp, p) => {
             if (!isProjectLocked || !p) return hp;
             let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
             let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
-            let dLat = 0.45; // 約 50km
-            let dLng = 0.45 / Math.cos(cLat * Math.PI / 180);
-            return hp.filter(pt => Math.abs(pt.lat - cLat) <= dLat && Math.abs(pt.lng - cLng) <= dLng && getDistance(cLat, cLng, pt.lat, pt.lng) <= 50000);
+            let maxDist = getConcentricMaxDistance(p);
+            let dLat = maxDist / 111000;
+            let dLng = dLat / Math.cos(cLat * Math.PI / 180);
+            return hp.filter(pt => Math.abs(pt.lat - cLat) <= dLat && Math.abs(pt.lng - cLng) <= dLng && getDistance(cLat, cLng, pt.lat, pt.lng) <= maxDist);
         };
 
         // 新增全域變數：用於效能優化與計步器
@@ -299,6 +336,13 @@
 
         // --- 初始化 ---
         async function initSystem() {
+            if (isProjectLocked) {
+                let b = $('lock-project-btn');
+                if(b) {
+                    b.innerText = "🔒";
+                    b.classList.replace('bg-blue-600', 'bg-red-600');
+                }
+            }
             try { const cfg=await(await fetch('config.json?t='+Date.now())).json(); if(cfg?.ws_url) NGROK_WS_URL=cfg.ws_url; } catch(e){}
             if(!NGROK_WS_URL) NGROK_WS_URL=window.location.origin.replace('http','ws')+'/ws';
             fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(r=>r.json()).then(d=>{ d.features.forEach(f=>{ (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).forEach(p=>{ let ml=90,xl=-90,mg=180,xg=-180; p[0].forEach(c=>{if(c[1]<ml)ml=c[1];if(c[1]>xl)xl=c[1];if(c[0]<mg)mg=c[0];if(c[0]>xg)xg=c[0];}); taiwanPolygons.push({coordinates:p,bounds:L.latLngBounds([ml,mg],[xl,xg])}); }); }); requestFogRender(); }).catch(()=>{});
@@ -513,6 +557,7 @@
             window.history.replaceState(null,'','?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); 
             loadLotteryState(); 
             updateAnimalInfoCard(); 
+            cachedMaxDist = null; // 💡 重設距離快取
             drawAllProjects(); 
             zoomToProject(currentProjectKey); 
             if(isMyRouteMode)$('my-route-btn').click(); 
@@ -530,7 +575,6 @@
         function drawAllProjects() {
             allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
             Object.keys(PROJECTS).forEach(k=>{
-                if (isProjectLocked && k !== currentProjectKey) return; // 💡鎖定區域模式：隱藏其他專案標記
                 let p=PROJECTS[k], c=[(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2], cur=(k===currentProjectKey), ic={'dog':'🐕','cat':'🐈','bird':'🦜','rabbit':'🐇','turtle':'🐢'}[p.type]||'🐾';
                 let rm=(allAnnouncements[k]||p.announcement||"").match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/), rh=rm?`<div class="user-name-tag pixel-panel" style="color:#000;background-color:#fef08a;margin-bottom:2px;padding:2px 4px;">💰 $${rm[1]}</div>`:'';
                 let mh=cur?`<div style="position:absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom:12px;pointer-events:auto;">${rh}<div class="user-name-tag pixel-panel" style="color:white;background-color:#ef4444;">📍 ${escapeHTML(p.animalName)}遺失中心</div><div style="font-size:32px;animation:bounce 2s infinite;">${ic}</div></div>`:`<div class="user-label-container" style="bottom:12px;pointer-events:auto;opacity:0.8;">${rh}<div class="user-name-tag pixel-panel" style="background-color:#e5e7eb;">找 ${escapeHTML(p.animalName)}</div><div style="font-size:24px;">${ic}</div></div>`;
@@ -666,11 +710,13 @@
         // 💡 鎖定按鈕邏輯
         on('lock-project-btn', 'click', () => {
             isProjectLocked = !isProjectLocked;
+            lsSet('dogMap_isProjectLocked', isProjectLocked);
+            cachedMaxDist = null;
             let b = $('lock-project-btn');
             if (isProjectLocked) {
                 b.innerText = "🔒";
                 b.classList.replace('bg-blue-600', 'bg-red-600');
-                showCenterToast("🔒 已鎖定專案！\n地圖將隱藏其他專案標記，並只顯示 50 公里內的足跡。");
+                showCenterToast("🔒 已鎖定專案！\n優先顯示專案周邊最多一萬點足跡。");
             } else {
                 b.innerText = "🔓";
                 b.classList.replace('bg-red-600', 'bg-blue-600');
