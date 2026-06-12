@@ -150,7 +150,7 @@
             </div>
             <select id="switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
         </div>
-        <button id="lock-project-btn" class="pixel-btn bg-blue-600 text-white shadow-[4px_4px_0px_#1a202c] transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔓</button>
+        <button id="lock-project-btn" class="pixel-btn bg-green-600 text-white shadow-[4px_4px_0px_#1a202c] transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔓</button>
     </div>
     
     <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
@@ -340,7 +340,7 @@
                 let b = $('lock-project-btn');
                 if(b) {
                     b.innerText = "🔒";
-                    b.classList.replace('bg-blue-600', 'bg-red-600');
+                    b.classList.replace('bg-green-600', 'bg-red-600');
                 }
             }
             try { const cfg=await(await fetch('config.json?t='+Date.now())).json(); if(cfg?.ws_url) NGROK_WS_URL=cfg.ws_url; } catch(e){}
@@ -371,6 +371,20 @@
             
             if(isAdmin){show('admin-panel');} // 移除原先 delete-project-btn 邏輯
             if(lsGet('dogMap_userName')){currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor'))lsSet('dogMap_userColor',dbUserColor); if(localHistory.length){allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; renderMap(); updateStepsCounterUI();} if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text',"自動定位..."); startLocationServices(true);} else show('startup-overlay');
+            
+            // 💡 實作手機雙擊放大地圖邏輯 (排除按鈕與 UI 區域)
+            let mapLastTapTime = 0;
+            $('map-container').addEventListener('touchend', e => {
+                if(!isMobileDevice) return;
+                // 若觸控到按鈕、使用者標籤、自定義彈出視窗、Leaflet 控制項目則不觸發
+                if(e.target.closest('.pixel-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+                let now = Date.now();
+                if(now - mapLastTapTime < 300) {
+                    e.preventDefault(); // 防止穿透點擊或觸發預設行為
+                    map.setZoom(map.getZoom() + 1, {animate: true});
+                }
+                mapLastTapTime = now;
+            }, {passive: false});
         }
 
         // --- WebSocket 處理 ---
@@ -715,11 +729,11 @@
             let b = $('lock-project-btn');
             if (isProjectLocked) {
                 b.innerText = "🔒";
-                b.classList.replace('bg-blue-600', 'bg-red-600');
-                showCenterToast("🔒 已鎖定專案！\n優先顯示專案周邊最多一萬點足跡。");
+                b.classList.replace('bg-green-600', 'bg-red-600');
+                showCenterToast("🔒 已鎖定專案！\n減少足跡顯示範圍增加效能。");
             } else {
                 b.innerText = "🔓";
-                b.classList.replace('bg-red-600', 'bg-blue-600');
+                b.classList.replace('bg-red-600', 'bg-green-600');
                 showCenterToast("🔓 解除鎖定！\n已恢復顯示全區所有專案與足跡。");
             }
             drawAllProjects();
@@ -868,6 +882,21 @@
 
         on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); startLocationServices(false); connectWebSocket(); });
         let qcb=$('quick-camera-btn'); if(qcb){ qcb.addEventListener('click',function(e){if(window.innerWidth<=640&&!this.classList.contains('expanded-mode')){e.preventDefault(); this.classList.add('expanded-mode'); setTimeout(()=>this.classList.remove('expanded-mode'),3000);}}); }
+        
+        // 💡 實作手機雙擊放大地圖邏輯 (排除按鈕與 UI 區域)
+        let mapLastTapTime = 0;
+        $('map-container').addEventListener('touchend', e => {
+            if(!isMobileDevice) return;
+            // 若觸控到按鈕、使用者標籤、自定義彈出視窗、Leaflet 控制項目則不觸發
+            if(e.target.closest('.pixel-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+            let now = Date.now();
+            if(now - mapLastTapTime < 300) {
+                e.preventDefault(); // 防止穿透點擊或觸發預設行為
+                if(map) map.setZoom(map.getZoom() + 1, {animate: true});
+            }
+            mapLastTapTime = now;
+        }, {passive: false});
+
         window.addEventListener('DOMContentLoaded',initSystem);
     </script>
 </body>
