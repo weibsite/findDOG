@@ -300,8 +300,11 @@
             return cachedMaxDist;
         }
 
-        const getFilteredHistory = (hp, p) => {
+        const getFilteredHistory = (hp, p, u_id = null) => {
             if (!isProjectLocked || !p) return hp;
+            // 💡 特例：如果是幽靈玩家 (ghost_開頭)，則強制不套用 50KM 與 10000 點限制，讓他隨時在畫面上跑
+            if (u_id && typeof u_id === 'string' && u_id.startsWith('ghost_')) return hp;
+
             let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
             let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
             let maxDist = getConcentricMaxDistance(p);
@@ -656,7 +659,7 @@
                 Object.values(userMarkers).forEach(m=>map.removeLayer(m)); userMarkers={}; markersLayer.clearLayers();
                 let td=(targetRouteUid===myUid)?{history:localHistory}:allUsersData[targetRouteUid], hd=[], rc='#ef4444', rn='使用者'; 
                 if(targetRouteUid===myUid){hd=localHistory; rc=dbUserColor; rn=currentUserName;}else if(td?.history){hd=td.history; rc=td.color||rc; rn=td.userName;} 
-                hd = getFilteredHistory(hd, pProj); // 💡過濾器：處理軌跡模式下的極限限制
+                hd = getFilteredHistory(hd, pProj, targetRouteUid); // 💡過濾器：處理軌跡模式下的極限限制
                 if(hd.length){ 
                     if(!snakeInterval&&!isPlaybackPaused&&snakeIndex<hd.length)snakeIndex=hd.length; 
                     let ch=hd.slice(0,Math.max(1,snakeIndex)); 
@@ -737,10 +740,10 @@
             
             let pProj = PROJECTS[currentProjectKey];
             
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
+            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
+            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
             fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height); fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
-            Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; let hp = getFilteredHistory(ud.history, pProj); hp.forEach((pt,i)=>{let a=Math.max(0,n-pt.timestamp); if(i!==hp.length-1){let o=bO; if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); let p=map.latLngToContainerPoint([pt.lat,pt.lng]); if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}}});}); fogCtx.globalAlpha=1.0;
+            Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; let hp = getFilteredHistory(ud.history, pProj, u); hp.forEach((pt,i)=>{let a=Math.max(0,n-pt.timestamp); if(i!==hp.length-1){let o=bO; if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); let p=map.latLngToContainerPoint([pt.lat,pt.lng]); if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}}});}); fogCtx.globalAlpha=1.0;
         }
 
         // --- 軌跡/EVA ---
