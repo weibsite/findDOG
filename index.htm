@@ -679,10 +679,9 @@
             Object.keys(allUsersData).forEach(u=>{
                 let ud=allUsersData[u]; 
                 if(!ud.history?.length)return; 
-                let hp = getFilteredHistory(ud.history, pProj); // 💡過濾器限制
-                if(!hp.length) return; 
                 
-                let isS=(u===myUid), lp=hp[hp.length-1]; 
+                // 💡 即時位置不套用鎖定模式過濾，永遠顯示所有線上使用者的最新點位
+                let isS=(u===myUid), lp=ud.history[ud.history.length-1]; 
                 if(n-lp.timestamp<3600000)uc++; 
                 if(isSpectatorMode&&isS)return; 
 
