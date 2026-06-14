@@ -28,7 +28,7 @@
     <!-- Twitter / 其他平台的分享設定 -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="尋寵地圖 | 申請與管理後台" />
-    <meta name="twitter:description" cofntent="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
+    <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
     <meta name="twitter:image" content="https://finddog.online/image_og3.png" />
     <!-- ========================================== -->
     
@@ -1344,9 +1344,16 @@
         function renderAdminList(apps) {
             const container = document.getElementById('admin-list');
             container.innerHTML = '';
-            if (apps.length === 0) { container.innerHTML = '<p class="font-bold text-gray-500">目前沒有資料。</p>'; return; }
+            
+            // 💡 前端雙重保險：過濾掉有 isStray 標籤的浪浪專案
+            const filteredApps = apps.filter(app => !app.projectData.isStray);
+            
+            if (filteredApps.length === 0) { 
+                container.innerHTML = '<p class="font-bold text-gray-500">目前沒有資料。</p>'; 
+                return; 
+            }
 
-            apps.forEach(app => {
+            filteredApps.forEach(app => {
                 const pd = app.projectData;
                 let photoSrc = pd.mainPhoto;
                 if (photoSrc && photoSrc.startsWith('/images/')) { photoSrc = SERVER_HTTP_URL + photoSrc; }
