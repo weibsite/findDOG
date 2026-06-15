@@ -766,21 +766,32 @@
                     dists.push(totalDist);
                 }
                 
-                let interval = 5000; // 每 5000 公尺顯示一個標籤
-                let nextLabelDist = interval / 2; // 從中間開始標記
                 let labelPoints = [];
-                
-                if (totalDist < interval) {
+                if (totalDist < 5000) {
                      let mid = totalDist / 2;
+                     let placed = false;
                      for(let i=1; i<r.points.length; i++) {
-                         if(dists[i] >= mid) { labelPoints.push(r.points[i]); break; }
+                         if(dists[i] >= mid) { labelPoints.push(r.points[i]); placed = true; break; }
                      }
-                     if(!labelPoints.length && r.points.length) labelPoints.push(r.points[Math.floor(r.points.length/2)]);
+                     if(!placed && r.points.length) labelPoints.push(r.points[Math.floor(r.points.length/2)]);
                 } else {
+                     let targetDist = 2500;
                      for(let i=1; i<r.points.length; i++) {
-                         if(dists[i] >= nextLabelDist) {
-                             labelPoints.push(r.points[i]);
-                             nextLabelDist += interval;
+                         if(dists[i] >= targetDist) {
+                             let candidatePt = r.points[i];
+                             let tooClose = false;
+                             for(let j=0; j<labelPoints.length; j++) {
+                                 if(getDistance(candidatePt[0], candidatePt[1], labelPoints[j][0], labelPoints[j][1]) < 5000) {
+                                     tooClose = true;
+                                     break;
+                                 }
+                             }
+                             if(!tooClose) {
+                                 labelPoints.push(candidatePt);
+                                 targetDist = dists[i] + 5000;
+                             } else {
+                                 targetDist += 500; // Check again a bit further
+                             }
                          }
                      }
                 }
@@ -875,7 +886,7 @@
         });
         on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(),{draggable:true,zIndexOffset:10000,icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
-        on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟動");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
+        on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟推");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
         
         // 💡 鎖定按鈕邏輯
