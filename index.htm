@@ -128,6 +128,12 @@
     <div id="lottery-marquee-container" class="hidden absolute top-1/3 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-red-600/90 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]"><div class="animate-marquee-text text-white font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_#1a202c]">🎉 累積探索 60 分鐘！可以抽獎了要趕快抽獎免得抽獎次數遺失哦！ 🎉</div></div>
     <div id="win-marquee-container" class="hidden absolute top-1/4 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-yellow-400/95 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]"><div id="win-marquee-text" class="animate-marquee-text text-black font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_white]"></div></div>
 
+    <!-- 路線圖例 (新增) -->
+    <div id="routes-legend" class="hidden absolute top-24 left-4 z-[2000] pixel-panel p-2 text-[11px] sm:text-xs font-bold text-gray-900 bg-white/95 pointer-events-auto shadow-md w-36 sm:w-48 transition-all duration-300">
+        <div class="border-b-2 border-black pb-1 mb-1 text-center text-xs text-red-600 tracking-widest">🗺️ 路線圖例</div>
+        <div id="routes-legend-content" class="space-y-1"></div>
+    </div>
+
     <!-- Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
     <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
@@ -156,7 +162,7 @@
     <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
     <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
     <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
-    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手怒上傳座標">📤 強制打卡</button>
     <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="地圖放置標記">📍 導航標記</button>
     <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
     
@@ -407,7 +413,13 @@
             map.on('mouseup touchend',e=>{isPaintingClear=false; isErasingClear=false; lastPaintLatLng=null;});
             map.on('dragstart zoomstart',()=>{isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer();});
             map.on('dragend zoomend',()=>{mapInteractionTimer=setTimeout(()=>isMapInteracting=false,15000); renderMap(); resetPowerSavingTimer();});
-            map.createPane('fogPane').style.cssText='z-index:450;pointer-events:none;'; map.createPane('evaPane').style.cssText='z-index:460;pointer-events:none;'; map.createPane('trackPane').style.cssText='z-index:470;pointer-events:none;';
+            
+            // 建立圖層 (新增 routesPane 以保持路線顯示高於迷霧)
+            map.createPane('fogPane').style.cssText='z-index:450;pointer-events:none;'; 
+            map.createPane('evaPane').style.cssText='z-index:460;pointer-events:none;'; 
+            map.createPane('trackPane').style.cssText='z-index:470;pointer-events:none;';
+            map.createPane('routesPane').style.cssText='z-index:480;';
+
             initFogSystem(); setInterval(renderMap,15000);
 
             document.body.addEventListener('click', e => {
@@ -745,28 +757,74 @@
         }
         on('toggle-sighting-track-btn','click',()=>{ isSightingTrackVisible=!isSightingTrackVisible; let b=$('toggle-sighting-track-btn'); if(isSightingTrackVisible){b.innerText="👁️ 隱藏線索"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";}else{b.innerText="❌ 顯示線索"; b.style.cssText="background-color:#ef4444;color:white;";} renderSightings(); });
 
-        function renderRoutes() { if(!routesLayer)return; routesLayer.clearLayers(); Object.values(allRoutes).forEach(r=>{if(r.project&&r.project!==currentProjectKey||!r.points)return; L.polyline(r.points,{color:r.color||'#ff0000',weight:r.weight||5,opacity:0.9}).addTo(routesLayer).bindPopup(`<div class="font-bold text-center text-sm p-1 border-b-2 mb-1">${escapeHTML(r.name)}${r.project&&r.project!==currentProjectKey?` (${escapeHTML(r.project)})`:''}</div>`,{className:'pixel-popup'});}); }
+        function renderRoutes() { 
+            if(!routesLayer)return; 
+            routesLayer.clearLayers(); 
+            let legHtml = '';
+            let hasRoutes = false;
+            Object.values(allRoutes).forEach(r=>{
+                if((r.project&&r.project!==currentProjectKey)||!r.points)return;
+                hasRoutes = true;
+                L.polyline(r.points,{color:r.color||'#ff0000',weight:r.weight||5,opacity:0.9, pane:'routesPane'}).addTo(routesLayer).bindPopup(`<div class="font-bold text-center text-sm p-1 border-b-2 mb-1">${escapeHTML(r.name)}${r.project&&r.project!==currentProjectKey?` (${escapeHTML(r.project)})`:''}</div>`,{className:'pixel-popup'});
+                legHtml += `<div class="flex items-center gap-1 truncate" title="${escapeHTML(r.name)}"><span style="color:${escapeHTML(r.color||'#ff0000')}; font-size: 14px; line-height: 1; text-shadow: 1px 1px 0 #000;">▄</span> <span class="truncate">${escapeHTML(r.name)}</span></div>`;
+            }); 
+            if(hasRoutes) {
+                html('routes-legend-content', legHtml);
+                show('routes-legend');
+            } else {
+                hide('routes-legend');
+            }
+        }
 
         function initFogSystem() { fogCanvas=document.createElement('canvas'); map.getPane('fogPane').appendChild(fogCanvas); fogCtx=fogCanvas.getContext('2d'); lowResCanvas=document.createElement('canvas'); lowResCtx=lowResCanvas.getContext('2d'); tempCanvas=document.createElement('canvas'); tempCtx=tempCanvas.getContext('2d'); const rc=()=>{let s=map.getSize(); fogCanvas.width=s.x; fogCanvas.height=s.y; tempCanvas.width=lowResCanvas.width=Math.ceil(s.x*FOG_SCALE); tempCanvas.height=lowResCanvas.height=Math.ceil(s.y*FOG_SCALE); up();}; const up=()=>{L.DomUtil.setPosition(fogCanvas,map.containerPointToLayerPoint([0,0])); requestFogRender();}; window.addEventListener('resize',rc); map.on('zoomend',rc); map.on('move',up); rc(); }
-        function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{if(isFogVisible)renderFog(); fogRenderPending=false;});} }
+        function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{renderFog(); fogRenderPending=false;});} }
         function renderFog() {
-            if(!map||!fogCtx||!isFogVisible||isPowerSaving)return; let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
-            if(taiwanPolygons.length){let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');}else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}}else{lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
-            let hasActiveNear=false; if(PROJECTS[currentProjectKey]){let pb=PROJECTS[currentProjectKey].bounds, cl=(pb[0][0]+pb[1][0])/2, cg=(pb[0][1]+pb[1][1])/2; Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}});}
-            let bO=hasActiveNear?0.35:0.5, mO=hasActiveNear?0.35:0.5; const dr=(hp,i)=>{let r=Math.max(0,Math.min(1,((i<hp.length-1?hp[i+1].timestamp:n)-hp[i].timestamp)/60000)); return ((8+(117*r))/mpp)*FOG_SCALE;};
+            if(!map||!fogCtx||isPowerSaving)return; 
+            let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
             
             let pProj = PROJECTS[currentProjectKey];
-            
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
-            tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
-            fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height); fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
-            Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; let hp = getFilteredHistory(ud.history, pProj, u); hp.forEach((pt,i)=>{let a=Math.max(0,n-pt.timestamp); if(i!==hp.length-1){let o=bO; if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); let p=map.latLngToContainerPoint([pt.lat,pt.lng]); if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}}});}); fogCtx.globalAlpha=1.0;
+            let hasActiveNear=false, cl, cg;
+            if(pProj){
+                let pb=pProj.bounds; cl=(pb[0][0]+pb[1][0])/2; cg=(pb[0][1]+pb[1][1])/2;
+                Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}});
+            }
+
+            fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height);
+            let bO=hasActiveNear?0.35:0.5, mO=hasActiveNear?0.35:0.5; 
+            const dr=(hp,i)=>{let r=Math.max(0,Math.min(1,((i<hp.length-1?hp[i+1].timestamp:n)-hp[i].timestamp)/60000)); return ((8+(117*r))/mpp)*FOG_SCALE;};
+
+            // 如果顯示迷霧，才繪製黑色的底色遮罩
+            if(isFogVisible) {
+                if(taiwanPolygons.length){let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');}else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}}else{lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
+                
+                tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
+                tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
+                
+                fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
+            }
+
+            // 無論是否開啟迷霧，都必定畫出所有玩家彩色的小方塊足跡
+            Object.keys(allUsersData).forEach(u=>{
+                if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; 
+                let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; 
+                let hp = getFilteredHistory(ud.history, pProj, u); 
+                hp.forEach((pt,i)=>{
+                    let a=Math.max(0,n-pt.timestamp); 
+                    if(i!==hp.length-1){
+                        let o=bO; 
+                        if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); 
+                        let p=map.latLngToContainerPoint([pt.lat,pt.lng]); 
+                        if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}
+                    }
+                });
+            }); 
+            fogCtx.globalAlpha=1.0;
         }
 
         // --- 軌跡/EVA ---
         function startPlaybackInterval() { if(snakeInterval)clearInterval(snakeInterval); if(isPlaybackPaused)return; snakeInterval=setInterval(()=>{let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; if(snakeIndex<(td?.history?.length||0)){snakeIndex++;renderMap();}else{clearInterval(snakeInterval);snakeInterval=null;isPlaybackPaused=true;text('pb-pause','=');} }, currentPlaybackSpeed); }
         on('pb-start','click',()=>{snakeIndex=1; isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();}); on('pb-prev','click',()=>{snakeIndex=Math.max(1,snakeIndex-1); isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();}); on('pb-pause','click',()=>{isPlaybackPaused=!isPlaybackPaused; startPlaybackInterval();}); on('pb-speed','click',()=>{currentPlaybackSpeed/=2; if(currentPlaybackSpeed<62.5)currentPlaybackSpeed=basePlaybackSpeed; startPlaybackInterval();}); on('pb-end','click',()=>{let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; snakeIndex=td?.history?.length||0; isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();});
-        on('my-route-btn','click',()=>{ if(isSpectatorMode)return showModal("觀看模式下無法使用此功能！"); isMyRouteMode=!isMyRouteMode; let b=$('my-route-btn'); if(isMyRouteMode){targetRouteUid=myUid; let tm="🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。"; if(isAdmin){let mx=0; for(let u in allUsersData){if(allUsersData[u].history?.length>mx){mx=allUsersData[u].history.length; targetRouteUid=u;}} if(targetRouteUid!==myUid)tm=`👑 [管理員模式]\n已鎖定「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！`;} b.innerText="❌ 退出軌跡"; b.style.cssText="background-color:#ef4444;color:white;"; show('playback-controls'); if(isFogVisible){isFogVisible=false; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display='none'); text('toggle-fog-btn',"🌫️ 開啟迷霧"); $('toggle-fog-btn').style.backgroundColor="#9ca3af";} snakeIndex=1; isPlaybackPaused=false; currentPlaybackSpeed=basePlaybackSpeed; text('pb-pause','='); let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; if(td?.history?.length) map.setView([td.history[0].lat, td.history[0].lng],16); startPlaybackInterval(); showModal(tm); } else { targetRouteUid=null; hide('playback-controls'); if(snakeInterval){clearInterval(snakeInterval);snakeInterval=null;} b.innerText="🐍 我的軌跡"; b.style.cssText="background-color:#a855f7;color:white;"; if(!isFogVisible){isFogVisible=true; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display='block'); text('toggle-fog-btn',"👁️ 關閉迷霧"); $('toggle-fog-btn').style.backgroundColor="#f59e0b";} } renderMap(); requestFogRender(); });
+        on('my-route-btn','click',()=>{ if(isSpectatorMode)return showModal("觀看模式下無法使用此功能！"); isMyRouteMode=!isMyRouteMode; let b=$('my-route-btn'); if(isMyRouteMode){targetRouteUid=myUid; let tm="🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。"; if(isAdmin){let mx=0; for(let u in allUsersData){if(allUsersData[u].history?.length>mx){mx=allUsersData[u].history.length; targetRouteUid=u;}} if(targetRouteUid!==myUid)tm=`👑 [管理員模式]\n已鎖定「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！`;} b.innerText="❌ 退出軌跡"; b.style.cssText="background-color:#ef4444;color:white;"; show('playback-controls'); if(isFogVisible){isFogVisible=false; text('toggle-fog-btn',"🌫️ 開啟迷霧"); $('toggle-fog-btn').style.cssText="background-color:#9ca3af;color:#1a202c;";} snakeIndex=1; isPlaybackPaused=false; currentPlaybackSpeed=basePlaybackSpeed; text('pb-pause','='); let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; if(td?.history?.length) map.setView([td.history[0].lat, td.history[0].lng],16); startPlaybackInterval(); showModal(tm); } else { targetRouteUid=null; hide('playback-controls'); if(snakeInterval){clearInterval(snakeInterval);snakeInterval=null;} b.innerText="🐍 我的軌跡"; b.style.cssText="background-color:#a855f7;color:white;"; if(!isFogVisible){isFogVisible=true; text('toggle-fog-btn',"👁️ 關閉迷霧"); $('toggle-fog-btn').style.cssText="background-color:#f59e0b;color:#1a202c;";} } renderMap(); requestFogRender(); });
 
         const offsetLatLng=(lat,lng,dN,dE)=>{ let p=Math.PI; return [lat+(dN/6378137)*(180/p), lng+(dE/(6378137*Math.cos(lat*p/180)))*(180/p)]; };
         const getHexPoints=(cl,cg,R)=>{ let pt=[]; for(let i=0;i<6;i++) pt.push(offsetLatLng(cl,cg,R*Math.sin(Math.PI/180*(60*i-30)),R*Math.cos(Math.PI/180*(60*i-30)))); return pt; };
@@ -782,7 +840,18 @@
         on('profile-cancel-btn','click',()=>hide('profile-modal'));
         on('profile-save-btn','click',()=>{ let n=$('profile-name').value.trim(), h=$('profile-color').value; if(!/^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/.test(n))return show('profile-error'); currentUserName=n; dbUserColor=h; lsSet('dogMap_userName',n); lsSet('dogMap_userColor',h); $('profile-edit-trigger').style.backgroundColor=h; if(allUsersData[myUid]){allUsersData[myUid].userName=n; allUsersData[myUid].color=h;} saveLocationToServer(null,true); renderMap(); hide('profile-modal'); showCenterToast("✅ 個人資料已更新！"); });
         
-        on('toggle-fog-btn','click',()=>{ isFogVisible=!isFogVisible; map?.getPane('fogPane')&&(map.getPane('fogPane').style.display=isFogVisible?'block':'none'); let b=$('toggle-fog-btn'); if(isFogVisible){b.innerText="👁️ 關閉迷霧"; b.style.backgroundColor="#f59e0b"; requestFogRender();}else{b.innerText="🌫️ 開啟迷霧"; b.style.backgroundColor="#9ca3af";} });
+        on('toggle-fog-btn','click',()=>{ 
+            isFogVisible=!isFogVisible; 
+            let b=$('toggle-fog-btn'); 
+            if(isFogVisible){
+                b.innerText="👁️ 關閉迷霧"; 
+                b.style.cssText="background-color:#f59e0b;color:#1a202c;"; 
+            }else{
+                b.innerText="🌫️ 開啟迷霧"; 
+                b.style.cssText="background-color:#9ca3af;color:#1a202c;";
+            } 
+            requestFogRender(); 
+        });
         on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(),{draggable:true,zIndexOffset:10000,icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
         on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟動");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
@@ -891,7 +960,7 @@
         on('manage-sightings-btn','click',()=>{ renderManageSightingsList(); show('manage-sightings-modal'); }); on('close-manage-modal-btn','click',()=>hide('manage-sightings-modal'));
         function renderManageSightingsList() { let c=$('sightings-list-container'); c.innerHTML=''; let id=Object.keys(allSightings).filter(i=>allSightings[i].project===currentProjectKey).sort((a,b)=>allSightings[b].timestamp-allSightings[a].timestamp); if(!id.length)return html('sightings-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allSightings[i], dt=new Date(d.timestamp); c.innerHTML+=`<div class="border-4 border-black p-3 bg-white mb-2"><div class="font-bold text-sm">🕒 ${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} <span class="text-xl ml-2">${d.icon||'🐾'}</span></div><div class="text-sm mb-2">${escapeHTML(d.description)}</div><div class="flex gap-2"><button class="edit-s-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 編輯</button><button class="del-s-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-s-btn').forEach(b=>b.addEventListener('click',e=>{let sid=e.target.getAttribute('data-id'), cur=allSightings[sid]; hide('manage-sightings-modal'); let cg=$('sighting-icon-grid'); cg.innerHTML=''; SIGHTING_ICONS.forEach(ic=>{let bt=document.createElement('button'); bt.className='text-3xl p-2 border-2 border-black bg-white hover:bg-yellow-200 transition-colors cursor-pointer shadow-[2px_2px_0px_#000]'; bt.innerText=ic; bt.onclick=()=>{hide('sighting-icon-modal'); showInputModal(`📝 編輯出沒點 [${ic}]`,"描述...",cur.description, nd=>{wsSend("edit_sighting",{id:sid, data:{description:nd, icon:ic}}); show('manage-sightings-modal');});}; cg.appendChild(bt);}); show('sighting-icon-modal'); replaceBtn('sighting-icon-cancel-btn',()=>{hide('sighting-icon-modal'); show('manage-sightings-modal');});})); c.querySelectorAll('.del-s-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_sighting",{id:e.target.getAttribute('data-id')})))); }
         
-        const updRP=()=>{if(currentRoutePolyline)map.removeLayer(currentRoutePolyline); currentRouteMarkers.forEach(m=>map.removeLayer(m)); currentRouteMarkers=[]; let c=$('route-color').value, w=parseInt($('route-weight').value); if(currentRoutePoints.length){currentRoutePolyline=L.polyline(currentRoutePoints,{color:c,weight:w,dashArray:'5,10'}).addTo(map); currentRoutePoints.forEach(p=>currentRouteMarkers.push(L.circleMarker(p,{radius:5,color:'#000',weight:2,fillColor:c,fillOpacity:1}).addTo(map)));} };
+        const updRP=()=>{if(currentRoutePolyline)map.removeLayer(currentRoutePolyline); currentRouteMarkers.forEach(m=>map.removeLayer(m)); currentRouteMarkers=[]; let c=$('route-color').value, w=parseInt($('route-weight').value); if(currentRoutePoints.length){currentRoutePolyline=L.polyline(currentRoutePoints,{color:c,weight:w,dashArray:'5,10',pane:'routesPane'}).addTo(map); currentRoutePoints.forEach(p=>currentRouteMarkers.push(L.circleMarker(p,{radius:5,color:'#000',weight:2,fillColor:c,fillOpacity:1,pane:'routesPane'}).addTo(map)));} };
         $('route-weight').addEventListener('input', e=>{text('route-weight-val',e.target.value); updRP();}); $('route-color').addEventListener('input', updRP);
         on('add-route-btn','click',()=>{ isDrawingRoute=true; currentRoutePoints=[]; $('route-name').value=''; show('route-drawing-panel'); hide('admin-panel'); showCenterToast("🗺️ 點擊地圖新增路線節點。"); updRP(); }); on('route-undo-btn','click',()=>{currentRoutePoints.pop(); updRP();}); const extR=()=>{isDrawingRoute=false; hide('route-drawing-panel'); show('admin-panel'); currentRoutePoints=[]; updRP();}; on('route-cancel-btn','click', extR); on('route-finish-btn','click',()=>{ if(currentRoutePoints.length<2)return showCenterToast("⚠️ 至少需要兩個節點！"); wsSend("add_route",{data:{name:$('route-name').value||'未命名',color:$('route-color').value,weight:parseInt($('route-weight').value),points:currentRoutePoints,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！"); extR(); });
         
