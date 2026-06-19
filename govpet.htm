@@ -1068,16 +1068,37 @@ function updatePhotoViewer() {
     pUrl = getMediaUrl(pUrl); 
     const imgEl = document.getElementById('viewer-img'); 
     const vidEl = document.getElementById('viewer-vid'); 
+    const loadingEl = document.getElementById('viewer-loading');
+    
+    if (loadingEl) loadingEl.classList.remove('hidden');
+
     if (isVideo) { 
         imgEl.classList.add('hidden'); 
         vidEl.classList.remove('hidden'); 
+        vidEl.oncanplay = () => { if (loadingEl) loadingEl.classList.add('hidden'); };
         vidEl.src = pUrl; 
         vidEl.play().catch(e => {}); 
     } else { 
         vidEl.classList.add('hidden'); 
         vidEl.pause(); 
         imgEl.classList.remove('hidden'); 
+        imgEl.classList.add('opacity-0');
+        
+        imgEl.onload = () => { 
+            if (loadingEl) loadingEl.classList.add('hidden'); 
+            imgEl.classList.remove('opacity-0'); 
+        };
+        imgEl.onerror = () => { 
+            if (loadingEl) loadingEl.classList.add('hidden'); 
+            imgEl.classList.remove('opacity-0'); 
+        };
+        
         imgEl.src = pUrl; 
+        
+        if (imgEl.complete) {
+            if (loadingEl) loadingEl.classList.add('hidden'); 
+            imgEl.classList.remove('opacity-0');
+        }
     } 
     
     const titleEl = document.getElementById('viewer-title'); 
