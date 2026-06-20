@@ -150,8 +150,17 @@
 
                 if (chunkIndex === totalChunks - 1) {
                     // Completed
-                    statusEl.innerHTML = '✅ <span class="text-green-600">上傳成功！</span><br><br>檔案連結：<br><a href="' + API_BASE_URL + responseData.url + '" target="_blank" class="text-blue-600 underline break-all">' + API_BASE_URL + responseData.url + '</a>';
+                    const fullUrl = location.origin + responseData.url;
+                    statusEl.innerHTML = '✅ <span class="text-green-600">上傳成功！</span><br><br>檔案連結 (點擊複製)：<br><div id="copy-link" class="text-blue-600 underline break-all cursor-pointer bg-blue-100 p-2 rounded inline-block mt-2 font-black border-2 border-blue-200">' + fullUrl + '</div>';
                     statusEl.classList.remove('hidden');
+                    
+                    document.getElementById('copy-link').addEventListener('click', () => {
+                        navigator.clipboard.writeText(fullUrl);
+                        const el = document.getElementById('copy-link');
+                        el.innerHTML = '✅ <span class="text-green-600">網址已成功複製！</span>';
+                        setTimeout(() => { el.innerHTML = fullUrl; }, 2000);
+                    });
+
                     fileInput.value = '';
                     btn.disabled = false;
                     btn.innerText = '🚀 開始上傳';
