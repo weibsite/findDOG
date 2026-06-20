@@ -44,6 +44,21 @@
     </div>
     <script>
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
+        let API_BASE_URL = "";
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('config.json?t=' + Date.now());
+                const data = await res.json();
+                if (data && data.ws_url) {
+                    API_BASE_URL = data.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
+                }
+            } catch (e) {
+                console.warn("載入 config.json 失敗", e);
+                API_BASE_URL = location.origin;
+            }
+        }
+        loadConfig();
 
         document.getElementById('upload-btn').addEventListener('click', async () => {
             const pwd = document.getElementById('upload-password').value;
@@ -66,14 +81,12 @@
                 return;
             }
 
+            if (!API_BASE_URL) await loadConfig();
+            const fetchUrl = API_BASE_URL + '/api/upload_chunk';
+
             const file = fileInput.files[0];
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             const uploadId = Date.now() + "_" + Math.floor(Math.random() * 1000);
-            
-            let fetchUrl = '/api/upload_chunk';
-            if (location.hostname !== 'finddog.online' && location.port !== '8000') {
-                fetchUrl = location.protocol + '//' + location.hostname + ':8000/api/upload_chunk';
-            }
 
             statusEl.classList.add('hidden');
             progContainer.classList.remove('hidden');
@@ -137,7 +150,7 @@
 
                 if (chunkIndex === totalChunks - 1) {
                     // Completed
-                    statusEl.innerHTML = '✅ <span class="text-green-600">上傳成功！</span><br><br>檔案連結：<br><a href="' + responseData.url + '" target="_blank" class="text-blue-600 underline break-all">' + location.origin + responseData.url + '</a>';
+                    statusEl.innerHTML = '✅ <span class="text-green-600">上傳成功！</span><br><br>檔案連結：<br><a href="' + API_BASE_URL + responseData.url + '" target="_blank" class="text-blue-600 underline break-all">' + API_BASE_URL + responseData.url + '</a>';
                     statusEl.classList.remove('hidden');
                     fileInput.value = '';
                     btn.disabled = false;
