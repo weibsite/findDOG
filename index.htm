@@ -490,6 +490,12 @@
                         renderMap();
                         requestFogRender();
                     }
+                    else if (res.type === 'status_update') {
+                        if (res.data.project === currentProjectKey) {
+                            window.latestStatusText = res.data.text;
+                            renderSightings();
+                        }
+                    }
                     else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
                     else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
                     else if(res.type==='user_appended'){let d=res.data, u=res.uid; if(!allUsersData[u])allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else{allUsersData[u].userName=d.userName; allUsersData[u].color=d.color; if(d.total_steps!==undefined)allUsersData[u].total_steps=d.total_steps;} allUsersData[u].history.push(d.point); if(u===myUid)updateStepsCounterUI(); renderMap();}
@@ -770,7 +776,12 @@
             sortedS.sort((a,b)=>b.timestamp - a.timestamp);
             sortedS.forEach((d, idx)=>{ let st=d.description||""; let td=new Date(); let ds=(td.getMonth()+1)+'/'+td.getDate()+' '; if(st.startsWith(ds))st=st.substring(ds.length); if(st.startsWith('0'+ds))st=st.substring(('0'+ds).length); st=st.replace(/\(.*?\)|\（.*?\）/g, '').trim(); if(st.length>12)st=st.substring(0,12).trim()+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; 
                 let bg='#fef08a', c='#1a202c', ani='blink-pixel 2s infinite alternate';
-                if(idx===0){bg='#ef4444'; c='white'; ani='blink-pixel 1s infinite alternate';}
+                if(idx===0){
+                    bg='#ef4444'; c='white'; ani='blink-pixel 1s infinite alternate';
+                    if(window.latestStatusText) {
+                        pt += ` <span class="text-[10px] bg-red-700 px-1 text-white border border-white rounded ml-1 font-bold animate-pulse">${escapeHTML(window.latestStatusText)}</span>`;
+                    }
+                }
                 else if(idx<=10){let r=229+25*(1-idx/10), g=231+9*(1-idx/10), b=235-97*(1-idx/10); bg=`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; ani='none';}
                 else {bg='#e5e7eb'; ani='none';}
                 L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
