@@ -768,7 +768,7 @@
             if(!sightingsLayer)return; sightingsLayer.clearLayers(); if(!sightingTrackLayer)sightingTrackLayer=L.layerGroup().addTo(map); sightingTrackLayer.clearLayers(); let tPts=[]; const tReg=/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/;
             let sortedS = Object.values(allSightings).filter(d=>!(d.project&&d.project!==currentProjectKey));
             sortedS.sort((a,b)=>b.timestamp - a.timestamp);
-            sortedS.forEach((d, idx)=>{ let st=d.description||""; let td=new Date(); let ds=(td.getMonth()+1)+'/'+td.getDate()+' '; if(st.startsWith(ds))st=st.substring(ds.length); if(st.startsWith('0'+ds))st=st.substring(('0'+ds).length); if(st.length>12)st=st.substring(0,12).trim()+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; 
+            sortedS.forEach((d, idx)=>{ let st=d.description||""; let td=new Date(); let ds=(td.getMonth()+1)+'/'+td.getDate()+' '; if(st.startsWith(ds))st=st.substring(ds.length); if(st.startsWith('0'+ds))st=st.substring(('0'+ds).length); st=st.replace(/\(.*?\)|\（.*?\）/g, '').trim(); if(st.length>12)st=st.substring(0,12).trim()+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; 
                 let bg='#fef08a', c='#1a202c', ani='blink-pixel 2s infinite alternate';
                 if(idx===0){bg='#ef4444'; c='white'; ani='blink-pixel 1s infinite alternate';}
                 else if(idx<=10){let r=229+25*(1-idx/10), g=231+9*(1-idx/10), b=235-97*(1-idx/10); bg=`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; ani='none';}
