@@ -241,5 +241,40 @@
         <a href="govpet.htm" class="text-blue-400 hover:text-blue-300 font-black">走失協尋</a>
         <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400 hover:text-green-300 font-black">聯絡作者</a>
     </div>
+
+    <!-- 左下角分享與複製功能 -->
+    <div class="fixed bottom-2 left-2 z-50 p-2 text-xs sm:text-sm font-bold bg-gray-800/90 backdrop-blur border-2 border-gray-600 rounded flex gap-3 items-center shadow-[2px_2px_0px_#000]">
+        <button id="btn-copy-url" class="text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
+            📋 複製網址
+        </button>
+        <button id="btn-share" class="text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors">
+            📤 分享
+        </button>
+    </div>
+
+    <script>
+        // 複製網址功能
+        document.getElementById('btn-copy-url').addEventListener('click', () => {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.getElementById('btn-copy-url');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ 已複製！';
+                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+            });
+        });
+
+        // 原生分享功能
+        document.getElementById('btn-share').addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: '安全媒體檢視',
+                    text: '這是一個受安全加密與防盜連保護的媒體。',
+                    url: window.location.href,
+                }).catch(err => console.log('分享取消或失敗', err));
+            } else {
+                alert('您的瀏覽器不支援原生分享功能，請直接複製網址即可！');
+            }
+        });
+    </script>
 </body>
 </html>

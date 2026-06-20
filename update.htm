@@ -155,10 +155,18 @@
                     statusEl.classList.remove('hidden');
                     
                     document.getElementById('copy-link').addEventListener('click', () => {
-                        navigator.clipboard.writeText(fullUrl);
                         const el = document.getElementById('copy-link');
-                        el.innerHTML = '✅ <span class="text-green-600">網址已成功複製！</span>';
-                        setTimeout(() => { el.innerHTML = fullUrl; }, 2000);
+                        if (!el.dataset.copied) {
+                            navigator.clipboard.writeText(fullUrl);
+                            el.dataset.copied = "true";
+                            el.innerHTML = '✅ <span class="text-green-600">網址已成功複製！再次點擊可開啟影片觀看</span>';
+                            setTimeout(() => { 
+                                el.dataset.copied = "";
+                                el.innerHTML = fullUrl; 
+                            }, 5000);
+                        } else {
+                            window.open(fullUrl, '_blank');
+                        }
                     });
 
                     fileInput.value = '';
