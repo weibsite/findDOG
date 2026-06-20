@@ -958,7 +958,105 @@ function updateAnimalInfoCard() {
     } 
 }
 
-function drawAllProjects() { allCenterMarkers.forEach(m => map.removeLayer(m)); allCenterMarkers = []; const isFiltered = (typeof currentSearchKeyword !== 'undefined' && currentSearchKeyword !== '') || (typeof selectedDynamicFilters !== 'undefined' && selectedDynamicFilters.length > 0); if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {}; (window.sortedProjectKeys || Object.keys(PROJECTS)).forEach(key => { const proj = PROJECTS[key]; const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2]; const isCurrent = (key === currentProjectKey); const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', '其他': '🐾' }; const iconSymbol = typeMap[proj.type] || '🐾'; let markerColor = '#9ca3af'; if (proj.announcement) { let lines = proj.announcement.split('\n'); let traits = []; lines.forEach(line => { if (line.startsWith('種類: ') || line.startsWith('花色: ')) { let val = line.split(': ')[1]; if (val) traits.push(val.trim()); } }); for (let t of traits) { if (window.dynamicCategoryColors[t]) { markerColor = window.dynamicCategoryColors[t]; break; } } } let markerHtml = ''; if (isCurrent) { markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`; } else if (isFiltered) { markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`; } else { markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`; } const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] }); const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map); marker.on('click', () => { if (!isCurrent) { document.getElementById('switch-project-select').value = key; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); } }); allCenterMarkers.push(marker); }); }
+let progressiveRenderQueue = [];
+let progressiveRenderTimer = null;
+
+function drawAllProjects() {
+    allCenterMarkers.forEach(m => map.removeLayer(m));
+    allCenterMarkers = [];
+    if (progressiveRenderTimer) {
+        clearTimeout(progressiveRenderTimer);
+        progressiveRenderTimer = null;
+    }
+    
+    const isFiltered = (typeof currentSearchKeyword !== 'undefined' && currentSearchKeyword !== '') || (typeof selectedDynamicFilters !== 'undefined' && selectedDynamicFilters.length > 0);
+    if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
+    
+    const mapCenter = map.getCenter();
+    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+    
+    let projectsWithDist = keys.map(key => {
+        const proj = PROJECTS[key];
+        const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
+        const dist = map.distance(mapCenter, center) / 1000;
+        return { key, proj, center, dist };
+    });
+    
+    projectsWithDist.sort((a, b) => a.dist - b.dist);
+    
+    let initialBatch = [];
+    progressiveRenderQueue = [];
+    
+    projectsWithDist.forEach(item => {
+        if (item.dist <= 2 || item.key === currentProjectKey) {
+            initialBatch.push(item);
+        } else {
+            progressiveRenderQueue.push(item);
+        }
+    });
+    
+    if (initialBatch.length === 0 && progressiveRenderQueue.length > 0) {
+        initialBatch = progressiveRenderQueue.splice(0, 50);
+    }
+    
+    const renderMarker = (item) => {
+        const key = item.key;
+        const proj = item.proj;
+        const center = item.center;
+        const isCurrent = (key === currentProjectKey);
+        const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', '其他': '🐾' };
+        const iconSymbol = typeMap[proj.type] || '🐾';
+        let markerColor = '#9ca3af';
+        if (proj.announcement) {
+            let lines = proj.announcement.split('\n');
+            let traits = [];
+            lines.forEach(line => {
+                if (line.startsWith('種類: ') || line.startsWith('花色: ')) {
+                    let val = line.split(': ')[1];
+                    if (val) traits.push(val.trim());
+                }
+            });
+            for (let t of traits) {
+                if (window.dynamicCategoryColors[t]) {
+                    markerColor = window.dynamicCategoryColors[t];
+                    break;
+                }
+            }
+        }
+        let markerHtml = '';
+        if (isCurrent) {
+            markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
+        } else if (isFiltered) {
+            markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
+        } else {
+            markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
+        }
+        const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
+        const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
+        marker.on('click', () => {
+            if (!isCurrent) {
+                document.getElementById('switch-project-select').value = key;
+                document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+            }
+        });
+        allCenterMarkers.push(marker);
+    };
+    
+    initialBatch.forEach(renderMarker);
+    
+    const processQueue = () => {
+        if (progressiveRenderQueue.length === 0) return;
+        const chunk = progressiveRenderQueue.splice(0, 50);
+        chunk.forEach(renderMarker);
+        if (progressiveRenderQueue.length > 0) {
+            progressiveRenderTimer = setTimeout(processQueue, 100);
+        }
+    };
+    
+    if (progressiveRenderQueue.length > 0) {
+        progressiveRenderTimer = setTimeout(processQueue, 500);
+    }
+}
 function renderMap() { 
     if (!markersLayer || !map || isPowerSaving) return; 
     markersLayer.clearLayers(); 
