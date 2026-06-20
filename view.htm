@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全影片播放</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #111827; }
+        .pixel-panel { border: 4px solid #1f2937; box-shadow: 6px 6px 0px #000; border-radius: 8px; }
+        .pixel-btn { border: 3px solid #1f2937; box-shadow: 4px 4px 0px #000; transition: all 0.1s; font-weight: 900; border-radius: 6px; }
+        .pixel-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
+        .pixel-input { border: 3px solid #1f2937; box-shadow: inset 3px 3px 0px rgba(0,0,0,0.5); outline: none; border-radius: 6px; background-color: #374151; color: white; }
+        .pixel-input:focus { border-color: #3b82f6; }
+        video { outline: none; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-white" oncontextmenu="return false;">
+    
+    <!-- 密碼輸入區塊 -->
+    <div id="auth-panel" class="pixel-panel p-8 w-full max-w-md bg-gray-800 text-center">
+        <h2 class="text-3xl font-black mb-8 border-b-4 border-gray-600 pb-4 inline-block text-gray-100">🔒 安全影片驗證</h2>
+        <div class="mb-6 text-left">
+            <label class="block text-base font-black mb-2 text-gray-300">🔑 請輸入觀看密碼</label>
+            <input type="password" id="video-password" class="pixel-input w-full p-4 text-lg font-bold" placeholder="密碼">
+        </div>
+        <button id="auth-btn" class="pixel-btn w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xl tracking-wider">🔓 解鎖播放</button>
+        <div id="auth-status" class="mt-6 font-bold hidden whitespace-pre-wrap text-base p-3 text-red-400"></div>
+    </div>
+
+    <!-- 影片播放區塊 -->
+    <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center">
+        <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 影片播放</h2>
+        <video id="secure-video" class="w-full bg-black aspect-video" controls controlsList="nodownload" disablePictureInPicture>
+            <!-- 來源會在 JavaScript 中動態設定 -->
+            您的瀏覽器不支援影片播放。
+        </video>
+        <p class="text-xs text-gray-500 mt-4">此為一次性安全授權連結，防範未經授權之下載與外流。</p>
+    </div>
+
+    <script>
+        let API_BASE_URL = "";
+
+        // 載入後端真實位址
+        async function loadConfig() {
+            try {
+                const res = await fetch('config.json?t=' + Date.now());
+                const data = await res.json();
+                if (data && data.ws_url) {
+                    API_BASE_URL = data.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
+                }
+            } catch (e) {
+                API_BASE_URL = location.origin;
+            }
+        }
+
+        // 解析網址上的 ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('id');
+
+        if (!videoId) {
+            document.getElementById('auth-panel').innerHTML = '<h2 class="text-2xl font-black text-red-500 mt-4">❌ 找不到影片代號</h2><p class="mt-4 text-gray-300">請確認您的連結是否完整。</p>';
+        } else {
+            loadConfig();
+
+            document.getElementById('auth-btn').addEventListener('click', async () => {
+                const pwd = document.getElementById('video-password').value;
+                const statusEl = document.getElementById('auth-status');
+                const btn = document.getElementById('auth-btn');
+
+                if (!pwd) {
+                    statusEl.innerText = '❌ 請輸入密碼！';
+                    statusEl.classList.remove('hidden');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.innerText = '⏳ 驗證中...';
+                statusEl.classList.add('hidden');
+
+                if (!API_BASE_URL) await loadConfig();
+
+                try {
+                    const res = await fetch(API_BASE_URL + '/api/auth_video', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: videoId, password: pwd })
+                    });
+                    
+                    const data = await res.json();
+                    
+                    if (data.success && data.token) {
+                        // 驗證成功，隱藏密碼區塊，顯示影片區塊
+                        document.getElementById('auth-panel').classList.add('hidden');
+                        document.getElementById('video-panel').classList.remove('hidden');
+                        document.getElementById('video-panel').classList.add('flex');
+                        
+                        // 動態設定帶有 Token 的 src
+                        const videoEl = document.getElementById('secure-video');
+                        videoEl.src = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${data.token}`;
+                        videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
+                    } else {
+                        statusEl.innerText = '❌ ' + (data.message || '驗證失敗');
+                        statusEl.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    statusEl.innerText = '❌ 伺服器連線異常，請稍後再試。';
+                    statusEl.classList.remove('hidden');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = '🔓 解鎖播放';
+                }
+            });
+
+            // 防止鍵盤快捷鍵檢查元素或儲存
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'C') || 
+                    (e.ctrlKey && e.key === 'S') || 
+                    (e.ctrlKey && e.key === 'U')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
