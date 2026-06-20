@@ -14,6 +14,9 @@
         .pixel-input { border: 3px solid #1f2937; box-shadow: inset 3px 3px 0px rgba(0,0,0,0.5); outline: none; border-radius: 6px; background-color: #374151; color: white; }
         .pixel-input:focus { border-color: #3b82f6; }
         video { outline: none; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        /* 隱藏原生全螢幕按鈕，改用我們自訂的容器全螢幕，以確保浮水印不會消失 */
+        video::-webkit-media-controls-fullscreen-button { display: none !important; }
+        video::-moz-media-controls-fullscreen-button { display: none !important; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-white" oncontextmenu="return false;">
@@ -32,7 +35,7 @@
     <!-- 影片播放區塊 -->
     <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center relative">
         <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 影片播放</h2>
-        <div class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl">
+        <div id="video-container" class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl">
             <video id="secure-video" class="w-full h-full bg-black" controls controlsList="nodownload" disablePictureInPicture>
                 您的瀏覽器不支援影片播放。
             </video>
@@ -43,8 +46,13 @@
 
             <!-- 失焦保護層 -->
             <div id="blur-overlay" class="absolute inset-0 bg-black/90 backdrop-blur-xl z-20 flex items-center justify-center hidden">
-                <span class="text-red-500 font-black text-2xl tracking-widest border-4 border-red-500 p-4">⚠️ 畫面失焦，播放暫停 (防側錄保護)</span>
+                <span class="text-red-500 font-black text-2xl tracking-widest border-4 border-red-500 p-4 text-center leading-relaxed">⚠️ 畫面失焦，播放暫停<br><span class="text-lg">為保護影片隱私，禁止背景錄影</span></span>
             </div>
+            
+            <!-- 自訂全螢幕按鈕 -->
+            <button id="custom-fs-btn" class="absolute bottom-16 right-4 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
+                🔲 全螢幕
+            </button>
         </div>
         <p class="text-xs text-gray-500 mt-4">此為一次性安全授權連結，防範未經授權之下載與外流。</p>
     </div>
@@ -135,6 +143,41 @@
                         window.addEventListener('blur', handleVisibility);
                         window.addEventListener('focus', handleVisibility);
                         document.addEventListener('visibilitychange', handleVisibility);
+                        
+                        // 自訂全螢幕邏輯 (確保容器包含浮水印一起放大)
+                        const fsBtn = document.getElementById('custom-fs-btn');
+                        const videoContainer = document.getElementById('video-container');
+                        fsBtn.addEventListener('click', () => {
+                            if (!document.fullscreenElement) {
+                                if (videoContainer.requestFullscreen) {
+                                    videoContainer.requestFullscreen();
+                                } else if (videoContainer.webkitRequestFullscreen) {
+                                    videoContainer.webkitRequestFullscreen();
+                                }
+                            } else {
+                                if (document.exitFullscreen) {
+                                    document.exitFullscreen();
+                                } else if (document.webkitExitFullscreen) {
+                                    document.webkitExitFullscreen();
+                                }
+                            }
+                        });
+                        
+                        // 雙擊影片也能觸發自訂全螢幕
+                        videoContainer.addEventListener('dblclick', (e) => {
+                            // 防止雙擊原生控件造成異常
+                            if (e.target !== fsBtn) {
+                                fsBtn.click();
+                            }
+                        });
+
+                        document.addEventListener('fullscreenchange', () => {
+                            if (document.fullscreenElement) {
+                                fsBtn.innerText = '❌ 退出全螢幕';
+                            } else {
+                                fsBtn.innerText = '🔲 全螢幕';
+                            }
+                        });
                         
                     } else {
                         statusEl.innerText = '❌ ' + (data.message || '驗證失敗');
