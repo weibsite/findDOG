@@ -37,15 +37,6 @@
 <svg width="0" height="0" class="hidden"><filter id="dynamic-sharpness"><feConvolveMatrix id="sharpness-matrix" order="3 3" preserveAlpha="true" matrix="0 0 0 0 1 0 0 0 0"/></filter></svg>
 <div id="map-container"><div id="map"></div><svg id="report-crosshair" class="crosshair-target" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2"><circle cx="12" cy="12" r="10" stroke="black" stroke-width="3"/><circle cx="12" cy="12" r="10" stroke="red" stroke-width="2"/><path stroke="black" stroke-width="3" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path stroke="red" stroke-width="2" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3" fill="red"/></svg></div>
 
-<!-- 開場載入動畫 -->
-<div id="intro-animation-overlay" class="absolute inset-0 z-[40000] bg-[#1a202c] flex flex-col items-center justify-center transition-opacity duration-1000">
-    <div class="text-6xl animate-bounce mb-6">🐕</div>
-    <h1 class="text-2xl font-black text-white mb-2 font-pixel tracking-widest">載入走失協尋地圖...</h1>
-    <div class="w-64 h-6 border-4 border-white bg-gray-200 p-0.5 mt-4 shadow-[4px_4px_0px_#000]">
-        <div id="intro-progress-bar" class="h-full bg-yellow-400 w-0 transition-all duration-[2000ms] ease-linear"></div>
-    </div>
-</div>
-
 <!-- 省電黑畫面 -->
 <div id="power-saving-overlay" class="hidden fixed inset-0 z-[25000] bg-black/90 touch-none"></div>
 
@@ -129,6 +120,7 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
+let hasConnectedWs = false;
 function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
 function getMediaUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/downloads/')) return getBaseHttpUrl() + p; return u; }
 function setPersistentData(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -287,9 +279,20 @@ function processGpsUpdate(lat, lng) {
     if (gpsState !== 'active') { gpsState = 'active'; renderMap(); }
     const now = Date.now(); 
     if (!isReportingMode && !isSpectatorMode && !isMyRouteMode && localHistory.length === 0) { 
-        map.setView([lat, lng], 17); 
+        map.flyTo([lat, lng], 17, { duration: 1.5 }); 
+        map.once('moveend', () => {
+            if (!hasConnectedWs) {
+                hasConnectedWs = true;
+                connectWebSocket();
+            }
+        });
         setTimeout(() => { if (Object.keys(PROJECTS).length > 0) updateProjectDropdown(); }, 500); 
-    } 
+    } else {
+        if (!hasConnectedWs) {
+            hasConnectedWs = true;
+            connectWebSocket();
+        }
+    }
     const newPoint = { lat, lng, timestamp: now }; 
     if (localHistory.length > 0) { 
         const lastPt = localHistory[localHistory.length - 1]; 
@@ -349,7 +352,7 @@ function startLocationServices(autoStart) {
 
 document.getElementById('master-start-btn').addEventListener('click', () => { currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100 + Math.random() * 900)}`; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(false); });
 function checkLocalSetupAndStart() { const savedName = getPersistentData('dogMap_userName'); if (savedName) { currentUserName = savedName; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(true); } }
-async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } const introOverlay = document.getElementById('intro-animation-overlay'); const introProgress = document.getElementById('intro-progress-bar'); if (introOverlay && introProgress) { setTimeout(() => { introProgress.style.width = '100%'; }, 100); setTimeout(() => { introOverlay.style.opacity = '0'; setTimeout(() => { introOverlay.remove(); connectWebSocket(); checkLocalSetupAndStart(); }, 1000); }, 2100); } else { connectWebSocket(); checkLocalSetupAndStart(); } }
+async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } checkLocalSetupAndStart(); }
 function updateProgress(step, status, text) { const el = document.getElementById(`prog-${step}`); if (!el) return; if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; } else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; } else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; } else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; } }
 async function uploadBlobFile(blob, filename) { const formData = new FormData(); formData.append('files', blob, filename); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
 async function uploadFileObj(file) { const formData = new FormData(); formData.append('files', file); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
@@ -996,6 +999,60 @@ function drawAllProjects() {
     let initialBatch = [];
     progressiveRenderQueue = [];
     
+    // ==========================================
+    // 空間平均取樣 (Grid-based spatial sampling)
+    // ==========================================
+    const MAX_POINTS = 500;
+    if (projectsWithDist.length > MAX_POINTS) {
+        let currentProjItem = projectsWithDist.find(p => p.key === currentProjectKey);
+        
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        projectsWithDist.forEach(p => {
+            if (p.center[0] < minLat) minLat = p.center[0];
+            if (p.center[0] > maxLat) maxLat = p.center[0];
+            if (p.center[1] < minLng) minLng = p.center[1];
+            if (p.center[1] > maxLng) maxLng = p.center[1];
+        });
+        
+        // 將畫面切分為 30x30 的網格 (最多 900 格)
+        let gridSize = 30; 
+        let latStep = (maxLat - minLat) / gridSize || 0.01;
+        let lngStep = (maxLng - minLng) / gridSize || 0.01;
+        
+        let grid = {};
+        projectsWithDist.forEach(p => {
+            if (p.key === currentProjectKey) return; 
+            let i = Math.floor((p.center[0] - minLat) / latStep);
+            let j = Math.floor((p.center[1] - minLng) / lngStep);
+            let gridKey = i + '_' + j;
+            if (!grid[gridKey]) grid[gridKey] = [];
+            grid[gridKey].push(p);
+        });
+        
+        let sampled = [];
+        if (currentProjItem) sampled.push(currentProjItem);
+        
+        let gridKeys = Object.keys(grid);
+        let remainingQuota = MAX_POINTS - sampled.length;
+        
+        // 輪詢抽取法：每個網格輪流給出一個離中心最近的點，直到滿額為止
+        // 這樣可以保證偏遠地區的零星點位不會消失，而高密度的市區點位會被平均濃縮
+        let loopCount = 0;
+        while (remainingQuota > 0 && gridKeys.some(k => grid[k].length > 0)) {
+            for (let k of gridKeys) {
+                if (grid[k].length > 0 && remainingQuota > 0) {
+                    sampled.push(grid[k].shift());
+                    remainingQuota--;
+                }
+            }
+            loopCount++;
+            if (loopCount > MAX_POINTS) break; // 防呆
+        }
+        
+        projectsWithDist = sampled;
+    }
+    // ==========================================
+    
     projectsWithDist.forEach(item => {
         if (item.dist <= 2 || item.key === currentProjectKey) {
             initialBatch.push(item);
@@ -1251,6 +1308,6 @@ function switchToAdjacentProjectPhotos(offset) { let keys = window.sortedProject
 document.getElementById('viewer-close-btn').addEventListener('click', () => { document.getElementById('photo-viewer-modal').classList.add('hidden'); document.getElementById('viewer-vid').pause(); resetViewerAdjustments(); tPanel.classList.add('hidden'); activeTool=''; if(tPanelTimer) clearTimeout(tPanelTimer);});
 document.getElementById('viewer-prev-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = viewerPhotos.length - 1; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(-1); } } });
 document.getElementById('viewer-next-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = 0; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(1); } } });
-document.getElementById('toggle-fog-btn').addEventListener('click', e => { isFogVisible = !isFogVisible; e.target.innerText = isFogVisible ? '👁️ 關閉迷霧' : '🌫️ 開啟迷霧'; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) requestFogRender(); }); document.getElementById('spectator-btn').addEventListener('click', e => { isSpectatorMode = !isSpectatorMode; e.target.innerText = isSpectatorMode ? '結束觀看' : '觀看模式'; e.target.style.backgroundColor = isSpectatorMode ? '#ef4444' : '#f59e0b'; e.target.style.color = isSpectatorMode ? 'white' : '#1a202c'; const hint = document.getElementById('spectator-hint'); if (hint) isSpectatorMode ? hint.classList.remove('hidden') : hint.classList.add('hidden'); renderMap(); }); document.getElementById('my-route-btn').addEventListener('click', e => { isMyRouteMode = !isMyRouteMode; targetRouteUid = isMyRouteMode ? myUid : null; e.target.innerText = isMyRouteMode ? '🌍 返回全域' : '🐍 我的軌跡'; e.target.style.backgroundColor = isMyRouteMode ? '#3b82f6' : '#f59e0b'; e.target.style.color = isMyRouteMode ? 'white' : '#1a202c'; const pb = document.getElementById('playback-controls'); if (isMyRouteMode) { if (pb) pb.classList.remove('hidden'); snakeIndex = localHistory.length; if (localHistory.length > 0) map.setView([localHistory[localHistory.length - 1].lat, localHistory[localHistory.length - 1].lng], 16); } else { if (pb) pb.classList.add('hidden'); if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } } renderMap(); }); document.getElementById('locate-btn').addEventListener('click', () => { if (lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, { animate: true }); }); if (document.getElementById('pb-start')) { document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 1; isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(1, snakeIndex - 10); isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-pause').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; isPlaybackPaused = true; } else { isPlaybackPaused = false; let maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) snakeIndex = 1; snakeInterval = setInterval(() => { snakeIndex++; maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }, currentPlaybackSpeed); } }); document.getElementById('pb-speed').addEventListener('click', () => { currentPlaybackSpeed = Math.max(50, currentPlaybackSpeed / 2); if (snakeInterval) { document.getElementById('pb-pause').click(); document.getElementById('pb-pause').click(); } }); document.getElementById('pb-end').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } isPlaybackPaused = false; snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); renderMap(); }); }
+document.getElementById('toggle-fog-btn').addEventListener('click', e => { isFogVisible = !isFogVisible; e.target.innerText = isFogVisible ? '👁️ 關閉迷霧' : '🌫️ 開啟迷霧'; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) requestFogRender(); }); document.getElementById('spectator-btn').addEventListener('click', e => { if (!hasConnectedWs) { hasConnectedWs = true; connectWebSocket(); } isSpectatorMode = !isSpectatorMode; e.target.innerText = isSpectatorMode ? '結束觀看' : '觀看模式'; e.target.style.backgroundColor = isSpectatorMode ? '#ef4444' : '#f59e0b'; e.target.style.color = isSpectatorMode ? 'white' : '#1a202c'; const hint = document.getElementById('spectator-hint'); if (hint) isSpectatorMode ? hint.classList.remove('hidden') : hint.classList.add('hidden'); renderMap(); }); document.getElementById('my-route-btn').addEventListener('click', e => { isMyRouteMode = !isMyRouteMode; targetRouteUid = isMyRouteMode ? myUid : null; e.target.innerText = isMyRouteMode ? '🌍 返回全域' : '🐍 我的軌跡'; e.target.style.backgroundColor = isMyRouteMode ? '#3b82f6' : '#f59e0b'; e.target.style.color = isMyRouteMode ? 'white' : '#1a202c'; const pb = document.getElementById('playback-controls'); if (isMyRouteMode) { if (pb) pb.classList.remove('hidden'); snakeIndex = localHistory.length; if (localHistory.length > 0) map.setView([localHistory[localHistory.length - 1].lat, localHistory[localHistory.length - 1].lng], 16); } else { if (pb) pb.classList.add('hidden'); if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } } renderMap(); }); document.getElementById('locate-btn').addEventListener('click', () => { if (lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, { animate: true }); }); if (document.getElementById('pb-start')) { document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 1; isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(1, snakeIndex - 10); isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-pause').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; isPlaybackPaused = true; } else { isPlaybackPaused = false; let maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) snakeIndex = 1; snakeInterval = setInterval(() => { snakeIndex++; maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }, currentPlaybackSpeed); } }); document.getElementById('pb-speed').addEventListener('click', () => { currentPlaybackSpeed = Math.max(50, currentPlaybackSpeed / 2); if (snakeInterval) { document.getElementById('pb-pause').click(); document.getElementById('pb-pause').click(); } }); document.getElementById('pb-end').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } isPlaybackPaused = false; snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); renderMap(); }); }
 window.onload = initSystem;
 </script></body></html>
