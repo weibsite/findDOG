@@ -32,13 +32,17 @@
         <div id="auth-status" class="mt-6 font-bold hidden whitespace-pre-wrap text-base p-3 text-red-400"></div>
     </div>
 
-    <!-- 影片播放區塊 -->
+    <!-- 媒體播放區塊 -->
     <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center relative">
-        <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 影片播放</h2>
-        <div id="video-container" class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl">
-            <video id="secure-video" class="w-full h-full bg-black" controls controlsList="nodownload" disablePictureInPicture>
+        <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 媒體檢視</h2>
+        <div id="video-container" class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl bg-black">
+            <!-- 影片播放器 -->
+            <video id="secure-video" class="w-full h-full bg-black hidden object-contain" controls controlsList="nodownload" disablePictureInPicture>
                 您的瀏覽器不支援影片播放。
             </video>
+            
+            <!-- 圖片檢視器 -->
+            <img id="secure-image" class="w-full h-full bg-black hidden object-contain pointer-events-none" />
             
             <!-- 浮水印疊加層 -->
             <div id="watermark-overlay" class="absolute inset-0 pointer-events-none overflow-hidden opacity-20 flex flex-wrap justify-center items-center content-center z-10" style="mix-blend-mode: difference;">
@@ -54,7 +58,7 @@
                 🔲 全螢幕
             </button>
         </div>
-        <p class="text-xs text-gray-500 mt-4">此為一次性安全授權連結，防範未經授權之下載與外流。</p>
+        <p class="text-sm font-bold text-red-500 mt-4 bg-red-900/20 px-4 py-2 rounded">此影片未經授權嚴禁下載及外流</p>
     </div>
 
     <script>
@@ -115,20 +119,47 @@
                         document.getElementById('video-panel').classList.add('flex');
                         
                         // 動態設定帶有 Token 的 src
+                        const isImage = data.filename && data.filename.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i);
+                        const mediaUrl = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${data.token}`;
+                        
                         const videoEl = document.getElementById('secure-video');
-                        videoEl.src = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${data.token}`;
-                        videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
+                        const imgEl = document.getElementById('secure-image');
+                        
+                        if (isImage) {
+                            imgEl.src = mediaUrl;
+                            imgEl.classList.remove('hidden');
+                        } else {
+                            videoEl.src = mediaUrl;
+                            videoEl.classList.remove('hidden');
+                            videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
+                        }
 
                         // 建立 IP 浮水印
                         const overlay = document.getElementById('watermark-overlay');
                         const ipText = data.ip || 'UNKNOWN_IP';
                         overlay.innerHTML = '';
+                        const watermarkSpans = [];
                         for (let i = 0; i < 60; i++) {
                             const span = document.createElement('span');
                             span.innerText = ipText;
-                            span.className = 'text-white text-xl font-black p-4 m-2 transform -rotate-45 select-none opacity-30';
+                            span.className = 'text-white text-xl font-black p-4 m-2 select-none opacity-30 transition-transform duration-[2000ms] ease-in-out';
+                            // 初始隨機位置與角度
+                            const randomX = Math.floor(Math.random() * 60) - 30;
+                            const randomY = Math.floor(Math.random() * 60) - 30;
+                            span.style.transform = `translate(${randomX}px, ${randomY}px) rotate(-45deg)`;
                             overlay.appendChild(span);
+                            watermarkSpans.push(span);
                         }
+
+                        // 每 3 秒隨機變動所有浮水印的位置與角度，防禦修圖與 AI 去背
+                        setInterval(() => {
+                            watermarkSpans.forEach(span => {
+                                const randomX = Math.floor(Math.random() * 80) - 40;
+                                const randomY = Math.floor(Math.random() * 80) - 40;
+                                const randomRot = -45 + (Math.floor(Math.random() * 20) - 10); // -55 to -35 deg
+                                span.style.transform = `translate(${randomX}px, ${randomY}px) rotate(${randomRot}deg)`;
+                            });
+                        }, 3000);
 
                         // 防側錄機制：失焦或切換視窗時自動暫停並模糊畫面
                         const blurOverlay = document.getElementById('blur-overlay');
