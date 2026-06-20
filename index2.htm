@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- 1. 瀏覽器標籤頁的標題 -->
+    <title>尋寵地圖 | 找回毛小孩的路</title>
+    
+    <!-- 2. 瀏覽器介面深色模式 (主題顏色) -->
+    <meta name="theme-color" content="#1a202c">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- 3. 瀏覽器標籤頁的 ICON (Favicon) -->
+    <link href="icon1_32.ico" rel="icon">
+    <link rel="icon" href="icon1.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon2.png">
+
+    <!-- 4. SEO 與基礎網頁簡介 -->
+    <meta name="description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！">
+
+    <!-- 5. 社群分享設定 (Open Graph) -->
+    <meta property="og:title" content="尋寵地圖 | 找回毛小孩的路" />
+    <meta property="og:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！點擊進入加入搜索行列。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://finddog.online/image_og1.png" /> 
+    <meta property="og:url" content="https://finddog.online/" />
+    <meta property="og:site_name" content="尋寵地圖" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="尋寵地圖 | 找回毛小孩的路" />
+    <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
+    <meta name="twitter:image" content="https://finddog.online/image_og1.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; touch-action: none; -webkit-text-size-adjust: none; }
+        input, textarea, select { touch-action: manipulation; }
+        
+        #map-container { position: relative; width: 100vw; height: 100vh; }
+        #map { width: 100%; height: 100%; background-color: #1a202c; }
+        .glass-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
+        .glass-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
+        .glass-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
+        .glass-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
+        .glass-input:focus { background-color: #fef3c7; }
+        .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
+        .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .user-avatar-pixel { width: 16px; height: 16px; border: 3px solid #1a202c; box-sizing: border-box; }
+        .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
+        .pixel-popup .leaflet-popup-content-wrapper { background-color: white; border: 4px solid #1a202c; border-radius: 0; box-shadow: 4px 4px 0px #1a202c; padding: 0; }
+        .pixel-popup .leaflet-popup-tip-container { display: none; }
+        
+        .pixel-popup-dark .leaflet-popup-content-wrapper { background-color: #1f2937; border: 4px solid #000; border-radius: 0; box-shadow: 4px 4px 0px #000; padding: 0; }
+        .pixel-popup-dark .leaflet-popup-tip-container { display: none; }
+
+        .blinking-red-pixel { animation: blink-pixel 1s infinite alternate; }
+        @keyframes blink-pixel { 0% { background-color: #ef4444; transform: scale(1); } 100% { background-color: #fca5a5; transform: scale(1.3); } }
+        @keyframes pulse-square { 0% { transform: scale(0.5); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 1px; } }
+        @keyframes marquee-scroll { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .center-pulse-square { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border: 4px solid #ef4444; box-sizing: border-box; animation: pulse-square 2s infinite linear; pointer-events: none; }
+        .animate-marquee-text { display: inline-block; white-space: nowrap; animation: marquee-scroll 20s linear infinite; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border: 2px solid #1a202c; }
+        ::-webkit-scrollbar-thumb { background: #1a202c; }
+        
+        #animal-info-section.mobile-collapsed { height: 36px !important; }
+        #animal-info-section.mobile-collapsed img { opacity: 0; pointer-events: none; }
+        
+        #animal-info-section.mobile-collapsed #card-next-btn { bottom: 0 !important; }
+        #animal-info-section.mobile-collapsed #collapsed-photo-label { opacity: 1 !important; }
+
+        .compare-img-container img { object-fit: contain; width: 100%; height: 100%; pointer-events: auto; }
+
+        #animal-info-section.mobile-collapsed .gallery-btn-overlay { display: none !important; }
+        #header-gallery-btn { display: none; }
+        #animal-info-section.mobile-collapsed + div #header-gallery-btn { display: block; }
+
+        @media (max-width: 640px) {
+            .collapsible-btn { transition: all 0.3s ease; white-space: nowrap; overflow: hidden; text-align: left; }
+            .collapsible-btn.collapsed { width: 38px !important; padding-left: 8px !important; padding-right: 0 !important; }
+            .collapsible-btn.show-desc::after { content: attr(data-desc); font-size: 10px; color: #fff; margin-left: 6px; font-weight: bold; opacity: 0.85; border-left: 1px solid rgba(0,0,0,0.3); padding-left: 6px; }
+        }
+
+        #quick-camera-btn.expanded-mode { width: 108px !important; }
+        #quick-camera-btn.expanded-mode .camera-text { max-width: 60px !important; opacity: 1 !important; margin-left: 0.25rem !important; font-size: 0.75rem !important; }
+
+        #central-gps-error-modal { display: none; }
+        #central-gps-error-modal.show { display: flex; }
+    </style>
+
+<!-- ================= V2 MODERN UI INJECTED ================= -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Noto Sans TC', sans-serif !important; background: #0f172a; }
+    
+    /* Glassmorphism Classes */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.6);
+        color: #1e293b;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-panel-dark {
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        color: #f8fafc;
+    }
+    .glass-input {
+        background: rgba(255, 255, 255, 0.5);
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        color: #0f172a;
+        transition: all 0.2s;
+        outline: none;
+    }
+    .glass-input:focus {
+        background: #fff;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    }
+    
+    /* Modern Buttons */
+    .glass-btn {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .glass-btn:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    }
+    .glass-btn:active {
+        transform: translateY(1px) scale(0.98);
+    }
+    .glass-btn.bg-gray-400 { background: linear-gradient(135deg, #94a3b8, #64748b); box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); }
+    .glass-btn.bg-red-500 { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+    .glass-btn.bg-green-500 { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); }
+    .glass-btn.bg-yellow-400 { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
+    
+    /* Animations */
+    @keyframes radar-scan {
+        0% { transform: scale(0); opacity: 0.8; }
+        100% { transform: scale(4); opacity: 0; }
+    }
+    .radar-wave {
+        position: absolute; top: 50%; left: 50%;
+        width: 100px; height: 100px; margin: -50px 0 0 -50px;
+        border-radius: 50%; border: 4px solid #22c55e;
+        animation: radar-scan 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+        pointer-events: none; z-index: 10000;
+    }
+    @keyframes float-up {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+    }
+    .step-float-text {
+        position: absolute; color: #f59e0b; font-weight: 900; font-size: 24px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 9999;
+        animation: float-up 1s ease-out forwards;
+    }
+    
+    /* Bottom Navigation Bar for Mobile */
+    .mobile-bottom-nav {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        width: 90%; max-width: 400px; height: 70px;
+        background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255,255,255,0.4); border-radius: 35px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        display: flex; justify-content: space-around; z-index: 10000;
+        padding: 0 15px; align-items: center;
+    }
+    .nav-item {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 50px; height: 50px; border-radius: 25px; cursor: pointer;
+        transition: all 0.3s; color: #64748b; text-decoration: none; font-size: 10px; font-weight: 700;
+    }
+    .nav-item:hover, .nav-item.active { background: rgba(59, 130, 246, 0.1); color: #3b82f6; transform: translateY(-5px); }
+    .nav-item div { font-size: 20px; margin-bottom: 2px; }
+    
+    /* FAB (Floating Action Button) */
+    .fab-radar {
+        position: fixed; bottom: 100px; right: 20px; width: 60px; height: 60px;
+        background: linear-gradient(135deg, #10b981, #059669); border-radius: 30px;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); z-index: 10000;
+        display: flex; align-items: center; justify-content: center; color: white;
+        font-size: 24px; cursor: pointer; transition: all 0.3s;
+    }
+    .fab-radar:hover { transform: scale(1.1) rotate(15deg); }
+    
+    /* Daily Steps Widget */
+    .steps-widget {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
+        padding: 10px 15px; color: white; display: flex; align-items: center; gap: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s; cursor: pointer;
+    }
+    .steps-widget:hover { transform: scale(1.05); }
+    .steps-progress-bg { width: 80px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .steps-progress-bar { height: 100%; background: #f59e0b; width: 0%; transition: width 0.5s ease-out; }
+    .steps-count { font-weight: 900; font-size: 14px; color: #fcd34d; line-height: 1; }
+    
+    /* Confetti Canvas */
+    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 99999; }
+</style>
+<!-- ========================================================= -->
+\n</head>
+<body>
+    <div id="map-container"><div id="map"></div></div>
+    
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
+        <div class="text-6xl mb-6 opacity-50 animate-pulse">🌙</div>
+        <div class="text-2xl font-black tracking-widest mb-2 text-gray-400">省電模式運作中</div>
+        <div class="text-sm font-bold text-gray-600 mb-8">GPS 定位仍在背景上傳</div>
+        <div class="text-sm text-gray-500 font-bold border-2 border-gray-800 px-6 py-3 rounded-full mt-10 shadow-[0_0_15px_rgba(255,255,255,0.1)]">👆 輕觸畫面任意處喚醒</div>
+    </div>
+
+    <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
+    
+    <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] glass-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
+
+    <div id="central-gps-error-modal" class="fixed inset-0 z-[30000] bg-black/80 items-center justify-center p-4">
+        <div class="glass-panel p-6 w-full max-w-sm text-center relative shadow-[8px_8px_0px_rgba(0,0,0,0.8)] border-4 border-red-600 bg-white">
+            <h2 class="text-2xl font-black text-red-600 mb-4 border-b-4 border-red-600 pb-2">⚠️ 缺少定位權限</h2>
+            <p class="text-gray-900 font-bold mb-4 leading-relaxed text-sm">由於您可能是透過 LINE 內部開啟本網頁，導致無法取得 GPS 定位。</p>
+            <button id="copy-url-btn" class="glass-btn w-full py-4 bg-blue-600 text-white font-black text-lg mb-4 animate-pulse">👉 點此複製網址 👈</button>
+            <p class="text-gray-800 font-bold text-sm leading-relaxed mb-4 bg-yellow-200 p-2 border-2 border-black">請改用 <span class="text-blue-600">Safari</span> 或 <span class="text-green-600">Chrome</span> 貼上開啟。</p>
+            <p class="text-gray-700 font-bold text-[11px] mt-2 border-t-2 border-dashed border-gray-400 pt-2">💡 或點擊右上角/右下角的 ︙ 選擇「在瀏覽器中開啟」</p>
+            <button id="close-gps-modal-btn" class="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 border border-white/40 font-black text-xl shadow-[4px_4px_0px_#000]">X</button>
+        </div>
+    </div>
+
+    <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
+        <div class="glass-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
+            <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
+            <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="glass-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
+            <button id="master-start-btn" class="glass-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button><div id="error-msg" class="hidden"></div>
+        </div>
+    </div>
+
+    <div id="lottery-marquee-container" class="hidden absolute top-1/3 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-red-600/90 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]"><div class="animate-marquee-text text-white font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_#1a202c]">🎉 累積探索 60 分鐘！可以抽獎了要趕快抽獎免得抽獎次數遺失哦！ 🎉</div></div>
+    <div id="win-marquee-container" class="hidden absolute top-1/4 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-yellow-400/95 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]"><div id="win-marquee-text" class="animate-marquee-text text-black font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_white]"></div></div>
+
+    <!-- Modals -->
+    <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="glass-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
+    <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="glass-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="glass-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
+    <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="glass-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="glass-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
+    
+    <!-- Admin Modals -->
+    <div id="admin-user-info-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-5 w-full max-w-sm text-center relative"><h3 class="text-gray-900 font-bold mb-3 text-lg border-b-2 border-black pb-2 flex items-center justify-center gap-2">🕵️ 玩家稽查 <span id="admin-user-badge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 border-2 border-black">黑名單</span></h3><div class="text-left text-xs space-y-3 font-bold text-gray-800 mb-4 bg-gray-100 p-3 border border-white/40"><p>👤 暱稱：<span id="au-name" class="text-blue-700"></span></p><p>🌐 IP位址：<span id="au-ip" class="text-blue-700"></span></p><p>👣 總步數：<span id="au-steps" class="text-blue-700"></span></p><p>🎟️ 剩餘抽獎次數：<span id="au-tickets" class="text-blue-700"></span></p><p>🎰 歷史抽獎次數：<span id="au-draws" class="text-blue-700"></span></p><div class="border-t-2 border-dashed border-gray-400 pt-2 mt-2"><p class="text-red-600">🏆 最後中獎：</p><p>時間：<span id="au-win-time"></span></p><p>獎項：<span id="au-win-prize"></span></p></div></div><div class="flex flex-col gap-2"><button id="au-restrict-btn" class="glass-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 加入黑名單</button><button id="au-close-btn" class="glass-btn w-full py-2 bg-gray-400 text-sm">❌ 關閉</button></div></div></div>
+    <div id="manage-blacklist-modal" class="hidden absolute inset-0 z-[11500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統黑名單管理</h3><p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">黑名單玩家抽獎機率將被默默降至下方設定的上限。<br>且管理員巡視時會看見其名牌標示為紅色。</p><div class="flex items-center justify-between gap-2 mb-3 bg-red-50 p-2 border-2 border-red-500"><label class="text-xs font-bold text-gray-800 whitespace-nowrap">最高中獎機率(%):</label><input type="number" id="restrict-prob-input" class="glass-input flex-1 p-1 text-sm font-sans" value="10.0" min="0" step="0.1"><button id="save-restrict-prob-btn" class="glass-btn px-3 py-1 bg-blue-500 text-white text-xs">儲存</button></div><div id="blacklist-container" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2 text-left"></div><button id="close-blacklist-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">❌ 關閉列表</button></div></div>
+    
+    <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3><p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p><input type="text" id="profile-name" class="glass-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱" maxlength="15"><div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black"><label class="text-sm font-bold text-gray-800">代表色:</label><input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer"><input type="text" id="profile-hex" class="glass-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7"></div><div class="flex gap-2"><button id="profile-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="profile-save-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button></div></div></div>
+
+    <!-- UI -->
+    <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all">
+        <div class="relative w-full">
+            <div class="glass-btn p-3 pr-2 text-sm sm:text-base font-black text-black border border-white/40 bg-yellow-400 shadow-lg w-full text-left sm:text-center flex items-center justify-between pointer-events-none overflow-hidden h-[52px]">
+                <span id="project-display-text" class="truncate mr-2 flex-1 text-center">載入中...</span>
+                <span class="font-black text-black shrink-0">▼</span>
+            </div>
+            <select id="switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
+        </div>
+        <!-- 💡 鎖定按鈕預設為紅色鎖定狀態 -->
+        <button id="lock-project-btn" class="glass-btn bg-red-600 text-white shadow-lg transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔒</button>
+    </div>
+    
+    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="地圖放置標記">📍 導航標記</button>
+    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
+    
+    <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] glass-btn p-2 text-xs hidden">觀看模式</button>
+    <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] glass-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
+    <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] glass-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
+
+    <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-1 flex gap-1 bg-white/95 shadow-lg"><button id="pb-start" class="glass-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="glass-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="glass-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="glass-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="glass-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
+
+    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border border-white/40 rounded-full h-[63px] w-[63px] hover:w-[113px] flex items-center justify-center shadow-lg cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
+        <span class="text-[28px] shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
+        <span class="camera-text max-w-0 opacity-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out group-hover:max-w-[60px] group-hover:opacity-100 group-hover:ml-1 font-black text-xs tracking-widest pointer-events-none">回報浪浪</span>
+    </a>
+
+    <!-- 右下角 UI 容器 -->
+    <div class="absolute bottom-10 right-4 z-[2500] flex flex-col gap-2 items-end pointer-events-none">
+        <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2">
+            <div class="relative">
+                <div style="font-size:38px;filter:drop-shadow(2px 2px 0px #1a202c);line-height:1;">🎁</div>
+                <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
+            </div>
+            <div id="gift-timer" class="glass-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
+        </div>
+        
+        <div class="flex flex-col gap-2 items-end pointer-events-auto">
+            <button id="power-saving-btn" class="sm:hidden glass-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-lg cursor-pointer flex flex-col items-center justify-center min-w-[75px] border-gray-600">
+                <div class="text-xl mb-0.5">🌙</div>
+                <div class="tracking-widest">省電</div>
+            </button>
+            <div id="step-panel" class="glass-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-lg cursor-pointer min-w-[75px]">
+                👣 累積步數<br>
+                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-toast" class="absolute top-4 right-4 z-[3000] glass-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black cursor-pointer" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
+    
+    <div id="announcement-panel" class="absolute top-16 right-4 z-[3000] glass-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
+        <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
+            <div id="animal-photo-loader" class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15] hidden">
+                <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
+            </div>
+            <div id="card-prev-btn" class="absolute left-0 top-0 bottom-0 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm">&lt;</div>
+            <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
+            <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
+            <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
+            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+        </div>
+        <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
+        <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
+            <div id="animal-name-date-header" class="font-black text-blue-700 text-xs mt-2 mb-1 pb-1 border-b border-dashed border-gray-400"></div>
+            <div id="announcement-text" class="leading-relaxed whitespace-pre-wrap text-[11px]"></div>
+        </div>
+        <div id="announcement-action-container" class="mt-2 hidden"></div>
+    </div>
+    
+    <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4"><button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] cursor-pointer">✕</button><div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2"><div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg"><input type="file" id="compare-file-input" accept="image/*" class="hidden"><div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors"><div class="text-5xl sm:text-6xl mb-4">📸</div><div class="text-white font-bold text-sm sm:text-lg mb-2">點擊選擇本機照片</div><div class="text-gray-400 text-[10px] sm:text-xs font-bold whitespace-pre-wrap leading-relaxed">上傳後會出現在左邊</div></div><div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container"><img id="compare-local-img" src=""></div><button id="compare-reselect-btn" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 glass-btn px-4 py-2 bg-blue-500 text-white text-xs z-10 shadow-[2px_2px_0px_#000]">🔄 重新選擇</button></div><div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg"><div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap border border-gray-500">放大的目標照片</div><button id="compare-prev-btn" class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&lt;</button><button id="compare-next-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&gt;</button><div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center"><img id="compare-main-img" src=""></div></div></div><button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 glass-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button></div>
+    <div id="gallery-modal" class="hidden absolute inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4"><div class="w-full max-w-md bg-white border border-white/40 p-4 flex flex-col h-[80vh] glass-panel"><h3 class="text-xl font-bold mb-2 border-b-2 border-black pb-2 text-center" id="gallery-title">動物相簿</h3><div class="flex gap-2 mb-2"><button id="tab-photos" class="flex-1 glass-btn py-2 bg-blue-500 text-white border-2 border-black">📸 相片</button><button id="tab-videos" class="flex-1 glass-btn py-2 bg-gray-400 text-white border-2 border-black">🎥 影片</button></div><div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div><button id="close-gallery-btn" class="glass-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button></div></div>
+    <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container"><img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-all duration-300 pointer-events-none opacity-0"><div id="viewer-loading" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[25]"><div class="w-12 h-12 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div></div><div id="viewer-title" class="absolute top-4 left-0 w-full text-center text-white text-lg font-bold drop-shadow-[2px_2px_0px_#000] z-10 px-4 pointer-events-none"></div><button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer shadow-[2px_2px_0px_#000]">關閉 ✕</button><div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4"><button id="viewer-prev-btn" class="glass-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-lg text-sm whitespace-nowrap">&lt; 上一張</button><button id="viewer-next-btn" class="glass-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-lg text-sm whitespace-nowrap">下一張 &gt;</button></div><div id="viewer-toast" class="hidden absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[100] text-center text-lg transition-opacity duration-300 pointer-events-none"></div></div></div>
+
+    <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3><p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p><div class="bg-gray-200 border border-white/40 p-4 mb-4 shadow-lg"><div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div><div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2"><div id="reel-1" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div><div id="reel-2" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div><div id="reel-3" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div></div></div><div class="flex flex-col gap-3"><button id="slot-draw-btn" class="glass-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button><div class="flex gap-2"><button id="slot-check-pool-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white text-xs">🎁 中獎記錄</button><button id="slot-close-btn" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 關閉</button></div></div></div></div>
+    <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl" id="prize-pool-title">🎁 我的中獎紀錄</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border border-white/40 bg-white p-3 mb-4 text-left space-y-3 shadow-lg"></div><button id="prize-pool-close-btn" class="glass-btn w-full py-2 bg-gray-400">關閉</button></div></div>
+
+    <!-- 管理員面板更新 -->
+    <div id="admin-panel" class="absolute top-4 right-[120px] z-[11000] glass-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]">
+        <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
+        <div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div>
+        <button id="clear-history-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button>
+        <button id="add-sighting-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
+        <button id="manage-sightings-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
+        <button id="add-route-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
+        <!-- 新增上傳 GPX 按鈕 -->
+        <button id="upload-gpx-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-lime-600 text-white">📁 上傳 GPX</button>
+        <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
+        <button id="manage-routes-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
+        
+        <button id="update-announce-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
+        <button id="add-prize-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button>
+        <button id="manage-prizes-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
+        <button id="manage-blacklist-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+        <button id="close-admin-btn" class="glass-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
+    </div>
+    
+    <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="glass-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="glass-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="glass-btn w-full py-2 bg-gray-400">取消</button></div></div>
+    
+    <div id="sighting-icon-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">🏷️ 選擇線索圖示</h3><div class="grid grid-cols-4 gap-3 mb-6" id="sighting-icon-grid"></div><button id="sighting-icon-cancel-btn" class="glass-btn w-full py-2 bg-gray-400">取消</button></div></div>
+    
+    <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標或地址</h3><input type="text" id="coord-input-value" class="glass-input w-full p-3 mb-4 text-center font-mono text-sm" placeholder="貼上座標、網址或輸入地址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    
+    <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
+    
+    <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">直接在畫面上拖曳塗抹要清除的範圍！點擊或塗抹已標示的紅圈即可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="glass-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
+
+    <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="glass-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="glass-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="glass-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
+    
+    <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
+    <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="glass-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="glass-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
+    
+    <!-- 新增：GPX 屬性設定 Modal -->
+    <div id="gpx-config-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold mb-4 text-lg">📁 設定 GPX 路線</h3>
+            <input type="text" id="gpx-route-name" placeholder="路線名稱" class="glass-input w-full p-2 mb-3 font-bold">
+            <div class="flex gap-4 mb-4 items-center">
+                <div class="flex-col flex items-center">
+                    <label class="text-xs font-bold mb-1">顏色</label>
+                    <input type="color" id="gpx-route-color" value="#10b981" class="w-10 h-10 border-2 border-black cursor-pointer">
+                </div>
+                <div class="flex-1">
+                    <label class="text-xs font-bold mb-1 block">粗細: <span id="gpx-route-weight-val">5</span>px</label>
+                    <input type="range" id="gpx-route-weight" min="2" max="12" value="5" class="w-full cursor-pointer">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="gpx-config-cancel" class="glass-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="gpx-config-save" class="glass-btn flex-1 py-2 bg-blue-500 text-white">上傳路線</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="glass-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
+    <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="glass-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="glass-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
+    
+    <div class="absolute bottom-2 right-2 z-[2000] glass-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="govpet.htm" class="text-purple-600 hover:text-purple-800 no-underline font-black">走失協尋</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- 核心優化：DOM 與共用方法輔助 ---
+        const $ = id => document.getElementById(id), show = id => $(id)?.classList.remove('hidden'), hide = id => $(id)?.classList.add('hidden');
+        const text = (id, str) => { if($(id)) $(id).innerText = str; }, html = (id, str) => { if($(id)) $(id).innerHTML = str; };
+        const on = (id, ev, cb) => $(id)?.addEventListener(ev, cb);
+        const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} }, lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+        const escapeHTML = str => String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
+        const getBaseHttpUrl = () => NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : "";
+        const replaceBtn = (id, cb) => { let el=$(id), clo=el.cloneNode(true); el.parentNode.replaceChild(clo, el); if(cb) clo.addEventListener('click', cb); return clo; };
+        const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
+        
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // --- 全域變數 ---
+        let hasInitialUrlZoomed=false, NGROK_WS_URL="", ws, wsReconnectDelay=3000, isSystemReady=false;
+        let map, markersLayer, sightingsLayer, routesLayer, activeBoundsRectangle=null, sightingTrackLayer, isSightingTrackVisible=true;
+        let PROJECTS={}, currentProjectKey = getProjectFromURL() || lsGet('dogMap_currentProject') || null;
+        let myUid=lsGet('dogMap_UID')||('usr_'+Math.random().toString(36).substr(2,9)); lsSet('dogMap_UID',myUid);
+        let currentUserName="", dbUserColor="", isAdmin=sessionStorage.getItem('dogMap_isAdmin')==='true', adminToken=sessionStorage.getItem('dogMap_adminToken')||"";
+        let allUsersData={}, allSightings={}, allRoutes={}, allAnnouncements={}, allCenterMarkers=[], taiwanPolygons=[];
+        let localHistory=JSON.parse(lsGet('dogMap_localHistory')||lsGet('dogMap_localHistory_'+currentProjectKey)||"[]"), lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null, watchId=null;
+        
+        // 💡 鎖定區域相關變數與高效率過濾器 (修改預設值為鎖定 true)
+        let isProjectLocked = lsGet('dogMap_isProjectLocked') !== 'false';
+        let cachedMaxDist = null;
+        let lastCacheTime = 0;
+
+        function getConcentricMaxDistance(p) {
+            if (!p) return 50000;
+            let now = Date.now();
+            if (cachedMaxDist !== null && (now - lastCacheTime < 5000)) {
+                return cachedMaxDist;
+            }
+            lastCacheTime = now;
+            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
+            let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+            let distances = [];
+            let dLat_50k = 0.45;
+            let dLng_50k = 0.45 / Math.cos(cLat * Math.PI / 180);
+
+            for (let u in allUsersData) {
+                let hp = allUsersData[u].history;
+                if (!hp) continue;
+                for(let i=0; i<hp.length; i++) {
+                    let pt = hp[i];
+                    if (Math.abs(pt.lat - cLat) <= dLat_50k && Math.abs(pt.lng - cLng) <= dLng_50k) {
+                        distances.push(getDistance(cLat, cLng, pt.lat, pt.lng));
+                    }
+                }
+            }
+
+            if (distances.length <= 10000) {
+                cachedMaxDist = 50000;
+            } else {
+                distances.sort((a, b) => a - b);
+                cachedMaxDist = distances[9999];
+            }
+            return cachedMaxDist;
+        }
+
+        const getFilteredHistory = (hp, p, u_id = null) => {
+            if (!isProjectLocked || !p) return hp;
+            if (u_id && typeof u_id === 'string' && u_id.startsWith('ghost_')) return hp;
+
+            let cLat = (p.bounds[0][0] + p.bounds[1][0]) / 2;
+            let cLng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
+            let maxDist = getConcentricMaxDistance(p);
+            let dLat = maxDist / 111000;
+            let dLng = dLat / Math.cos(cLat * Math.PI / 180);
+            return hp.filter(pt => Math.abs(pt.lat - cLat) <= dLat && Math.abs(pt.lng - cLng) <= dLng && getDistance(cLat, cLng, pt.lat, pt.lng) <= maxDist);
+        };
+
+        // 新增全域變數：用於效能優化與計步器
+        let userMarkers = {};
+        let myTotalSteps = lsGet('dogMap_myTotalSteps') ? parseFloat(lsGet('dogMap_myTotalSteps')) : 0;
+        
+        let isSpectatorMode=false, isFogVisible=true, navMarker=null, isDrawingRoute=false, currentRoutePoints=[], currentRoutePolyline=null, currentRouteMarkers=[], editingRouteId=null;
+        let isMyRouteMode=false, targetRouteUid=null, snakeInterval=null, snakeIndex=0, basePlaybackSpeed=500, currentPlaybackSpeed=500, isPlaybackPaused=false, isEvaMode=false, evaGridLayer=null, evaAnimationTimeout=null;
+        let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx, fogRenderPending=false, FOG_SCALE=0.08;
+        let currentProjectHasPrize=false, lotteryTickets=0, lotteryTimeRemaining=300, isTrackingStarted=false, lastFullSyncTime=0, slotSpinning=false, slotTimer=null;
+        let isMapInteracting=false, mapInteractionTimer=null, powerSavingTimer=null, wakeLock=null, isPowerSaving=false, geoFailCount=0, gpsIntervalId=null, lastSetViewTime1=0, lastSetViewTime2=0;
+        let isAnnounceCollapsed=lsGet('dogMap_announceCollapsed')==='true', animalInfoCollapseTimer=null, viewerPhotos=[], currentViewerIndex=0, touchStartX=0, touchEndX=0, galleryLoadedCount=0, currentGalleryType='photos';
+        let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false, isClearingHistory=false, isPaintingClear=false, isErasingClear=false, lastPaintLatLng=null, clearHistoryCircles=[], currentClearRadius=100;
+
+        function getSortedProjectKeys() { return Object.keys(PROJECTS).sort((a,b)=>{ let pA=PROJECTS[a], pB=PROJECTS[b], latA=(pA.bounds[0][0]+pA.bounds[1][0])/2, lngA=(pA.bounds[0][1]+pA.bounds[1][1])/2, latB=(pB.bounds[0][0]+pB.bounds[1][0])/2, lngB=(pB.bounds[0][1]+pB.bounds[1][1])/2; if(lastSavedPos) return getDistance(lastSavedPos.lat,lastSavedPos.lng,latA,lngA)-getDistance(lastSavedPos.lat,lastSavedPos.lng,latB,lngB); return Math.abs(latA-latB)>0.01?latB-latA:lngA-lngB; }); }
+        function getProjectFromURL() { const p=new URLSearchParams(window.location.search).get('project'), r=window.location.search.substring(1); return p||(r&&!r.includes('=')?decodeURIComponent(r):null); }
+
+        // --- 核心共用模組 ---
+        const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
+        let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
+        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=html=>{html('custom-modal-text',html); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
+        const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
+        const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
+        const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
+        const optimizeHistory=hist=>{if(hist.length<=10)return hist; let c=[hist[0]], lPt=hist[0], bT=hist.length>2000?30:10; for(let i=1;i<hist.length-1;i++){let pt=hist[i], d=getDistance(lPt.lat,lPt.lng,pt.lat,pt.lng), tT=(Date.now()-pt.timestamp>10800000)?50:bT; if(d>tT){pt.lat=parseFloat(pt.lat.toFixed(5)); pt.lng=parseFloat(pt.lng.toFixed(5)); c.push(pt); lPt=pt;}} c.push(hist[hist.length-1]); return c.slice(-10000);};
+        const wsSend=(type,payload={})=>{if(isSystemReady) ws.send(JSON.stringify({type, uid:myUid, project:currentProjectKey, token:adminToken, ...payload}));};
+
+        // --- 初始化 ---
+        async function initSystem() {
+            if (isProjectLocked) {
+                let b = $('lock-project-btn');
+                if(b) {
+                    b.innerText = "🔒";
+                    b.classList.replace('bg-green-600', 'bg-red-600');
+                }
+            } else {
+                let b = $('lock-project-btn');
+                if(b) {
+                    b.innerText = "🔓";
+                    b.classList.replace('bg-red-600', 'bg-green-600');
+                }
+            }
+            try { const cfg=await(await fetch('config.json?t='+Date.now())).json(); if(cfg?.ws_url) NGROK_WS_URL=cfg.ws_url; } catch(e){}
+            if(!NGROK_WS_URL) NGROK_WS_URL=window.location.origin.replace('http','ws')+'/ws';
+            fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(r=>r.json()).then(d=>{ d.features.forEach(f=>{ (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).forEach(p=>{ let ml=90,xl=-90,mg=180,xg=-180; p[0].forEach(c=>{if(c[1]<ml)ml=c[1];if(c[1]>xl)xl=c[1];if(c[0]<mg)mg=c[0];if(c[0]>xg)xg=c[0];}); taiwanPolygons.push({coordinates:p,bounds:L.latLngBounds([ml,mg],[xl,xg])}); }); }); requestFogRender(); }).catch(()=>{});
+            
+            map=L.map('map',{zoomControl:false}).setView([23.5,121],8);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map); L.control.zoom({position:'bottomright'}).addTo(map);
+            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
+            
+            map.on('click',e=>{if(isDrawingRoute){currentRoutePoints.push([e.latlng.lat,e.latlng.lng]); updateDrawingRoutePreview();} resetPowerSavingTimer();});
+            map.on('mousedown touchstart',e=>{if(isClearingHistory){let ck=false; for(let i=0;i<clearHistoryCircles.length;i++){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1); ck=true; break;}} if(ck)isErasingClear=true; else{isPaintingClear=true; let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}}});
+            map.on('mousemove touchmove',e=>{if(isClearingHistory){if(isPaintingClear){if(!lastPaintLatLng||getDistance(lastPaintLatLng.lat,lastPaintLatLng.lng,e.latlng.lat,e.latlng.lng)>currentClearRadius*0.4){let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}} else if(isErasingClear){for(let i=clearHistoryCircles.length-1;i>=0;i--){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1);}}}}});
+            map.on('mouseup touchend',e=>{isPaintingClear=false; isErasingClear=false; lastPaintLatLng=null;});
+            map.on('dragstart zoomstart',()=>{isMapInteracting=true; clearTimeout(mapInteractionTimer); resetPowerSavingTimer();});
+            map.on('dragend zoomend',()=>{mapInteractionTimer=setTimeout(()=>isMapInteracting=false,15000); renderMap(); resetPowerSavingTimer();});
+            
+            // 建立圖層 (新增 routesPane 以保持路線顯示高於迷霧)
+            map.createPane('fogPane').style.cssText='z-index:450;pointer-events:none;'; 
+            map.createPane('evaPane').style.cssText='z-index:460;pointer-events:none;'; 
+            map.createPane('trackPane').style.cssText='z-index:470;pointer-events:none;';
+            map.createPane('routesPane').style.cssText='z-index:480;';
+
+            initFogSystem(); setInterval(renderMap,15000);
+
+            document.body.addEventListener('click', e => {
+                let btn = e.target.closest('.marker-name-btn');
+                if (btn) {
+                    e.stopPropagation();
+                    if(isAdmin && isSystemReady) wsSend("admin_get_user_info", {uid: btn.getAttribute('data-uid')});
+                }
+            });
+            
+            if(isAdmin){show('admin-panel');} 
+            if(lsGet('dogMap_userName')){currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor'))lsSet('dogMap_userColor',dbUserColor); if(localHistory.length){allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; renderMap(); updateStepsCounterUI();} if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text',"自動定位..."); startLocationServices(true);} else show('startup-overlay');
+            
+            let mapLastTapTime = 0;
+            $('map-container').addEventListener('touchend', e => {
+                if(!isMobileDevice) return;
+                if(e.target.closest('.glass-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+                let now = Date.now();
+                if(now - mapLastTapTime < 300) {
+                    e.preventDefault(); 
+                    if(map) map.setZoom(map.getZoom() + 1, {animate: true});
+                }
+                mapLastTapTime = now;
+            }, {passive: false});
+        }
+
+        // --- WebSocket 處理 ---
+        function connectWebSocket() {
+            if(ws&&(ws.readyState===WebSocket.CONNECTING||ws.readyState===WebSocket.OPEN))return; let wsUrl=NGROK_WS_URL||(window.location.origin.replace('http','ws')+'/ws'); if(!wsUrl.startsWith('ws://')&&!wsUrl.startsWith('wss://'))return console.warn('無效的 WS 網址:', wsUrl);
+            try {
+                ws = new WebSocket(wsUrl);
+                ws.onopen=()=>{
+                    isSystemReady=true; 
+                    $('sync-ping').style.backgroundColor='#10b981'; 
+                    text('toast-text',"連線成功"); 
+                    wsReconnectDelay=3000; 
+                    wsSend("init", { light: true }); 
+                    if(localHistory.length)saveLocationToServer(null,true);
+                };
+                ws.onmessage=e=>{
+                    const res=JSON.parse(e.data);
+                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true }); drawAllProjects(); updateAnimalInfoCard(); }
+                    
+                    if(res.type==='sync'){ 
+                        allUsersData=res.data.locations||{}; 
+                        allSightings=res.data.sightings||{}; 
+                        allRoutes=res.data.routes||{}; 
+                        if(res.data.announcements)Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); 
+                        currentProjectHasPrize=res.data.has_prize_history?.[currentProjectKey]||false; 
+                        lotteryTickets=res.data.tickets||0; 
+                        updateStepsCounterUI(); updateAnimalInfoCard(); drawAllProjects(); renderMap(); renderSightings(); renderRoutes(); updateGiftUI(); 
+                        if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); 
+                        if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList(); 
+                        if(!hasInitialUrlZoomed&&getProjectFromURL()&&PROJECTS[currentProjectKey]){let p=PROJECTS[currentProjectKey], cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); hasInitialUrlZoomed=true;} 
+                        
+                        if (res.isLight) {
+                            setTimeout(() => {
+                                if (isSystemReady) wsSend("fetch_full_history");
+                            }, 2000);
+                        }
+                    }
+                    else if (res.type === 'full_history') {
+                        Object.keys(res.data.locations).forEach(u => {
+                            if (u === myUid) {
+                                if (allUsersData[u]) allUsersData[u].total_steps = res.data.locations[u].total_steps;
+                            } else {
+                                allUsersData[u] = res.data.locations[u];
+                            }
+                        });
+                        cachedMaxDist = null;
+                        renderMap();
+                        requestFogRender();
+                    }
+                    else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
+                    else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
+                    else if(res.type==='user_appended'){let d=res.data, u=res.uid; if(!allUsersData[u])allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else{allUsersData[u].userName=d.userName; allUsersData[u].color=d.color; if(d.total_steps!==undefined)allUsersData[u].total_steps=d.total_steps;} allUsersData[u].history.push(d.point); if(u===myUid)updateStepsCounterUI(); renderMap();}
+                    else if(res.type==='user_update'){allUsersData[res.uid]=res.data; renderMap(); if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[...res.data.history]; lsSet('dogMap_localHistory',JSON.stringify(localHistory)); lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null;}}}
+                    else if(res.type==='prize_won_broadcast'){text('win-marquee-text',`🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); let t=$('win-marquee-text'); t.style.animation='none'; t.offsetHeight; t.style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000);}
+                    else if(res.type==='admin_login_result'){text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！");}
+                    else if(res.type==='admin_action_result'){showModal(res.msg);}
+                    else if(res.type==='admin_user_info_result'){let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="glass-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="glass-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal');}
+                    else if(res.type==='admin_prizes_data'){let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="glass-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true; let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length)av.forEach(i=>{let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input glass-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input glass-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`;}); else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as); let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length)dr.forEach(i=>{ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`;}); else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds); const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`glass-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？",()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );}
+                    else if(res.type==='admin_blacklist_data'){if(res.restrict_prob!==undefined)$('restrict-prob-input').value=res.restrict_prob; let c=$('blacklist-container'); c.innerHTML=''; if(!res.data||!res.data.length)c.innerHTML='<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>'; else{res.data.forEach(u=>{c.innerHTML+=`<div class="border border-white/40 p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(u.uid.substring(0,8))}...</div></div><button class="unban-btn glass-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap" data-uid="${u.uid}">✅ 解除</button></div>`;}); c.querySelectorAll('.unban-btn').forEach(b=>b.addEventListener('click',e=>{wsSend("admin_remove_blacklist",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="處理中...";}));} show('manage-blacklist-modal');}
+                    else if(res.type==='my_prizes_data'){text('prize-pool-title','🎁 我的中獎紀錄'); let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length)res.data.forEach(i=>{let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`;}); else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal');}
+                    else if(res.type==='draw_result'){setTimeout(()=>{clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);}else{text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{$('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border border-white/40 shadow-lg no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`);}else showModal(res.msg||"💨 銘謝惠顧，下次再來！");},800);},1500);}
+                    else if(res.type==='parse_map_url_result'){if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;}}
+                    else if(res.type==='search_address_result'){if(window.addressResolver){window.addressResolver(res); window.addressResolver=null;}}
+                };
+                ws.onclose=()=>{isSystemReady=false; $('sync-ping').style.backgroundColor='#ef4444'; text('toast-text',"重連中..."); setTimeout(connectWebSocket,wsReconnectDelay); wsReconnectDelay=Math.min(wsReconnectDelay*2,60000);};
+            } catch(err) { console.error("WS 初始化失敗:", err); }
+        }
+
+        // --- 定位與系統運作 ---
+        async function requestWakeLock(){ try{if('wakeLock' in navigator&&!wakeLock){wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{});}}catch(e){} }
+        function enterPowerSavingMode(){ if(isPowerSaving)return; isPowerSaving=true; show('power-saving-overlay'); requestWakeLock(); if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isTrackingStarted&&!isSpectatorMode) gpsIntervalId=setInterval(()=>{navigator.geolocation.getCurrentPosition(p=>handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()),e=>handleGeoError(e,true),{enableHighAccuracy:true,timeout:10000});},15000); }
+        function exitPowerSavingMode(){ if(!isPowerSaving)return; isPowerSaving=false; hide('power-saving-overlay'); if(gpsIntervalId){clearInterval(gpsIntervalId); gpsIntervalId=null;} if(isTrackingStarted&&!isSpectatorMode)startLocationServices(true); renderMap(); requestFogRender(); }
+        function resetPowerSavingTimer(){ if(isPowerSaving)exitPowerSavingMode(); if(powerSavingTimer)clearTimeout(powerSavingTimer); if(isTrackingStarted&&!isSpectatorMode&&isMobileDevice&&window.innerWidth<=768)powerSavingTimer=setTimeout(enterPowerSavingMode,180000); resetBtnCollapseTimer(); }
+        
+        document.body.addEventListener('touchstart',resetPowerSavingTimer,{passive:true}); document.body.addEventListener('click',resetPowerSavingTimer); document.body.addEventListener('mousemove',resetPowerSavingTimer); 
+        $('power-saving-overlay').addEventListener('touchstart',e=>{e.preventDefault(); resetPowerSavingTimer();},{passive:false}); $('power-saving-overlay').addEventListener('click',resetPowerSavingTimer);
+        on('power-saving-btn','click',e=>{e.stopPropagation(); enterPowerSavingMode();});
+        document.addEventListener('visibilitychange',async ()=>{if(document.visibilityState==='hidden'){if(isMobileDevice&&window.innerWidth<=768)enterPowerSavingMode();}else{if(wakeLock!==null)wakeLock=null; if(isTrackingStarted)requestWakeLock();}});
+
+        function startLocationServices(auto) {
+            if(!navigator.geolocation)return handleGeoError({code:0,message:"瀏覽器不支援"},auto);
+            navigator.geolocation.getCurrentPosition(p=>{handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()); finishUIReveal();},e=>handleGeoError(e,auto),{enableHighAccuracy:true,timeout:15000});
+            if(watchId)navigator.geolocation.clearWatch(watchId); watchId=navigator.geolocation.watchPosition(p=>handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()), e=>{if(isTrackingStarted&&!isSpectatorMode)show('gps-warning');},{enableHighAccuracy:true,maximumAge:5000});
+        }
+        function handleGeoError(e,auto) {
+            if(isSpectatorMode)return; $('master-start-btn').innerText="直接進入地圖 [無定位]"; $('master-start-btn').style.cssText="background-color:#ef4444;color:white;";
+            let msg=e.code===1?"⚠️ 缺少定位權限！\n\n👉 點此複製網址 👈\n請改用 Safari 或 Chrome 貼上開啟。":(e.code===2?"無法獲取位置，請確認 GPS 已開啟。":"獲取位置逾時，請檢查網路。"), em=$('error-msg'); em.innerText=msg.replace(/\n/g,' '); show('error-msg');
+            
+            if(e.code===1){
+                $('central-gps-error-modal').classList.add('show');
+                on('copy-url-btn','click',()=>{
+                    let t=document.createElement("textarea"); t.value=window.location.href; document.body.appendChild(t); t.select(); try{document.execCommand('copy'); $('copy-url-btn').innerText="✅ 已複製！請前往瀏覽器貼上"; $('copy-url-btn').classList.remove('bg-blue-600'); $('copy-url-btn').classList.add('bg-green-600'); setTimeout(()=>{ $('copy-url-btn').innerText="👉 點此複製網址 👈"; $('copy-url-btn').classList.remove('bg-green-600'); $('copy-url-btn').classList.add('bg-blue-600'); },3000); }catch(err){} document.body.removeChild(t);
+                });
+                on('close-gps-modal-btn','click',()=>{ $('central-gps-error-modal').classList.remove('show'); finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444'; });
+            }else{
+                em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;
+            }
+
+            if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
+        }
+        function finishUIReveal() { 
+            $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
+            if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
+            
+            if(window.innerWidth<=640) {
+                setTimeout(()=>{
+                    document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});
+                }, 1000);
+            }
+            requestWakeLock(); resetPowerSavingTimer(); 
+        }
+        
+        function handleValidPosition(lat,lng,ts) {
+            hide('gps-warning'); let isFirstLock=!localHistory.length; if(isSpectatorMode)return;
+            if(isFirstLock){map.setView([lat,lng],17); lastSetViewTime1=ts;}
+            if(!isMapInteracting&&map&&!isMyRouteMode&&!map.getBounds().pad(-0.1).contains([lat,lng])){lastSetViewTime2=lastSetViewTime1; lastSetViewTime1=ts; let useAnimation=!(lastSetViewTime2>0&&(lastSetViewTime1-lastSetViewTime2)<=30000); map.setView([lat,lng],map.getZoom()||17,{animate:useAnimation});}
+            
+            if(lastSavedPos){
+                let dist = getDistance(lastSavedPos.lat, lastSavedPos.lng, lat, lng);
+                let dt = (ts - lastSavedPos.timestamp) / 1000;
+                if(dt > 0 && dist > 1) { 
+                    let v = dist / dt; 
+                    let newSteps = 0;
+                    if(dist > 200) {
+                        newSteps = 5;
+                    } else if (v > 6) {
+                        newSteps = dist / 5;
+                    } else {
+                        newSteps = dist / 0.7;
+                    }
+                    myTotalSteps += newSteps;
+                    lsSet('dogMap_myTotalSteps', myTotalSteps);
+                }
+            }
+
+            if(lastSavedPos&&getDistance(lastSavedPos.lat,lastSavedPos.lng,lat,lng)<15&&ts-lastSavedPos.timestamp<180000)return;
+            
+            const pt={lat,lng,timestamp:ts}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); 
+            allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; 
+            
+            if(isFirstLock)updateProjectDropdown(); saveLocationToServer(pt,false); renderMap();
+        }
+        
+        function saveLocationToServer(pt,force){if(!isSystemReady||isSpectatorMode)return; const n=Date.now(); if(force||n-lastFullSyncTime>300000){wsSend("update_location",{data:{userName:currentUserName,color:dbUserColor,history:localHistory,lastUpdate:n}}); lastFullSyncTime=n;}else if(pt)wsSend("append_location",{data:{userName:currentUserName,color:dbUserColor,point:pt}});}
+        
+        let displayedSteps = myTotalSteps; 
+        let targetSteps = myTotalSteps;
+
+        function updateStepsCounterUI() { 
+            targetSteps = allUsersData?.[myUid]?.total_steps || 0; 
+            if (Math.abs(targetSteps - displayedSteps) > 100) {
+                displayedSteps = targetSteps;
+                text('step-counter-value', Math.floor(displayedSteps).toLocaleString());
+            }
+        }
+        
+        setInterval(()=>{ 
+            if(isPowerSaving||isSpectatorMode||!isTrackingStarted)return; 
+            if (displayedSteps < targetSteps) {
+                let diff = targetSteps - displayedSteps;
+                let stepInc = Math.max(0.1, diff * 0.1);
+                displayedSteps += stepInc;
+                if (displayedSteps >= targetSteps) displayedSteps = targetSteps; 
+                text('step-counter-value', Math.floor(displayedSteps).toLocaleString());
+            }
+        }, 40);
+
+        function updateVisualSelectText() {
+            let s = $('switch-project-select');
+            if(s.selectedIndex < 0) return;
+            let opt = s.options[s.selectedIndex];
+            if (!opt) return;
+            let rawName = opt.getAttribute('data-rawname');
+            let dt = opt.getAttribute('data-dist');
+            if (window.innerWidth <= 640) {
+                text('project-display-text', rawName);
+            } else {
+                text('project-display-text', `🎯 ${rawName}${dt}`);
+            }
+        }
+        window.addEventListener('resize', () => { if (currentProjectKey) updateVisualSelectText(); });
+
+        function updateProjectDropdown() {
+            let s=$('switch-project-select'); s.innerHTML=''; 
+            if(!Object.keys(PROJECTS).length){
+                s.innerHTML='<option value="">目前無協尋專案</option>'; 
+                text('project-display-text', '目前無協尋專案');
+                currentProjectKey=null; hide('animal-info-section'); return;
+            } 
+            show('animal-info-section'); let sortedKeys=getSortedProjectKeys();
+            sortedKeys.forEach(k=>{ 
+                let p=PROJECTS[k], dt=""; 
+                if(lastSavedPos){
+                    let dist=getDistance(lastSavedPos.lat,lastSavedPos.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2); 
+                    dt=dist<1000?` (${Math.round(dist)}m)`:` (${(dist/1000).toFixed(1)}km)`;
+                } 
+                s.innerHTML+=`<option value="${k}" data-rawname="${escapeHTML(p.animalName||p.name)}" data-dist="${dt}">🎯 ${escapeHTML(p.animalName||p.name)}${dt}</option>`;
+            });
+            let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey])fk=currentProjectKey; else if(currentProjectKey){for(let k in PROJECTS)if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey){fk=k; break;}}
+            if(fk){currentProjectKey=fk; s.value=currentProjectKey;}else{if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);}}
+            if(currentProjectKey&&PROJECTS[currentProjectKey]){
+                window.history.replaceState(null,'',`?${encodeURIComponent(PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name||currentProjectKey)}`);
+                updateVisualSelectText();
+            }
+        }
+        
+        $('switch-project-select').addEventListener('change', e=>{
+            currentProjectKey=e.target.value; 
+            lsSet('dogMap_currentProject',currentProjectKey); 
+            window.history.replaceState(null,'','?'+encodeURIComponent(PROJECTS[currentProjectKey]?.animalName||currentProjectKey)); 
+            loadLotteryState(); 
+            updateAnimalInfoCard(); 
+            cachedMaxDist = null; 
+            drawAllProjects(); 
+            zoomToProject(currentProjectKey); 
+            if(isMyRouteMode)$('my-route-btn').click(); 
+            updateVisualSelectText();
+            wsSend("init", { light: true });
+        });
+
+        function updateAnimalInfoCard() {
+            let p=PROJECTS[currentProjectKey]; if(!p){hide('animal-info-section'); hide('announcement-panel'); return;} show('animal-info-section');
+            let u=p.mainPhoto; if(u?.startsWith('/images/'))u=getBaseHttpUrl()+u; 
+            const imgEl = $('animal-main-photo');
+            const loaderEl = $('animal-photo-loader');
+            const mainUrl = u || "";
+            if (imgEl.getAttribute('data-original-src') !== mainUrl && mainUrl) {
+                if(loaderEl) loaderEl.classList.remove('hidden');
+                imgEl.style.opacity = '0.2';
+                imgEl.onload = () => { if(loaderEl) loaderEl.classList.add('hidden'); imgEl.style.opacity = '1'; };
+                imgEl.onerror = () => { if(loaderEl) loaderEl.classList.add('hidden'); imgEl.style.opacity = '1'; };
+                imgEl.setAttribute('data-original-src', mainUrl);
+                imgEl.src = mainUrl;
+            } else if (!mainUrl) {
+                if(loaderEl) loaderEl.classList.add('hidden');
+                imgEl.style.opacity = '1';
+                imgEl.removeAttribute('data-original-src');
+                imgEl.src = "";
+            }
+            text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
+            html('announcement-text', escapeHTML(allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。").replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s<]+)/g, url=>`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`));
+            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){let m=p.actionLink.url.match(/(https?:\/\/[^\s<]+)/); ac.innerHTML=`<a href="${m?m[1]:p.actionLink.url}" target="_blank" class="glass-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`;}
+            applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){$('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'),5000);}
+        }
+        function drawAllProjects() {
+            allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
+            Object.keys(PROJECTS).forEach(k=>{
+                let p=PROJECTS[k], c=[(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2], cur=(k===currentProjectKey), ic={'dog':'🐕','cat':'🐈','bird':'🦜','rabbit':'🐇','turtle':'🐢'}[p.type]||'🐾';
+                let rm=(allAnnouncements[k]||p.announcement||"").match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/), rh=rm?`<div class="user-name-tag glass-panel" style="color:#000;background-color:#fef08a;margin-bottom:2px;padding:2px 4px;">💰 $${rm[1]}</div>`:'';
+                let mh=cur?`<div style="position:absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom:12px;pointer-events:auto;">${rh}<div class="user-name-tag glass-panel" style="color:white;background-color:#ef4444;">📍 ${escapeHTML(p.animalName)}遺失中心</div><div style="font-size:32px;animation:bounce 2s infinite;">${ic}</div></div>`:`<div class="user-label-container" style="bottom:12px;pointer-events:auto;opacity:0.8;">${rh}<div class="user-name-tag glass-panel" style="background-color:#e5e7eb;">找 ${escapeHTML(p.animalName)}</div><div style="font-size:24px;">${ic}</div></div>`;
+                let m=L.marker(c,{icon:L.divIcon({className:'custom-div-icon',html:mh}),zIndexOffset:cur?Math.floor(Date.now()/1000)+100000:Math.floor(Date.now()/1000)+50000}).addTo(map);
+                m.on('click',()=>{if(!cur){$('switch-project-select').value=k; $('switch-project-select').dispatchEvent(new Event('change'));}}); allCenterMarkers.push(m);
+                if(cur)activeBoundsRectangle=L.rectangle(p.bounds,{color:"#ef4444",weight:3,fillOpacity:0.1,dashArray:'5, 10'}).addTo(map).bindPopup(`<div class="font-bold text-center">📍 ${escapeHTML(p.animalName)}從這裡範圍遺失</div>`,{className:'pixel-popup'});
+            });
+        }
+        
+        function renderMap() {
+            if(!markersLayer||!map||isPowerSaving)return; 
+            let n=Date.now(), pProj = PROJECTS[currentProjectKey];
+
+            if(isMyRouteMode){ 
+                Object.values(userMarkers).forEach(m=>map.removeLayer(m)); userMarkers={}; markersLayer.clearLayers();
+                let td=(targetRouteUid===myUid)?{history:localHistory}:allUsersData[targetRouteUid], hd=[], rc='#ef4444', rn='使用者'; 
+                if(targetRouteUid===myUid){hd=localHistory; rc=dbUserColor; rn=currentUserName;}else if(td?.history){hd=td.history; rc=td.color||rc; rn=td.userName;} 
+                hd = getFilteredHistory(hd, pProj, targetRouteUid); 
+                if(hd.length){ 
+                    if(!snakeInterval&&!isPlaybackPaused&&snakeIndex<hd.length)snakeIndex=hd.length; 
+                    let ch=hd.slice(0,Math.max(1,snakeIndex)); 
+                    if(ch.length){ 
+                        L.polyline(ch.map(p=>[p.lat,p.lng]),{color:rc,weight:6,opacity:0.9}).addTo(markersLayer); 
+                        let lp=ch[ch.length-1], s=escapeHTML(rn), ts=(targetRouteUid!==myUid)?' (觀察中)':'', nc=`color:${rc};border-color:${rc};`; 
+                        if(isAdmin&&td?.blacklisted){nc='color:#fff;background-color:#ef4444;border-color:#7f1d1d;'; ts=' (黑名單)';} 
+                        L.marker([lp.lat,lp.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container"><div class="user-name-tag glass-panel marker-name-btn" data-uid="${targetRouteUid||myUid}" style="${nc} pointer-events:auto;">${s}${ts}</div><div class="user-avatar-pixel blinking-red-pixel" style="background-color:${rc};animation-duration:2s;"></div></div>`}),zIndexOffset:Math.floor(lp.timestamp/1000)+50000}).addTo(markersLayer); 
+                        if(snakeInterval)map.panTo([lp.lat,lp.lng],{animate:true,duration:(currentPlaybackSpeed/1000)}); 
+                    } 
+                } 
+                text('toast-text',"軌跡模式中"); requestFogRender(); 
+                return; 
+            }
+            
+            let uc=0; 
+            let activeUids = new Set();
+            
+            Object.keys(allUsersData).forEach(u=>{
+                let ud=allUsersData[u]; 
+                if(!ud.history?.length)return; 
+                
+                let isS=(u===myUid), lp=ud.history[ud.history.length-1]; 
+                if(n-lp.timestamp<3600000)uc++; 
+                if(isSpectatorMode&&isS)return; 
+
+                if(n-lp.timestamp<3600000){
+                    activeUids.add(u);
+                    let rc=isS?dbUserColor:(ud.color||'#3b82f6'), nc=isS?`color:${rc};`:'color:#1a202c;', ts=''; 
+                    if(isAdmin&&ud.blacklisted){nc='color:#fff;background-color:#ef4444;border-color:#7f1d1d;'; ts=' (黑名單)';} 
+                    
+                    let htmlContent = `<div class="user-label-container"><div class="user-name-tag glass-panel marker-name-btn" data-uid="${u}" style="${nc} pointer-events:auto;">${escapeHTML(ud.userName)}${ts}</div><div class="user-avatar-pixel ${isS?'blinking-red-pixel':''}" style="background-color:${rc};"></div></div>`;
+                    let zIndex = isS?Math.floor(Date.now()/1000)+20000:Math.floor(lp.timestamp/1000);
+
+                    if (userMarkers[u]) {
+                        userMarkers[u].setLatLng([lp.lat, lp.lng]);
+                        userMarkers[u].setIcon(L.divIcon({className:'custom-div-icon',html:htmlContent}));
+                        userMarkers[u].setZIndexOffset(zIndex);
+                    } else {
+                        userMarkers[u] = L.marker([lp.lat,lp.lng],{
+                            icon: L.divIcon({className:'custom-div-icon',html:htmlContent}),
+                            zIndexOffset: zIndex
+                        }).addTo(markersLayer);
+                    }
+                } 
+            }); 
+
+            Object.keys(userMarkers).forEach(u => {
+                if (!activeUids.has(u)) {
+                    map.removeLayer(userMarkers[u]);
+                    delete userMarkers[u];
+                }
+            });
+
+            text('toast-text', `線上探索: ${uc} 人`); 
+            requestFogRender();
+        }
+
+        function renderSightings() {
+            if(!sightingsLayer)return; sightingsLayer.clearLayers(); if(!sightingTrackLayer)sightingTrackLayer=L.layerGroup().addTo(map); sightingTrackLayer.clearLayers(); let tPts=[]; const tReg=/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/;
+            Object.values(allSightings).forEach(d=>{ if(d.project&&d.project!==currentProjectKey)return; let st=d.description||""; if(st.length>10)st=st.substring(0,10)+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag glass-panel" style="background-color:#fef08a;animation:blink-pixel 2s infinite alternate;">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="glass-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
+            if(tPts.length>=2){ show('toggle-sighting-track-btn'); if(isSightingTrackVisible){ tPts.sort((a,b)=>a.score-b.score); let lls=tPts.map(p=>[p.lat,p.lng]), tc=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4']; for(let i=0;i<lls.length-1;i++){let p1=lls[i], p2=lls[i+1], sc=tc[i%tc.length]; L.polyline([p1,p2],{color:sc,weight:4,dashArray:'10, 10',opacity:0.8,pane:'trackPane'}).addTo(sightingTrackLayer); let a=Math.atan2(map.project(p2,16).y-map.project(p1,16).y,map.project(p2,16).x-map.project(p1,16).x)*180/Math.PI; L.marker([(p1[0]+p2[0])/2,(p1[1]+p2[1])/2],{icon:L.divIcon({className:'custom-div-icon',html:`<div style="transform:rotate(${a}deg);font-size:20px;color:${sc};text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;line-height:1;">➤</div>`,iconSize:[20,20],iconAnchor:[10,10]}),interactive:false,pane:'trackPane',zIndexOffset:-100}).addTo(sightingTrackLayer);} } }else hide('toggle-sighting-track-btn');
+        }
+        on('toggle-sighting-track-btn','click',()=>{ isSightingTrackVisible=!isSightingTrackVisible; let b=$('toggle-sighting-track-btn'); if(isSightingTrackVisible){b.innerText="👁️ 隱藏線索"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";}else{b.innerText="❌ 顯示線索"; b.style.cssText="background-color:#ef4444;color:white;";} renderSightings(); });
+
+        function renderRoutes() { 
+            if(!routesLayer)return; 
+            routesLayer.clearLayers(); 
+            Object.values(allRoutes).forEach(r=>{
+                if((r.project&&r.project!==currentProjectKey)||!r.points)return;
+                let c = r.color || '#ff0000';
+                L.polyline(r.points,{color:c,weight:r.weight||5,opacity:0.9, pane:'routesPane'}).addTo(routesLayer).bindPopup(`<div class="font-bold text-center text-sm p-1 border-b-2 mb-1">${escapeHTML(r.name)}${r.project&&r.project!==currentProjectKey?` (${escapeHTML(r.project)})`:''}</div>`,{className:'pixel-popup'});
+                
+                let totalDist = 0;
+                let dists = [0];
+                for(let i=1; i<r.points.length; i++) {
+                    totalDist += getDistance(r.points[i-1][0], r.points[i-1][1], r.points[i][0], r.points[i][1]);
+                    dists.push(totalDist);
+                }
+                
+                let labelPoints = [];
+                if (totalDist < 5000) {
+                     let mid = totalDist / 2;
+                     let placed = false;
+                     for(let i=1; i<r.points.length; i++) {
+                         if(dists[i] >= mid) { labelPoints.push(r.points[i]); placed = true; break; }
+                     }
+                     if(!placed && r.points.length) labelPoints.push(r.points[Math.floor(r.points.length/2)]);
+                } else {
+                     let targetDist = 2500;
+                     for(let i=1; i<r.points.length; i++) {
+                         if(dists[i] >= targetDist) {
+                             let candidatePt = r.points[i];
+                             let tooClose = false;
+                             for(let j=0; j<labelPoints.length; j++) {
+                                 if(getDistance(candidatePt[0], candidatePt[1], labelPoints[j][0], labelPoints[j][1]) < 5000) {
+                                     tooClose = true;
+                                     break;
+                                 }
+                             }
+                             if(!tooClose) {
+                                 labelPoints.push(candidatePt);
+                                 targetDist = dists[i] + 5000;
+                             } else {
+                                 targetDist += 500; // Check again a bit further
+                             }
+                         }
+                     }
+                }
+                
+                labelPoints.forEach(pt => {
+                    let lblHtml = `<div class="font-black text-[13px] pointer-events-none" style="color:${c}; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 2px 2px 0px rgba(0,0,0,0.5); white-space: nowrap; transform: translate(-50%, -50%);">▄ ${escapeHTML(r.name)}</div>`;
+                    L.marker(pt, {
+                        icon: L.divIcon({className: 'custom-div-icon', html: lblHtml}), 
+                        interactive: false, 
+                        pane: 'routesPane',
+                        zIndexOffset: 2000
+                    }).addTo(routesLayer);
+                });
+            }); 
+        }
+
+        function initFogSystem() { fogCanvas=document.createElement('canvas'); map.getPane('fogPane').appendChild(fogCanvas); fogCtx=fogCanvas.getContext('2d'); lowResCanvas=document.createElement('canvas'); lowResCtx=lowResCanvas.getContext('2d'); tempCanvas=document.createElement('canvas'); tempCtx=tempCanvas.getContext('2d'); const rc=()=>{let s=map.getSize(); fogCanvas.width=s.x; fogCanvas.height=s.y; tempCanvas.width=lowResCanvas.width=Math.ceil(s.x*FOG_SCALE); tempCanvas.height=lowResCanvas.height=Math.ceil(s.y*FOG_SCALE); up();}; const up=()=>{L.DomUtil.setPosition(fogCanvas,map.containerPointToLayerPoint([0,0])); requestFogRender();}; window.addEventListener('resize',rc); map.on('zoomend',rc); map.on('move',up); rc(); }
+        function requestFogRender() { if(!fogRenderPending){fogRenderPending=true; requestAnimationFrame(()=>{renderFog(); fogRenderPending=false;});} }
+        function renderFog() {
+            if(!map||!fogCtx||isPowerSaving)return; 
+            let w=lowResCanvas.width, h=lowResCanvas.height, mb=map.getBounds().pad(0.1), c=map.getCenter(), n=Date.now(), mpp=(40075016.686*Math.abs(Math.cos(c.lat*Math.PI/180)))/Math.pow(2,map.getZoom()+8);
+            
+            let pProj = PROJECTS[currentProjectKey];
+            let hasActiveNear=false, cl, cg;
+            if(pProj){
+                let pb=pProj.bounds; cl=(pb[0][0]+pb[1][0])/2; cg=(pb[0][1]+pb[1][1])/2;
+                Object.values(allUsersData).forEach(u=>{if(u.history?.length){let lp=u.history[u.history.length-1]; if(n-lp.timestamp<3600000&&getDistance(cl,cg,lp.lat,lp.lng)<=3000)hasActiveNear=true;}});
+            }
+
+            fogCtx.clearRect(0,0,fogCanvas.width,fogCanvas.height);
+            lowResCtx.clearRect(0,0,w,h); // 解決拖曳殘影的關鍵：確保每次繪製前都將低解析度畫布清空
+            
+            let bO=hasActiveNear?0.35:0.5, mO=hasActiveNear?0.35:0.5; 
+            const dr=(hp,i)=>{let r=Math.max(0,Math.min(1,((i<hp.length-1?hp[i+1].timestamp:n)-hp[i].timestamp)/60000)); return ((8+(117*r))/mpp)*FOG_SCALE;};
+
+            // 如果顯示迷霧，才繪製黑色的底色遮罩
+            if(isFogVisible) {
+                if(taiwanPolygons.length){let vp=taiwanPolygons.filter(p=>mb.intersects(p.bounds)); if(vp.length){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.beginPath(); vp.forEach(p=>p.coordinates.forEach(r=>r.forEach((cd,i)=>{let pt=map.latLngToContainerPoint([cd[1],cd[0]]); if(i===0)lowResCtx.moveTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE); else lowResCtx.lineTo(pt.x*FOG_SCALE,pt.y*FOG_SCALE);}))); lowResCtx.fill('evenodd');}else if(getDistance(c.lat,c.lng,23.5,121)>500000){lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}}else{lowResCtx.fillStyle='rgba(15,20,25,0.9)'; lowResCtx.fillRect(0,0,w,h);}
+                
+                tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp>=3600000&&!isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalCompositeOperation='destination-out'; lowResCtx.globalAlpha=hasActiveNear?0.4:0.6; lowResCtx.drawImage(tempCanvas,0,0);
+                tempCtx.clearRect(0,0,w,h); tempCtx.fillStyle='black'; Object.keys(allUsersData).forEach(u=>{if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history)return; let hp=isMyRouteMode?allUsersData[u].history.slice(0,Math.max(1,snakeIndex)):allUsersData[u].history; hp = getFilteredHistory(hp, pProj, u); hp.forEach((pt,i)=>{if(n-pt.timestamp<3600000||isMyRouteMode){let r=dr(hp,i), p=map.latLngToContainerPoint([pt.lat,pt.lng]); tempCtx.beginPath(); tempCtx.arc(p.x*FOG_SCALE,p.y*FOG_SCALE,r,0,Math.PI*2); tempCtx.fill();}});}); lowResCtx.globalAlpha=1.0; lowResCtx.drawImage(tempCanvas,0,0); lowResCtx.globalCompositeOperation='source-over';
+                
+                fogCtx.imageSmoothingEnabled=false; fogCtx.drawImage(lowResCanvas,0,0,w,h,0,0,fogCanvas.width,fogCanvas.height);
+            }
+
+            // 無論是否開啟迷霧，都必定畫出所有玩家彩色的小方塊足跡
+            Object.keys(allUsersData).forEach(u=>{
+                if((isSpectatorMode&&u===myUid)||(isMyRouteMode&&u!==targetRouteUid)||!allUsersData[u].history?.length)return; 
+                let ud=allUsersData[u], c=u===myUid?'#ef4444':ud.color||'#3b82f6'; 
+                let hp = getFilteredHistory(ud.history, pProj, u); 
+                hp.forEach((pt,i)=>{
+                    let a=Math.max(0,n-pt.timestamp); 
+                    if(i!==hp.length-1){
+                        let o=bO; 
+                        if(a<3600000)o=Math.max(mO,Math.min(1,1-(a/1800000))); 
+                        let p=map.latLngToContainerPoint([pt.lat,pt.lng]); 
+                        if(p.x>-10&&p.y>-10){fogCtx.globalAlpha=o; fogCtx.fillStyle=c; fogCtx.fillRect(p.x-4,p.y-4,8,8);}
+                    }
+                });
+            }); 
+            fogCtx.globalAlpha=1.0;
+        }
+
+        // --- 軌跡/EVA ---
+        function startPlaybackInterval() { if(snakeInterval)clearInterval(snakeInterval); if(isPlaybackPaused)return; snakeInterval=setInterval(()=>{let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; if(snakeIndex<(td?.history?.length||0)){snakeIndex++;renderMap();}else{clearInterval(snakeInterval);snakeInterval=null;isPlaybackPaused=true;text('pb-pause','=');} }, currentPlaybackSpeed); }
+        on('pb-start','click',()=>{snakeIndex=1; isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();}); on('pb-prev','click',()=>{snakeIndex=Math.max(1,snakeIndex-1); isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();}); on('pb-pause','click',()=>{isPlaybackPaused=!isPlaybackPaused; startPlaybackInterval();}); on('pb-speed','click',()=>{currentPlaybackSpeed/=2; if(currentPlaybackSpeed<62.5)currentPlaybackSpeed=basePlaybackSpeed; startPlaybackInterval();}); on('pb-end','click',()=>{let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; snakeIndex=td?.history?.length||0; isPlaybackPaused=true; text('pb-pause','='); startPlaybackInterval(); renderMap();});
+        on('my-route-btn','click',()=>{ if(isSpectatorMode)return showModal("觀看模式下無法使用此功能！"); isMyRouteMode=!isMyRouteMode; let b=$('my-route-btn'); if(isMyRouteMode){targetRouteUid=myUid; let tm="🐍 已開啟您的軌跡重現模式！\n現在地圖上將隱藏其他志工，並讓您檢視走過的所有路線。"; if(isAdmin){let mx=0; for(let u in allUsersData){if(allUsersData[u].history?.length>mx){mx=allUsersData[u].history.length; targetRouteUid=u;}} if(targetRouteUid!==myUid)tm=`👑 [管理員模式]\n已鎖定「${escapeHTML(allUsersData[targetRouteUid].userName)}」進行軌跡重現！`;} b.innerText="❌ 退出軌跡"; b.style.cssText="background-color:#ef4444;color:white;"; show('playback-controls'); if(isFogVisible){isFogVisible=false; text('toggle-fog-btn',"🌫️ 開啟迷霧"); $('toggle-fog-btn').style.cssText="background-color:#9ca3af;color:#1a202c;";} snakeIndex=1; isPlaybackPaused=false; currentPlaybackSpeed=basePlaybackSpeed; text('pb-pause','='); let td=targetRouteUid===myUid?{history:localHistory}:allUsersData[targetRouteUid]; if(td?.history?.length) map.setView([td.history[0].lat, td.history[0].lng],16); startPlaybackInterval(); showModal(tm); } else { targetRouteUid=null; hide('playback-controls'); if(snakeInterval){clearInterval(snakeInterval);snakeInterval=null;} b.innerText="🐍 我的軌跡"; b.style.cssText="background-color:#a855f7;color:white;"; if(!isFogVisible){isFogVisible=true; text('toggle-fog-btn',"👁️ 關閉迷霧"); $('toggle-fog-btn').style.cssText="background-color:#f59e0b;color:#1a202c;";} } renderMap(); requestFogRender(); });
+
+        const offsetLatLng=(lat,lng,dN,dE)=>{ let p=Math.PI; return [lat+(dN/6378137)*(180/p), lng+(dE/(6378137*Math.cos(lat*p/180)))*(180/p)]; };
+        const getHexPoints=(cl,cg,R)=>{ let pt=[]; for(let i=0;i<6;i++) pt.push(offsetLatLng(cl,cg,R*Math.sin(Math.PI/180*(60*i-30)),R*Math.cos(Math.PI/180*(60*i-30)))); return pt; };
+        function drawEvaGrid() { if(!evaGridLayer)evaGridLayer=L.layerGroup().addTo(map); else evaGridLayer.clearLayers(); if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); let R=300, p=PROJECTS[currentProjectKey]; if(!p)return; let cl=(p.bounds[0][0]+p.bounds[1][0])/2, cg=(p.bounds[0][1]+p.bounds[1][1])/2, cos=Math.cos(cl*Math.PI/180), av=[]; for(let u in allUsersData) if(allUsersData[u].history)av.push(...allUsersData[u].history); let mr=0; av.forEach(pt=>{ let y=(pt.lat-cl)*(6378137*Math.PI/180), x=(pt.lng-cg)*(6378137*cos*Math.PI/180), q=(Math.sqrt(3)/3*x-1/3*y)/R, r=(2/3*y)/R, rq=Math.round(q), rr=Math.round(r), rs=Math.round(-q-r), qd=Math.abs(rq-q), rd=Math.abs(rr-r), sd=Math.abs(rs-(-q-r)); if(qd>rd&&qd>sd)rq=-rr-rs; else if(rd>sd)rr=-rq-rs; let rg=Math.max(Math.abs(rq),Math.abs(rr),Math.abs(-rq-rr)); if(rg>mr)mr=rg; }); let tr=Math.max(3,Math.min(mr+2,12)); map.flyToBounds([[cl-(1500/111000),cg-(1500/(111000*cos))],[cl+(1500/111000),cg+(1500/(111000*cos))]],{animate:true,duration:1}); let cr=0; function nR(){if(!isEvaMode||cr>tr)return; let rh=[]; if(cr===0)rh.push({q:0,r:0}); else for(let q=-cr;q<=cr;q++)for(let r=-cr;r<=cr;r++)if(Math.max(Math.abs(q),Math.abs(r),Math.abs(-q-r))===cr)rh.push({q,r}); rh.forEach(h=>{let cL=offsetLatLng(cl,cg,1.5*R*h.r,Math.sqrt(3)*R*(h.q+h.r/2)), tp=[cL]; for(let i=0;i<6;i++)tp.push(offsetLatLng(cL[0],cL[1],75*Math.sin(i*Math.PI/3),75*Math.cos(i*Math.PI/3))); for(let i=0;i<12;i++)tp.push(offsetLatLng(cL[0],cL[1],150*Math.sin(i*Math.PI/6),150*Math.cos(i*Math.PI/6))); for(let i=0;i<18;i++)tp.push(offsetLatLng(cL[0],cL[1],225*Math.sin(i*Math.PI/9),225*Math.cos(i*Math.PI/9))); let cc=0,hx=0; for(let t of tp){for(let pt of av){if(getDistance(t[0],t[1],pt.lat,pt.lng)<=60){cc++;if(pt.timestamp>hx)hx=pt.timestamp;break;}}} let th=""; if(cc>0){let d=Math.min(100,Math.floor((cc/tp.length)*100)), df=Math.max(0,Date.now()-hx), dc=d<=50?'#ef4444':d<=98?'#f97316':'#39ff14'; th=`<div class="text-center font-bold" style="color:${dc};text-shadow:1px 1px 0px #000,-1px -1px 0px #000;font-family:monospace;"><div class="text-xl">${d}%</div><div class="text-[10px] text-[#39ff14]">${df>3600000?Math.floor(df/3600000)+'時':''}${Math.floor((df%3600000)/60000)}分前</div></div>`;}else th=`<div class="text-center font-bold text-[#39ff14] opacity-50" style="text-shadow:1px 1px 0px #000;font-size:11px;">未探索</div>`; L.polygon(getHexPoints(cL[0],cL[1],R),{color:'#39ff14',weight:2,fillColor:'#39ff14',fillOpacity:0.05,dashArray:'5, 5',pane:'evaPane'}).addTo(evaGridLayer); L.marker(cL,{icon:L.divIcon({className:'custom-div-icon',html:th,iconSize:[80,50],iconAnchor:[40,25]}),zIndexOffset:-100,pane:'evaPane'}).addTo(evaGridLayer);}); if([2,5,8].includes(cr)){let vr=Math.min(3000,(cr+1.5)*R*1.5); map.flyToBounds([[cl-vr/111000,cg-vr/(111000*cos)],[cl+vr/111000,cg+vr/(111000*cos)]],{animate:true,duration:1.5});} cr++; evaAnimationTimeout=setTimeout(nR,cr>9?1000:cr>6?500:cr>3?250:100);} evaAnimationTimeout=setTimeout(nR,500); }
+        on('eva-grid-btn','click',()=>{ isEvaMode=!isEvaMode; let b=$('eva-grid-btn'); if(isEvaMode){b.innerText="❌ 關閉顯示"; b.style.cssText="background-color:#ef4444;color:white;"; drawEvaGrid();}else{b.innerText="🕸️ 完成度"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; if(evaAnimationTimeout)clearTimeout(evaAnimationTimeout); if(evaGridLayer){evaGridLayer.clearLayers(); map.removeLayer(evaGridLayer); evaGridLayer=null;}} });
+
+        // --- 雜項 UI 與相片對比 ---
+        const applyAnnouncePanelCollapseState=()=>{ if(isAnnounceCollapsed){hide('announcement-content-wrapper'); hide('announcement-action-container'); text('toggle-announce-panel-btn','➕');} else {show('announcement-content-wrapper'); if(PROJECTS[currentProjectKey]?.actionLink?.url) show('announcement-action-container'); else hide('announcement-action-container'); text('toggle-announce-panel-btn','➖');} };
+        on('toggle-announce-panel-btn','click',()=>{ isAnnounceCollapsed=!isAnnounceCollapsed; lsSet('dogMap_announceCollapsed', isAnnounceCollapsed); applyAnnouncePanelCollapseState(); });
+        $('profile-color').addEventListener('input', e=>$('profile-hex').value=e.target.value.toUpperCase());
+        $('profile-hex').addEventListener('input', e=>{ if(e.target.value.startsWith('#')&&[4,7].includes(e.target.value.length)) $('profile-color').value=e.target.value; });
+        on('profile-edit-trigger','click',()=>{ $('profile-name').value=currentUserName; $('profile-color').value=dbUserColor; $('profile-hex').value=dbUserColor.toUpperCase(); hide('profile-error'); show('profile-modal'); });
+        on('profile-cancel-btn','click',()=>hide('profile-modal'));
+        on('profile-save-btn','click',()=>{ let n=$('profile-name').value.trim(), h=$('profile-color').value; if(!/^[\u4e00-\u9fa5a-zA-Z0-9_]{1,15}$/.test(n))return show('profile-error'); currentUserName=n; dbUserColor=h; lsSet('dogMap_userName',n); lsSet('dogMap_userColor',h); $('profile-edit-trigger').style.backgroundColor=h; if(allUsersData[myUid]){allUsersData[myUid].userName=n; allUsersData[myUid].color=h;} saveLocationToServer(null,true); renderMap(); hide('profile-modal'); showCenterToast("✅ 個人資料已更新！"); });
+        
+        on('toggle-fog-btn','click',()=>{ 
+            isFogVisible=!isFogVisible; 
+            let b=$('toggle-fog-btn'); 
+            if(isFogVisible){
+                b.innerText="👁️ 關閉迷霧"; 
+                b.style.cssText="background-color:#f59e0b;color:#1a202c;"; 
+            }else{
+                b.innerText="🌫️ 開啟迷霧"; 
+                b.style.cssText="background-color:#9ca3af;color:#1a202c;";
+            } 
+            requestFogRender(); 
+        });
+        on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(),{draggable:true,zIndexOffset:10000,icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="glass-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
+        on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
+        on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟推");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
+        on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
+        
+        // 💡 鎖定按鈕邏輯
+        on('lock-project-btn', 'click', () => {
+            isProjectLocked = !isProjectLocked;
+            lsSet('dogMap_isProjectLocked', isProjectLocked);
+            cachedMaxDist = null;
+            let b = $('lock-project-btn');
+            if (isProjectLocked) {
+                b.innerText = "🔒";
+                b.classList.replace('bg-green-600', 'bg-red-600');
+                showCenterToast("🔒 已鎖定專案！\n減少足跡顯示範圍增加效能。");
+            } else {
+                b.innerText = "🔓";
+                b.classList.replace('bg-red-600', 'bg-green-600');
+                showCenterToast("🔓 解除鎖定！\n已恢復顯示全區所有專案與足跡。");
+            }
+            drawAllProjects();
+            renderMap();
+            requestFogRender();
+        });
+
+        function updateGiftUI() { let gc=$('floating-gift-container'); if(!currentProjectHasPrize)hide('floating-gift-container'); else{show('floating-gift-container'); let t=isAdmin?'無限':lotteryTickets; text('gift-ticket-badge',t); if(!$('slot-machine-modal').classList.contains('hidden'))text('slot-tickets-display',t);} }
+        function saveLotteryState() { lsSet('dogMap_lottery_time_'+currentProjectKey, JSON.stringify({r:lotteryTimeRemaining})); }
+        function loadLotteryState() { let d=lsGet('dogMap_lottery_time_'+currentProjectKey); lotteryTimeRemaining=d?JSON.parse(d).r||3600:3600; updateGiftUI(); }
+        
+        let lastStepCount=0, lastStepTime=Date.now();
+        setInterval(()=>{ 
+            if(isSpectatorMode||!isTrackingStarted)return; 
+            let out=false, cLoc=localHistory?.length?localHistory[localHistory.length-1]:null, p=PROJECTS[currentProjectKey]; 
+            if(cLoc&&p&&getDistance(cLoc.lat,cLoc.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2)>5000)out=true; 
+            let tUI=$('gift-timer'); 
+            if(out){tUI.style.color='#ef4444'; tUI.innerText="超出範圍"; if(!isSpectatorMode)show('spectator-hint'); return;} 
+            let cSteps=targetSteps; 
+            if(cSteps>lastStepCount){lastStepCount=cSteps; lastStepTime=Date.now();} 
+            if(Date.now()-lastStepTime>180000){tUI.style.color='#f59e0b'; tUI.innerText="停止"; hide('spectator-hint'); return;} 
+            tUI.style.color=''; hide('spectator-hint'); 
+            lotteryTimeRemaining--; 
+            if(!isPowerSaving)tUI.innerText=`${Math.floor(lotteryTimeRemaining/60).toString().padStart(2,'0')}:${(lotteryTimeRemaining%60).toString().padStart(2,'0')}`; 
+            if(lotteryTimeRemaining<=0){lotteryTimeRemaining=3600; saveLotteryState(); wsSend("earn_ticket"); show('lottery-marquee-container'); let am=$('lottery-marquee-container').querySelector('.animate-marquee-text'); am.style.animation='none'; am.offsetHeight; am.style.animation=null; setTimeout(()=>hide('lottery-marquee-container'),20000);} 
+            saveLotteryState(); 
+        }, 1000);
+
+        on('slot-draw-btn','click',()=>{ if(!isAdmin&&lotteryTickets<=0)return showCenterToast("抽獎次數不足！\n請繼續在戶外移動探索來累積次數！"); if(!isSystemReady)return showCenterToast("系統目前未連線！"); $('slot-draw-btn').innerText="🎰 抽獎中..."; $('slot-draw-btn').disabled=true; slotSpinning=true; slotTimer=setInterval(()=>{let e=['🐶','🐱']; ['reel-1','reel-2','reel-3'].forEach(id=>text(id,e[Math.floor(Math.random()*2)]));},100); wsSend("draw_gift",{userName:currentUserName}); });
+        on('slot-check-pool-btn','click',()=>{ $('slot-check-pool-btn').innerText="⏳ 讀取中..."; wsSend("get_my_prizes"); setTimeout(()=>$('slot-check-pool-btn').innerText="🎁 中獎記錄",1000); });
+
+        // 照片與比對功能
+        let comparePhotoList=[], currentComparePhotoIndex=0;
+        const updateCompareMainImage = () => { if(!comparePhotoList[currentComparePhotoIndex])return; let u=comparePhotoList[currentComparePhotoIndex]; if(u.startsWith('/images/'))u=getBaseHttpUrl()+u; $('compare-main-img').src=u||""; };
+        const openCompareModal = (startPos='first') => { let p=PROJECTS[currentProjectKey]; if(!p)return; comparePhotoList=[]; if(p.mainPhoto)comparePhotoList.push(p.mainPhoto); if(p.photos&&Array.isArray(p.photos))p.photos.forEach(ph=>{let u=typeof ph==='string'?ph:ph.url; if(u&&!comparePhotoList.includes(u))comparePhotoList.push(u);}); if(!comparePhotoList.length)return; currentComparePhotoIndex=startPos==='last'?comparePhotoList.length-1:0; updateCompareMainImage(); $('compare-file-input').value=""; $('compare-local-img').src=""; hide('compare-local-container'); show('compare-upload-prompt'); hide('compare-reselect-btn'); hide('compare-left-pane'); $('compare-left-pane').classList.remove('flex'); hide('compare-right-label'); show('enable-compare-btn'); show('photo-compare-modal'); };
+        on('compare-prev-btn','click',()=>{if(currentComparePhotoIndex>0){currentComparePhotoIndex--; updateCompareMainImage();}else switchProjectByDirection(-1,true,'last');}); on('compare-next-btn','click',()=>{if(currentComparePhotoIndex<comparePhotoList.length-1){currentComparePhotoIndex++; updateCompareMainImage();}else switchProjectByDirection(1,true,'first');});
+        on('compare-upload-prompt','click',()=>$('compare-file-input').click()); on('compare-reselect-btn','click',()=>$('compare-file-input').click()); on('enable-compare-btn','click',()=>{show('compare-left-pane'); $('compare-left-pane').classList.add('flex'); show('compare-right-label'); hide('enable-compare-btn');}); on('compare-close-btn','click',()=>hide('photo-compare-modal'));
+        $('compare-file-input').addEventListener('change',e=>{if(e.target.files[0]){let r=new FileReader(); r.onload=e2=>{$('compare-local-img').src=e2.target.result; show('compare-local-container'); hide('compare-upload-prompt'); show('compare-reselect-btn');}; r.readAsDataURL(e.target.files[0]);}});
+        
+        let ais=$('animal-info-section');
+        ais.addEventListener('touchstart',e=>{cardTouchStartX=e.changedTouches[0].screenX; cardTouchStartY=e.changedTouches[0].screenY; isCardSwiping=false;},{passive:true}); ais.addEventListener('touchmove',e=>{if(Math.abs(e.changedTouches[0].screenX-cardTouchStartX)>15)isCardSwiping=true;},{passive:true}); ais.addEventListener('touchend',e=>{cardTouchEndX=e.changedTouches[0].screenX; cardTouchEndY=e.changedTouches[0].screenY; handleCardSwipe();});
+        ais.addEventListener('mousedown',e=>{cardTouchStartX=e.screenX; cardTouchStartY=e.screenY; isCardSwiping=false;}); ais.addEventListener('mousemove',e=>{if(e.buttons===1&&Math.abs(e.screenX-cardTouchStartX)>15)isCardSwiping=true;}); ais.addEventListener('mouseup',e=>{if(isCardSwiping){cardTouchEndX=e.screenX; cardTouchEndY=e.screenY; handleCardSwipe();}});
+        const switchProjectByDirection=(d,fromCompare=false,startPos='first')=>{let k=getSortedProjectKeys(); if(k.length<=1)return; let i=k.indexOf(currentProjectKey); i=d<0?(i-1+k.length)%k.length:(i+1)%k.length; $('switch-project-select').value=k[i]; $('switch-project-select').dispatchEvent(new Event('change')); if(fromCompare){showCenterToast(`已更換為尋找 ${PROJECTS[k[i]].animalName}`,3000); setTimeout(()=>openCompareModal(startPos),100);} };
+        const handleCardSwipe=()=>{if(Math.abs(cardTouchEndX-cardTouchStartX)>40)switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1);};
+        on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
+        const openGallery=()=>{text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal');};
+        ais.addEventListener('click',e=>{if(isCardSwiping){e.preventDefault();e.stopPropagation();return;} if(e.target.classList.contains('gallery-btn-overlay'))openGallery(); else if(e.target.id==='animal-main-photo')openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000);} });
+        on('header-gallery-btn','click',e=>{e.stopPropagation(); openGallery();}); on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
+        
+        function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 glass-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 glass-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
+        function loadMoreGalleryItems() { let c=$('gallery-content'), it=PROJECTS[currentProjectKey]?.[currentGalleryType]; if(!it)return; let ed=Math.min(galleryLoadedCount+2, it.length); for(let i=galleryLoadedCount; i<ed; i++){ let o=typeof it[i]==='string'?{url:it[i]}:it[i], u=o.url?.startsWith('/images/')?getBaseHttpUrl()+o.url:o.url, d=document.createElement('div'); d.className="mb-4 border-2 border-black shadow-lg bg-white"; if(currentGalleryType==='photos'){ d.classList.add('cursor-pointer'); d.onclick=()=>openPhotoViewer(i,it); d.innerHTML=`<img src="${u}" loading="lazy" class="w-full object-cover block border-b-2 border-black">${o.title?`<div class="p-2 text-sm font-bold text-center">${o.title}</div>`:''}`; } else { d.classList.add('p-3'); d.innerHTML=`${o.title?`<div class="text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed pb-1">${o.title}</div>`:''}<video src="${u}" controls preload="metadata" class="w-full border-2 border-black bg-black"></video>`; } c.appendChild(d); } galleryLoadedCount=ed; }
+        $('gallery-content').addEventListener('scroll', function(){ if(this.scrollTop+this.clientHeight>=this.scrollHeight-50) loadMoreGalleryItems(); });
+        function openPhotoViewer(i, p) { viewerPhotos=p; currentViewerIndex=i; updatePhotoViewer(); show('photo-viewer-modal'); }
+        function updatePhotoViewer() { 
+            if(!viewerPhotos.length)return; 
+            let o=typeof viewerPhotos[currentViewerIndex]==='string'?{url:viewerPhotos[currentViewerIndex]}:viewerPhotos[currentViewerIndex], u=o.url?.startsWith('/images/')?getBaseHttpUrl()+o.url:o.url; 
+            const imgEl = $('viewer-img');
+            const loadingEl = $('viewer-loading');
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            imgEl.classList.add('opacity-0');
+            imgEl.onload = () => { if (loadingEl) loadingEl.classList.add('hidden'); imgEl.classList.remove('opacity-0'); };
+            imgEl.onerror = () => { if (loadingEl) loadingEl.classList.add('hidden'); imgEl.classList.remove('opacity-0'); };
+            imgEl.src=u; 
+            if (imgEl.complete) {
+                if (loadingEl) loadingEl.classList.add('hidden'); 
+                imgEl.classList.remove('opacity-0');
+            }
+            text('viewer-title',o.title||""); 
+            $('viewer-prev-btn').style.opacity=currentViewerIndex>0?"1":"0.5"; 
+            $('viewer-next-btn').style.opacity=currentViewerIndex<viewerPhotos.length-1?"1":"0.5"; 
+        }
+        let viewerToastTimer = null;
+        function showViewerToast(msg) { let t=$('viewer-toast'); t.innerText=msg; t.classList.remove('hidden'); t.classList.remove('opacity-0'); if(viewerToastTimer)clearTimeout(viewerToastTimer); viewerToastTimer=setTimeout(()=>{t.classList.add('opacity-0'); setTimeout(()=>t.classList.add('hidden'),300);}, 2000); }
+        function switchToAdjacentProjectPhotos(offset) { let keys = getSortedProjectKeys(); if (keys.length <= 1) return; let idx = keys.indexOf(currentProjectKey); if (idx === -1) idx = 0; let foundKey = null; let allPhotos = []; for (let i = 1; i < keys.length; i++) { idx = (idx + offset + keys.length) % keys.length; let k = keys[idx]; let p = PROJECTS[k]; let list = []; if(p.mainPhoto) list.push(p.mainPhoto); if(p.photos) list = list.concat(p.photos); allPhotos = [...new Set(list)]; if (allPhotos.length > 0) { foundKey = k; break; } } if (foundKey) { $('switch-project-select').value = foundKey; $('switch-project-select').dispatchEvent(new Event('change')); viewerPhotos = allPhotos; currentViewerIndex = offset > 0 ? 0 : viewerPhotos.length - 1; updatePhotoViewer(); showViewerToast(`已切換為 ${PROJECTS[foundKey].animalName || PROJECTS[foundKey].name || "專案"}`); } }
+        on('viewer-close-btn','click',()=>hide('photo-viewer-modal'));
+        $('viewer-prev-btn').addEventListener('click',()=>{if(currentViewerIndex>0){currentViewerIndex--;updatePhotoViewer();}else{switchToAdjacentProjectPhotos(-1);}});
+        $('viewer-next-btn').addEventListener('click',()=>{if(currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}else{switchToAdjacentProjectPhotos(1);}});
+        let vc=$('photo-viewer-container'); vc.addEventListener('touchstart',e=>touchStartX=e.changedTouches[0].screenX); vc.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX; if(touchEndX<touchStartX-50){ $('viewer-next-btn').click(); }else if(touchEndX>touchStartX+50){ $('viewer-prev-btn').click(); } });
+        
+        const zoomToProject=(key)=>{ let p=PROJECTS[key]; if(!p)return; let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); };
+
+        // --- 管理員與定位操作 ---
+        on('sync-ping','click',e=>{ e.stopPropagation(); $('admin-pwd-input').value=""; show('admin-login-modal'); });
+        on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
+        on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
+        on('close-admin-btn','click',()=>{ hide('admin-panel'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
+        on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
+        on('manage-blacklist-btn','click',()=>{ html('blacklist-container','<p class="text-center mt-4">載入中...</p>'); wsSend("admin_get_blacklist"); show('manage-blacklist-modal'); }); on('close-blacklist-btn','click',()=>hide('manage-blacklist-modal')); on('save-restrict-prob-btn','click',()=>{ wsSend("admin_update_restrict_prob",{prob:$('restrict-prob-input').value}); text('save-restrict-prob-btn',"⏳"); setTimeout(()=>text('save-restrict-prob-btn',"儲存"),1000); });
+        
+        const SIGHTING_ICONS = ['🐾', '❓', '❌', '💩', '🦴', '🩸', '👀', '📷'];
+        on('add-sighting-btn','click',()=>{
+            let cg=$('sighting-icon-grid'); cg.innerHTML='';
+            SIGHTING_ICONS.forEach(ic=>{
+                let b=document.createElement('button'); b.className='text-3xl p-2 border-2 border-black bg-white hover:bg-yellow-200 transition-colors cursor-pointer shadow-[2px_2px_0px_#000]'; b.innerText=ic;
+                b.onclick=()=>{
+                    hide('sighting-icon-modal');
+                    showInputModal(`📍 新增出沒點 [${ic}]`, "描述...", "", desc=>{
+                        show('position-method-modal');
+                        replaceBtn('pos-method-map-btn',()=>{hide('position-method-modal'); showCenterToast("📍 請在地圖上點擊！"); map.once('click',e=>{if(!isCoordinateInTaiwan(e.latlng.lat,e.latlng.lng))return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。"); wsSend("add_sighting",{data:{lat:e.latlng.lat,lng:e.latlng.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！");}); });
+                        replaceBtn('pos-method-input-btn',()=>{hide('position-method-modal'); $('coord-input-value').value=""; show('coordinate-input-modal'); replaceBtn('coord-submit-btn',async()=>{let rv=$('coord-input-value').value.trim(); if(!rv)return showCenterToast("⚠️ 請輸入內容！"); let b2=$('coord-submit-btn'); b2.innerText="⏳ 解析中..."; b2.disabled=true; try{if(rv.startsWith("http://")||rv.startsWith("https://")){if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.mapUrlResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("parse_map_url",{url:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"未知錯誤");}else{let p=rv.replace(/[()]/g,'').split(/[,;\s]+/).filter(Boolean).map(Number); if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])&&p[0]<90&&p[1]>100){if(!isCoordinateInTaiwan(p[0],p[1]))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:p[0],lng:p[1],description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([p[0],p[1]],16); showCenterToast("✅ 成功！");}else{if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.addressResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("search_address",{address:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"無法解析該地址");}}}catch(e){let em=e.message||e||"解析失敗"; if(em==="timeout")em="請求處理超時！伺服器可能正忙碌中。"; showHTMLModal(`<div class="text-lg font-black text-red-600 mb-2 border-b-2 border-black pb-1">⚠️ 解析失敗</div><div class="text-sm font-bold text-gray-800 mb-3">${em}</div><p class="text-xs text-gray-600 mb-4 text-left leading-relaxed">請檢查輸入格式，或是您可以點擊下方按鈕前往 Google Maps 手動搜尋。<br>找到正確位置後，<span class="text-red-600 font-bold">長按地圖獲得紅點座標</span> 或 <span class="text-red-600 font-bold">複製分享網址</span>，再回來貼上即可！</p><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rv)}" target="_blank" class="glass-btn block text-center py-3 bg-green-500 text-white mb-2 no-underline text-sm shadow-[2px_2px_0px_#000]">🌍 在 Google Maps 手動找</a>`); window.mapUrlResolver=null; window.addressResolver=null;}finally{b2.innerText="確定"; b2.disabled=false;}}); replaceBtn('coord-cancel-btn',()=>hide('coordinate-input-modal')); });
+                        replaceBtn('pos-method-cancel-btn',()=>hide('position-method-modal'));
+                    });
+                };
+                cg.appendChild(b);
+            });
+            show('sighting-icon-modal');
+        });
+        on('sighting-icon-cancel-btn','click',()=>hide('sighting-icon-modal'));
+
+        on('manage-sightings-btn','click',()=>{ renderManageSightingsList(); show('manage-sightings-modal'); }); on('close-manage-modal-btn','click',()=>hide('manage-sightings-modal'));
+        function renderManageSightingsList() { let c=$('sightings-list-container'); c.innerHTML=''; let id=Object.keys(allSightings).filter(i=>allSightings[i].project===currentProjectKey).sort((a,b)=>allSightings[b].timestamp-allSightings[a].timestamp); if(!id.length)return html('sightings-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allSightings[i], dt=new Date(d.timestamp); c.innerHTML+=`<div class="border border-white/40 p-3 bg-white mb-2"><div class="font-bold text-sm">🕒 ${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} <span class="text-xl ml-2">${d.icon||'🐾'}</span></div><div class="text-sm mb-2">${escapeHTML(d.description)}</div><div class="flex gap-2"><button class="edit-s-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 編輯</button><button class="del-s-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-s-btn').forEach(b=>b.addEventListener('click',e=>{let sid=e.target.getAttribute('data-id'), cur=allSightings[sid]; hide('manage-sightings-modal'); let cg=$('sighting-icon-grid'); cg.innerHTML=''; SIGHTING_ICONS.forEach(ic=>{let bt=document.createElement('button'); bt.className='text-3xl p-2 border-2 border-black bg-white hover:bg-yellow-200 transition-colors cursor-pointer shadow-[2px_2px_0px_#000]'; bt.innerText=ic; bt.onclick=()=>{hide('sighting-icon-modal'); showInputModal(`📝 編輯出沒點 [${ic}]`,"描述...",cur.description, nd=>{wsSend("edit_sighting",{id:sid, data:{description:nd, icon:ic}}); show('manage-sightings-modal');});}; cg.appendChild(bt);}); show('sighting-icon-modal'); replaceBtn('sighting-icon-cancel-btn',()=>{hide('sighting-icon-modal'); show('manage-sightings-modal');});})); c.querySelectorAll('.del-s-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_sighting",{id:e.target.getAttribute('data-id')})))); }
+        
+        const updRP=()=>{if(currentRoutePolyline)map.removeLayer(currentRoutePolyline); currentRouteMarkers.forEach(m=>map.removeLayer(m)); currentRouteMarkers=[]; let c=$('route-color').value, w=parseInt($('route-weight').value); if(currentRoutePoints.length){currentRoutePolyline=L.polyline(currentRoutePoints,{color:c,weight:w,dashArray:'5,10',pane:'routesPane'}).addTo(map); currentRoutePoints.forEach(p=>currentRouteMarkers.push(L.circleMarker(p,{radius:5,color:'#000',weight:2,fillColor:c,fillOpacity:1,pane:'routesPane'}).addTo(map)));} };
+        $('route-weight').addEventListener('input', e=>{text('route-weight-val',e.target.value); updRP();}); $('route-color').addEventListener('input', updRP);
+        on('add-route-btn','click',()=>{ isDrawingRoute=true; currentRoutePoints=[]; $('route-name').value=''; show('route-drawing-panel'); hide('admin-panel'); showCenterToast("🗺️ 點擊地圖新增路線節點。"); updRP(); }); on('route-undo-btn','click',()=>{currentRoutePoints.pop(); updRP();}); const extR=()=>{isDrawingRoute=false; hide('route-drawing-panel'); show('admin-panel'); currentRoutePoints=[]; updRP();}; on('route-cancel-btn','click', extR); on('route-finish-btn','click',()=>{ if(currentRoutePoints.length<2)return showCenterToast("⚠️ 至少需要兩個節點！"); wsSend("add_route",{data:{name:$('route-name').value||'未命名',color:$('route-color').value,weight:parseInt($('route-weight').value),points:currentRoutePoints,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！"); extR(); });
+        
+        on('manage-routes-btn','click',()=>{ renderManageRoutesList(); show('manage-routes-modal'); }); on('close-manage-routes-btn','click',()=>hide('manage-routes-modal'));
+        function renderManageRoutesList() { let c=$('routes-list-container'); c.innerHTML=''; let id=Object.keys(allRoutes).filter(i=>allRoutes[i].project===currentProjectKey).sort((a,b)=>allRoutes[b].timestamp-allRoutes[a].timestamp); if(!id.length)return html('routes-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allRoutes[i]; c.innerHTML+=`<div class="border border-white/40 p-3 bg-white mb-2"><div class="font-bold mb-2"><span style="display:inline-block;width:12px;height:12px;background:${d.color};"></span> ${escapeHTML(d.name)}</div><div class="flex gap-2"><button class="edit-r-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 屬性</button><button class="del-r-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-r-btn').forEach(b=>b.addEventListener('click',e=>{editingRouteId=e.target.getAttribute('data-id'); let d=allRoutes[editingRouteId]; $('edit-route-name').value=d.name; $('edit-route-color').value=d.color; $('edit-route-weight').value=d.weight; text('edit-route-weight-val',d.weight); show('edit-route-modal');})); c.querySelectorAll('.del-r-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_route",{id:e.target.getAttribute('data-id')})))); }
+        $('edit-route-weight').addEventListener('input', e=>text('edit-route-weight-val',e.target.value)); on('edit-route-cancel','click',()=>{hide('edit-route-modal'); editingRouteId=null;}); on('edit-route-save','click',()=>{ if(editingRouteId){wsSend("edit_route",{id:editingRouteId, data:{name:$('edit-route-name').value, color:$('edit-route-color').value, weight:parseInt($('edit-route-weight').value)}}); hide('edit-route-modal'); editingRouteId=null;} });
+        
+        // --- 新增：GPX 檔案解析與上傳邏輯 ---
+        let tempGpxPoints = [];
+        on('upload-gpx-btn', 'click', () => $('gpx-file-input').click());
+        $('gpx-file-input').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(ev.target.result, "text/xml");
+                    const pts = [];
+                    // 解析 GPX 軌跡點 (trkpt)
+                    const trkpts = xmlDoc.getElementsByTagName("trkpt");
+                    for (let i = 0; i < trkpts.length; i++) {
+                        const lat = parseFloat(trkpts[i].getAttribute("lat"));
+                        const lon = parseFloat(trkpts[i].getAttribute("lon"));
+                        if (!isNaN(lat) && !isNaN(lon)) pts.push([lat, lon]);
+                    }
+                    // 如果沒有 trkpt，嘗試解析路徑點 (rtept)
+                    if (pts.length === 0) {
+                        const rtepts = xmlDoc.getElementsByTagName("rtept");
+                        for (let i = 0; i < rtepts.length; i++) {
+                            const lat = parseFloat(rtepts[i].getAttribute("lat"));
+                            const lon = parseFloat(rtepts[i].getAttribute("lon"));
+                            if (!isNaN(lat) && !isNaN(lon)) pts.push([lat, lon]);
+                        }
+                    }
+                    
+                    if (pts.length < 2) return showCenterToast("⚠️ GPX 檔案中找不到足夠軌跡點！");
+                    
+                    tempGpxPoints = pts;
+                    // 將檔名當作預設名稱（去除副檔名）
+                    $('gpx-route-name').value = file.name.replace(/\.[^/.]+$/, "");
+                    
+                    // 開啟設定屬性對話框
+                    show('gpx-config-modal');
+                    hide('admin-panel');
+                } catch(err) {
+                    showCenterToast("⚠️ 無法解析此 GPX 檔案，請確認格式！");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // 重置 file input，確保可重複上傳同個檔案
+        });
+
+        $('gpx-route-weight').addEventListener('input', e => text('gpx-route-weight-val', e.target.value));
+        on('gpx-config-cancel', 'click', () => { hide('gpx-config-modal'); show('admin-panel'); tempGpxPoints = []; });
+        on('gpx-config-save', 'click', () => {
+            if(tempGpxPoints.length === 0) return;
+            const name = $('gpx-route-name').value || '未命名 GPX';
+            const color = $('gpx-route-color').value;
+            const weight = parseInt($('gpx-route-weight').value);
+            
+            // 使用原本路線系統（Route）發送資料
+            wsSend("add_route", {
+                data: {
+                    name: name,
+                    color: color,
+                    weight: weight,
+                    points: tempGpxPoints,
+                    timestamp: Date.now(),
+                    project: currentProjectKey
+                }
+            });
+            showCenterToast("✅ GPX 路線上傳成功！");
+            hide('gpx-config-modal');
+            show('admin-panel');
+            tempGpxPoints = [];
+        });
+
+        on('update-announce-btn','click',()=>showInputModal("📢 更新公告", "內容...", allAnnouncements[currentProjectKey]||PROJECTS[currentProjectKey]?.announcement||"", t=>{allAnnouncements[currentProjectKey]=t; wsSend("update_announcement",{data:t}); showCenterToast("✅ 成功！");}));
+        
+        const createPrizeRow=()=>{ let d=document.createElement('div'); d.className='border border-white/40 p-3 bg-gray-100 relative mb-3'; d.innerHTML=`<button class="absolute top-1 right-1 text-red-600 font-bold rmv-r text-lg hover:scale-110 transition-transform">✖</button><input type="text" class="p-name glass-input w-full p-2 mb-2 text-sm font-bold placeholder-gray-500" placeholder="獎項名稱"><div class="flex gap-2 mb-2 items-center"><input type="text" class="p-url glass-input flex-1 p-2 text-sm placeholder-gray-500" placeholder="兌換網址 或"><button class="img-upload-btn glass-btn px-2 py-2 bg-purple-500 text-white text-xs whitespace-nowrap">🖼️ 選圖</button><input type="file" class="hidden img-file-input" accept="image/*"></div><div class="text-xs text-green-700 font-bold mb-2 hidden img-success-msg">✅ 圖片已就緒</div><div class="flex gap-2 mb-2"><label class="text-xs font-bold w-14">一般%:</label><input type="number" class="p-prob glass-input flex-1 p-1 text-sm font-mono" value="1.0" min="0.001" step="0.1"></div><div class="flex gap-2"><label class="text-xs font-bold w-14 text-red-600">首抽%:</label><input type="number" class="p-fprob glass-input flex-1 p-1 text-sm font-mono border-red-400" value="70.0" min="0.001" step="0.1"></div>`; d.querySelector('.rmv-r').onclick=()=>d.remove(); let fi=d.querySelector('.img-file-input'), ub=d.querySelector('.img-upload-btn'), ui=d.querySelector('.p-url'), sm=d.querySelector('.img-success-msg'); ub.onclick=()=>fi.click(); fi.onchange=e=>{let f=e.target.files[0]; if(!f)return; if(f.size>2097152){showCenterToast("⚠️ 圖片請小於 2MB！"); fi.value=""; return;} let r=new FileReader(); r.onload=ev=>{d.dataset.imgBase64=ev.target.result; ui.value="[已選擇本機圖片]"; ui.disabled=true; ui.classList.add("bg-gray-200","text-gray-500"); ub.innerText="重新選擇"; sm.classList.remove('hidden');}; r.readAsDataURL(f);}; return d; };
+        on('add-prize-btn','click',()=>{ text('add-prize-title',`🎁 新增獎池`); $('prize-rows-container').innerHTML=''; $('prize-rows-container').appendChild(createPrizeRow()); show('add-prize-modal'); }); on('add-prize-row-btn','click',()=>$('prize-rows-container').appendChild(createPrizeRow())); on('add-prize-cancel-btn','click',()=>hide('add-prize-modal'));
+        on('add-prize-submit-btn','click',()=>{ let pz=[]; $('prize-rows-container').childNodes.forEach(r=>{let n=r.querySelector('.p-name').value, u=r.querySelector('.p-url').value, p=parseFloat(r.querySelector('.p-prob').value), fp=parseFloat(r.querySelector('.p-fprob').value), ib=r.dataset.imgBase64||""; if(n&&(u||ib)&&!isNaN(p)&&!isNaN(fp)) pz.push({name:n,url:ib?"":u,prob:p,first_prob:fp,image_base64:ib});}); if(!pz.length)return showCenterToast("⚠️ 填寫不完整！請確認名稱與(網址/圖片)都有填寫。"); wsSend("add_prizes",{data:pz}); hide('add-prize-modal'); showCenterToast("⏳ 指令已送出！圖片上傳可能需要幾秒鐘..."); });
+        on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
+        on('slot-close-btn','click',()=>hide('slot-machine-modal')); on('floating-gift-container','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法參與抽獎！"); text('slot-machine-title',`🎰 抽獎`); updateGiftUI(); show('slot-machine-modal'); }); on('prize-pool-close-btn','click',()=>hide('prize-pool-modal'));
+        
+        let btnCollapseTimer=null; 
+        function resetBtnCollapseTimer() { 
+            if(window.innerWidth>640)return; 
+            if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+            btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+        }
+        document.addEventListener('click',e=>{if(!e.target.closest('.collapsible-btn'))document.querySelectorAll('.collapsible-btn').forEach(b=>b.classList.remove('show-desc'));});
+        document.querySelectorAll('.collapsible-btn').forEach(btn=>{ 
+            btn.addEventListener('click',e=>{
+                if(window.innerWidth<=640){
+                    if(btn.classList.contains('collapsed')) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        btn.classList.remove('collapsed');
+                        btn.classList.add('show-desc');
+                        
+                        document.querySelectorAll('.collapsible-btn').forEach(b=>{
+                            if(b!==btn) { b.classList.add('collapsed'); b.classList.remove('show-desc'); }
+                        });
+                        
+                        if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+                        btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+                        return;
+                    }
+                    
+                    if(btn.classList.contains('two-tap')&&!btn.classList.contains('show-desc')){
+                        document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.remove('collapsed'); if(b!==btn)b.classList.remove('show-desc');}); 
+                        btn.classList.add('show-desc'); 
+                        if(btnCollapseTimer)clearTimeout(btnCollapseTimer); 
+                        btnCollapseTimer=setTimeout(()=>{if(window.innerWidth<=640)document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});},30000); 
+                        e.stopImmediatePropagation(); e.preventDefault();
+                    }else btn.classList.remove('show-desc');
+                }
+            },true); 
+        });
+
+        $('clear-radius').addEventListener('input',e=>{currentClearRadius=parseInt(e.target.value); text('clear-radius-val',currentClearRadius);});
+        on('clear-history-btn','click',()=>{ if(!isAdmin)return; isClearingHistory=true; map.dragging.disable(); clearHistoryCircles=[]; show('clear-history-panel'); hide('admin-panel'); showCenterToast("🧹 直接在畫面上拖曳塗抹要清除的範圍！\n點擊或塗抹已標示的紅圈即可取消。"); });
+        const exitClearMode=()=>{ isClearingHistory=false; map.dragging.enable(); clearHistoryCircles.forEach(c=>map.removeLayer(c.layer)); clearHistoryCircles=[]; hide('clear-history-panel'); show('admin-panel'); }; on('clear-history-cancel','click',exitClearMode);
+        on('clear-history-confirm','click',()=>{ if(clearHistoryCircles.length===0)return showCenterToast("⚠️ 請至少標示一個清除範圍！"); showConfirm("確定要清除這些紅圈範圍內的所有足跡嗎？\n清除後將無法復原！",()=>{let areas=clearHistoryCircles.map(c=>({lat:c.lat,lng:c.lng,radius:c.radius})); wsSend("admin_clear_history",{areas:areas,project:currentProjectKey}); Object.values(allUsersData).forEach(u=>{if(u.history)u.history=u.history.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius));}); localHistory=localHistory.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius)); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); renderMap(); requestFogRender(); showCenterToast("✅ 軌跡清理指令已送出並於本地生效！"); exitClearMode();}); });
+
+        on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); startLocationServices(false); connectWebSocket(); });
+        let qcb=$('quick-camera-btn'); if(qcb){ qcb.addEventListener('click',function(e){if(window.innerWidth<=640&&!this.classList.contains('expanded-mode')){e.preventDefault(); this.classList.add('expanded-mode'); setTimeout(()=>this.classList.remove('expanded-mode'),3000);}}); }
+        
+        let mapLastTapTime = 0;
+        $('map-container').addEventListener('touchend', e => {
+            if(!isMobileDevice) return;
+            if(e.target.closest('.glass-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+            let now = Date.now();
+            if(now - mapLastTapTime < 300) {
+                e.preventDefault(); 
+                if(map) map.setZoom(map.getZoom() + 1, {animate: true});
+            }
+            mapLastTapTime = now;
+        }, {passive: false});
+
+        window.addEventListener('DOMContentLoaded',initSystem);
+    </script>
+
+<!-- ================= V2 UI OVERLAYS ================= -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Daily Steps Widget -->
+<div id="v2-steps-widget" class="steps-widget" onclick="showV2Profile()">
+    <div style="font-size: 20px;">🐾</div>
+    <div>
+        <div class="steps-count" id="v2-step-text">0 / 5000</div>
+        <div class="steps-progress-bg"><div class="steps-progress-bar" id="v2-step-bar"></div></div>
+    </div>
+</div>
+
+<!-- Radar FAB -->
+<div id="v2-radar-btn" class="fab-radar" onclick="triggerRadarScan()">
+    🔍
+</div>
+
+<!-- Bottom Navigation (Mobile Friendly) -->
+<div class="mobile-bottom-nav">
+    <a href="#" class="nav-item active" onclick="toggleMapMode('explore')">
+        <div>🗺️</div><span>探索</span>
+    </a>
+    <a href="#" class="nav-item" onclick="triggerGalleryMode()">
+        <div>📸</div><span>畫廊</span>
+    </a>
+    <a href="#" class="nav-item" onclick="document.getElementById('report-stray-btn').click(); return false;">
+        <div style="background:linear-gradient(135deg,#f43f5e,#e11d48); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">➕</div><span>通報</span>
+    </a>
+    <a href="#" class="nav-item" onclick="toggleHeatmap()">
+        <div>🔥</div><span>盲區</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showV2Profile()">
+        <div>👤</div><span>成就</span>
+    </a>
+</div>
+
+<!-- V2 Profile Modal -->
+<div id="v2-profile-modal" class="hidden absolute inset-0 z-[25000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
+    <div class="glass-panel w-full max-w-sm text-center p-8 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 opacity-20"></div>
+        <div class="w-20 h-20 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full mx-auto border-4 border-white shadow-lg flex items-center justify-center text-3xl mb-4 relative z-10" id="v2-profile-avatar">🕵️</div>
+        <h3 class="text-2xl font-black text-gray-800 mb-1" id="v2-profile-name">搜救員</h3>
+        <p class="text-sm font-bold text-blue-600 mb-6" id="v2-profile-title">🎖️ 新手巡邏員</p>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6 relative z-10">
+            <div class="bg-white/50 p-3 rounded-2xl border border-white/40">
+                <div class="text-xs text-gray-500 font-bold">今日步數</div>
+                <div class="text-xl font-black text-orange-500" id="v2-profile-steps">0</div>
+            </div>
+            <div class="bg-white/50 p-3 rounded-2xl border border-white/40">
+                <div class="text-xs text-gray-500 font-bold">總協尋次數</div>
+                <div class="text-xl font-black text-green-500" id="v2-profile-uploads">0</div>
+            </div>
+        </div>
+        
+        <button class="glass-btn w-full py-3 text-lg" onclick="document.getElementById('v2-profile-modal').classList.add('hidden')">繼續探索</button>
+    </div>
+</div>
+<!-- ========================================================= -->
+\n
+<!-- ================= V2 JS LOGIC ================= -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+// 1. Step Counter Hook
+let v2DailySteps = parseInt(localStorage.getItem('v2_daily_steps') || '0');
+let v2LastStepDate = localStorage.getItem('v2_last_step_date') || new Date().toDateString();
+if (v2LastStepDate !== new Date().toDateString()) { v2DailySteps = 0; localStorage.setItem('v2_last_step_date', new Date().toDateString()); }
+
+function updateV2StepsUI() {
+    const bar = document.getElementById('v2-step-bar');
+    const txt = document.getElementById('v2-step-text');
+    if(bar && txt) {
+        let max = 5000;
+        txt.innerText = `${v2DailySteps} / ${max}`;
+        let pct = Math.min(100, (v2DailySteps / max) * 100);
+        bar.style.width = pct + '%';
+        if (pct === 100 && !localStorage.getItem('v2_celebrated_' + new Date().toDateString())) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            localStorage.setItem('v2_celebrated_' + new Date().toDateString(), 'true');
+        }
+    }
+}
+updateV2StepsUI();
+
+// Intercept existing gps processing to add float text
+if (typeof processGpsUpdate === 'function') {
+    const originalProcessGpsUpdate = processGpsUpdate;
+    window.processGpsUpdate = function(lat, lng) {
+        let oldSteps = window.allUsersData?.[myUid]?.total_steps || 0;
+        originalProcessGpsUpdate(lat, lng);
+        let newSteps = window.allUsersData?.[myUid]?.total_steps || 0;
+        let diff = newSteps - oldSteps;
+        if (diff > 0) {
+            v2DailySteps += diff;
+            localStorage.setItem('v2_daily_steps', v2DailySteps.toString());
+            updateV2StepsUI();
+            
+            // Show floating text at screen center
+            let fl = document.createElement('div');
+            fl.className = 'step-float-text';
+            fl.innerText = '+' + diff;
+            fl.style.left = (window.innerWidth / 2 + (Math.random()*40-20)) + 'px';
+            fl.style.top = (window.innerHeight / 2) + 'px';
+            document.body.appendChild(fl);
+            setTimeout(() => fl.remove(), 1000);
+        }
+    };
+}
+
+// 2. Radar Scan
+function triggerRadarScan() {
+    let btn = document.getElementById('v2-radar-btn');
+    btn.style.transform = 'scale(0.9)';
+    setTimeout(()=> btn.style.transform = '', 200);
+    
+    let wave = document.createElement('div');
+    wave.className = 'radar-wave';
+    document.body.appendChild(wave);
+    
+    setTimeout(() => {
+        wave.remove();
+        // Highlight recent markers (last 24h)
+        let now = Date.now();
+        if(window.markersLayer) {
+            window.markersLayer.eachLayer(layer => {
+                // If it's a marker, just make it pop
+                if(layer.getElement) {
+                    let el = layer.getElement();
+                    if(el) {
+                        el.style.filter = 'drop-shadow(0 0 10px #22c55e) drop-shadow(0 0 20px #22c55e)';
+                        el.style.transform += ' scale(1.5)';
+                        el.style.transition = 'all 0.5s';
+                        setTimeout(()=> {
+                            el.style.filter = '';
+                            el.style.transform = el.style.transform.replace(' scale(1.5)', '');
+                        }, 5000);
+                    }
+                }
+            });
+        }
+        alert("✨ 雷達掃描完畢！附近標記點已為您高亮！");
+    }, 2000);
+}
+
+// 3. V2 Profile
+function showV2Profile() {
+    document.getElementById('v2-profile-name').innerText = window.currentUserName || '匿名搜救員';
+    document.getElementById('v2-profile-steps').innerText = v2DailySteps;
+    document.getElementById('v2-profile-uploads').innerText = window.allUsersData?.[myUid]?.uploadCount || 0;
+    
+    let title = "🐾 見習生";
+    if (v2DailySteps > 10000) title = "🎖️ 尋寵大師";
+    else if (v2DailySteps > 3000) title = "🏃 街巷守護者";
+    document.getElementById('v2-profile-title').innerText = title;
+    
+    document.getElementById('v2-profile-modal').classList.remove('hidden');
+}
+
+// 4. Heatmap & Sighting Trails Toggle
+let isHeatmapV2 = false;
+let sightingTrails = [];
+function toggleHeatmap() {
+    isHeatmapV2 = !isHeatmapV2;
+    if (isHeatmapV2) {
+        alert("🔥 盲區探索任務：尋找紅色的盲區！\n\n(模擬展示：畫出歷史軌跡預測區塊)");
+        drawSightingTrails();
+    } else {
+        sightingTrails.forEach(t => map.removeLayer(t));
+        sightingTrails = [];
+    }
+}
+
+function drawSightingTrails() {
+    if(typeof map === 'undefined' || !window.PROJECTS) return;
+    let proj = window.PROJECTS[window.currentProjectKey];
+    if(proj && proj.history && proj.history.length > 1) {
+        let latlngs = proj.history.map(h => [h.lat, h.lng]);
+        let pl = L.polyline(latlngs, {color: '#f43f5e', weight: 4, dashArray: '10, 10', className: 'animate-pulse'}).addTo(map);
+        sightingTrails.push(pl);
+        
+        let last = latlngs[latlngs.length-1];
+        let circle = L.circle(last, {radius: 500, color: 'red', fillColor: '#f43f5e', fillOpacity: 0.2}).addTo(map);
+        sightingTrails.push(circle);
+    } else {
+        // Just draw a random blind zone for demo
+        if (typeof map.getCenter === 'function') {
+            let center = map.getCenter();
+            let circle = L.circle([center.lat + 0.01, center.lng + 0.01], {radius: 800, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.4}).addTo(map);
+            circle.bindPopup("🚨 盲區！這裡尚未有人探索。");
+            sightingTrails.push(circle);
+        }
+    }
+}
+
+// 5. Gallery Mode stub
+function triggerGalleryMode() {
+    alert("📸 浪浪畫廊模式\n(此功能即將推出，您將能像滑 IG/Tinder 一樣輕鬆瀏覽附近毛孩！)");
+}
+
+function toggleMapMode(mode) {
+    // Just a placeholder to highlight nav items
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+}
+</script>
+<!-- ========================================================= -->
+\n</body>
+</html>
