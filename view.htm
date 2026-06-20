@@ -30,12 +30,22 @@
     </div>
 
     <!-- 影片播放區塊 -->
-    <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center">
+    <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center relative">
         <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 影片播放</h2>
-        <video id="secure-video" class="w-full bg-black aspect-video" controls controlsList="nodownload" disablePictureInPicture>
-            <!-- 來源會在 JavaScript 中動態設定 -->
-            您的瀏覽器不支援影片播放。
-        </video>
+        <div class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl">
+            <video id="secure-video" class="w-full h-full bg-black" controls controlsList="nodownload" disablePictureInPicture>
+                您的瀏覽器不支援影片播放。
+            </video>
+            
+            <!-- 浮水印疊加層 -->
+            <div id="watermark-overlay" class="absolute inset-0 pointer-events-none overflow-hidden opacity-20 flex flex-wrap justify-center items-center content-center z-10" style="mix-blend-mode: difference;">
+            </div>
+
+            <!-- 失焦保護層 -->
+            <div id="blur-overlay" class="absolute inset-0 bg-black/90 backdrop-blur-xl z-20 flex items-center justify-center hidden">
+                <span class="text-red-500 font-black text-2xl tracking-widest border-4 border-red-500 p-4">⚠️ 畫面失焦，播放暫停 (防側錄保護)</span>
+            </div>
+        </div>
         <p class="text-xs text-gray-500 mt-4">此為一次性安全授權連結，防範未經授權之下載與外流。</p>
     </div>
 
@@ -100,6 +110,32 @@
                         const videoEl = document.getElementById('secure-video');
                         videoEl.src = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${data.token}`;
                         videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
+
+                        // 建立 IP 浮水印
+                        const overlay = document.getElementById('watermark-overlay');
+                        const ipText = data.ip || 'UNKNOWN_IP';
+                        overlay.innerHTML = '';
+                        for (let i = 0; i < 60; i++) {
+                            const span = document.createElement('span');
+                            span.innerText = ipText;
+                            span.className = 'text-white text-xl font-black p-4 m-2 transform -rotate-45 select-none opacity-30';
+                            overlay.appendChild(span);
+                        }
+
+                        // 防側錄機制：失焦或切換視窗時自動暫停並模糊畫面
+                        const blurOverlay = document.getElementById('blur-overlay');
+                        function handleVisibility() {
+                            if (document.hidden || !document.hasFocus()) {
+                                videoEl.pause();
+                                blurOverlay.classList.remove('hidden');
+                            } else {
+                                blurOverlay.classList.add('hidden');
+                            }
+                        }
+                        window.addEventListener('blur', handleVisibility);
+                        window.addEventListener('focus', handleVisibility);
+                        document.addEventListener('visibilitychange', handleVisibility);
+                        
                     } else {
                         statusEl.innerText = '❌ ' + (data.message || '驗證失敗');
                         statusEl.classList.remove('hidden');
