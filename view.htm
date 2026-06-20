@@ -21,6 +21,28 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-white" oncontextmenu="return false;">
     
+    <!-- 隱藏的管理員區域 (右上角) -->
+    <div id="admin-secret-area" class="fixed top-0 right-0 w-24 h-24 z-[100] cursor-default opacity-0" title="管理員專用區"></div>
+
+    <!-- 管理員修改密碼 Modal -->
+    <div id="admin-modal" class="hidden fixed inset-0 z-[300] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-8 w-full max-w-sm bg-gray-800 text-center">
+            <h3 class="text-2xl font-black text-white mb-6 border-b-4 border-gray-600 pb-2">🛡️ 修改影片密碼</h3>
+            <div class="text-left mb-4">
+                <label class="block text-sm font-bold mb-2 text-gray-300">🔑 管理員密碼</label>
+                <input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 font-bold" placeholder="請輸入管理員密碼">
+            </div>
+            <div class="text-left mb-6">
+                <label class="block text-sm font-bold mb-2 text-gray-300">🆕 新的觀看密碼</label>
+                <input type="text" id="new-video-pwd-input" class="pixel-input w-full p-3 font-bold" placeholder="請輸入新密碼 (明碼顯示)">
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button id="admin-cancel-btn" class="pixel-btn flex-1 py-3 bg-gray-500 text-white font-bold">取消</button>
+                <button id="admin-confirm-btn" class="pixel-btn flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold">確認修改</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 密碼輸入區塊 -->
     <div id="auth-panel" class="pixel-panel p-8 w-full max-w-md bg-gray-800 text-center">
         <h2 class="text-3xl font-black mb-8 border-b-4 border-gray-600 pb-4 inline-block text-gray-100">🔒 安全影片驗證</h2>
@@ -273,6 +295,70 @@
                 }).catch(err => console.log('分享取消或失敗', err));
             } else {
                 alert('您的瀏覽器不支援原生分享功能，請直接複製網址即可！');
+            }
+        });
+
+        // 管理員修改密碼功能
+        const secretArea = document.getElementById('admin-secret-area');
+        const adminModal = document.getElementById('admin-modal');
+        const adminCancelBtn = document.getElementById('admin-cancel-btn');
+        const adminConfirmBtn = document.getElementById('admin-confirm-btn');
+
+        // 點擊隱藏區域 3 下觸發管理員模式，避免誤觸
+        let clickCount = 0;
+        let clickTimer;
+        secretArea.addEventListener('click', () => {
+            clickCount++;
+            clearTimeout(clickTimer);
+            if (clickCount >= 3) {
+                adminModal.classList.remove('hidden');
+                clickCount = 0;
+            } else {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+            }
+        });
+
+        adminCancelBtn.addEventListener('click', () => {
+            adminModal.classList.add('hidden');
+            document.getElementById('admin-pwd-input').value = '';
+            document.getElementById('new-video-pwd-input').value = '';
+        });
+
+        adminConfirmBtn.addEventListener('click', async () => {
+            const adminPwd = document.getElementById('admin-pwd-input').value;
+            const newPwd = document.getElementById('new-video-pwd-input').value;
+            
+            if (!adminPwd || !newPwd) {
+                alert('⚠️ 請填寫完整資訊！');
+                return;
+            }
+
+            adminConfirmBtn.disabled = true;
+            adminConfirmBtn.innerText = '⏳ 處理中...';
+
+            try {
+                if (!API_BASE_URL) await loadConfig();
+                const res = await fetch(API_BASE_URL + '/api/change_video_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: videoId,
+                        admin_password: adminPwd,
+                        new_password: newPwd
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 影片密碼修改成功！新密碼已立即生效。');
+                    adminCancelBtn.click();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 伺服器錯誤，請稍後再試。');
+            } finally {
+                adminConfirmBtn.disabled = false;
+                adminConfirmBtn.innerText = '確認修改';
             }
         });
     </script>
