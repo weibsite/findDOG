@@ -179,9 +179,11 @@ class PokemonARCamera {
                         if (topResult.includes('dog') || topResult.includes('terrier') || topResult.includes('retriever') || topResult.includes('pug') || topResult.includes('spaniel') || topResult.includes('husky')) {
                             this.localType = "犬";
                             this.localTypeLock = true;
+                            this.typeLockTime = Date.now();
                         } else if (topResult.includes('cat') || topResult.includes('kitten') || topResult.includes('tabby')) {
                             this.localType = "貓";
                             this.localTypeLock = true;
+                            this.typeLockTime = Date.now();
                         } else {
                             this.localType = "目標";
                         }
@@ -235,44 +237,81 @@ class PokemonARCamera {
         this.ctx.restore();
 
         // --- 畫目標頭上的特徵浮動文字 (AR Label) ---
-        let displayName = "";
-        let isBlurred = false;
-        const randomChars = "米克斯柴犬貴賓法鬥柯基虎斑剪耳項圈";
+        const now = Date.now();
+        // 產生獨立頻率的亂數文字，讓每個字有交錯切換的效果
+        const getRandStr = (seed, length) => {
+            const chars = "米克斯柴犬貴賓法鬥柯基虎斑剪耳項圈";
+            let res = "";
+            for(let i=0; i<length; i++) {
+                const tick = Math.floor(now / (500 + seed*100 + i*50));
+                const index = (tick * 17 + seed * 31 + i * 13) % chars.length;
+                res += chars.charAt(index);
+            }
+            return res;
+        };
+
+        let parts = [];
 
         if (this.slotMachineActive) {
-            // 777 滾動特效：1秒動一次，並保持馬賽克模糊
-            isBlurred = true;
-            if (this.slotMachineTicks % 60 === 0 || !this.slotCurrentChars) {
-                this.slotCurrentChars = this.slotTargetFeatures.map(feat => {
-                    return randomChars.charAt(Math.floor(Math.random() * randomChars.length)) + randomChars.charAt(Math.floor(Math.random() * randomChars.length));
-                }).join(" ");
-            }
-            displayName = this.slotCurrentChars;
-            
+            // 777 滾動特效：伺服器定格期間，特徵字非同步跳動，維持模糊
+            this.slotTargetFeatures.forEach((feat, idx) => {
+                parts.push({ text: getRandStr(idx + 10, feat.length), blur: true });
+                parts.push({ text: " ", blur: false });
+            });
             this.slotMachineTicks--;
             if (this.slotMachineTicks <= 0) {
                 this.slotMachineActive = false;
                 this.isServerRecognized = true;
                 this.serverFeatures = this.slotTargetFeatures;
             }
+        } else if (this.isServerRecognized && this.serverFeatures.length > 0) {
+            // 伺服器回傳：全清晰
+            this.serverFeatures.forEach(feat => {
+                parts.push({ text: feat, blur: false });
+                parts.push({ text: " ", blur: false });
+            });
         } else {
-            if (this.isServerRecognized && this.serverFeatures.length > 0) {
-                // 清晰顯示伺服器回傳的真實特徵
-                displayName = this.serverFeatures.join(" ");
+            // 本地掃描階段 (先判斷種族，再鎖定顏色)
+            
+            // 顏色 (Color)
+            // 如果種族已經判斷出來，過 1 秒才鎖定顏色 (解析層次感)
+            let isColorLocked = this.localTypeLock && (now - this.typeLockTime > 1000);
+            if (isColorLocked) {
+                parts.push({ text: this.localColor, blur: false });
             } else {
-                // 亂數馬賽克顯示 (本地猜測的顏色 + 亂數中文 + AI 即時判斷的 犬/貓/目標)
-                const randWord1 = randomChars.charAt(Math.floor(Math.random() * randomChars.length));
-                const randWord2 = randomChars.charAt(Math.floor(Math.random() * randomChars.length));
-                const displayType = this.tfModel ? this.localType : "載入AI";
-                displayName = `${this.localColor} ${randWord1}${randWord2} ${displayType}`;
-                isBlurred = true;
+                parts.push({ text: getRandStr(1, 2), blur: true });
+            }
+            parts.push({ text: " ", blur: false });
+
+            // 特徵 (Features) - 等待伺服器前永遠模糊跳動
+            parts.push({ text: getRandStr(2, 2), blur: true });
+            parts.push({ text: " ", blur: false });
+
+            // 種族 (Race)
+            if (this.localTypeLock) {
+                parts.push({ text: this.localType, blur: false });
+            } else {
+                if (!this.tfModel) {
+                    parts.push({ text: "載入AI", blur: true });
+                } else {
+                    parts.push({ text: getRandStr(3, 1), blur: true });
+                }
             }
         }
+
+        // 移除最後的空白
+        if (parts.length > 0 && parts[parts.length - 1].text === " ") parts.pop();
 
         // 畫標籤對話框背景
         this.ctx.save();
         this.ctx.font = "bold 24px 'Courier New', monospace";
-        const textWidth = this.ctx.measureText(displayName).width;
+        
+        // 計算總寬度
+        let textWidth = 0;
+        parts.forEach(p => {
+            textWidth += this.ctx.measureText(p.text).width;
+        });
+        
         const boxWidth = textWidth + 40;
         const boxHeight = 40;
         const boxX = cx - boxWidth / 2;
@@ -293,17 +332,25 @@ class PokemonARCamera {
         this.ctx.fill();
         this.ctx.stroke();
 
-        // 畫文字 (模糊效果)
-        if (isBlurred) {
-            this.ctx.filter = 'blur(4px)';
-            this.ctx.fillStyle = '#fcd34d'; // 馬賽克用黃色
-        } else {
-            this.ctx.fillStyle = this.isServerRecognized ? '#34d399' : '#fcd34d'; // 清晰時用綠色
-        }
-        
-        this.ctx.textAlign = 'center';
+        // 分段畫文字 (部分模糊，部分清晰)
+        let currentX = boxX + 20;
+        const textY = boxY + boxHeight / 2;
+        this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(displayName, cx, boxY + boxHeight / 2);
+
+        parts.forEach(p => {
+            if (p.blur) {
+                this.ctx.filter = 'blur(4px)';
+                this.ctx.fillStyle = '#fcd34d'; // 馬賽克用黃色
+            } else {
+                this.ctx.filter = 'none';
+                this.ctx.fillStyle = this.isServerRecognized ? '#34d399' : '#fcd34d'; // 伺服器清晰為綠色，本地鎖定為黃色
+            }
+            this.ctx.fillText(p.text, currentX, textY);
+            currentX += this.ctx.measureText(p.text).width;
+        });
+        
+        this.ctx.filter = 'none'; // reset
         this.ctx.restore();
     }
 
