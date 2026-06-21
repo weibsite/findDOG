@@ -236,6 +236,8 @@ class PokemonARCamera {
         this.ctx.beginPath(); this.ctx.moveTo(cx + size - corner, cy + size); this.ctx.lineTo(cx + size, cy + size); this.ctx.lineTo(cx + size + corner, cy + size); this.ctx.stroke();
         this.ctx.restore();
 
+        // --- 畫目標頭上的特徵浮動文字 (AR Label) ---
+        const now = Date.now();
         // 產生獨立頻率的亂數文字
         const getRandStr = (seed, length) => {
             const chars = "米克斯柴犬貴賓法鬥柯基虎斑剪耳項圈";
