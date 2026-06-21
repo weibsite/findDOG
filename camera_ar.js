@@ -238,14 +238,20 @@ class PokemonARCamera {
 
         // --- 畫目標頭上的特徵浮動文字 (AR Label) ---
         const now = Date.now();
-        // 產生獨立頻率的亂數文字，讓每個字有交錯切換的效果
+        // 產生獨立頻率的亂數文字，並混入方塊字元來保證真正的馬賽克效果
         const getRandStr = (seed, length) => {
+            const blocks = ["█", "▓", "▒", "░", "█"];
             const chars = "米克斯柴犬貴賓法鬥柯基虎斑剪耳項圈";
             let res = "";
             for(let i=0; i<length; i++) {
-                const tick = Math.floor(now / (500 + seed*100 + i*50));
-                const index = (tick * 17 + seed * 31 + i * 13) % chars.length;
-                res += chars.charAt(index);
+                // 大幅提升變換速度：原 500ms -> 50ms
+                const tick = Math.floor(now / (50 + seed*10 + i*15));
+                if (tick % 3 === 0) {
+                    res += blocks[(tick + seed) % blocks.length];
+                } else {
+                    const index = (tick * 17 + seed * 31 + i * 13) % chars.length;
+                    res += chars.charAt(index);
+                }
             }
             return res;
         };
