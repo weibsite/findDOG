@@ -236,22 +236,14 @@ class PokemonARCamera {
         this.ctx.beginPath(); this.ctx.moveTo(cx + size - corner, cy + size); this.ctx.lineTo(cx + size, cy + size); this.ctx.lineTo(cx + size + corner, cy + size); this.ctx.stroke();
         this.ctx.restore();
 
-        // --- 畫目標頭上的特徵浮動文字 (AR Label) ---
-        const now = Date.now();
-        // 產生獨立頻率的亂數文字，並混入方塊字元來保證真正的馬賽克效果
+        // 產生獨立頻率的亂數文字
         const getRandStr = (seed, length) => {
-            const blocks = ["█", "▓", "▒", "░", "█"];
             const chars = "米克斯柴犬貴賓法鬥柯基虎斑剪耳項圈";
             let res = "";
             for(let i=0; i<length; i++) {
-                // 大幅提升變換速度：原 500ms -> 50ms
                 const tick = Math.floor(now / (50 + seed*10 + i*15));
-                if (tick % 3 === 0) {
-                    res += blocks[(tick + seed) % blocks.length];
-                } else {
-                    const index = (tick * 17 + seed * 31 + i * 13) % chars.length;
-                    res += chars.charAt(index);
-                }
+                const index = (tick * 17 + seed * 31 + i * 13) % chars.length;
+                res += chars.charAt(index);
             }
             return res;
         };
@@ -259,10 +251,10 @@ class PokemonARCamera {
         let parts = [];
 
         if (this.slotMachineActive) {
-            // 777 滾動特效：伺服器定格期間，特徵字非同步跳動，維持模糊
+            // 777 滾動特效：伺服器定格期間，特徵字非同步跳動
             this.slotTargetFeatures.forEach((feat, idx) => {
-                parts.push({ text: getRandStr(idx + 10, feat.length), blur: true });
-                parts.push({ text: " ", blur: false });
+                parts.push({ text: getRandStr(idx + 10, feat.length) });
+                parts.push({ text: " " });
             });
             this.slotMachineTicks--;
             if (this.slotMachineTicks <= 0) {
@@ -273,35 +265,31 @@ class PokemonARCamera {
         } else if (this.isServerRecognized && this.serverFeatures.length > 0) {
             // 伺服器回傳：全清晰
             this.serverFeatures.forEach(feat => {
-                parts.push({ text: feat, blur: false });
-                parts.push({ text: " ", blur: false });
+                parts.push({ text: feat });
+                parts.push({ text: " " });
             });
         } else {
             // 本地掃描階段 (先判斷種族，再鎖定顏色)
             
             // 顏色 (Color)
-            // 如果種族已經判斷出來，過 1 秒才鎖定顏色 (解析層次感)
             let isColorLocked = this.localTypeLock && (now - this.typeLockTime > 1000);
             if (isColorLocked) {
-                parts.push({ text: this.localColor, blur: false });
+                parts.push({ text: this.localColor });
             } else {
-                parts.push({ text: getRandStr(1, 2), blur: true });
+                parts.push({ text: getRandStr(1, 2) });
             }
-            parts.push({ text: " ", blur: false });
+            parts.push({ text: " " });
 
-            // 特徵 (Features) - 等待伺服器前永遠模糊跳動
-            parts.push({ text: getRandStr(2, 2), blur: true });
-            parts.push({ text: " ", blur: false });
+            // 特徵 (Features) - 等待伺服器前永遠跳動
+            parts.push({ text: getRandStr(2, 2) });
+            parts.push({ text: " " });
 
             // 種族 (Race)
             if (this.localTypeLock) {
-                parts.push({ text: this.localType, blur: false });
+                parts.push({ text: this.localType });
             } else {
-                if (!this.tfModel) {
-                    parts.push({ text: "載入AI", blur: true });
-                } else {
-                    parts.push({ text: getRandStr(3, 1), blur: true });
-                }
+                // 持續跳動直到有答案為止 (不再顯示載入AI)
+                parts.push({ text: getRandStr(3, 2) });
             }
         }
 
@@ -340,22 +328,16 @@ class PokemonARCamera {
 
         // 分段畫文字 (部分模糊，部分清晰)
         let currentX = boxX + 20;
+        let xOffset = boxX + 20;
         const textY = boxY + boxHeight / 2;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
 
         parts.forEach(p => {
-            if (p.blur) {
-                this.ctx.filter = 'blur(4px)';
-                this.ctx.fillStyle = '#fcd34d'; // 馬賽克用黃色
-            } else {
-                this.ctx.filter = 'none';
-                this.ctx.fillStyle = this.isServerRecognized ? '#34d399' : '#fcd34d'; // 伺服器清晰為綠色，本地鎖定為黃色
-            }
-            this.ctx.fillText(p.text, currentX, textY);
-            currentX += this.ctx.measureText(p.text).width;
+            this.ctx.fillStyle = '#10b981'; // 綠色文字
+            this.ctx.fillText(p.text, xOffset, boxY + boxHeight / 2);
+            xOffset += this.ctx.measureText(p.text).width;
         });
-        
         this.ctx.filter = 'none'; // reset
         this.ctx.restore();
     }
@@ -394,39 +376,53 @@ class PokemonARCamera {
         return tmpCanvas.toDataURL('image/jpeg', 0.8);
     }
 
-    async takeFinalPhoto() {
-        // 1. 立即拍照
+    async takeFinalPhoto(onSkipRequested) {
         const base64Image = this.takePhotoBase64();
         if (!base64Image) return null;
 
-        // 2. 設定定格與放大
         this.frozenImage = new Image();
         this.frozenImage.src = base64Image;
         this.isFrozen = true;
-        
-        // 3. 趁定格的3秒鐘期間問伺服器這是什麼品種
-        const serverTask = fetch('/api/ar_detect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_base64: base64Image })
-        }).then(res => res.json()).then(data => {
-            if (data.features) {
-                const newFeatures = data.features;
-                // 不管怎樣都顯示 777 特效讓定格畫面有科技感
-                this.slotMachineActive = true;
-                this.slotMachineTicks = 120; // 滾動 120 個 frame (2 秒)，搭配 3 秒定格
-                this.slotTargetFeatures = newFeatures;
-            }
-        }).catch(e => {
-            console.error("最終辨識失敗:", e);
-        });
+        this.slotMachineActive = false;
 
-        // 4. 定住 3 秒
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // 結束定格
-        this.isFrozen = false;
-        return base64Image;
+        return new Promise((resolve) => {
+            let isDone = false;
+            const finish = () => {
+                if (isDone) return;
+                isDone = true;
+                this.isFrozen = false;
+                resolve(base64Image);
+            };
+
+            // 如果外部提供 Skip 機制
+            if (onSkipRequested) onSkipRequested(finish);
+
+            fetch('/api/ar_detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_base64: base64Image })
+            }).then(res => res.json()).then(data => {
+                if (isDone) return;
+                if (data.features) {
+                    this.slotMachineActive = true;
+                    this.slotMachineTicks = 60; // 滾動 1 秒 (60 frames)
+                    this.slotTargetFeatures = data.features;
+                    
+                    // 等待滾動結束後自動 finish
+                    const checkLoop = setInterval(() => {
+                        if (!this.slotMachineActive || isDone) {
+                            clearInterval(checkLoop);
+                            setTimeout(finish, 1000); // 讓使用者看清楚結果 1 秒
+                        }
+                    }, 100);
+                } else {
+                    finish();
+                }
+            }).catch(e => {
+                console.error("最終辨識失敗:", e);
+                finish();
+            });
+        });
     }
 }
 window.PokemonARCamera = PokemonARCamera;
