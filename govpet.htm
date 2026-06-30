@@ -35,19 +35,19 @@
 </style>
 </head><body>
 <svg width="0" height="0" class="hidden"><filter id="dynamic-sharpness"><feConvolveMatrix id="sharpness-matrix" order="3 3" preserveAlpha="true" matrix="0 0 0 0 1 0 0 0 0"/></filter></svg>
-<div id="map-container"><div id="map"></div><svg id="report-crosshair" class="crosshair-target" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2"><circle cx="12" cy="12" r="10" stroke="black" stroke-width="3"/><circle cx="12" cy="12" r="10" stroke="red" stroke-width="2"/><path stroke="black" stroke-width="3" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path stroke="red" stroke-width="2" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3" fill="red"/></svg></div>
+<div id="map-container"><div id="map"></div><div id="list-view-container" class="hidden absolute inset-0 z-[1500] bg-gray-200 overflow-y-auto pb-24 pt-20 px-2 sm:px-4"><div id="list-view-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-7xl mx-auto"></div><div id="list-view-loading" class="text-center py-4 font-bold text-gray-500 hidden">載入中...</div></div><svg id="report-crosshair" class="crosshair-target" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2"><circle cx="12" cy="12" r="10" stroke="black" stroke-width="3"/><circle cx="12" cy="12" r="10" stroke="red" stroke-width="2"/><path stroke="black" stroke-width="3" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path stroke="red" stroke-width="2" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3" fill="red"/></svg></div>
 
 <!-- 省電黑畫面 -->
 <div id="power-saving-overlay" class="hidden fixed inset-0 z-[25000] bg-black/90 touch-none"></div>
 
 <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/70 flex items-center justify-center transition-opacity duration-300"><div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform"><h2 class="text-2xl font-bold text-gray-900 mb-2">走失協尋地圖</h2><p class="text-gray-700 mb-4 text-sm font-bold">歡迎一起來幫助走失毛孩回家<br><br>在這裡您可以查看走失毛孩的協尋資訊，並回報您發現的線索</p><input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900"/><button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始尋找 [授權定位]</button><div id="error-msg" class="hidden text-red-600 font-bold mt-4 text-sm whitespace-pre-wrap"></div></div></div>
 
-<div id="search-modal" class="hidden absolute inset-0 z-[20000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><h3 class="text-gray-900 font-bold mb-3 text-xl">🔍 進階搜尋</h3><input type="text" id="search-keyword-input" class="pixel-input w-full p-3 mb-2 text-center font-sans text-sm" placeholder="輸入關鍵字 (非必填)"><div class="text-left text-xs font-bold text-gray-900 mb-1 border-b-2 border-black pb-1">⚡ 即時特徵分析 (Top 12)</div><div id="dynamic-filters-container" class="flex-1 overflow-y-auto mb-3 grid grid-cols-2 gap-1 text-left text-xs bg-gray-100 p-2 border-2 border-black"></div><div class="flex gap-2"><button id="search-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-white">取消</button><button id="search-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認篩選</button></div></div></div>
+<div id="search-modal" class="hidden absolute inset-0 z-[20000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]"><h3 class="text-gray-900 font-bold mb-3 text-xl">🔍 進階搜尋</h3><p class="text-xs font-bold text-gray-600 mb-2 text-left bg-blue-50 border-l-4 border-blue-500 p-2">💡 支援多重條件搜尋，字詞之間請用空白隔開 (例如：<span class="text-blue-700">黑 柴犬</span>)</p><input type="text" id="search-keyword-input" class="pixel-input w-full p-3 mb-2 text-center font-sans text-sm" placeholder="輸入關鍵字 (非必填)"><div class="text-left text-xs font-bold text-gray-900 mb-1 border-b-2 border-black pb-1 mt-2">⚡ 即時特徵篩選 (Top 12)</div><div id="dynamic-filters-container" class="flex-1 overflow-y-auto mb-3 grid grid-cols-2 gap-1 text-left text-xs bg-gray-100 p-2 border-2 border-black"></div><div class="flex gap-2"><button id="search-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-white">取消</button><button id="search-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認篩選</button></div></div></div>
 <div id="custom-modal" class="hidden absolute inset-0 z-[20000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
 <div id="confirm-modal" class="hidden absolute inset-0 z-[20000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
 <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 系統管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
 <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3><input type="text" id="profile-name" class="pixel-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱 (限中英文、數字、底線)" maxlength="15"><div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black"><label class="text-sm font-bold text-gray-800">代表色:</label><input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex gap-2"><button id="profile-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="profile-save-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button></div></div></div>
-<div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[58vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="search-filter-btn" class="pixel-btn p-3 bg-white text-xl flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_#1a202c] active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all w-[50px] h-[50px] shrink-0" title="搜尋關鍵字">🔍</button></div>
+<div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[58vw] sm:max-w-[90vw] flex items-center gap-2 transition-all"><div class="relative w-full"><select id="switch-project-select" class="pixel-btn p-3 pr-10 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] cursor-pointer outline-none appearance-none w-full text-left sm:text-center truncate"></select><div id="select-arrow" class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none font-black text-black">▼</div></div><button id="search-filter-btn" class="pixel-btn p-3 bg-white text-xl flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_#1a202c] active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all w-[50px] h-[50px] shrink-0" title="搜尋關鍵字">🔍</button><button id="toggle-list-view-btn" class="pixel-btn p-3 bg-white text-xl flex items-center justify-center border-4 border-black shadow-[4px_4px_0px_#1a202c] active:translate-y-1 active:shadow-[2px_2px_0px_#1a202c] transition-all w-[50px] h-[50px] shrink-0" title="切換列表模式">📜</button></div>
 <button id="scrape-stray-btn" class="absolute bottom-[17.5rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-purple-600 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🕸️ 網路尋找</button>
 <button id="report-stray-btn" class="absolute bottom-[15rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-green-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">📢 回報浪浪</button>
 <button id="user-manage-trigger-btn-left" class="absolute bottom-[12.5rem] left-4 z-[2000] pixel-btn p-3 text-sm bg-blue-500 text-white hidden flex items-center shadow-[4px_4px_0px_#1a202c]">🐾 管理浪浪</button>
@@ -116,7 +116,10 @@
 </div>
 <div id="admin-list-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col bg-gray-100"><h3 id="admin-list-title" class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2 text-red-600">📋 浪浪審核列表</h3><div id="admin-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="admin-list-close-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">❌ 關閉</button></div></div>
 <div id="admin-edit-modal" class="hidden absolute inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4"><div class="pixel-panel p-5 w-full max-w-md bg-white max-h-[95vh] overflow-y-auto flex flex-col gap-3 text-left"><h3 class="text-center font-bold text-xl text-blue-700 border-b-2 border-black pb-2">✏️ 審核與狀態變更</h3><input type="hidden" id="edit-stray-id"><div class="flex gap-2"><div class="flex-1"><label class="block text-xs font-bold mb-1">🐾 種類</label><select id="edit-stray-type" class="pixel-input w-full p-2 text-sm bg-white"><option value="狗">狗</option><option value="貓">貓</option><option value="鳥">鳥</option><option value="其他">其他</option></select></div><div class="flex-[2]"><label class="block text-xs font-bold mb-1">⏰ 時間</label><input type="datetime-local" id="edit-stray-time" class="pixel-input w-full p-2 text-sm"></div></div><div><label class="block text-xs font-bold mb-1">🏷️ 名字 (選填)</label><input type="text" id="edit-stray-name" class="pixel-input w-full p-2 text-sm" maxlength="10"></div><div><label class="block text-xs font-bold mb-1">📝 備註 (公告)</label><textarea id="edit-stray-notes" class="pixel-input w-full p-2 h-20 text-sm"></textarea></div><div><label class="block text-xs font-bold mb-1">📞 聯絡方式</label><div class="flex gap-2 items-center"><input type="text" id="edit-stray-contact" class="pixel-input flex-1 p-2 text-sm"><label class="flex items-center gap-1 text-xs font-bold cursor-pointer whitespace-nowrap bg-gray-200 p-2 border-2 border-black"><input type="checkbox" id="edit-stray-contact-public" class="w-4 h-4 cursor-pointer"> 公開</label></div></div><div><label class="block text-xs font-bold mb-1">🔗 連結 / IG</label><input type="text" id="edit-stray-ig" class="pixel-input w-full p-2 text-sm"></div><div class="border-t-2 border-dashed border-gray-400 pt-3 mt-2 grid grid-cols-2 gap-2"><button class="admin-status-btn pixel-btn py-2 bg-green-500 text-white text-sm" data-status="approved">✅ 儲存並上架</button><button class="admin-status-btn pixel-btn py-2 bg-orange-500 text-white text-sm" data-status="pending">⬇️ 暫時下架(改為待審)</button><button class="admin-status-btn pixel-btn py-2 bg-blue-500 text-white text-sm" data-status="found_owner">🎉 找到主人(結案)</button><button class="admin-status-btn pixel-btn py-2 bg-red-600 text-white text-sm" data-status="deleted">🗑️ 永久刪除</button></div><button id="admin-edit-close-btn" class="pixel-btn w-full py-2 mt-2 bg-gray-400 text-white">取消</button></div></div>
-<div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3 items-center"><a href="index.htm" target="_self" class="text-orange-500 hover:text-orange-700 no-underline font-black">尋寵地圖</a><a href="runrun.htm" target="_self" class="text-purple-600 hover:text-purple-800 no-underline font-black">浪浪地圖</a><a href="https://finddog.online/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+<div class="absolute bottom-2 right-2 pointer-events-none flex items-center gap-2 flex-wrap justify-end">
+    <div class="z-[500] text-[9px] sm:text-[10px] font-bold text-gray-600 bg-white/70 px-1.5 py-0.5 rounded pointer-events-auto shadow-[1px_1px_0px_#1a202c]">資料來源：<a href="https://www.pet.gov.tw/" target="_blank" class="text-blue-700 underline">寵物登記管理資訊網</a></div>
+    <div class="z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3 items-center"><a href="index.htm" target="_self" class="text-orange-500 hover:text-orange-700 no-underline font-black">尋寵地圖</a><a href="runrun.htm" target="_self" class="text-purple-600 hover:text-purple-800 no-underline font-black">浪浪地圖</a><a href="https://finddog.online/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+</div>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet"><script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
@@ -703,60 +706,34 @@ window.dynamicCategoryColors = {};
 function prepareDynamicFilters() {
     const container = document.getElementById('dynamic-filters-container');
     container.innerHTML = '';
-    let traitCounts = {};
-    Object.values(PROJECTS).forEach(proj => {
-        if (!proj.announcement) return;
-        let lines = proj.announcement.split('\n');
-        lines.forEach(line => {
-            if (line.startsWith('種類: ') || line.startsWith('花色: ')) {
-                let val = line.split(': ')[1];
-                if (val && val.trim() !== '' && val.trim() !== '無' && val.trim() !== '不詳') {
-                    val = val.trim();
-                    traitCounts[val] = (traitCounts[val] || 0) + 1;
-                }
-            }
-        });
-    });
     
-    delete traitCounts['狗'];
-    delete traitCounts['貓'];
-    delete traitCounts['犬'];
-    
-    let sortedTraits = Object.keys(traitCounts).sort((a, b) => traitCounts[b] - traitCounts[a]).slice(0, 12);
-    if (sortedTraits.length === 0) {
-        container.innerHTML = '<div class="col-span-2 text-center text-gray-500 font-bold">目前沒有可篩選的特徵</div>';
-        return;
-    }
+    // Top 12 hardcoded traits mapped to nice colors
+    const topTraits = [
+        {name: '米克斯', color: '#8b5cf6'},
+        {name: '柴犬', color: '#f59e0b'},
+        {name: '橘貓', color: '#f97316'},
+        {name: '賓士貓', color: '#1f2937'},
+        {name: '黑色', color: '#1f2937'},
+        {name: '虎斑', color: '#b45309'},
+        {name: '白', color: '#f8fafc'},
+        {name: '黃', color: '#fbbf24'},
+        {name: '項圈', color: '#ef4444'},
+        {name: '剪耳', color: '#10b981'},
+        {name: '親人', color: '#ec4899'},
+        {name: '麒麟尾', color: '#06b6d4'}
+    ];
     
     window.dynamicCategoryColors = {};
-    let pIdx = 0;
-    const palette = ['#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#06b6d4', '#84cc16', '#f43f5e', '#14b8a6', '#6366f1', '#d946ef'];
-    const textToColor = (text) => {
-        if (text.includes('黑')) return '#1f2937';
-        if (text.includes('白')) return '#f8fafc';
-        if (text.includes('黃')) return '#fbbf24';
-        if (text.includes('橘')) return '#f97316';
-        if (text.includes('灰')) return '#9ca3af';
-        if (text.includes('咖') || text.includes('棕')) return '#78350f';
-        if (text.includes('紅')) return '#ef4444';
-        if (text.includes('虎斑')) return '#b45309';
-        if (text.includes('三花')) return '#f59e0b';
-        if (text.includes('米克斯')) return '#8b5cf6';
-        return null;
-    };
     
-    sortedTraits.forEach(trait => {
-        let col = textToColor(trait);
-        if (!col) {
-            col = palette[pIdx % palette.length];
-            pIdx++;
-        }
+    topTraits.forEach(traitObj => {
+        const trait = traitObj.name;
+        const col = traitObj.color;
         window.dynamicCategoryColors[trait] = col;
 
         let label = document.createElement('label');
         let isChecked = selectedDynamicFilters.includes(trait) ? 'checked' : '';
-        label.className = "flex items-center gap-1 cursor-pointer hover:bg-gray-200 p-1 truncate";
-        label.innerHTML = `<input type="checkbox" class="dynamic-filter-cb w-4 h-4 cursor-pointer" value="${trait}" ${isChecked}> <div class="w-3 h-3 border border-black inline-block flex-shrink-0" style="background-color: ${col};"></div> <span class="truncate" title="${trait}">${trait} <span class="text-gray-500">(${traitCounts[trait]})</span></span>`;
+        label.className = "flex items-center gap-1 cursor-pointer hover:bg-gray-200 p-1 truncate bg-white rounded border border-gray-300 shadow-sm";
+        label.innerHTML = `<input type="checkbox" class="dynamic-filter-cb w-4 h-4 cursor-pointer" value="${trait}" ${isChecked}> <div class="w-3 h-3 border border-black inline-block flex-shrink-0" style="background-color: ${col};"></div> <span class="truncate font-bold text-gray-800" title="${trait}">${trait}</span>`;
         container.appendChild(label);
     });
 }
@@ -817,14 +794,19 @@ function updateProjectDropdown() {
             
             let matchesKeyword = true;
             if (kw) {
-                const nameMatch = p.animalName && p.animalName.toLowerCase().includes(kw);
-                const notesMatch = p.announcement && p.announcement.toLowerCase().includes(kw);
-                matchesKeyword = nameMatch || notesMatch;
+                // Split keyword by space and apply AND logic
+                const kws = kw.split(/\s+/).filter(k => k.length > 0);
+                matchesKeyword = kws.every(k => {
+                    const nameMatch = p.animalName && p.animalName.toLowerCase().includes(k);
+                    const notesMatch = p.announcement && p.announcement.toLowerCase().includes(k);
+                    return nameMatch || notesMatch;
+                });
             }
             
             let matchesDynamic = true;
             if (selectedDynamicFilters.length > 0) {
-                matchesDynamic = selectedDynamicFilters.some(filterTrait => {
+                // Apply AND logic for selected category tags
+                matchesDynamic = selectedDynamicFilters.every(filterTrait => {
                     return p.announcement && p.announcement.includes(filterTrait);
                 });
             }
@@ -871,6 +853,13 @@ function updateProjectDropdown() {
         return pA._dist - pB._dist;
     }); 
     window.sortedProjectKeys = keys; 
+    
+    // --- Hook for List View ---
+    if (typeof isListViewActive !== 'undefined' && isListViewActive) {
+        renderListView(true);
+    }
+    // --------------------------
+
     keys.forEach(k => { 
         const proj = PROJECTS[k]; 
         const opt = document.createElement('option'); 
@@ -1331,5 +1320,114 @@ document.getElementById('viewer-close-btn').addEventListener('click', () => { do
 document.getElementById('viewer-prev-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = viewerPhotos.length - 1; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(-1); } } });
 document.getElementById('viewer-next-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = 0; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(1); } } });
 document.getElementById('toggle-fog-btn').addEventListener('click', e => { isFogVisible = !isFogVisible; e.target.innerText = isFogVisible ? '👁️ 關閉迷霧' : '🌫️ 開啟迷霧'; const fp = map ? map.getPane('fogPane') : null; if (fp) fp.style.display = isFogVisible ? 'block' : 'none'; if (isFogVisible) requestFogRender(); }); document.getElementById('spectator-btn').addEventListener('click', e => { if (!hasConnectedWs) { hasConnectedWs = true; connectWebSocket(); } isSpectatorMode = !isSpectatorMode; e.target.innerText = isSpectatorMode ? '結束觀看' : '觀看模式'; e.target.style.backgroundColor = isSpectatorMode ? '#ef4444' : '#f59e0b'; e.target.style.color = isSpectatorMode ? 'white' : '#1a202c'; const hint = document.getElementById('spectator-hint'); if (hint) isSpectatorMode ? hint.classList.remove('hidden') : hint.classList.add('hidden'); renderMap(); }); document.getElementById('my-route-btn').addEventListener('click', e => { isMyRouteMode = !isMyRouteMode; targetRouteUid = isMyRouteMode ? myUid : null; e.target.innerText = isMyRouteMode ? '🌍 返回全域' : '🐍 我的軌跡'; e.target.style.backgroundColor = isMyRouteMode ? '#3b82f6' : '#f59e0b'; e.target.style.color = isMyRouteMode ? 'white' : '#1a202c'; const pb = document.getElementById('playback-controls'); if (isMyRouteMode) { if (pb) pb.classList.remove('hidden'); snakeIndex = localHistory.length; if (localHistory.length > 0) map.setView([localHistory[localHistory.length - 1].lat, localHistory[localHistory.length - 1].lng], 16); } else { if (pb) pb.classList.add('hidden'); if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } } renderMap(); }); document.getElementById('locate-btn').addEventListener('click', () => { if (lastSavedPos) map.setView([lastSavedPos.lat, lastSavedPos.lng], 18, { animate: true }); }); if (document.getElementById('pb-start')) { document.getElementById('pb-start').addEventListener('click', () => { snakeIndex = 1; isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-prev').addEventListener('click', () => { snakeIndex = Math.max(1, snakeIndex - 10); isPlaybackPaused = true; if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }); document.getElementById('pb-pause').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; isPlaybackPaused = true; } else { isPlaybackPaused = false; let maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) snakeIndex = 1; snakeInterval = setInterval(() => { snakeIndex++; maxL = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); if (snakeIndex >= maxL) { clearInterval(snakeInterval); snakeInterval = null; } renderMap(); }, currentPlaybackSpeed); } }); document.getElementById('pb-speed').addEventListener('click', () => { currentPlaybackSpeed = Math.max(50, currentPlaybackSpeed / 2); if (snakeInterval) { document.getElementById('pb-pause').click(); document.getElementById('pb-pause').click(); } }); document.getElementById('pb-end').addEventListener('click', () => { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } isPlaybackPaused = false; snakeIndex = targetRouteUid === myUid ? localHistory.length : (allUsersData[targetRouteUid]?.history?.length || 0); renderMap(); }); }
+// ==========================================
+// List View Logic
+// ==========================================
+let isListViewActive = false;
+let listViewPage = 0;
+const LIST_PAGE_SIZE = 30;
+
+document.getElementById('toggle-list-view-btn').addEventListener('click', (e) => {
+    isListViewActive = !isListViewActive;
+    const btn = e.currentTarget;
+    const container = document.getElementById('list-view-container');
+    const mapEl = document.getElementById('map');
+    
+    if (isListViewActive) {
+        btn.classList.remove('bg-white');
+        btn.classList.add('bg-blue-500', 'text-white');
+        container.classList.remove('hidden');
+        mapEl.style.opacity = '0'; // Hide map visually but keep Leaflet working
+        document.querySelector('.top-right-ui-group').classList.add('hidden'); // 隱藏右上當前項目
+        renderListView(true);
+    } else {
+        btn.classList.add('bg-white');
+        btn.classList.remove('bg-blue-500', 'text-white');
+        container.classList.add('hidden');
+        mapEl.style.opacity = '1';
+        document.querySelector('.top-right-ui-group').classList.remove('hidden'); // 恢復右上當前項目
+    }
+});
+
+function renderListView(reset = false) {
+    const grid = document.getElementById('list-view-grid');
+    if (reset) {
+        grid.innerHTML = '';
+        listViewPage = 0;
+    }
+    
+    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+    if (!keys || keys.length === 0) {
+        if (reset) grid.innerHTML = '<div class="col-span-full text-center py-10 font-bold text-gray-500 text-lg">找不到符合條件的浪浪</div>';
+        return;
+    }
+    
+    const startIdx = listViewPage * LIST_PAGE_SIZE;
+    const endIdx = Math.min(startIdx + LIST_PAGE_SIZE, keys.length);
+    
+    for (let i = startIdx; i < endIdx; i++) {
+        const k = keys[i];
+        const p = PROJECTS[k];
+        if (!p) continue;
+        
+        const card = document.createElement('div');
+        card.className = "bg-white border-2 border-black rounded shadow-[2px_2px_0px_#1a202c] overflow-hidden flex flex-col cursor-pointer hover:-translate-y-1 transition-transform active:translate-y-0 active:shadow-none";
+        
+        // Image
+        const imgDiv = document.createElement('div');
+        imgDiv.className = "w-full aspect-square bg-gray-200 border-b-2 border-black relative";
+        let mainPhoto = p.mainPhoto || (p.photos && p.photos.length > 0 ? p.photos[0] : "");
+        if (mainPhoto) {
+            // Check if it's an object {url: ...} or string
+            let urlStr = typeof mainPhoto === 'string' ? mainPhoto : mainPhoto.url;
+            urlStr = getMediaUrl(urlStr);
+            imgDiv.innerHTML = `
+                <div class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15]">
+                    <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
+                </div>
+                <img src="${urlStr}" class="w-full h-full object-cover opacity-20 transition-opacity duration-300" loading="lazy" onload="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');" onerror="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');">
+            `;
+        } else {
+            imgDiv.innerHTML = `<div class="w-full h-full flex items-center justify-center text-4xl">${p.type==='cat'?'🐱':'🐶'}</div>`;
+        }
+        
+        // Info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = "p-2 flex flex-col gap-1 flex-1";
+        
+        const name = p.animalName || "浪浪";
+        const date = p.lostDate ? p.lostDate.split('T')[0] : "時間未知";
+        infoDiv.innerHTML = `
+            <div class="font-black text-sm text-blue-800 truncate" title="${name}">${name}</div>
+            <div class="text-[10px] text-gray-500 font-bold">⏰ ${date}</div>
+        `;
+        
+        card.appendChild(imgDiv);
+        card.appendChild(infoDiv);
+        
+        card.addEventListener('click', () => {
+            document.getElementById('toggle-list-view-btn').click(); // Switch back to map
+            document.getElementById('switch-project-select').value = k;
+            document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+        });
+        
+        grid.appendChild(card);
+    }
+    
+    listViewPage++;
+}
+
+// Infinite scroll hook
+document.getElementById('list-view-container').addEventListener('scroll', (e) => {
+    const el = e.target;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+        let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+        if (listViewPage * LIST_PAGE_SIZE < keys.length) {
+            renderListView(false);
+        }
+    }
+});
+// ==========================================
+
 window.onload = initSystem;
 </script></body></html>
