@@ -1378,7 +1378,12 @@ function renderListView(reset = false) {
             // Check if it's an object {url: ...} or string
             let urlStr = typeof mainPhoto === 'string' ? mainPhoto : mainPhoto.url;
             urlStr = getMediaUrl(urlStr);
-            imgDiv.innerHTML = `<img src="${urlStr}" class="w-full h-full object-cover" loading="lazy">`;
+            imgDiv.innerHTML = `
+                <div class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15]">
+                    <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
+                </div>
+                <img src="${urlStr}" class="w-full h-full object-cover opacity-20 transition-opacity duration-300" loading="lazy" onload="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');" onerror="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');">
+            `;
         } else {
             imgDiv.innerHTML = `<div class="w-full h-full flex items-center justify-center text-4xl">${p.type==='cat'?'🐱':'🐶'}</div>`;
         }
