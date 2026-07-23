@@ -87,7 +87,7 @@
             </div>
             
             <!-- 播放速度按鈕 -->
-            <button id="speed-btn" class="hidden absolute bottom-16 right-28 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
+            <button id="speed-btn" class="hidden absolute top-4 left-4 z-50 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
                 ▶️ 1.0x
             </button>
             
@@ -371,14 +371,15 @@
         let initialDistance = 0, initialScale = 1;
         zoomEl.addEventListener('touchstart', function(e) {
             if (!window.isCustomFullscreen) return;
-            if (e.touches.length === 2) {
+            if (e.touches.length >= 2) {
+                e.preventDefault();
                 initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 initialScale = scale;
             } else if (e.touches.length === 1) {
                 panning = true;
                 start = { x: e.touches[0].clientX - pointX, y: e.touches[0].clientY - pointY };
             }
-        });
+        }, { passive: false });
         zoomEl.addEventListener('touchmove', function(e) {
             if (!window.isCustomFullscreen) return;
             if (e.touches.length === 2) {
