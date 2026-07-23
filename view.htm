@@ -75,6 +75,11 @@
                 <span class="text-red-500 font-black text-2xl tracking-widest border-4 border-red-500 p-4 text-center leading-relaxed">⚠️ 畫面失焦，播放暫停<br><span class="text-lg">為保護影片隱私，禁止背景錄影</span></span>
             </div>
             
+            <!-- 播放速度按鈕 -->
+            <button id="speed-btn" class="absolute bottom-16 right-28 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
+                ▶️ 1.0x
+            </button>
+            
             <!-- 自訂全螢幕按鈕 -->
             <button id="custom-fs-btn" class="absolute bottom-16 right-4 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
                 🔲 全螢幕
@@ -231,6 +236,18 @@
                             } else {
                                 fsBtn.innerText = '🔲 全螢幕';
                             }
+                        });
+                        
+                        // 播放速度控制
+                        const speedBtn = document.getElementById('speed-btn');
+                        const speeds = [1.0, 0.5, 0.25, 2.0];
+                        let currentSpeedIndex = 0;
+                        speedBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+                            const newSpeed = speeds[currentSpeedIndex];
+                            videoEl.playbackRate = newSpeed;
+                            speedBtn.innerText = `▶️ ${newSpeed}x`;
                         });
                         
                     } else {
