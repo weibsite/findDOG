@@ -17,6 +17,17 @@
         /* 隱藏原生全螢幕按鈕，改用我們自訂的容器全螢幕，以確保浮水印不會消失 */
         video::-webkit-media-controls-fullscreen-button { display: none !important; }
         video::-moz-media-controls-fullscreen-button { display: none !important; }
+    
+        .pseudo-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 text-white" oncontextmenu="return false;">
@@ -76,7 +87,7 @@
             </div>
             
             <!-- 播放速度按鈕 -->
-            <button id="speed-btn" class="absolute bottom-16 right-28 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
+            <button id="speed-btn" class="hidden absolute bottom-16 right-28 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
                 ▶️ 1.0x
             </button>
             
@@ -203,53 +214,68 @@
                         // 自訂全螢幕邏輯 (確保容器包含浮水印一起放大)
                         const fsBtn = document.getElementById('custom-fs-btn');
                         const videoContainer = document.getElementById('video-container');
-                        fsBtn.addEventListener('click', () => {
-                            const videoEl = document.getElementById('secure-video');
-                            if (!document.fullscreenElement) {
-                                if (videoEl.webkitEnterFullscreen) {
-                                    videoEl.webkitEnterFullscreen(); // iOS Native Fullscreen
-                                } else if (videoContainer.requestFullscreen) {
+                        const speedBtn = document.getElementById('speed-btn');
+                        window.isCustomFullscreen = false;
+                        
+                        function enterFullscreenMode() {
+                            window.isCustomFullscreen = true;
+                            speedBtn.classList.remove('hidden');
+                            fsBtn.innerText = '❌ 退出全螢幕';
+                        }
+                        
+                        function exitFullscreenMode() {
+                            window.isCustomFullscreen = false;
+                            speedBtn.classList.add('hidden');
+                            fsBtn.innerText = '🔲 全螢幕';
+                            scale = 1; pointX = 0; pointY = 0; setTransform();
+                        }
+
+                        fsBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (!document.fullscreenElement && !videoContainer.classList.contains('pseudo-fullscreen')) {
+                                if (videoContainer.requestFullscreen) {
                                     videoContainer.requestFullscreen();
                                 } else if (videoContainer.webkitRequestFullscreen) {
                                     videoContainer.webkitRequestFullscreen();
+                                } else {
+                                    videoContainer.classList.add('pseudo-fullscreen');
+                                    enterFullscreenMode();
                                 }
                             } else {
-                                if (document.exitFullscreen) {
-                                    document.exitFullscreen();
-                                } else if (document.webkitExitFullscreen) {
-                                    document.webkitExitFullscreen();
+                                if (document.fullscreenElement) {
+                                    if (document.exitFullscreen) document.exitFullscreen();
+                                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                                } else {
+                                    videoContainer.classList.remove('pseudo-fullscreen');
+                                    exitFullscreenMode();
                                 }
-                            }
-                        });
-                        
-                        // 雙擊影片也能觸發自訂全螢幕
-                        videoContainer.addEventListener('dblclick', (e) => {
-                            // 防止雙擊原生控件造成異常
-                            if (e.target !== fsBtn) {
-                                fsBtn.click();
                             }
                         });
 
                         document.addEventListener('fullscreenchange', () => {
                             if (document.fullscreenElement) {
-                                fsBtn.innerText = '❌ 退出全螢幕';
+                                enterFullscreenMode();
                             } else {
-                                fsBtn.innerText = '🔲 全螢幕';
+                                exitFullscreenMode();
+                            }
+                        });
+                        
+                        videoContainer.addEventListener('dblclick', (e) => {
+                            if (e.target !== fsBtn && e.target !== speedBtn) {
+                                fsBtn.click();
                             }
                         });
                         
                         // 播放速度控制
-                        const speedBtn = document.getElementById('speed-btn');
                         const speeds = [1.0, 0.5, 0.25, 2.0];
                         let currentSpeedIndex = 0;
                         speedBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
                             currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
                             const newSpeed = speeds[currentSpeedIndex];
-                            videoEl.playbackRate = newSpeed;
+                            document.getElementById('secure-video').playbackRate = newSpeed;
                             speedBtn.innerText = `▶️ ${newSpeed}x`;
                         });
-                        
                     } else {
                         statusEl.innerText = '❌ ' + (data.message || '驗證失敗');
                         statusEl.classList.remove('hidden');
@@ -318,22 +344,24 @@
         
         // 滑鼠控制
         zoomEl.onmousedown = function(e) {
+            if (!window.isCustomFullscreen) return;
             e.preventDefault();
             start = { x: e.clientX - pointX, y: e.clientY - pointY };
             panning = true;
         }
         zoomEl.onmouseup = function(e) { panning = false; }
         zoomEl.onmousemove = function(e) {
-            if (!panning) return;
+            if (!window.isCustomFullscreen || !panning) return;
             pointX = (e.clientX - start.x);
             pointY = (e.clientY - start.y);
             setTransform();
         }
         zoomEl.onwheel = function(e) {
+            if (!window.isCustomFullscreen) return;
             e.preventDefault();
             let xs = (e.clientX - pointX) / scale, ys = (e.clientY - pointY) / scale, delta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-            (delta > 0) ? (scale *= 1.2) : (scale /= 1.2);
-            scale = Math.max(0.5, Math.min(scale, 10)); // 限制縮放比例 0.5x ~ 10x
+            (delta > 0) ? (scale *= 1.1) : (scale /= 1.1);
+            scale = Math.max(1.0, scale); // 限制縮放比例最少 1.0
             pointX = e.clientX - xs * scale;
             pointY = e.clientY - ys * scale;
             setTransform();
@@ -342,6 +370,7 @@
         // 觸控控制 (手機雙指縮放)
         let initialDistance = 0, initialScale = 1;
         zoomEl.addEventListener('touchstart', function(e) {
+            if (!window.isCustomFullscreen) return;
             if (e.touches.length === 2) {
                 initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 initialScale = scale;
@@ -351,16 +380,16 @@
             }
         });
         zoomEl.addEventListener('touchmove', function(e) {
+            if (!window.isCustomFullscreen) return;
             if (e.touches.length === 2) {
                 e.preventDefault();
                 let currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
                 let newScale = initialScale * (currentDistance / initialDistance);
-                let rect = zoomEl.getBoundingClientRect();
                 let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 let xs = (centerX - pointX) / scale;
                 let ys = (centerY - pointY) / scale;
-                scale = Math.max(0.5, Math.min(newScale, 10));
+                scale = Math.max(1.0, newScale);
                 pointX = centerX - xs * scale;
                 pointY = centerY - ys * scale;
                 setTransform();
@@ -377,6 +406,7 @@
 
         // 雙擊重置縮放
         zoomEl.addEventListener('dblclick', (e) => {
+            if (!window.isCustomFullscreen) return;
             e.stopPropagation();
             scale = 1; pointX = 0; pointY = 0; setTransform();
         });
