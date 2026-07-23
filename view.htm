@@ -244,8 +244,11 @@
 
                         fsBtn.addEventListener('click', (e) => {
                             e.stopPropagation();
+                            const videoEl = document.getElementById('secure-video');
                             if (!document.fullscreenElement && !videoContainer.classList.contains('pseudo-fullscreen')) {
-                                if (videoContainer.requestFullscreen) {
+                                if (videoEl.webkitEnterFullscreen) {
+                                    videoEl.webkitEnterFullscreen(); // iOS Native Fullscreen
+                                } else if (videoContainer.requestFullscreen) {
                                     videoContainer.requestFullscreen();
                                 } else if (videoContainer.webkitRequestFullscreen) {
                                     videoContainer.webkitRequestFullscreen();
