@@ -132,6 +132,7 @@
                     
                     if (data.success && data.token) {
                         window.current_token = data.token;
+                        window.current_token = data.token;
                         // 驗證成功，隱藏密碼區塊，顯示影片區塊
                         document.getElementById('auth-panel').classList.add('hidden');
                         document.getElementById('video-panel').classList.remove('hidden');
@@ -269,12 +270,99 @@
         <button id="btn-copy-url" class="text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
             📋 複製網址
         </button>
+        <button id="btn-download" class="text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
+            ⬇️ 下載影片
+        </button>
         <button id="btn-share" class="text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors">
             📤 分享
         </button>
     </div>
 
     <script>
+        // 下載影片
+        document.getElementById('btn-download').addEventListener('click', () => {
+            if (window.current_token) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const videoId = urlParams.get('id');
+                const downloadUrl = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${window.current_token}&dl=1`;
+                window.open(downloadUrl, '_blank');
+            } else {
+                alert('請先登入後才能下載！');
+            }
+        });
+
+        // 影片放大與拖曳功能 (Pan & Zoom)
+        const zoomEl = document.getElementById('secure-video');
+        let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
+        function setTransform() {
+            zoomEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            zoomEl.style.transformOrigin = "0 0";
+        }
+        
+        // 滑鼠控制
+        zoomEl.onmousedown = function(e) {
+            e.preventDefault();
+            start = { x: e.clientX - pointX, y: e.clientY - pointY };
+            panning = true;
+        }
+        zoomEl.onmouseup = function(e) { panning = false; }
+        zoomEl.onmousemove = function(e) {
+            if (!panning) return;
+            pointX = (e.clientX - start.x);
+            pointY = (e.clientY - start.y);
+            setTransform();
+        }
+        zoomEl.onwheel = function(e) {
+            e.preventDefault();
+            let xs = (e.clientX - pointX) / scale, ys = (e.clientY - pointY) / scale, delta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
+            (delta > 0) ? (scale *= 1.2) : (scale /= 1.2);
+            scale = Math.max(0.5, Math.min(scale, 10)); // 限制縮放比例 0.5x ~ 10x
+            pointX = e.clientX - xs * scale;
+            pointY = e.clientY - ys * scale;
+            setTransform();
+        }
+
+        // 觸控控制 (手機雙指縮放)
+        let initialDistance = 0, initialScale = 1;
+        zoomEl.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                initialScale = scale;
+            } else if (e.touches.length === 1) {
+                panning = true;
+                start = { x: e.touches[0].clientX - pointX, y: e.touches[0].clientY - pointY };
+            }
+        });
+        zoomEl.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                let currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                let newScale = initialScale * (currentDistance / initialDistance);
+                let rect = zoomEl.getBoundingClientRect();
+                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                let xs = (centerX - pointX) / scale;
+                let ys = (centerY - pointY) / scale;
+                scale = Math.max(0.5, Math.min(newScale, 10));
+                pointX = centerX - xs * scale;
+                pointY = centerY - ys * scale;
+                setTransform();
+            } else if (e.touches.length === 1 && panning) {
+                e.preventDefault();
+                pointX = (e.touches[0].clientX - start.x);
+                pointY = (e.touches[0].clientY - start.y);
+                setTransform();
+            }
+        }, { passive: false });
+        zoomEl.addEventListener('touchend', function(e) {
+            if (e.touches.length < 2) panning = false;
+        });
+
+        // 雙擊重置縮放
+        zoomEl.addEventListener('dblclick', () => {
+            scale = 1; pointX = 0; pointY = 0; setTransform();
+        });
+
         // 複製網址功能
         document.getElementById('btn-copy-url').addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href).then(() => {
