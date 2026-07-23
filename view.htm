@@ -150,30 +150,6 @@
                             videoEl.src = mediaUrl;
                             videoEl.classList.remove('hidden');
                             videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
-
-                            // [新增] 影片除錯日誌顯示區塊
-                            const debugLog = document.createElement('div');
-                            debugLog.className = 'w-full text-left text-xs font-mono text-red-400 mt-2 bg-gray-900 p-2 rounded';
-                            debugLog.innerHTML = '影片播放除錯日誌 (載入中...)';
-                            document.getElementById('video-container').parentElement.appendChild(debugLog);
-                            
-                            videoEl.addEventListener('error', (e) => {
-                                const err = videoEl.error;
-                                let msg = 'Unknown Error';
-                                if (err) {
-                                    switch(err.code) {
-                                        case 1: msg = 'MEDIA_ERR_ABORTED (使用者終止)'; break;
-                                        case 2: msg = 'MEDIA_ERR_NETWORK (網路錯誤)'; break;
-                                        case 3: msg = 'MEDIA_ERR_DECODE (影片解碼錯誤，可能是電腦不支援此編碼)'; break;
-                                        case 4: msg = 'MEDIA_ERR_SRC_NOT_SUPPORTED (不支援的影片來源或格式)'; break;
-                                    }
-                                    msg += ' (' + (err.message || '無詳細訊息') + ')';
-                                }
-                                debugLog.innerHTML += '<br>[ERROR] ' + msg;
-                            });
-                            videoEl.addEventListener('stalled', () => debugLog.innerHTML += '<br>[WARN] stalled (網路卡住)');
-                            videoEl.addEventListener('suspend', () => debugLog.innerHTML += '<br>[INFO] suspend (暫停下載)');
-                            videoEl.addEventListener('canplay', () => debugLog.innerHTML += '<br>[SUCCESS] canplay (已成功解析並準備播放)');
                         }
 
                         // 建立 IP 浮水印
