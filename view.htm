@@ -91,6 +91,18 @@
                 ▶️ 1.0x
             </button>
             
+            <!-- 放大倍率按鈕 (預設隱藏，全螢幕才顯示) -->
+            <button id="zoom-slider-btn" class="hidden absolute top-4 left-24 z-50 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg cursor-ew-resize">
+                🔍 1.0x
+            </button>
+            
+            <!-- 長按提示文字 -->
+            <div id="pan-hint" class="hidden absolute inset-0 z-40 pointer-events-none flex items-center justify-center">
+                <span class="bg-black/70 text-white px-4 py-2 rounded-full font-bold animate-pulse text-lg backdrop-blur shadow-lg border border-gray-400">
+                    🖐️ 已進入拖曳模式
+                </span>
+            </div>
+            
             <!-- 自訂全螢幕按鈕 -->
             <button id="custom-fs-btn" class="absolute bottom-16 right-4 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
                 🔲 全螢幕
@@ -334,85 +346,184 @@
             }
         });
 
-        // 影片放大與拖曳功能 (Pan & Zoom)
+        // 滑動式放大按鈕與拖曳功能 (Custom Zoom & Pan)
         const zoomEl = document.getElementById('secure-video');
-        let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
+        const zoomSliderBtn = document.getElementById('zoom-slider-btn');
+        const panHint = document.getElementById('pan-hint');
+        let scale = 1, panning = false, pointX = 0, pointY = 0;
+        
         function setTransform() {
             zoomEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
             zoomEl.style.transformOrigin = "0 0";
         }
-        
-        // 滑鼠控制
-        zoomEl.onmousedown = function(e) {
+
+        // ==========================
+        // 1. 滑動縮放按鈕邏輯
+        // ==========================
+        let isSlidingZoom = false;
+        let startSlideX = 0;
+        let initialZoomScale = 1;
+
+        function handleZoomStart(e) {
             if (!window.isCustomFullscreen) return;
             e.preventDefault();
-            start = { x: e.clientX - pointX, y: e.clientY - pointY };
-            panning = true;
-        }
-        zoomEl.onmouseup = function(e) { panning = false; }
-        zoomEl.onmousemove = function(e) {
-            if (!window.isCustomFullscreen || !panning) return;
-            pointX = (e.clientX - start.x);
-            pointY = (e.clientY - start.y);
-            setTransform();
-        }
-        zoomEl.onwheel = function(e) {
-            if (!window.isCustomFullscreen) return;
-            e.preventDefault();
-            let xs = (e.clientX - pointX) / scale, ys = (e.clientY - pointY) / scale, delta = (e.wheelDelta ? e.wheelDelta : -e.deltaY);
-            (delta > 0) ? (scale *= 1.1) : (scale /= 1.1);
-            scale = Math.max(1.0, scale); // 限制縮放比例最少 1.0
-            pointX = e.clientX - xs * scale;
-            pointY = e.clientY - ys * scale;
-            setTransform();
-        }
-
-        // 觸控控制 (手機雙指縮放)
-        let initialDistance = 0, initialScale = 1;
-        zoomEl.addEventListener('touchstart', function(e) {
-            if (!window.isCustomFullscreen) return;
-            if (e.touches.length >= 2) {
-                e.preventDefault();
-                initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                initialScale = scale;
-            } else if (e.touches.length === 1) {
-                panning = true;
-                start = { x: e.touches[0].clientX - pointX, y: e.touches[0].clientY - pointY };
-            }
-        }, { passive: false });
-        zoomEl.addEventListener('touchmove', function(e) {
-            if (!window.isCustomFullscreen) return;
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                let currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-                let newScale = initialScale * (currentDistance / initialDistance);
-                let centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                let xs = (centerX - pointX) / scale;
-                let ys = (centerY - pointY) / scale;
-                scale = Math.max(1.0, newScale);
-                pointX = centerX - xs * scale;
-                pointY = centerY - ys * scale;
-                setTransform();
-            } else if (e.touches.length === 1 && panning) {
-                e.preventDefault();
-                pointX = (e.touches[0].clientX - start.x);
-                pointY = (e.touches[0].clientY - start.y);
-                setTransform();
-            }
-        }, { passive: false });
-        zoomEl.addEventListener('touchend', function(e) {
-            if (e.touches.length < 2) panning = false;
-        });
-
-        // 雙擊重置縮放
-        zoomEl.addEventListener('dblclick', (e) => {
-            if (!window.isCustomFullscreen) return;
             e.stopPropagation();
-            scale = 1; pointX = 0; pointY = 0; setTransform();
+            isSlidingZoom = true;
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            startSlideX = clientX;
+            initialZoomScale = scale;
+            zoomSliderBtn.style.backgroundColor = "rgba(59, 130, 246, 0.8)";
+        }
+
+        function handleZoomMove(e) {
+            if (!isSlidingZoom) return;
+            e.preventDefault();
+            e.stopPropagation();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let deltaX = clientX - startSlideX;
+            
+            let scaleDiff = deltaX / 100; 
+            let newScale = initialZoomScale + scaleDiff;
+            scale = Math.max(1.0, Math.min(newScale, 5.0));
+            
+            let rect = zoomEl.getBoundingClientRect();
+            let centerX = rect.width / 2;
+            let centerY = rect.height / 2;
+            let xs = (centerX - pointX) / initialZoomScale;
+            let ys = (centerY - pointY) / initialZoomScale;
+            
+            pointX = centerX - xs * scale;
+            pointY = centerY - ys * scale;
+            
+            setTransform();
+            zoomSliderBtn.innerText = `🔍 ${scale.toFixed(1)}x`;
+        }
+
+        function handleZoomEnd(e) {
+            if (!isSlidingZoom) return;
+            isSlidingZoom = false;
+            zoomSliderBtn.style.backgroundColor = "";
+            let clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            if (Math.abs(clientX - startSlideX) < 5) {
+                scale = 1; pointX = 0; pointY = 0;
+                setTransform();
+                zoomSliderBtn.innerText = `🔍 1.0x`;
+            }
+        }
+
+        zoomSliderBtn.addEventListener('mousedown', handleZoomStart);
+        zoomSliderBtn.addEventListener('touchstart', handleZoomStart, { passive: false });
+        window.addEventListener('mousemove', handleZoomMove);
+        window.addEventListener('touchmove', handleZoomMove, { passive: false });
+        window.addEventListener('mouseup', handleZoomEnd);
+        window.addEventListener('touchend', handleZoomEnd);
+
+        // ==========================
+        // 2. 影片長按進入拖曳模式 (Long-press to Pan)
+        // ==========================
+        let longPressTimer = null;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        function startLongPress(e) {
+            if (!window.isCustomFullscreen || scale <= 1.0) return;
+            
+            if (e.touches && e.touches.length > 1) {
+                e.preventDefault();
+                return;
+            }
+
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            startPanX = clientX;
+            startPanY = clientY;
+
+            longPressTimer = setTimeout(() => {
+                panning = true;
+                panHint.classList.remove('hidden');
+            }, 500);
+        }
+
+        function cancelLongPress() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            if (panning) {
+                panning = false;
+                panHint.classList.add('hidden');
+            }
+        }
+
+        zoomEl.addEventListener('mousedown', startLongPress);
+        zoomEl.addEventListener('touchstart', startLongPress, { passive: true });
+        
+        zoomEl.addEventListener('mousemove', (e) => {
+            if (!panning) {
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (longPressTimer && (Math.abs(clientX - startPanX) > 10 || Math.abs(clientY - startPanY) > 10)) {
+                    cancelLongPress();
+                }
+                return;
+            }
+            e.preventDefault();
+            let deltaX = e.clientX - startPanX;
+            let deltaY = e.clientY - startPanY;
+            pointX += deltaX;
+            pointY += deltaY;
+            startPanX = e.clientX;
+            startPanY = e.clientY;
+            setTransform();
         });
 
-        // 複製網址功能
+        zoomEl.addEventListener('touchmove', (e) => {
+            if (!panning) {
+                let clientX = e.touches[0].clientX;
+                let clientY = e.touches[0].clientY;
+                if (longPressTimer && (Math.abs(clientX - startPanX) > 10 || Math.abs(clientY - startPanY) > 10)) {
+                    cancelLongPress();
+                }
+                return;
+            }
+            e.preventDefault();
+            let deltaX = e.touches[0].clientX - startPanX;
+            let deltaY = e.touches[0].clientY - startPanY;
+            pointX += deltaX;
+            pointY += deltaY;
+            startPanX = e.touches[0].clientX;
+            startPanY = e.touches[0].clientY;
+            setTransform();
+        }, { passive: false });
+
+        zoomEl.addEventListener('mouseup', cancelLongPress);
+        zoomEl.addEventListener('mouseleave', cancelLongPress);
+        zoomEl.addEventListener('touchend', cancelLongPress);
+        zoomEl.addEventListener('touchcancel', cancelLongPress);
+
+        // 監聽全螢幕狀態更新按鈕顯示
+        const originalEnterFs = window.enterFullscreenMode;
+        if(originalEnterFs) {
+            window.enterFullscreenMode = function() {
+                originalEnterFs();
+                zoomSliderBtn.classList.remove('hidden');
+            };
+        }
+        
+        const originalExitFs = window.exitFullscreenMode;
+        if(originalExitFs) {
+            window.exitFullscreenMode = function() {
+                originalExitFs();
+                zoomSliderBtn.classList.add('hidden');
+                panHint.classList.add('hidden');
+                scale = 1; pointX = 0; pointY = 0;
+                setTransform();
+                zoomSliderBtn.innerText = `🔍 1.0x`;
+            };
+        }
+
+        // // 複製網址功能
         document.getElementById('btn-copy-url').addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href).then(() => {
                 const btn = document.getElementById('btn-copy-url');
