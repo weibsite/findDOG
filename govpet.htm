@@ -35,7 +35,7 @@
 </style>
 </head><body>
 <svg width="0" height="0" class="hidden"><filter id="dynamic-sharpness"><feConvolveMatrix id="sharpness-matrix" order="3 3" preserveAlpha="true" matrix="0 0 0 0 1 0 0 0 0"/></filter></svg>
-<div id="map-container"><div id="map"></div><div id="list-view-container" class="hidden absolute inset-0 z-[1500] bg-gray-200 overflow-y-auto pb-24 pt-20 px-2 sm:px-4"><div class="max-w-7xl mx-auto flex justify-end mb-3"><button id="list-sort-btn" class="pixel-btn bg-white text-gray-900 py-1 px-3 text-sm font-bold shadow-[2px_2px_0px_#1a202c] active:translate-y-1 transition-transform">由新到舊 ▼</button></div><div id="list-view-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-7xl mx-auto"></div><div id="list-view-loading" class="text-center py-4 font-bold text-gray-500 hidden">載入中...</div></div><svg id="report-crosshair" class="crosshair-target" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2"><circle cx="12" cy="12" r="10" stroke="black" stroke-width="3"/><circle cx="12" cy="12" r="10" stroke="red" stroke-width="2"/><path stroke="black" stroke-width="3" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path stroke="red" stroke-width="2" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3" fill="red"/></svg></div>
+<div id="map-container"><div id="map"></div><div id="list-view-container" class="hidden absolute inset-0 z-[1500] bg-gray-200 overflow-y-auto pb-24 pt-20 px-2 sm:px-4"><div id="list-view-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-7xl mx-auto"></div><div id="list-view-loading" class="text-center py-4 font-bold text-gray-500 hidden">載入中...</div></div><svg id="report-crosshair" class="crosshair-target" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2"><circle cx="12" cy="12" r="10" stroke="black" stroke-width="3"/><circle cx="12" cy="12" r="10" stroke="red" stroke-width="2"/><path stroke="black" stroke-width="3" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><path stroke="red" stroke-width="2" d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3" fill="red"/></svg></div>
 
 <!-- 省電黑畫面 -->
 <div id="power-saving-overlay" class="hidden fixed inset-0 z-[25000] bg-black/90 touch-none"></div>
@@ -125,7 +125,7 @@
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
 let hasConnectedWs = false;
 function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
-function getMediaUrl(u, useThumb = false) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} let res = (p.startsWith('/images/') || p.startsWith('/downloads/')) ? getBaseHttpUrl() + p : u; if (useThumb && res.includes('/images/') && !res.includes('_thumb.webp')) { let parts = res.split('.'); parts.pop(); return parts.join('.') + '_thumb.webp'; } return res; }
+function getMediaUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/downloads/')) return getBaseHttpUrl() + p; return u; }
 function setPersistentData(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function getPersistentData(k) { try { return localStorage.getItem(k); } catch (e) {} return null; }
 let myUid = getPersistentData('dogMap_UID'); if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
@@ -1149,6 +1149,8 @@ function connectWebSocket() { ws = new WebSocket(NGROK_WS_URL); ws.onopen = () =
         PROJECTS = response.data.shelter_animals; Object.keys(PROJECTS).forEach(k => { if (PROJECTS[k].photos) { let actualPhotos = []; let actualVideos = PROJECTS[k].videos || []; PROJECTS[k].photos.forEach(p => { let urlStr = typeof p === 'string' ? p : p.url; if (urlStr && urlStr.match(/\.(mp4|webm|mov|ogg)$/i)) { actualVideos.push(p); } else { actualPhotos.push(p); } }); PROJECTS[k].photos = actualPhotos; PROJECTS[k].videos = actualVideos; } if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") { allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。"; } }); prepareDynamicFilters(); updateProjectDropdown(); drawAllProjects(); updateAnimalInfoCard(); } } if (response.type === 'sync' || response.type === 'sync_shelter') { allUsersData = response.data.locations || {}; renderMap(); updateStepCounter(); } 
 
 // === 新增：管理義工資料返回的處理邏輯 ===
+
+
 if (response.type === 'admin_volunteers_data') {
     const volunteers = response.data || [];
     const container = document.getElementById('admin-list-container');
@@ -1327,11 +1329,28 @@ let isListViewActive = false;
 let listViewPage = 0;
 const LIST_PAGE_SIZE = 30;
 
-let listSortOrder = 'desc';
+let listSortOptions = ['date_desc', 'date_asc', 'dist_asc', 'dist_desc'];
+let listSortLabels = ['由新到舊 ▼', '由舊到新 ▲', '由近到遠 ▲', '由遠到近 ▼'];
+let currentSortIndex = 0;
+
 document.getElementById('list-sort-btn').addEventListener('click', (e) => {
-    listSortOrder = listSortOrder === 'desc' ? 'asc' : 'desc';
-    e.target.innerText = listSortOrder === 'desc' ? '由新到舊 ▼' : '由舊到新 ▲';
-    if (window.sortedProjectKeys) window.sortedProjectKeys.reverse();
+    currentSortIndex = (currentSortIndex + 1) % listSortOptions.length;
+    e.target.innerText = listSortLabels[currentSortIndex];
+    if (window.sortedProjectKeys) {
+        window.sortedProjectKeys.sort((a, b) => {
+            let pA = PROJECTS[a], pB = PROJECTS[b];
+            let sortMode = listSortOptions[currentSortIndex];
+            if (sortMode.startsWith('date')) {
+                let da = new Date(pA.lostDate || 0).getTime() || 0;
+                let db = new Date(pB.lostDate || 0).getTime() || 0;
+                return sortMode === 'date_desc' ? db - da : da - db;
+            } else {
+                let distA = pA._dist !== undefined ? pA._dist : 999999;
+                let distB = pB._dist !== undefined ? pB._dist : 999999;
+                return sortMode === 'dist_asc' ? distA - distB : distB - distA;
+            }
+        });
+    }
     renderListView(true);
 });
 
@@ -1365,6 +1384,23 @@ function renderListView(reset = false) {
     }
     
     let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+    if (reset && window.sortedProjectKeys) {
+        window.sortedProjectKeys.sort((a, b) => {
+            let pA = PROJECTS[a], pB = PROJECTS[b];
+            let sortMode = listSortOptions[currentSortIndex];
+            if (sortMode.startsWith('date')) {
+                let da = new Date(pA.lostDate || 0).getTime() || 0;
+                let db = new Date(pB.lostDate || 0).getTime() || 0;
+                return sortMode === 'date_desc' ? db - da : da - db;
+            } else {
+                let distA = pA._dist !== undefined ? pA._dist : 999999;
+                let distB = pB._dist !== undefined ? pB._dist : 999999;
+                return sortMode === 'dist_asc' ? distA - distB : distB - distA;
+            }
+        });
+        keys = window.sortedProjectKeys;
+    }
+    
     if (!keys || keys.length === 0) {
         if (reset) grid.innerHTML = '<div class="col-span-full text-center py-10 font-bold text-gray-500 text-lg">找不到符合條件的浪浪</div>';
         return;
@@ -1404,7 +1440,12 @@ function renderListView(reset = false) {
         const infoDiv = document.createElement('div');
         infoDiv.className = "p-2 flex flex-col gap-1 flex-1";
         
-        const name = p.animalName || "浪浪";
+        let distStr = "";
+        if (p._dist !== undefined) {
+            if (p._dist < 1) distStr = `(${(p._dist * 1000).toFixed(0)}m)`;
+            else distStr = `(${p._dist.toFixed(1)}km)`;
+        }
+        const name = (p.animalName || "浪浪") + (distStr ? ` ${distStr}` : "");
         const date = p.lostDate ? p.lostDate.split('T')[0] : "時間未知";
         infoDiv.innerHTML = `
             <div class="font-black text-sm text-blue-800 truncate" title="${name}">${name}</div>
