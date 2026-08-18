@@ -125,7 +125,23 @@
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
 let hasConnectedWs = false;
 function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
-function getMediaUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/downloads/')) return getBaseHttpUrl() + p; return u; }
+function getMediaUrl(u, useThumb = false) { 
+    if (!u) return ""; 
+    let p = u; 
+    try { 
+        if (u.startsWith('http')) { 
+            const o = new URL(u); 
+            if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; 
+        } 
+    } catch (e) {} 
+    let res = (p.startsWith('/images/') || p.startsWith('/downloads/')) ? getBaseHttpUrl() + p : u; 
+    if (useThumb && res.includes('/images/') && !res.includes('_thumb.webp')) {
+        let parts = res.split('.');
+        parts.pop();
+        return parts.join('.') + '_thumb.webp';
+    }
+    return res; 
+}
 function setPersistentData(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function getPersistentData(k) { try { return localStorage.getItem(k); } catch (e) {} return null; }
 let myUid = getPersistentData('dogMap_UID'); if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
