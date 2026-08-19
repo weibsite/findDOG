@@ -371,7 +371,7 @@ function startLocationServices(autoStart) {
 
 document.getElementById('master-start-btn').addEventListener('click', () => { currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100 + Math.random() * 900)}`; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(false); });
 function checkLocalSetupAndStart() { const savedName = getPersistentData('dogMap_userName'); if (savedName) { currentUserName = savedName; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(true); } }
-async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } checkLocalSetupAndStart(); }
+async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); drawAllProjects(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } checkLocalSetupAndStart(); }
 function updateProgress(step, status, text) { const el = document.getElementById(`prog-${step}`); if (!el) return; if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; } else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; } else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; } else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; } }
 async function uploadBlobFile(blob, filename) { const formData = new FormData(); formData.append('files', blob, filename); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
 async function uploadFileObj(file) { const formData = new FormData(); formData.append('files', file); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
@@ -1171,7 +1171,7 @@ function renderMap() {
 function initFogSystem() { fogCanvas = document.createElement('canvas'); map.getPane('fogPane').appendChild(fogCanvas); fogCtx = fogCanvas.getContext('2d'); lowResCanvas = document.createElement('canvas'); lowResCtx = lowResCanvas.getContext('2d'); tempCanvas = document.createElement('canvas'); tempCtx = tempCanvas.getContext('2d'); function resizeCanvas() { const size = map.getSize(); fogCanvas.width = size.x; fogCanvas.height = size.y; lowResCanvas.width = Math.ceil(size.x * FOG_SCALE); lowResCanvas.height = Math.ceil(size.y * FOG_SCALE); tempCanvas.width = lowResCanvas.width; tempCanvas.height = lowResCanvas.height; updateCanvasPosition(); } function updateCanvasPosition() { L.DomUtil.setPosition(fogCanvas, map.containerPointToLayerPoint([0, 0])); requestFogRender(); } window.addEventListener('resize', resizeCanvas); map.on('zoomend', resizeCanvas); map.on('move', updateCanvasPosition); resizeCanvas(); }
 function requestFogRender() { if (!fogRenderPending) { fogRenderPending = true; requestAnimationFrame(() => { if (isFogVisible) renderFog(); fogRenderPending = false; }); } }
 function renderFog() { if (!map || !fogCtx || !isFogVisible || isPowerSaving) return; const w = Math.ceil(fogCanvas.width * FOG_SCALE), h = Math.ceil(fogCanvas.height * FOG_SCALE); lowResCanvas.width = w; lowResCanvas.height = h; tempCanvas.width = w; tempCanvas.height = h; const mapBounds = map.getBounds().pad(0.1); const center = map.getCenter(); const distToTw = getDistance(center.lat, center.lng, 23.5, 121.0); if (taiwanPolygons.length > 0) { try { let visiblePolygons = taiwanPolygons.filter(p => mapBounds.intersects(p.bounds)); if (visiblePolygons.length > 0) { lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.beginPath(); visiblePolygons.forEach(p => { p.coordinates.forEach(ring => { ring.forEach((coord, idx) => { const pt = map.latLngToContainerPoint([coord[1], coord[0]]); if (idx === 0) lowResCtx.moveTo(pt.x * FOG_SCALE, pt.y * FOG_SCALE); else lowResCtx.lineTo(pt.x * FOG_SCALE, pt.y * FOG_SCALE); }); }); }); lowResCtx.fill('evenodd'); } else if (distToTw <= 500000) { lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h); } } catch (e) { lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h); } } else { lowResCtx.fillStyle = 'rgba(15, 20, 25, 0.9)'; lowResCtx.fillRect(0, 0, w, h); } const now = Date.now(); const mpp = (40075016.686 * Math.abs(Math.cos(center.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8); const ONE_HOUR = 60 * 60 * 1000; function getDynamicRadiusPx(historyPts, i) { let timeSpent = (i < historyPts.length - 1) ? (historyPts[i + 1].timestamp - historyPts[i].timestamp) : (now - historyPts[i].timestamp); let ratio = Math.max(0, Math.min(1.0, timeSpent / 60000.0)); let effectiveRadius = 8 + (117 * ratio); return (effectiveRadius / mpp) * FOG_SCALE; } let allHistoryToDraw = []; Object.keys(allUsersData).forEach(uid => { if (isSpectatorMode && uid === myUid) return; if (isMyRouteMode && uid !== targetRouteUid) return; const userData = allUsersData[uid]; if (userData.history) { if (uid === myUid) return; let hPts = isMyRouteMode ? userData.history.slice(0, Math.max(1, snakeIndex)) : userData.history; allHistoryToDraw.push(hPts); } }); if (!isSpectatorMode && (!isMyRouteMode || targetRouteUid === myUid)) { let myPts = isMyRouteMode ? localHistory.slice(0, Math.max(1, snakeIndex)) : localHistory; if (myPts.length > 0) allHistoryToDraw.push(myPts); } tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black'; allHistoryToDraw.forEach(historyPts => { historyPts.forEach((point, i) => { if (now - point.timestamp >= ONE_HOUR && !isMyRouteMode) { const dynRadiusPx = getDynamicRadiusPx(historyPts, i); const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE; if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); } } }); }); lowResCtx.globalCompositeOperation = 'destination-out'; lowResCtx.globalAlpha = 0.4; lowResCtx.drawImage(tempCanvas, 0, 0); tempCtx.clearRect(0, 0, w, h); tempCtx.fillStyle = 'black'; allHistoryToDraw.forEach(historyPts => { historyPts.forEach((point, i) => { if (now - point.timestamp < ONE_HOUR || isMyRouteMode) { const dynRadiusPx = getDynamicRadiusPx(historyPts, i); const pt = map.latLngToContainerPoint([point.lat, point.lng]); const sx = pt.x * FOG_SCALE, sy = pt.y * FOG_SCALE; if (sx > -dynRadiusPx && sx < w + dynRadiusPx && sy > -dynRadiusPx && sy < h + dynRadiusPx) { tempCtx.beginPath(); tempCtx.arc(sx, sy, dynRadiusPx, 0, Math.PI * 2); tempCtx.fill(); } } }); }); lowResCtx.globalAlpha = 1.0; lowResCtx.drawImage(tempCanvas, 0, 0); lowResCtx.globalCompositeOperation = 'source-over'; fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height); fogCtx.imageSmoothingEnabled = false; fogCtx.drawImage(lowResCanvas, 0, 0, w, h, 0, 0, fogCanvas.width, fogCanvas.height); const maxFadeTime = 30 * 60 * 1000; Object.keys(allUsersData).forEach(uid => { if (isSpectatorMode && uid === myUid) return; if (isMyRouteMode && uid !== targetRouteUid) return; const userData = allUsersData[uid]; if (!userData.history || userData.history.length === 0) return; const isSelf = (uid === myUid); const renderColor = isSelf ? '#ef4444' : (userData.color || '#3b82f6'); if (isMyRouteMode && uid === targetRouteUid) return; userData.history.forEach((point, index) => { const age = Math.max(0, now - point.timestamp); const isLatest = index === userData.history.length - 1; if (!isLatest) { let opacity = 0.05; if (age < ONE_HOUR) { opacity = Math.max(0.15, Math.min(1.0, 1 - (age / maxFadeTime))); } const pt = map.latLngToContainerPoint([point.lat, point.lng]); if (pt.x > -10 && pt.x < fogCanvas.width + 10 && pt.y > -10 && pt.y < fogCanvas.height + 10) { fogCtx.globalAlpha = opacity; fogCtx.fillStyle = renderColor; fogCtx.fillRect(pt.x - 4, pt.y - 4, 8, 8); } } }); }); fogCtx.globalAlpha = 1.0; }
-function connectWebSocket() { ws = new WebSocket(NGROK_WS_URL); ws.onopen = () => { isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981'; document.getElementById('toast-text').innerHTML = "連線成功" + (gpsState === 'denied' ? " <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>" : ""); ws.send(JSON.stringify({ type: "init_shelter", uid: myUid, project: currentProjectKey || "default" })); if (localHistory.length > 0) saveLocationToServer(null, true); }; ws.onmessage = (event) => { const response = JSON.parse(event.data); if (response.type === 'sync_shelter' || response.type === 'sync') {
+function connectWebSocket() { ws = new WebSocket(NGROK_WS_URL); ws.onopen = () => { isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981'; document.getElementById('toast-text').innerHTML = "連線成功" + (gpsState === 'denied' ? " <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>" : ""); ws.send(JSON.stringify({ type: "init_shelter_light", uid: myUid, project: currentProjectKey || "default" })); if (localHistory.length > 0) saveLocationToServer(null, true); }; ws.onmessage = (event) => { const response = JSON.parse(event.data); if (response.type === 'sync_shelter' || response.type === 'sync') {
     if (response.data && response.data.shelter_animals) {
         PROJECTS = response.data.shelter_animals; Object.keys(PROJECTS).forEach(k => { if (PROJECTS[k].photos) { let actualPhotos = []; let actualVideos = PROJECTS[k].videos || []; PROJECTS[k].photos.forEach(p => { let urlStr = typeof p === 'string' ? p : p.url; if (urlStr && urlStr.match(/\.(mp4|webm|mov|ogg)$/i)) { actualVideos.push(p); } else { actualPhotos.push(p); } }); PROJECTS[k].photos = actualPhotos; PROJECTS[k].videos = actualVideos; } if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") { allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。"; } }); prepareDynamicFilters(); updateProjectDropdown(); drawAllProjects(); updateAnimalInfoCard(); } } if (response.type === 'sync' || response.type === 'sync_shelter') { allUsersData = response.data.locations || {}; renderMap(); updateStepCounter(); } 
 
@@ -1403,112 +1403,132 @@ document.getElementById('toggle-list-view-btn').addEventListener('click', (e) =>
     }
 });
 
-function renderListView(reset = false) {
+
+async function renderListView(reset = false) {
     const grid = document.getElementById('list-view-grid');
     if (reset) {
-        grid.innerHTML = '';
+        grid.innerHTML = '<div class="col-span-full text-center py-10 font-bold text-gray-500 text-lg animate-pulse">載入中...</div>';
         listViewPage = 0;
     }
     
-    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
-    if (reset && window.sortedProjectKeys) {
-        window.sortedProjectKeys.sort((a, b) => {
-            let pA = PROJECTS[a], pB = PROJECTS[b];
-            let sortMode = listSortOptions[currentSortIndex];
-            if (sortMode.startsWith('date')) {
-                let da = pA.lostDate || "";
-                let db = pB.lostDate || "";
-                return sortMode === 'date_desc' ? db.localeCompare(da) : da.localeCompare(db);
-            } else {
-                let distA = pA._dist !== undefined ? pA._dist : 999999;
-                let distB = pB._dist !== undefined ? pB._dist : 999999;
-                return sortMode === 'dist_asc' ? distA - distB : distB - distA;
-            }
-        });
-        keys = window.sortedProjectKeys;
-    }
+    let sortMode = listSortOptions[currentSortIndex];
+    let keyword = typeof currentSearchKeyword !== 'undefined' ? currentSearchKeyword : '';
     
-    if (!keys || keys.length === 0) {
-        if (reset) grid.innerHTML = '<div class="col-span-full text-center py-10 font-bold text-gray-500 text-lg">找不到符合條件的浪浪</div>';
-        return;
-    }
-    
-    const startIdx = listViewPage * LIST_PAGE_SIZE;
-    const endIdx = Math.min(startIdx + LIST_PAGE_SIZE, keys.length);
-    
-    for (let i = startIdx; i < endIdx; i++) {
-        const k = keys[i];
-        const p = PROJECTS[k];
-        if (!p) continue;
-        
-        const card = document.createElement('div');
-        card.className = "bg-white border-2 border-black rounded shadow-[2px_2px_0px_#1a202c] overflow-hidden flex flex-col cursor-pointer hover:-translate-y-1 transition-transform active:translate-y-0 active:shadow-none";
-        
-        // Image
-        const imgDiv = document.createElement('div');
-        imgDiv.className = "w-full aspect-square bg-gray-200 border-b-2 border-black relative";
-        let mainPhoto = p.mainPhoto || (p.photos && p.photos.length > 0 ? p.photos[0] : "");
-        if (mainPhoto) {
-            // Check if it's an object {url: ...} or string
-            let urlStr = typeof mainPhoto === 'string' ? mainPhoto : mainPhoto.url;
-            let fallbackUrlStr = getMediaUrl(urlStr, false);
-            
-            // If it's a government URL, use our local dataset thumbnail first
-            if (urlStr.includes('pet.gov.tw')) {
-                // p.id is usually the filename prefix in dataset/images/
-                urlStr = getBaseHttpUrl() + `/dataset/images/${p.id}_0_thumb.webp`;
-            } else {
-                urlStr = getMediaUrl(urlStr, true);
-            }
-            
-            imgDiv.innerHTML = `
-                <div class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15]">
-                    <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
-                </div>
-                <img src="${urlStr}" class="w-full h-full object-cover opacity-20 transition-opacity duration-300" loading="lazy" onload="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');" onerror="if(this.src !== '${fallbackUrlStr}') { this.src='${fallbackUrlStr}'; } else { this.style.opacity='1'; this.previousElementSibling.classList.add('hidden'); }">
-            `;
-        } else {
-            imgDiv.innerHTML = `<div class="w-full h-full flex items-center justify-center text-4xl">${p.type==='cat'?'🐱':'🐶'}</div>`;
+    try {
+        const baseUrl = typeof getBaseHttpUrl === 'function' ? getBaseHttpUrl() : window.location.origin;
+        let centerLat = null;
+        let centerLng = null;
+        if (typeof map !== 'undefined' && map.getCenter) {
+            const center = map.getCenter();
+            centerLat = center.lat;
+            centerLng = center.lng;
         }
         
-        // Info
-        const infoDiv = document.createElement('div');
-        infoDiv.className = "p-2 flex flex-col gap-1 flex-1";
-        
-        let distStr = "";
-        if (p._dist !== undefined) {
-            if (p._dist < 1) distStr = `(${(p._dist * 1000).toFixed(0)}m)`;
-            else distStr = `(${p._dist.toFixed(1)}km)`;
-        }
-        const name = (p.animalName || "浪浪") + (distStr ? ` ${distStr}` : "");
-        const date = p.lostDate ? p.lostDate.split('T')[0] : "時間未知";
-        infoDiv.innerHTML = `
-            <div class="font-black text-sm text-blue-800 truncate" title="${name}">${name}</div>
-            <div class="text-[10px] text-gray-500 font-bold">⏰ ${date}</div>
-        `;
-        
-        card.appendChild(imgDiv);
-        card.appendChild(infoDiv);
-        
-        card.addEventListener('click', () => {
-            document.getElementById('toggle-list-view-btn').click(); // Switch back to map
-            document.getElementById('switch-project-select').value = k;
-            document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+        const response = await fetch(`${baseUrl}/api/shelter/list`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                page: listViewPage,
+                size: LIST_PAGE_SIZE,
+                keyword: keyword,
+                sort: sortMode,
+                centerLat: centerLat,
+                centerLng: centerLng
+            })
         });
+        const res = await response.json();
         
-        grid.appendChild(card);
+        if (reset) grid.innerHTML = '';
+        
+        if (res.success && res.data) {
+            if (res.data.length === 0 && reset) {
+                grid.innerHTML = '<div class="col-span-full text-center py-10 font-bold text-gray-500 text-lg">找不到符合條件的浪浪</div>';
+                return;
+            }
+            
+            res.data.forEach(p => {
+                PROJECTS[p.id] = p; // Cache it
+                const card = document.createElement('div');
+                card.className = "bg-white border-2 border-black rounded shadow-[2px_2px_0px_#1a202c] overflow-hidden flex flex-col cursor-pointer hover:-translate-y-1 transition-transform active:translate-y-0 active:shadow-none";
+                
+                // Image
+                const imgDiv = document.createElement('div');
+                imgDiv.className = "w-full aspect-square bg-gray-200 border-b-2 border-black relative";
+                let mainPhoto = p.mainPhoto || (p.photos && p.photos.length > 0 ? p.photos[0] : "");
+                if (mainPhoto) {
+                    let urlStr = typeof mainPhoto === 'string' ? mainPhoto : mainPhoto.url;
+                    let fallbackUrlStr = typeof getMediaUrl === 'function' ? getMediaUrl(urlStr, false) : urlStr;
+                    
+                    if (urlStr.includes('pet.gov.tw') && typeof getBaseHttpUrl === 'function') {
+                        urlStr = getBaseHttpUrl() + `/dataset/images/${p.id}_0_thumb.webp`;
+                    } else if (typeof getMediaUrl === 'function') {
+                        urlStr = getMediaUrl(urlStr, true);
+                    }
+                    
+                    imgDiv.innerHTML = `
+                        <div class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15]">
+                            <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
+                        </div>
+                        <img src="${urlStr}" class="w-full h-full object-cover opacity-20 transition-opacity duration-300" loading="lazy" onload="this.style.opacity='1'; this.previousElementSibling.classList.add('hidden');" onerror="if(this.src !== '${fallbackUrlStr}') { this.src='${fallbackUrlStr}'; } else { this.style.opacity='1'; this.previousElementSibling.classList.add('hidden'); }">
+                    `;
+                } else {
+                    imgDiv.innerHTML = `<div class="w-full h-full flex items-center justify-center text-4xl">${p.type==='cat'?'🐱':'🐶'}</div>`;
+                }
+                
+                // Info
+                const infoDiv = document.createElement('div');
+                infoDiv.className = "p-2 flex flex-col gap-1 flex-1";
+                
+                let distStr = "";
+                if (p._dist !== undefined && p._dist > 0) {
+                    if (p._dist < 1) distStr = `(${(p._dist * 1000).toFixed(0)}m)`;
+                    else distStr = `(${p._dist.toFixed(1)}km)`;
+                }
+                
+                infoDiv.innerHTML = `
+                    <div class="font-black text-lg truncate flex justify-between items-center">
+                        <span>${p.animalName}</span>
+                        <span class="text-sm font-bold text-gray-500">${distStr}</span>
+                    </div>
+                    <div class="text-sm font-bold text-gray-600 truncate flex items-center gap-1">
+                        <span>📅 ${p.lostDate ? p.lostDate.substring(0,10) : '未知'}</span>
+                    </div>
+                    <div class="text-sm text-gray-700 line-clamp-2 mt-1 break-all leading-tight flex-1">
+                        ${p.announcement || '沒有提供詳細特徵說明。'}
+                    </div>
+                `;
+                
+                card.appendChild(imgDiv);
+                card.appendChild(infoDiv);
+                
+                card.addEventListener('click', () => {
+                    currentProjectKey = p.id;
+                    updateAnimalInfoCard();
+                    document.getElementById('list-view-container').classList.add('translate-y-full');
+                    if (p.bounds) {
+                        const center = [(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2];
+                        map.flyTo(center, 18, { animate: true });
+                    }
+                });
+                
+                grid.appendChild(card);
+            });
+        }
+    } catch (e) {
+        console.error("List fetch error:", e);
     }
-    
-    listViewPage++;
 }
 
 // Infinite scroll hook
-document.getElementById('list-view-container').addEventListener('scroll', (e) => {
+let isFetchingList = false;
+document.getElementById('list-view-container').addEventListener('scroll', async (e) => {
     const el = e.target;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
-        let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
-        if (listViewPage * LIST_PAGE_SIZE < keys.length) {
-            renderListView(false);
+        if (!isFetchingList) {
+            isFetchingList = true;
+            listViewPage++;
+            await renderListView(false);
+            isFetchingList = false;
         }
     }
 });
