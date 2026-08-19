@@ -1424,6 +1424,7 @@ async function renderListView(reset = false) {
             centerLng = center.lng;
         }
         
+        let filters = typeof selectedDynamicFilters !== 'undefined' ? selectedDynamicFilters : [];
         const response = await fetch(`${baseUrl}/api/shelter/list`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1431,6 +1432,7 @@ async function renderListView(reset = false) {
                 page: listViewPage,
                 size: LIST_PAGE_SIZE,
                 keyword: keyword,
+                filters: filters,
                 sort: sortMode,
                 centerLat: centerLat,
                 centerLng: centerLng
