@@ -923,7 +923,14 @@ function updateAnimalInfoCard() {
     const proj = PROJECTS[currentProjectKey]; 
     if (!proj) { document.getElementById('announcement-panel').classList.add('hidden'); return; } 
     document.getElementById('announcement-panel').classList.remove('hidden'); 
-    let mainUrl = getMediaUrl(proj.mainPhoto); 
+    let originalMainUrl = getMediaUrl(proj.mainPhoto, false); 
+    let mainUrl = originalMainUrl;
+    if (mainUrl && mainUrl.includes('pet.gov.tw')) {
+        mainUrl = getBaseHttpUrl() + `/dataset/images/${proj.id}_0_thumb.webp`;
+    } else {
+        mainUrl = getMediaUrl(proj.mainPhoto, true);
+    }
+    
     const imgEl = document.getElementById('animal-main-photo');
     const loaderEl = document.getElementById('animal-photo-loader');
     
@@ -936,8 +943,12 @@ function updateAnimalInfoCard() {
             imgEl.style.opacity = '1';
         };
         imgEl.onerror = () => {
-            loaderEl.classList.add('hidden');
-            imgEl.style.opacity = '1';
+            if (imgEl.src !== originalMainUrl && originalMainUrl) {
+                imgEl.src = originalMainUrl;
+            } else {
+                loaderEl.classList.add('hidden');
+                imgEl.style.opacity = '1';
+            }
         };
         imgEl.setAttribute('data-original-src', mainUrl);
         imgEl.src = mainUrl;
