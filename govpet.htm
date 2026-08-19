@@ -1011,156 +1011,74 @@ function updateAnimalInfoCard() {
 let progressiveRenderQueue = [];
 let progressiveRenderTimer = null;
 
-function drawAllProjects() {
-    allCenterMarkers.forEach(m => map.removeLayer(m));
-    allCenterMarkers = [];
-    if (progressiveRenderTimer) {
+async function drawAllProjects(reset = false) {
+    if (!window.activeMarkers) window.activeMarkers = {};
+    
+    if (reset) {
+        Object.values(window.activeMarkers).forEach(m => {
+            if (m) map.removeLayer(m);
+        });
+        window.activeMarkers = {};
+    }
+    
+    if (typeof progressiveRenderTimer !== 'undefined' && progressiveRenderTimer) {
         clearTimeout(progressiveRenderTimer);
         progressiveRenderTimer = null;
     }
     
-    const isFiltered = (typeof currentSearchKeyword !== 'undefined' && currentSearchKeyword !== '') || (typeof selectedDynamicFilters !== 'undefined' && selectedDynamicFilters.length > 0);
-    if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
-    
     const mapCenter = map.getCenter();
-    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
     
-    let projectsWithDist = keys.map(key => {
-        const proj = PROJECTS[key];
-        const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
-        const dist = map.distance(mapCenter, center) / 1000;
-        return { key, proj, center, dist };
-    });
-    
-    projectsWithDist.sort((a, b) => a.dist - b.dist);
-    
-    let initialBatch = [];
-    progressiveRenderQueue = [];
-    
-    // ==========================================
-    // 空間平均取樣 (Grid-based spatial sampling)
-    // ==========================================
-    const MAX_POINTS = 500;
-    if (projectsWithDist.length > MAX_POINTS) {
-        let currentProjItem = projectsWithDist.find(p => p.key === currentProjectKey);
-        
-        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-        projectsWithDist.forEach(p => {
-            if (p.center[0] < minLat) minLat = p.center[0];
-            if (p.center[0] > maxLat) maxLat = p.center[0];
-            if (p.center[1] < minLng) minLng = p.center[1];
-            if (p.center[1] > maxLng) maxLng = p.center[1];
+    try {
+        const baseUrl = typeof getBaseHttpUrl === 'function' ? getBaseHttpUrl() : window.location.origin;
+        let keyword = typeof currentSearchKeyword !== 'undefined' ? currentSearchKeyword : '';
+        let filters = typeof selectedDynamicFilters !== 'undefined' ? selectedDynamicFilters : [];
+        const response = await fetch(`${baseUrl}/api/shelter/map`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                centerLat: mapCenter.lat,
+                centerLng: mapCenter.lng,
+                keyword: keyword,
+                filters: filters
+            })
         });
         
-        // 將畫面切分為 30x30 的網格 (最多 900 格)
-        let gridSize = 30; 
-        let latStep = (maxLat - minLat) / gridSize || 0.01;
-        let lngStep = (maxLng - minLng) / gridSize || 0.01;
-        
-        let grid = {};
-        projectsWithDist.forEach(p => {
-            if (p.key === currentProjectKey) return; 
-            let i = Math.floor((p.center[0] - minLat) / latStep);
-            let j = Math.floor((p.center[1] - minLng) / lngStep);
-            let gridKey = i + '_' + j;
-            if (!grid[gridKey]) grid[gridKey] = [];
-            grid[gridKey].push(p);
-        });
-        
-        let sampled = [];
-        if (currentProjItem) sampled.push(currentProjItem);
-        
-        let gridKeys = Object.keys(grid);
-        let remainingQuota = MAX_POINTS - sampled.length;
-        
-        // 輪詢抽取法：每個網格輪流給出一個離中心最近的點，直到滿額為止
-        // 這樣可以保證偏遠地區的零星點位不會消失，而高密度的市區點位會被平均濃縮
-        let loopCount = 0;
-        while (remainingQuota > 0 && gridKeys.some(k => grid[k].length > 0)) {
-            for (let k of gridKeys) {
-                if (grid[k].length > 0 && remainingQuota > 0) {
-                    sampled.push(grid[k].shift());
-                    remainingQuota--;
-                }
-            }
-            loopCount++;
-            if (loopCount > MAX_POINTS) break; // 防呆
-        }
-        
-        projectsWithDist = sampled;
-    }
-    // ==========================================
-    
-    projectsWithDist.forEach(item => {
-        if (item.dist <= 2 || item.key === currentProjectKey) {
-            initialBatch.push(item);
-        } else {
-            progressiveRenderQueue.push(item);
-        }
-    });
-    
-    if (initialBatch.length === 0 && progressiveRenderQueue.length > 0) {
-        initialBatch = progressiveRenderQueue.splice(0, 50);
-    }
-    
-    const renderMarker = (item) => {
-        const key = item.key;
-        const proj = item.proj;
-        const center = item.center;
-        const isCurrent = (key === currentProjectKey);
-        const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', '其他': '🐾' };
-        const iconSymbol = typeMap[proj.type] || '🐾';
-        let markerColor = '#9ca3af';
-        if (proj.announcement) {
-            let lines = proj.announcement.split('\n');
-            let traits = [];
-            lines.forEach(line => {
-                if (line.startsWith('種類: ') || line.startsWith('花色: ')) {
-                    let val = line.split(': ')[1];
-                    if (val) traits.push(val.trim());
+        const res = await response.json();
+        if (res.success && res.data) {
+            Object.keys(res.data).forEach(k => {
+                PROJECTS[k] = res.data[k];
+                
+                if (!window.activeMarkers[k]) {
+                    const proj = PROJECTS[k];
+                    const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
+                    
+                    if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
+                    const cat = proj.type || 'default';
+                    if (!dynamicCategoryColors[cat]) {
+                        const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
+                        dynamicCategoryColors[cat] = colors[Object.keys(dynamicCategoryColors).length % colors.length];
+                    }
+                    const color = dynamicCategoryColors[cat];
+                    let iconHtml = `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`;
+                    
+                    const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
+                    const marker = L.marker(center, { icon, zIndexOffset: 100 }).addTo(map);
+                    
+                    marker.on('click', () => {
+                        currentProjectKey = k;
+                        updateAnimalInfoCard();
+                        map.flyTo(center, 18, { animate: true, duration: 0.5 });
+                    });
+                    
+                    window.activeMarkers[k] = marker;
                 }
             });
-            for (let t of traits) {
-                if (window.dynamicCategoryColors[t]) {
-                    markerColor = window.dynamicCategoryColors[t];
-                    break;
-                }
-            }
         }
-        let markerHtml = '';
-        if (isCurrent) {
-            markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
-        } else if (isFiltered) {
-            markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
-        } else {
-            markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
-        }
-        const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
-        const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
-        marker.on('click', () => {
-            if (!isCurrent) {
-                document.getElementById('switch-project-select').value = key;
-                document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
-            }
-        });
-        allCenterMarkers.push(marker);
-    };
-    
-    initialBatch.forEach(renderMarker);
-    
-    const processQueue = () => {
-        if (progressiveRenderQueue.length === 0) return;
-        const chunk = progressiveRenderQueue.splice(0, 50);
-        chunk.forEach(renderMarker);
-        if (progressiveRenderQueue.length > 0) {
-            progressiveRenderTimer = setTimeout(processQueue, 100);
-        }
-    };
-    
-    if (progressiveRenderQueue.length > 0) {
-        progressiveRenderTimer = setTimeout(processQueue, 500);
+    } catch (e) {
+        console.error("Map fetch error:", e);
     }
 }
+
 function renderMap() { 
     if (!markersLayer || !map || isPowerSaving) return; 
     markersLayer.clearLayers(); 
