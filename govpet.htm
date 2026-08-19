@@ -1357,9 +1357,9 @@ document.getElementById('list-sort-btn').addEventListener('click', (e) => {
             let pA = PROJECTS[a], pB = PROJECTS[b];
             let sortMode = listSortOptions[currentSortIndex];
             if (sortMode.startsWith('date')) {
-                let da = new Date(pA.lostDate || 0).getTime() || 0;
-                let db = new Date(pB.lostDate || 0).getTime() || 0;
-                return sortMode === 'date_desc' ? db - da : da - db;
+                let da = pA.lostDate || "";
+                let db = pB.lostDate || "";
+                return sortMode === 'date_desc' ? db.localeCompare(da) : da.localeCompare(db);
             } else {
                 let distA = pA._dist !== undefined ? pA._dist : 999999;
                 let distB = pB._dist !== undefined ? pB._dist : 999999;
@@ -1405,9 +1405,9 @@ function renderListView(reset = false) {
             let pA = PROJECTS[a], pB = PROJECTS[b];
             let sortMode = listSortOptions[currentSortIndex];
             if (sortMode.startsWith('date')) {
-                let da = new Date(pA.lostDate || 0).getTime() || 0;
-                let db = new Date(pB.lostDate || 0).getTime() || 0;
-                return sortMode === 'date_desc' ? db - da : da - db;
+                let da = pA.lostDate || "";
+                let db = pB.lostDate || "";
+                return sortMode === 'date_desc' ? db.localeCompare(da) : da.localeCompare(db);
             } else {
                 let distA = pA._dist !== undefined ? pA._dist : 999999;
                 let distB = pB._dist !== undefined ? pB._dist : 999999;
@@ -1441,7 +1441,15 @@ function renderListView(reset = false) {
             // Check if it's an object {url: ...} or string
             let urlStr = typeof mainPhoto === 'string' ? mainPhoto : mainPhoto.url;
             let fallbackUrlStr = getMediaUrl(urlStr, false);
-            urlStr = getMediaUrl(urlStr, true);
+            
+            // If it's a government URL, use our local dataset thumbnail first
+            if (urlStr.includes('pet.gov.tw')) {
+                // p.id is usually the filename prefix in dataset/images/
+                urlStr = `/dataset/images/${p.id}_0_thumb.webp`;
+            } else {
+                urlStr = getMediaUrl(urlStr, true);
+            }
+            
             imgDiv.innerHTML = `
                 <div class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15]">
                     <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
