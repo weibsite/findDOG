@@ -1052,9 +1052,64 @@ async function backgroundSyncAllProjects() {
     }
 }
 
+
+function drawShelterMarker(key, proj, center, reset = false) {
+    if (window.activeMarkers && window.activeMarkers[key] && !reset) return;
+    
+    const isCurrent = (key === currentProjectKey);
+    const isFiltered = (typeof currentSearchKeyword !== 'undefined' && currentSearchKeyword !== '') || (typeof selectedDynamicFilters !== 'undefined' && selectedDynamicFilters.length > 0);
+    
+    if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
+    const cat = proj.type || 'default';
+    if (!dynamicCategoryColors[cat]) {
+        const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
+        dynamicCategoryColors[cat] = colors[Object.keys(dynamicCategoryColors).length % colors.length];
+    }
+    const markerColor = dynamicCategoryColors[cat];
+    
+    const typeMap = { 'dog': '🐶', 'cat': '🐱', 'bird': '🐦', 'other': '🐾' };
+    const iconSymbol = typeMap[proj.type] || '🐾';
+    
+    function escapeHTML(str) { return (str||'').replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); }
+    
+    let markerHtml = '';
+    if (isCurrent) {
+        markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">您在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
+    } else if (isFiltered) {
+        markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
+    } else {
+        markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
+    }
+    
+    const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
+    const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
+    
+    marker.on('click', () => {
+        if (!isCurrent) {
+            const selectEl = document.getElementById('switch-project-select');
+            if (selectEl) {
+                if (!Array.from(selectEl.options).some(opt => opt.value === key)) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = key;
+                    newOpt.text = escapeHTML(proj.animalName);
+                    selectEl.appendChild(newOpt);
+                }
+                selectEl.value = key;
+                selectEl.dispatchEvent(new Event('change'));
+            } else {
+                currentProjectKey = key;
+                updateAnimalInfoCard();
+                drawAllProjects(true);
+            }
+        }
+    });
+    
+    if (!window.activeMarkers) window.activeMarkers = {};
+    window.activeMarkers[key] = marker;
+}
+
 async function drawAllProjects(reset = false) {
     if (!window.activeMarkers) window.activeMarkers = {};
-    
     if (reset) {
         Object.values(window.activeMarkers).forEach(m => {
             if (m) map.removeLayer(m);
@@ -1062,13 +1117,7 @@ async function drawAllProjects(reset = false) {
         window.activeMarkers = {};
     }
     
-    if (typeof progressiveRenderTimer !== 'undefined' && progressiveRenderTimer) {
-        clearTimeout(progressiveRenderTimer);
-        progressiveRenderTimer = null;
-    }
-    
     const mapCenter = map.getCenter();
-    
     try {
         const baseUrl = typeof getBaseHttpUrl === 'function' ? getBaseHttpUrl() : window.location.origin;
         let keyword = typeof currentSearchKeyword !== 'undefined' ? currentSearchKeyword : '';
@@ -1088,36 +1137,13 @@ async function drawAllProjects(reset = false) {
         if (res.success && res.data) {
             Object.keys(res.data).forEach(k => {
                 PROJECTS[k] = res.data[k];
-                
-                if (!window.activeMarkers[k]) {
-                    const proj = PROJECTS[k];
-                    const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
-                    
-                    if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
-                    const cat = proj.type || 'default';
-                    if (!dynamicCategoryColors[cat]) {
-                        const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
-                        dynamicCategoryColors[cat] = colors[Object.keys(dynamicCategoryColors).length % colors.length];
-                    }
-                    const color = dynamicCategoryColors[cat];
-                    let iconHtml = `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`;
-                    
-                    const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
-                    const marker = L.marker(center, { icon, zIndexOffset: 100 }).addTo(map);
-                    
-                    marker.on('click', () => {
-                        currentProjectKey = k;
-                        updateAnimalInfoCard();
-                        map.flyTo(center, 18, { animate: true, duration: 0.5 });
-                    });
-                    
-                    window.activeMarkers[k] = marker;
+                if (!window.activeMarkers[k] || reset) {
+                    const center = [(PROJECTS[k].bounds[0][0] + PROJECTS[k].bounds[1][0]) / 2, (PROJECTS[k].bounds[0][1] + PROJECTS[k].bounds[1][1]) / 2];
+                    drawShelterMarker(k, PROJECTS[k], center, reset);
                 }
             });
         }
-    } catch (e) {
-        console.error("Map fetch error:", e);
-    }
+    } catch (e) { console.error("Map fetch error:", e); }
 }
 
 function renderMap() { 
