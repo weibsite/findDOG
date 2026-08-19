@@ -152,7 +152,7 @@ let lastFullSyncTime = 0, isMapInteracting = false, mapInteractionTimer = null, 
 let localHistory = [], savedH = getPersistentData('dogMap_localHistory'); if (savedH) { try { localHistory = JSON.parse(savedH); } catch (e) {} }
 let lastSavedPos = localHistory.length > 0 ? localHistory[localHistory.length - 1] : null;
 let isMyRouteMode = false, targetRouteUid = null, snakeInterval = null, snakeIndex = 0, basePlaybackSpeed = 500, currentPlaybackSpeed = 500, isPlaybackPaused = false;
-let allUsersData = {}, PROJECTS = {}, currentProjectKey = null, allCenterMarkers = [];
+let allUsersData = {}, PROJECTS = {}, currentProjectKey = null;
 let isReportingMode = false, isQuickReport = false, isScrapeReportMode = false, isSearchResolved = false, preReportFogState = true, isAnnounceCollapsed = localStorage.getItem('dogMap_announceCollapsed') === 'true';
 let viewerPhotos = [], currentViewerIndex = 0, galleryLoadedCount = 0, currentGalleryType = 'photos';
 const GALLERY_BATCH_SIZE = 2; let adminCachedApps = [], allAnnouncements = {}, scrapedData = null, scrapePhotoIndex = 0, scrapedPreloadedImages = [], scrapedMedia = [];
@@ -1008,12 +1008,13 @@ function updateAnimalInfoCard() {
     } 
 }
 
+let progressiveRenderQu
+// Global marker cache
+if (!window.activeMarkers) window.activeMarkers = {};
 let progressiveRenderQueue = [];
 let progressiveRenderTimer = null;
 
-function drawAllProjects() {
-    allCenterMarkers.forEach(m => map.removeLayer(m));
-    allCenterMarkers = [];
+function drawAllProjects(reset = false) {
     if (progressiveRenderTimer) {
         clearTimeout(progressiveRenderTimer);
         progressiveRenderTimer = null;
@@ -1023,6 +1024,17 @@ function drawAllProjects() {
     if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
     
     const mapCenter = map.getCenter();
+    const mapBounds = map.getBounds().pad(1.0); // 1 viewport padding
+    
+    // 1. Remove off-screen markers or ALL markers if reset
+    Object.keys(window.activeMarkers).forEach(k => {
+        const m = window.activeMarkers[k];
+        if (reset || isFiltered || !mapBounds.contains(m.getLatLng())) {
+            map.removeLayer(m);
+            delete window.activeMarkers[k];
+        }
+    });
+    
     let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
     
     let projectsWithDist = keys.map(key => {
@@ -1034,13 +1046,12 @@ function drawAllProjects() {
     
     projectsWithDist.sort((a, b) => a.dist - b.dist);
     
-    let initialBatch = [];
-    progressiveRenderQueue = [];
-    
     // ==========================================
-    // 空間平均取樣 (Grid-based spatial sampling)
+    // 空間平均採樣 (Grid-based spatial sampling)
     // ==========================================
     const MAX_POINTS = 1000;
+    
+    let sampled = [];
     if (projectsWithDist.length > MAX_POINTS) {
         let currentProjItem = projectsWithDist.find(p => p.key === currentProjectKey);
         
@@ -1052,7 +1063,10 @@ function drawAllProjects() {
             if (p.center[1] > maxLng) maxLng = p.center[1];
         });
         
-        // 將畫面切分為 30x30 的網格 (最多 900 格)
+        // 修正網格偏移：鎖定絕對座標系統，避免邊界變動導致網格漂移(閃爍)
+        minLat = Math.floor(minLat * 10) / 10;
+        minLng = Math.floor(minLng * 10) / 10;
+        
         let gridSize = 30; 
         let latStep = (maxLat - minLat) / gridSize || 0.01;
         let lngStep = (maxLng - minLng) / gridSize || 0.01;
@@ -1067,14 +1081,11 @@ function drawAllProjects() {
             grid[gridKey].push(p);
         });
         
-        let sampled = [];
         if (currentProjItem) sampled.push(currentProjItem);
         
         let gridKeys = Object.keys(grid);
         let remainingQuota = MAX_POINTS - sampled.length;
         
-        // 輪詢抽取法：每個網格輪流給出一個離中心最近的點，直到滿額為止
-        // 這樣可以保證偏遠地區的零星點位不會消失，而高密度的市區點位會被平均濃縮
         let loopCount = 0;
         while (remainingQuota > 0 && gridKeys.some(k => grid[k].length > 0)) {
             for (let k of gridKeys) {
@@ -1084,19 +1095,31 @@ function drawAllProjects() {
                 }
             }
             loopCount++;
-            if (loopCount > MAX_POINTS) break; // 防呆
+            if (loopCount > MAX_POINTS) break;
         }
-        
-        projectsWithDist = sampled;
+    } else {
+        sampled = projectsWithDist;
     }
     // ==========================================
     
-    projectsWithDist.forEach(item => {
+    let initialBatch = [];
+    progressiveRenderQueue = [];
+    
+    let currentMarkerCount = Object.keys(window.activeMarkers).length;
+    
+    sampled.forEach(item => {
+        // Skip if already rendered to avoid duplicate processing
+        if (window.activeMarkers[item.key]) return;
+        
+        // Stop if we reached the maximum allowed markers on screen
+        if (currentMarkerCount >= MAX_POINTS && item.key !== currentProjectKey) return;
+        
         if (item.dist <= 2 || item.key === currentProjectKey) {
             initialBatch.push(item);
         } else {
             progressiveRenderQueue.push(item);
         }
+        currentMarkerCount++;
     });
     
     if (initialBatch.length === 0 && progressiveRenderQueue.length > 0) {
@@ -1108,14 +1131,17 @@ function drawAllProjects() {
         const proj = item.proj;
         const center = item.center;
         const isCurrent = (key === currentProjectKey);
-        const typeMap = { 'dog': '🐕', 'cat': '🐈', 'bird': '🦜', '其他': '🐾' };
+        
+        if (window.activeMarkers[key] && !isCurrent) return; // double check
+        
+        const typeMap = { 'dog': '🐶', 'cat': '🐱', 'bird': '🐦', 'other': '🐾' };
         const iconSymbol = typeMap[proj.type] || '🐾';
         let markerColor = '#9ca3af';
         if (proj.announcement) {
             let lines = proj.announcement.split('\n');
             let traits = [];
             lines.forEach(line => {
-                if (line.startsWith('種類: ') || line.startsWith('花色: ')) {
+                if (line.startsWith('種類: ') || line.startsWith('毛色: ')) {
                     let val = line.split(': ')[1];
                     if (val) traits.push(val.trim());
                 }
@@ -1127,15 +1153,23 @@ function drawAllProjects() {
                 }
             }
         }
+        
+        function escapeHTML(str) { return (str||'').replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); }
+        
         let markerHtml = '';
         if (isCurrent) {
-            markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">📍 在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
+            markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">您在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
         } else if (isFiltered) {
             markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
         } else {
             markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
         }
+        
         const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
+        
+        // Remove old marker if exists (only happens for isCurrent)
+        if (window.activeMarkers[key]) map.removeLayer(window.activeMarkers[key]);
+        
         const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
         marker.on('click', () => {
             if (!isCurrent) {
@@ -1143,7 +1177,7 @@ function drawAllProjects() {
                 document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
             }
         });
-        allCenterMarkers.push(marker);
+        window.activeMarkers[key] = marker;
     };
     
     initialBatch.forEach(renderMarker);
@@ -1161,7 +1195,8 @@ function drawAllProjects() {
         progressiveRenderTimer = setTimeout(processQueue, 500);
     }
 }
-function renderMap() { 
+
+
     if (!markersLayer || !map || isPowerSaving) return; 
     markersLayer.clearLayers(); 
     const gpsWarning = (gpsState === 'denied') ? " <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>" : ""; 
