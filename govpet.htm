@@ -798,105 +798,65 @@ document.getElementById('search-submit-btn').addEventListener('click', () => {
 function updateProjectDropdown() { 
     const select = document.getElementById('switch-project-select'); 
     select.innerHTML = ''; 
-    let keys = Object.keys(PROJECTS); 
+    let allKeys = Object.keys(PROJECTS);
     
     if (currentSearchKeyword || selectedDynamicFilters.length > 0 || currentTypeFilter !== 'all') {
-        const kw = currentSearchKeyword.toLowerCase();
-        keys = keys.filter(k => {
+        const kw = currentSearchKeyword ? currentSearchKeyword.toLowerCase() : '';
+        allKeys = allKeys.filter(k => {
             const p = PROJECTS[k];
-            
             if (currentTypeFilter === 'dog' && p.type !== 'dog') return false;
             if (currentTypeFilter === 'cat' && p.type !== 'cat') return false;
-            
             let matchesKeyword = true;
             if (kw) {
-                // Split keyword by space and apply AND logic
-                const kws = kw.split(/\s+/).filter(k => k.length > 0);
-                matchesKeyword = kws.every(k => {
-                    const nameMatch = p.animalName && p.animalName.toLowerCase().includes(k);
-                    const notesMatch = p.announcement && p.announcement.toLowerCase().includes(k);
-                    return nameMatch || notesMatch;
-                });
+                const parts = kw.split(' ').filter(x => x);
+                matchesKeyword = parts.every(part => 
+                    (p.animalName && p.animalName.toLowerCase().includes(part)) || 
+                    (p.announcement && p.announcement.toLowerCase().includes(part)) ||
+                    (p.id && String(p.id).includes(part))
+                );
             }
-            
-            let matchesDynamic = true;
+            if (!matchesKeyword) return false;
             if (selectedDynamicFilters.length > 0) {
-                // Apply AND logic for selected category tags
-                matchesDynamic = selectedDynamicFilters.every(filterTrait => {
-                    return p.announcement && p.announcement.includes(filterTrait);
-                });
+                if (!p.announcement) return false;
+                let text = p.announcement;
+                for (let f of selectedDynamicFilters) {
+                    if (!text.includes(f)) return false;
+                }
             }
-            
-            return matchesKeyword && matchesDynamic;
+            return true;
         });
     }
-
-    if (keys.length === 0) { 
-        const opt = document.createElement('option'); 
-        opt.value = ""; 
-        opt.innerText = "目前無符合條件之資料"; 
-        select.appendChild(opt); 
-        currentProjectKey = null; 
-        window.sortedProjectKeys = []; 
-        document.getElementById('animal-info-section').classList.add('hidden'); 
-        document.getElementById('announcement-panel').classList.add('hidden'); 
-        return; 
-    } 
-    document.getElementById('animal-info-section').classList.remove('hidden'); 
-    document.getElementById('announcement-panel').classList.remove('hidden');
-
-    let refLat = 23.5, refLng = 121.0; 
-    if (lastSavedPos) { refLat = lastSavedPos.lat; refLng = lastSavedPos.lng; } else if (map) { let center = map.getCenter(); refLat = center.lat; refLng = center.lng; } 
     
-    let cityMinDist = {};
-    keys.forEach(k => {
-        let p = PROJECTS[k];
-        let c_lat = (p.bounds[0][0] + p.bounds[1][0]) / 2; 
-        let c_lng = (p.bounds[0][1] + p.bounds[1][1]) / 2;
-        p._dist = getDistance(refLat, refLng, c_lat, c_lng);
-        let match = p.announcement ? p.announcement.match(/地點:\s*(.{3})/) : null;
-        p._city = match ? match[1] : "其他";
-        if (cityMinDist[p._city] === undefined || p._dist < cityMinDist[p._city]) {
-            cityMinDist[p._city] = p._dist;
-        }
-    });
-
-    keys.sort((a, b) => { 
-        let pA = PROJECTS[a], pB = PROJECTS[b]; 
-        if (pA._city !== pB._city) {
-            return cityMinDist[pA._city] - cityMinDist[pB._city];
-        }
-        return pA._dist - pB._dist;
-    }); 
-    window.sortedProjectKeys = keys; 
+    if (typeof map !== 'undefined' && map) {
+        const center = map.getCenter();
+        allKeys.sort((a, b) => {
+            let pA = PROJECTS[a], pB = PROJECTS[b];
+            let cA = [(pA.bounds[0][0] + pA.bounds[1][0]) / 2, (pA.bounds[0][1] + pA.bounds[1][1]) / 2];
+            let cB = [(pB.bounds[0][0] + pB.bounds[1][0]) / 2, (pB.bounds[0][1] + pB.bounds[1][1]) / 2];
+            return map.distance(center, cA) - map.distance(center, cB);
+        });
+    }
+    
+    window.mapProjectKeys = allKeys;
+    let keysWithPhotos = allKeys.filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0);
+    window.sortedProjectKeys = keysWithPhotos;
     
     // --- Hook for List View ---
     if (typeof isListViewActive !== 'undefined' && isListViewActive) {
         renderListView(true);
     }
     // --------------------------
-
-    keys.forEach(k => { 
-        const proj = PROJECTS[k]; 
-        const opt = document.createElement('option'); 
+    
+    keysWithPhotos.forEach(k => { 
+        let opt = document.createElement('option'); 
         opt.value = k; 
-        let c_lat = (proj.bounds[0][0] + proj.bounds[1][0]) / 2; let c_lng = (proj.bounds[0][1] + proj.bounds[1][1]) / 2; 
-        let distKm = (getDistance(refLat, refLng, c_lat, c_lng) / 1000).toFixed(1); 
-        
-        let prefixIcon = window.innerWidth <= 639 ? "" : "🎯 ";
-        opt.innerText = `${prefixIcon}${proj.animalName} (${distKm}km)`; 
+        opt.text = PROJECTS[k].animalName || "未命名"; 
         select.appendChild(opt); 
     }); 
     
-    if (urlTargetProject && keys.includes(urlTargetProject)) {
-        currentProjectKey = urlTargetProject;
-        urlTargetProject = null;
-        if (PROJECTS[currentProjectKey] && map) {
-            setTimeout(() => map.flyToBounds(PROJECTS[currentProjectKey].bounds, { padding: [50, 50], animate: true }), 1000);
-        }
-    } else if (!currentProjectKey || !keys.includes(currentProjectKey)) {
-        currentProjectKey = keys[0];
-    }
+    if (keysWithPhotos.length > 0 && !keysWithPhotos.includes(currentProjectKey)) { 
+        currentProjectKey = keysWithPhotos[0]; 
+    } 
     select.value = currentProjectKey; 
     
     if (currentProjectKey) {
@@ -904,7 +864,7 @@ function updateProjectDropdown() {
         url.searchParams.set('id', currentProjectKey);
         window.history.replaceState({}, '', url);
     }
-
+    
     updateAnimalInfoCard();
 }
 
