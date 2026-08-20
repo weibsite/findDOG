@@ -697,7 +697,7 @@ document.getElementById('admin-volunteers-btn').addEventListener('click', () => 
 document.getElementById('admin-list-close-btn').addEventListener('click', () => document.getElementById('admin-list-modal').classList.add('hidden')); document.getElementById('admin-edit-close-btn').addEventListener('click', () => document.getElementById('admin-edit-modal').classList.add('hidden'));
 function openAdminEditModal(appId) { const app = adminCachedApps.find(a => a.id === appId); if (!app) return; const pd = app.projectData; document.getElementById('edit-stray-id').value = app.id; const typeMatch = pd.animalName.match(/\((.*?)\)/); document.getElementById('edit-stray-type').value = typeMatch ? typeMatch[1] : '其他'; document.getElementById('edit-stray-time').value = (pd.lostDate || "").replace(' ', 'T'); let animalNameMatch = pd.animalName.match(/^浪浪 \((.*?)\)$/); document.getElementById('edit-stray-name').value = animalNameMatch ? "" : pd.animalName; document.getElementById('edit-stray-contact').value = pd.contactInfo || ""; document.getElementById('edit-stray-contact-public').checked = !!pd.isContactPublic; document.getElementById('edit-stray-ig').value = pd.igUrl || ""; let notes = pd.announcement || ""; if (pd.isContactPublic && pd.contactInfo) { notes = notes.replace("\n\n聯絡方式: " + pd.contactInfo, ""); } else { const contactSplit = notes.split("\n\n聯絡方式: "); if (contactSplit.length > 1) { notes = contactSplit[0]; } } document.getElementById('edit-stray-notes').value = notes; document.getElementById('admin-edit-modal').classList.remove('hidden'); }
 document.querySelectorAll('.admin-status-btn').forEach(btn => btn.addEventListener('click', (e) => { const status = e.target.getAttribute('data-status'); const app_id = document.getElementById('edit-stray-id').value; const app = adminCachedApps.find(a => a.id === app_id); if (!app) return; if (status === "deleted") { if (isSystemReady) ws.send(JSON.stringify({ type: "admin_review_application", token: adminToken, id: app_id, status: "deleted" })); } else { const pd = app.projectData; let customName = document.getElementById('edit-stray-name').value.trim(); pd.animalName = customName ? customName : "浪浪 (" + document.getElementById('edit-stray-type').value + ")"; pd.type = document.getElementById('edit-stray-type').value === '狗' ? 'dog' : (document.getElementById('edit-stray-type').value === '貓' ? 'cat' : 'other'); pd.lostDate = document.getElementById('edit-stray-time').value.replace('T', ' '); pd.contactInfo = document.getElementById('edit-stray-contact').value.trim(); pd.isContactPublic = document.getElementById('edit-stray-contact-public').checked; let igVal = document.getElementById('edit-stray-ig').value.trim(); if (igVal && !igVal.startsWith('http')) igVal = 'https://instagram.com/' + igVal.replace(/^@/, ''); pd.igUrl = igVal; let newAnnounce = document.getElementById('edit-stray-notes').value.trim(); if (pd.isContactPublic && pd.contactInfo) { newAnnounce += "\n\n聯絡方式: " + pd.contactInfo; } pd.announcement = newAnnounce; if (isSystemReady) ws.send(JSON.stringify({ type: "submit_application", id: app_id, ownerInfo: app.ownerInfo, projectData: pd, forceStatus: status, token: adminToken })); } e.target.innerText = "處理中..."; setTimeout(() => { document.getElementById('admin-edit-modal').classList.add('hidden'); document.getElementById('admin-list-modal').classList.add('hidden'); e.target.innerText = e.target.innerText.replace('處理中...', ''); showModal("✅ 狀態與內容已更新並送出！"); }, 1000); }));
-function switchStrayProject(offset) { let keys = window.sortedProjectKeys || Object.keys(PROJECTS); if (keys.length <= 1) return; let idx = keys.indexOf(currentProjectKey); if (idx === -1) idx = 0; idx = (idx + offset + keys.length) % keys.length; document.getElementById('switch-project-select').value = keys[idx]; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); }
+function switchStrayProject(offset) { let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0); if (keys.length <= 1) return; let idx = keys.indexOf(currentProjectKey); if (idx === -1) idx = 0; idx = (idx + offset + keys.length) % keys.length; document.getElementById('switch-project-select').value = keys[idx]; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); }
 document.getElementById('prev-stray-btn').addEventListener('click', (e) => { e.stopPropagation(); switchStrayProject(-1); }); document.getElementById('next-stray-btn').addEventListener('click', (e) => { e.stopPropagation(); switchStrayProject(1); });
 
 let currentTypeFilter = 'all';
@@ -998,7 +998,7 @@ function updateAnimalInfoCard() {
         igBtn.classList.add('hidden'); 
     } 
     
-    let keys = window.sortedProjectKeys || Object.keys(PROJECTS); 
+    let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0); 
     if (keys.length > 1) { 
         document.getElementById('prev-stray-btn').classList.remove('hidden'); 
         document.getElementById('next-stray-btn').classList.remove('hidden'); 
@@ -1008,7 +1008,6 @@ function updateAnimalInfoCard() {
     } 
 }
 
-let progressiveRenderQu
 // Global marker cache
 if (!window.activeMarkers) window.activeMarkers = {};
 let progressiveRenderQueue = [];
@@ -1024,9 +1023,8 @@ function drawAllProjects(reset = false) {
     if (!window.dynamicCategoryColors) window.dynamicCategoryColors = {};
     
     const mapCenter = map.getCenter();
-    const mapBounds = map.getBounds().pad(1.0); // 1 viewport padding
+    const mapBounds = map.getBounds().pad(1.0);
     
-    // 1. Remove off-screen markers or ALL markers if reset
     Object.keys(window.activeMarkers).forEach(k => {
         const m = window.activeMarkers[k];
         if (reset || isFiltered || !mapBounds.contains(m.getLatLng())) {
@@ -1035,7 +1033,7 @@ function drawAllProjects(reset = false) {
         }
     });
     
-    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+    let keys = window.mapProjectKeys || Object.keys(PROJECTS);
     
     let projectsWithDist = keys.map(key => {
         const proj = PROJECTS[key];
@@ -1046,9 +1044,6 @@ function drawAllProjects(reset = false) {
     
     projectsWithDist.sort((a, b) => a.dist - b.dist);
     
-    // ==========================================
-    // 空間平均採樣 (Grid-based spatial sampling)
-    // ==========================================
     const MAX_POINTS = 1000;
     
     let sampled = [];
@@ -1063,7 +1058,6 @@ function drawAllProjects(reset = false) {
             if (p.center[1] > maxLng) maxLng = p.center[1];
         });
         
-        // 修正網格偏移：鎖定絕對座標系統，避免邊界變動導致網格漂移(閃爍)
         minLat = Math.floor(minLat * 10) / 10;
         minLng = Math.floor(minLng * 10) / 10;
         
@@ -1100,7 +1094,6 @@ function drawAllProjects(reset = false) {
     } else {
         sampled = projectsWithDist;
     }
-    // ==========================================
     
     let initialBatch = [];
     progressiveRenderQueue = [];
@@ -1108,10 +1101,7 @@ function drawAllProjects(reset = false) {
     let currentMarkerCount = Object.keys(window.activeMarkers).length;
     
     sampled.forEach(item => {
-        // Skip if already rendered to avoid duplicate processing
         if (window.activeMarkers[item.key]) return;
-        
-        // Stop if we reached the maximum allowed markers on screen
         if (currentMarkerCount >= MAX_POINTS && item.key !== currentProjectKey) return;
         
         if (item.dist <= 2 || item.key === currentProjectKey) {
@@ -1132,7 +1122,7 @@ function drawAllProjects(reset = false) {
         const center = item.center;
         const isCurrent = (key === currentProjectKey);
         
-        if (window.activeMarkers[key] && !isCurrent) return; // double check
+        if (window.activeMarkers[key] && !isCurrent) return;
         
         const typeMap = { 'dog': '🐶', 'cat': '🐱', 'bird': '🐦', 'other': '🐾' };
         const iconSymbol = typeMap[proj.type] || '🐾';
@@ -1156,8 +1146,12 @@ function drawAllProjects(reset = false) {
         
         function escapeHTML(str) { return (str||'').replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); }
         
+        const hasPhoto = proj.photos && proj.photos.length > 0;
+        
         let markerHtml = '';
-        if (isCurrent) {
+        if (!hasPhoto) {
+            markerHtml = `<div style="background-color: #9ca3af; width: 8px; height: 8px; border-radius: 50%; opacity: 0.7; pointer-events: none; border: 1.5px solid white; box-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></div>`;
+        } else if (isCurrent) {
             markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">您在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
         } else if (isFiltered) {
             markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.9;"><div class="user-name-tag pixel-panel" style="color: #1a202c; background-color: #e5e7eb; border-color: #1a202c; z-index: 10;">${escapeHTML(proj.animalName)}</div><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
@@ -1165,18 +1159,21 @@ function drawAllProjects(reset = false) {
             markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
         }
         
-        const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [0, 0], iconAnchor: [0, 0] });
+        const iconSize = hasPhoto ? [0, 0] : [8, 8];
+        const iconAnchor = hasPhoto ? [0, 0] : [4, 4];
+        const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: iconSize, iconAnchor: iconAnchor });
         
-        // Remove old marker if exists (only happens for isCurrent)
         if (window.activeMarkers[key]) map.removeLayer(window.activeMarkers[key]);
         
-        const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : 500 }).addTo(map);
-        marker.on('click', () => {
-            if (!isCurrent) {
-                document.getElementById('switch-project-select').value = key;
-                document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
-            }
-        });
+        const marker = L.marker(center, { icon, zIndexOffset: isCurrent ? 2000 : (hasPhoto ? 500 : 100), interactive: hasPhoto }).addTo(map);
+        if (hasPhoto) {
+            marker.on('click', () => {
+                if (!isCurrent) {
+                    document.getElementById('switch-project-select').value = key;
+                    document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
+                }
+            });
+        }
         window.activeMarkers[key] = marker;
     };
     
@@ -1195,9 +1192,7 @@ function drawAllProjects(reset = false) {
         progressiveRenderTimer = setTimeout(processQueue, 500);
     }
 }
-
-
-function renderMap() {
+function renderMap() { 
     if (!markersLayer || !map || isPowerSaving) return; 
     markersLayer.clearLayers(); 
     const gpsWarning = (gpsState === 'denied') ? " <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>" : ""; 
@@ -1232,7 +1227,6 @@ async function backgroundSyncAllProjects() {
             let hasNew = false;
             res.data.forEach(p => {
                 if (!PROJECTS[p.id]) {
-                    // Cleanup photos vs videos
                     let actualPhotos = [];
                     let actualVideos = p.videos || [];
                     if (p.photos) {
@@ -1248,25 +1242,19 @@ async function backgroundSyncAllProjects() {
                     p.photos = actualPhotos;
                     p.videos = actualVideos;
                     p.announcement = p.announcement || "目前無最新公告";
-                    
                     PROJECTS[p.id] = p;
                     hasNew = true;
                 }
             });
             bgSyncPage++;
-            
             if (hasNew) {
-                // Update filters and map periodically
                 prepareDynamicFilters();
                 updateProjectDropdown();
                 drawAllProjects();
-                
-                // If list view is open, refresh it
                 if (!document.getElementById('list-view-container').classList.contains('translate-y-full')) {
                     renderListView(true);
                 }
             }
-            
             isBgSyncing = false;
             setTimeout(backgroundSyncAllProjects, 500);
         } else {
@@ -1343,7 +1331,7 @@ document.getElementById('profile-cancel-btn').addEventListener('click', () => do
 document.getElementById('profile-save-btn').addEventListener('click', () => { currentUserName = document.getElementById('profile-name').value || '志工'; dbUserColor = document.getElementById('profile-color').value; localStorage.setItem('dogMap_userName', currentUserName); localStorage.setItem('dogMap_userColor', dbUserColor); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; if (allUsersData[myUid]) { allUsersData[myUid].userName = currentUserName; allUsersData[myUid].color = dbUserColor; } saveLocationToServer(null, true); document.getElementById('profile-modal').classList.add('hidden'); renderMap(); if (currentProjectKey) updateAnimalInfoCard(); });
 
 function getProjectAllPhotos(proj) { let list = []; if (proj.mainPhoto) list.push(proj.mainPhoto); if (proj.photos) list = list.concat(proj.photos); return [...new Set(list)]; }
-document.getElementById('animal-info-section').addEventListener('click', function(e) { if (e.target.classList.contains('gallery-btn-overlay')) { const proj = PROJECTS[currentProjectKey]; if (!proj) return; document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; renderGallery('photos'); document.getElementById('gallery-modal').classList.remove('hidden'); return; } if (this.classList.contains('mobile-collapsed')) { this.classList.remove('mobile-collapsed'); return; } const rect = this.getBoundingClientRect(); const clickX = e.clientX - rect.left; const width = rect.width; let keys = window.sortedProjectKeys || Object.keys(PROJECTS); const hasMultiple = keys.length > 1; if (hasMultiple && clickX < width * 0.3) { switchStrayProject(-1); } else if (hasMultiple && clickX > width * 0.7) { switchStrayProject(1); } else { const proj = PROJECTS[currentProjectKey]; if (!proj) return; const allPhotos = getProjectAllPhotos(proj); if (allPhotos.length > 0) { openPhotoViewer(0, allPhotos); } } });
+document.getElementById('animal-info-section').addEventListener('click', function(e) { if (e.target.classList.contains('gallery-btn-overlay')) { const proj = PROJECTS[currentProjectKey]; if (!proj) return; document.getElementById('gallery-title').innerText = `${proj.animalName} 的相簿`; renderGallery('photos'); document.getElementById('gallery-modal').classList.remove('hidden'); return; } if (this.classList.contains('mobile-collapsed')) { this.classList.remove('mobile-collapsed'); return; } const rect = this.getBoundingClientRect(); const clickX = e.clientX - rect.left; const width = rect.width; let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0); const hasMultiple = keys.length > 1; if (hasMultiple && clickX < width * 0.3) { switchStrayProject(-1); } else if (hasMultiple && clickX > width * 0.7) { switchStrayProject(1); } else { const proj = PROJECTS[currentProjectKey]; if (!proj) return; const allPhotos = getProjectAllPhotos(proj); if (allPhotos.length > 0) { openPhotoViewer(0, allPhotos); } } });
 document.getElementById('close-gallery-btn').addEventListener('click', () => { document.getElementById('gallery-modal').classList.add('hidden'); document.querySelectorAll('#gallery-content video').forEach(v => v.pause()); }); document.getElementById('tab-photos').addEventListener('click', () => renderGallery('photos')); document.getElementById('tab-videos').addEventListener('click', () => renderGallery('videos'));
 function renderGallery(type) { currentGalleryType = type; galleryLoadedCount = 0; const content = document.getElementById('gallery-content'); const btnP = document.getElementById('tab-photos'), btnV = document.getElementById('tab-videos'); content.innerHTML = ''; if (type === 'photos') { btnP.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnV.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; } else { btnV.className = "flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black active:shadow-none"; btnP.className = "flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black active:shadow-none"; } const proj = PROJECTS[currentProjectKey]; if (!proj || !proj[type] || proj[type].length === 0) { content.innerHTML = `<div class="text-center text-gray-500 font-bold mt-10">目前沒有${type === 'photos' ? '相片' : '影片'}</div>`; return; } loadMoreGalleryItems(); }
 function loadMoreGalleryItems() { const content = document.getElementById('gallery-content'); const proj = PROJECTS[currentProjectKey]; if (!proj || !proj[currentGalleryType]) return; const items = proj[currentGalleryType]; const start = galleryLoadedCount; const end = Math.min(start + GALLERY_BATCH_SIZE, items.length); if (start >= items.length) return; for (let i = start; i < end; i++) { const item = items[i]; if (currentGalleryType === 'photos') { const imgObj = typeof item === 'string' ? { url: item } : item; let pUrl = getMediaUrl(imgObj.url); const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white cursor-pointer active:translate-y-1 transition-transform"; container.addEventListener('click', () => { openPhotoViewer(i, items); }); const img = document.createElement('img'); img.src = pUrl; img.loading = "lazy"; img.className = "w-full object-cover border-b-2 border-black block"; container.appendChild(img); if (imgObj.title && imgObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "p-2 text-sm font-bold text-gray-900 text-center"; titleDiv.innerText = imgObj.title; container.appendChild(titleDiv); } else { img.classList.remove('border-b-2', 'border-black'); } content.appendChild(container); } else { const vidObj = typeof item === 'string' ? { url: item } : item; let vUrl = getMediaUrl(vidObj.url); const container = document.createElement('div'); container.className = "mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white p-3"; if (vidObj.title && vidObj.title.trim() !== "") { const titleDiv = document.createElement('div'); titleDiv.className = "text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed border-gray-400 pb-1"; titleDiv.innerText = vidObj.title; container.appendChild(titleDiv); } const videoEl = document.createElement('video'); videoEl.src = vUrl; videoEl.controls = true; videoEl.preload = "metadata"; videoEl.className = "w-full border-2 border-black bg-black"; videoEl.addEventListener('play', function() { document.querySelectorAll('#gallery-content video').forEach(v => { if (v !== videoEl && !v.paused) v.pause(); }); }); container.appendChild(videoEl); content.appendChild(container); } } galleryLoadedCount = end; }
@@ -1455,7 +1443,7 @@ function showViewerToast(msg) {
     }, 3000);
 }
 
-function switchToAdjacentProjectPhotos(offset) { let keys = window.sortedProjectKeys || Object.keys(PROJECTS); if (keys.length <= 1) return; let idx = keys.indexOf(currentProjectKey); if (idx === -1) idx = 0; let foundKey = null; let allPhotos = []; for (let i = 1; i < keys.length; i++) { idx = (idx + offset + keys.length) % keys.length; let k = keys[idx]; allPhotos = getProjectAllPhotos(PROJECTS[k]); if (allPhotos.length > 0) { foundKey = k; break; } } if (foundKey) { document.getElementById('switch-project-select').value = foundKey; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); viewerPhotos = allPhotos; currentViewerIndex = offset > 0 ? 0 : viewerPhotos.length - 1; updatePhotoViewer(); let newProjName = PROJECTS[foundKey].animalName || "浪浪"; showViewerToast(`已切換為 ${newProjName}`); } }
+function switchToAdjacentProjectPhotos(offset) { let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0); if (keys.length <= 1) return; let idx = keys.indexOf(currentProjectKey); if (idx === -1) idx = 0; let foundKey = null; let allPhotos = []; for (let i = 1; i < keys.length; i++) { idx = (idx + offset + keys.length) % keys.length; let k = keys[idx]; allPhotos = getProjectAllPhotos(PROJECTS[k]); if (allPhotos.length > 0) { foundKey = k; break; } } if (foundKey) { document.getElementById('switch-project-select').value = foundKey; document.getElementById('switch-project-select').dispatchEvent(new Event('change')); viewerPhotos = allPhotos; currentViewerIndex = offset > 0 ? 0 : viewerPhotos.length - 1; updatePhotoViewer(); let newProjName = PROJECTS[foundKey].animalName || "浪浪"; showViewerToast(`已切換為 ${newProjName}`); } }
 document.getElementById('viewer-close-btn').addEventListener('click', () => { document.getElementById('photo-viewer-modal').classList.add('hidden'); document.getElementById('viewer-vid').pause(); resetViewerAdjustments(); tPanel.classList.add('hidden'); activeTool=''; if(tPanelTimer) clearTimeout(tPanelTimer);});
 document.getElementById('viewer-prev-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex > 0) { currentViewerIndex--; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = viewerPhotos.length - 1; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(-1); } } });
 document.getElementById('viewer-next-btn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (currentViewerIndex < viewerPhotos.length - 1) { currentViewerIndex++; updatePhotoViewer(); } else { if (!document.getElementById('report-form-modal').classList.contains('hidden')) { currentViewerIndex = 0; updatePhotoViewer(); } else { switchToAdjacentProjectPhotos(1); } } });
@@ -1521,7 +1509,7 @@ function renderListView(reset = false) {
         listViewPage = 0;
     }
     
-    let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+    let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0);
     if (reset && window.sortedProjectKeys) {
         window.sortedProjectKeys.sort((a, b) => {
             let pA = PROJECTS[a], pB = PROJECTS[b];
@@ -1617,7 +1605,7 @@ function renderListView(reset = false) {
 document.getElementById('list-view-container').addEventListener('scroll', (e) => {
     const el = e.target;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
-        let keys = window.sortedProjectKeys || Object.keys(PROJECTS);
+        let keys = window.sortedProjectKeys || Object.keys(PROJECTS).filter(k => PROJECTS[k].photos && PROJECTS[k].photos.length > 0);
         if (listViewPage * LIST_PAGE_SIZE < keys.length) {
             renderListView(false);
         }
