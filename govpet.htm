@@ -1035,9 +1035,26 @@ function drawAllProjects(reset = false) {
     
     let keys = window.mapProjectKeys || Object.keys(PROJECTS);
     
-    let projectsWithDist = keys.map(key => {
+    let coordCounts = {};
+    // Sort keys deterministically so spiral arrangement doesn't jump randomly
+    let stableKeys = [...keys].sort((a, b) => a.localeCompare(b));
+    
+    let projectsWithDist = stableKeys.map(key => {
         const proj = PROJECTS[key];
-        const center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
+        let center = [(proj.bounds[0][0] + proj.bounds[1][0]) / 2, (proj.bounds[0][1] + proj.bounds[1][1]) / 2];
+        
+        let cKey = center[0].toFixed(4) + '_' + center[1].toFixed(4); // approx 11 meters grid
+        if (!coordCounts[cKey]) coordCounts[cKey] = 0;
+        let count = coordCounts[cKey]++;
+        
+        if (count > 0) {
+            // Fermat's spiral (Golden angle 137.5 deg)
+            const phi = count * 2.39996; 
+            const r = 0.00015 * Math.sqrt(count); // ~15 meters per step
+            center[0] += r * Math.cos(phi);
+            center[1] += r * Math.sin(phi);
+        }
+        
         const dist = map.distance(mapCenter, center) / 1000;
         return { key, proj, center, dist };
     });
@@ -1150,7 +1167,7 @@ function drawAllProjects(reset = false) {
         
         let markerHtml = '';
         if (!hasPhoto) {
-            markerHtml = `<div style="background-color: ${markerColor}; width: 8px; height: 8px; border-radius: 50%; opacity: 0.85; border: 1.5px solid white; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); cursor: default;"></div>`;
+            markerHtml = `<div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent;"><div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; opacity: 0.9; border: 1.5px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6);"></div></div>`;
         } else if (isCurrent) {
             markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">您在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
         } else if (isFiltered) {
@@ -1159,8 +1176,8 @@ function drawAllProjects(reset = false) {
             markerHtml = `<div class="user-label-container" style="bottom: 8px; cursor: pointer; pointer-events: auto; opacity: 0.8;"><div class="user-avatar-pixel" style="background-color: ${markerColor}; width: 20px; height: 20px; box-shadow: 2px 2px 0px #1a202c;"></div></div>`;
         }
         
-        const iconSize = hasPhoto ? [0, 0] : [8, 8];
-        const iconAnchor = hasPhoto ? [0, 0] : [4, 4];
+        const iconSize = hasPhoto ? [0, 0] : [24, 24];
+        const iconAnchor = hasPhoto ? [0, 0] : [12, 12];
         const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: iconSize, iconAnchor: iconAnchor });
         
         if (window.activeMarkers[key]) map.removeLayer(window.activeMarkers[key]);
