@@ -1104,20 +1104,43 @@ function drawAllProjects(reset = false) {
         const typeMap = { 'dog': '🐶', 'cat': '🐱', 'bird': '🐦', 'other': '🐾' };
         const iconSymbol = typeMap[proj.type] || '🐾';
         let markerColor = '#9ca3af';
+        let traits = [];
+        
+        let extractTraits = (val) => {
+            if (!val) return;
+            // Colors have higher priority, push them first so they match first
+            if (val.includes('賓士')) traits.push('賓士貓');
+            if (val.includes('黑')) traits.push('黑色');
+            if (val.includes('白')) traits.push('白色');
+            if (val.includes('黃') || val.includes('橘') || val.includes('奶油')) traits.push('黃色');
+            if (val.includes('咖啡') || val.includes('巧克力')) traits.push('咖啡色');
+            if (val.includes('柴犬')) traits.push('柴犬');
+            if (val.includes('麒麟尾')) traits.push('麒麟尾');
+            if (val.includes('混種') || val.includes('米克斯')) traits.push('米克斯');
+            traits.push(val.trim());
+        };
+        
+        // 1. Extract from name first (highest priority)
+        if (proj.animalName) {
+            extractTraits(proj.animalName);
+        }
+        
+        // 2. Extract from announcement
         if (proj.announcement) {
             let lines = proj.announcement.split('\n');
-            let traits = [];
             lines.forEach(line => {
                 if (line.startsWith('種類: ') || line.startsWith('毛色: ') || line.startsWith('花色: ')) {
                     let val = line.split(': ')[1];
-                    if (val) traits.push(val.trim());
+                    extractTraits(val);
                 }
             });
-            for (let t of traits) {
-                if (window.dynamicCategoryColors[t]) {
-                    markerColor = window.dynamicCategoryColors[t];
-                    break;
-                }
+        }
+        
+        // 3. Find the first matched category
+        for (let t of traits) {
+            if (window.dynamicCategoryColors[t]) {
+                markerColor = window.dynamicCategoryColors[t];
+                break;
             }
         }
         
