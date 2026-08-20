@@ -1167,7 +1167,7 @@ function drawAllProjects(reset = false) {
         
         let markerHtml = '';
         if (!hasPhoto) {
-            markerHtml = `<div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent;"><div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; opacity: 0.9; border: 1.5px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6);"></div></div>`;
+            markerHtml = `<div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: default !important; background: transparent;"><div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; opacity: 0.9; border: 1.5px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6);"></div></div>`;
         } else if (isCurrent) {
             markerHtml = `<div style="position: absolute;"><div class="center-pulse-square" style="border-color: #ef4444;"></div></div><div class="user-label-container" style="bottom: 12px; cursor: pointer; pointer-events: auto;"><div class="user-name-tag pixel-panel" style="color: white; background-color: #ef4444; border-color: #1a202c; z-index: 10;">您在這裡走失${escapeHTML(proj.animalName)}</div><div style="font-size: 32px; filter: drop-shadow(2px 2px 0px #1a202c); position: relative; z-index: 10; animation: bounce 2s infinite;">${iconSymbol}</div></div>`;
         } else if (isFiltered) {
@@ -1191,13 +1191,13 @@ function drawAllProjects(reset = false) {
                     document.getElementById('switch-project-select').dispatchEvent(new Event('change'));
                 }
             });
-        } else {
-            marker.bindTooltip(escapeHTML(proj.animalName || "未命名"), {
-                direction: 'top',
-                offset: [0, -4],
-                className: 'pixel-panel text-xs p-1'
-            });
         }
+        
+        marker.bindTooltip(escapeHTML(proj.animalName || "未命名"), {
+            direction: 'top',
+            offset: [0, -4],
+            className: 'pixel-panel text-xs p-1'
+        });
         window.activeMarkers[key] = marker;
     };
     
