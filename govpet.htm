@@ -725,19 +725,23 @@ function prepareDynamicFilters() {
     
     // Top 12 hardcoded traits mapped to nice colors
     const topTraits = [
-        {name: '米克斯', color: '#8b5cf6'},
-        {name: '柴犬', color: '#f59e0b'},
-        {name: '橘貓', color: '#f97316'},
-        {name: '賓士貓', color: '#1f2937'},
-        {name: '黑色', color: '#1f2937'},
-        {name: '虎斑', color: '#b45309'},
-        {name: '白', color: '#f8fafc'},
-        {name: '黃', color: '#fbbf24'},
-        {name: '項圈', color: '#ef4444'},
-        {name: '剪耳', color: '#10b981'},
-        {name: '親人', color: '#ec4899'},
-        {name: '麒麟尾', color: '#06b6d4'}
-    ];
+          {name: '米克斯', color: '#8b5cf6'},
+          {name: '柴犬', color: '#f59e0b'},
+          {name: '橘貓', color: '#f97316'},
+          {name: '三花', color: '#ea580c'},
+          {name: '玳瑁', color: '#451a03'},
+          {name: '賓士貓', color: '#1f2937'},
+          {name: '黑色', color: '#1f2937'},
+          {name: '灰', color: '#9ca3af'},
+          {name: '棕', color: '#92400e'},
+          {name: '虎斑', color: '#b45309'},
+          {name: '白', color: '#f8fafc'},
+          {name: '黃', color: '#fbbf24'},
+          {name: '項圈', color: '#ef4444'},
+          {name: '剪耳', color: '#10b981'},
+          {name: '親人', color: '#ec4899'},
+          {name: '麒麟尾', color: '#06b6d4'}
+      ];
     
     window.dynamicCategoryColors = {};
     
@@ -1108,16 +1112,21 @@ function drawAllProjects(reset = false) {
         
         let extractTraits = (val) => {
             if (!val) return;
-            // 1. Colors
+            // 1. Colors & Patterns (Highest Priority)
+            if (val.includes('三花')) traits.push('三花');
+            if (val.includes('玳瑁')) traits.push('玳瑁');
+            if (val.includes('灰')) traits.push('灰');
             if (val.includes('黑')) traits.push('黑色');
             if (val.includes('白')) traits.push('白');
+            if (val.includes('棕') || val.includes('咖啡') || val.includes('巧克力') || val.includes('咖')) traits.push('棕');
             if (val.includes('黃') || val.includes('奶油') || val.includes('橘')) {
                 if (val.includes('貓')) traits.push('橘貓');
                 else traits.push('黃');
             }
-            if (val.includes('咖啡') || val.includes('巧克力') || val.includes('咖')) traits.push('虎斑'); // fallback brown
+            if (val.includes('紅')) traits.push('紅色');
+            if (val.includes('綠')) traits.push('綠色');
             
-            // 2. Patterns / Features
+            // 2. Features
             if (val.includes('賓士')) traits.push('賓士貓');
             if (val.includes('虎斑') || val.includes('條')) traits.push('虎斑');
             if (val.includes('麒麟尾')) traits.push('麒麟尾');
@@ -1127,6 +1136,7 @@ function drawAllProjects(reset = false) {
             // 3. Breeds
             if (val.includes('柴犬')) traits.push('柴犬');
             if (val.includes('混種') || val.includes('米克斯') || val.includes('米白')) traits.push('米克斯');
+            if (val.includes('貴賓') || val.includes('法鬥') || val.includes('吉娃娃') || val.includes('臘腸') || val.includes('馬爾濟斯') || val.includes('博美') || val.includes('品種')) traits.push('米克斯'); // fallback to mix for unsupported breeds so they don't break, or they just rely on color
             
             traits.push(val.trim());
         };
