@@ -1108,15 +1108,26 @@ function drawAllProjects(reset = false) {
         
         let extractTraits = (val) => {
             if (!val) return;
-            // Colors have higher priority, push them first so they match first
-            if (val.includes('賓士')) traits.push('賓士貓');
+            // 1. Colors
             if (val.includes('黑')) traits.push('黑色');
-            if (val.includes('白')) traits.push('白色');
-            if (val.includes('黃') || val.includes('橘') || val.includes('奶油')) traits.push('黃色');
-            if (val.includes('咖啡') || val.includes('巧克力')) traits.push('咖啡色');
-            if (val.includes('柴犬')) traits.push('柴犬');
+            if (val.includes('白')) traits.push('白');
+            if (val.includes('黃') || val.includes('奶油') || val.includes('橘')) {
+                if (val.includes('貓')) traits.push('橘貓');
+                else traits.push('黃');
+            }
+            if (val.includes('咖啡') || val.includes('巧克力') || val.includes('咖')) traits.push('虎斑'); // fallback brown
+            
+            // 2. Patterns / Features
+            if (val.includes('賓士')) traits.push('賓士貓');
+            if (val.includes('虎斑') || val.includes('條')) traits.push('虎斑');
             if (val.includes('麒麟尾')) traits.push('麒麟尾');
-            if (val.includes('混種') || val.includes('米克斯')) traits.push('米克斯');
+            if (val.includes('項圈') || val.includes('脖帶')) traits.push('項圈');
+            if (val.includes('剪耳') || val.includes('剪耳朵')) traits.push('剪耳');
+            
+            // 3. Breeds
+            if (val.includes('柴犬')) traits.push('柴犬');
+            if (val.includes('混種') || val.includes('米克斯') || val.includes('米白')) traits.push('米克斯');
+            
             traits.push(val.trim());
         };
         
