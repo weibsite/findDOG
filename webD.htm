@@ -13,35 +13,59 @@
         .btn:hover { background-color: #45a049; }
         .btn-alt { background-color: #008CBA; }
         
-        /* 監視器列表樣式 */
-        #list-container { margin-top: 20px; max-width: 1000px; margin-left: auto; margin-right: auto; text-align: left; }
-        #recordings-list { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding: 10px 0; scrollbar-width: thin; }
-        #recordings-list::-webkit-scrollbar { height: 8px; }
-        #recordings-list::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        /* 時間軸 UI */
+        #timeline-container { position: relative; margin: 40px auto 20px auto; max-width: 1000px; padding: 10px 0; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #4CAF50; height: 8px; }
         
-        .record-item { flex: 0 0 auto; width: 160px; background: #222; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
-        .record-item:hover { border-color: #4CAF50; transform: scale(1.05); }
-        .record-item.active { border-color: #4CAF50; background: #333; }
+        .timeline-labels { display: flex; justify-content: space-between; color: #aaa; font-size: 12px; margin-top: 10px; font-weight: bold; }
         
-        .thumb { width: 100%; height: 90px; background-color: #000; object-fit: cover; }
-        .info { padding: 5px 8px; font-size: 12px; }
-        .time-badge { font-weight: bold; color: #4CAF50; display: block; margin-bottom: 3px; }
-        .size-badge { color: #aaa; }
+        /* 預覽浮動框 */
+        #preview-tooltip {
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #preview-tooltip img { width: 160px; height: 90px; object-fit: cover; border-radius: 4px; background-color: #000; }
+        #preview-tooltip .time { font-size: 14px; font-weight: bold; color: #4CAF50; margin-top: 5px; }
         
         #now-playing { margin-top: 10px; font-size: 18px; color: #4CAF50; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>歷史影像回放 (自動串接播放)</h1>
+    <h1>歷史影像回放 (專業時間軸)</h1>
     
     <div id="player-container">
         <video id="video-player" controls autoplay playsinline></video>
         <div id="now-playing">準備就緒...</div>
     </div>
     
-    <div id="list-container">
-        <h3 style="margin-top:10px; color:#ddd;">可用錄影檔 (橫向滑動)</h3>
-        <div id="recordings-list"></div>
+    <div id="timeline-container">
+        <!-- 預覽框 -->
+        <div id="preview-tooltip">
+            <img id="preview-img" src="" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%2290%22%20style%3D%22background%3A%23333%22%3E%3Ctext%20fill%3D%22%23777%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3E無預覽%3C%2Ftext%3E%3C%2Fsvg%3E'">
+            <div id="preview-time" class="time">--:--:--</div>
+        </div>
+        
+        <!-- 拖曳條 -->
+        <input type="range" id="timeline-slider" min="0" max="0" value="0" step="1">
+        
+        <!-- 時間刻度標籤 -->
+        <div class="timeline-labels">
+            <span id="time-start">最舊</span>
+            <span style="color:#fff;">拖曳時間軸以預覽畫面</span>
+            <span id="time-end">最新</span>
+        </div>
     </div>
     
     <br>
@@ -63,84 +87,94 @@
                     const recRes = await fetch(serverHttpUrl + '/api/recordings');
                     const recData = await recRes.json();
                     
-                    recordingData = recData.recordings;
-                    renderList();
+                    // 從舊到新排序 (伺服器回傳是新到舊)
+                    recordingData = recData.recordings.reverse();
+                    initTimeline();
                 }
             } catch (e) {
-                document.getElementById('recordings-list').innerHTML = "<p style='color:red;'>無法載入錄影清單：" + e + "</p>";
+                document.getElementById('now-playing').innerHTML = "<span style='color:red;'>無法載入錄影清單：" + e + "</span>";
             }
         }
 
-        function renderList() {
-            const listDiv = document.getElementById('recordings-list');
-            listDiv.innerHTML = "";
+        function formatTime(filename) {
+            const timeStr = filename.split('_')[2].replace('.mp4', '');
+            return timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+        }
+
+        function initTimeline() {
+            const slider = document.getElementById('timeline-slider');
+            const tooltip = document.getElementById('preview-tooltip');
             
             if (recordingData.length === 0) {
-                listDiv.innerHTML = "<p>目前還沒有任何錄影資料。</p>";
+                slider.disabled = true;
+                document.getElementById('now-playing').innerText = "目前沒有錄影資料";
                 return;
             }
+            
+            slider.max = recordingData.length - 1;
+            
+            // 標示最左邊(最舊)與最右邊(最新)的時間
+            document.getElementById('time-start').innerText = formatTime(recordingData[0].filename);
+            document.getElementById('time-end').innerText = formatTime(recordingData[recordingData.length-1].filename);
 
-            recordingData.forEach((rec, index) => {
-                const item = document.createElement('div');
-                item.className = 'record-item';
-                item.id = 'rec-' + index;
+            // 當使用者拖曳時 (即時預覽)
+            slider.addEventListener('input', (e) => {
+                const idx = parseInt(e.target.value);
+                const rec = recordingData[idx];
                 
-                // 擷取時間字串 (如 HH:MM:SS) 為了版面簡潔
-                const timeStr = rec.filename.split('_')[2].replace('.mp4', '');
-                const displayTime = timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
-
-                item.innerHTML = `
-                    <img class="thumb" src="${serverHttpUrl}/recordings/${rec.thumbnail}" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%2290%22%20style%3D%22background%3A%23333%22%3E%3Ctext%20fill%3D%22%23777%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3E無預覽%3C%2Ftext%3E%3C%2Fsvg%3E'">
-                    <div class="info">
-                        <span class="time-badge">${displayTime}</span>
-                        <span class="size-badge">${rec.size_mb} MB</span>
-                    </div>
-                `;
-                item.onclick = () => playVideo(index);
-                listDiv.appendChild(item);
+                tooltip.style.display = 'flex';
                 
-                // 自動播放最新的第一個影片 (如果有)
-                if (index === 0 && currentIndex === -1) {
-                    playVideo(0);
-                }
+                // 計算 tooltip 應該飄浮的位置
+                const percent = (idx / slider.max) * 100 || 0;
+                // 用 css calc() 補償游標位置
+                tooltip.style.left = `calc(${percent}% + (${8 - percent * 0.16}px))`;
+                
+                document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail;
+                document.getElementById('preview-time').innerText = formatTime(rec.filename);
             });
+            
+            // 當使用者放開滑鼠/手指時 (確認跳轉並播放)
+            slider.addEventListener('change', (e) => {
+                tooltip.style.display = 'none';
+                playVideo(parseInt(e.target.value));
+            });
+            
+            // 預設播放最新(最右邊)的影片，如果有指定就不要洗掉
+            if (currentIndex === -1) {
+                playVideo(recordingData.length - 1);
+            }
         }
 
         function playVideo(index) {
             if (index < 0 || index >= recordingData.length) return;
-            
-            // 清除之前的 highlight
-            if (currentIndex !== -1) {
-                const oldItem = document.getElementById('rec-' + currentIndex);
-                if (oldItem) oldItem.classList.remove('active');
-            }
-            
             currentIndex = index;
             const rec = recordingData[index];
             
-            // Highlight current
-            const newItem = document.getElementById('rec-' + index);
-            if (newItem) {
-                newItem.classList.add('active');
-                newItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
-
+            // 更新進度條
+            document.getElementById('timeline-slider').value = index;
+            
             const player = document.getElementById('video-player');
             player.src = serverHttpUrl + '/recordings/' + rec.filename;
             player.play();
             
-            document.getElementById('now-playing').innerText = "播放中: " + rec.filename;
+            document.getElementById('now-playing').innerText = "播放中: " + formatTime(rec.filename);
         }
 
-        // 自動串聯播放下一部 (時間順序)
+        // 當這 1 分鐘播完，自動播下一分鐘 (陣列往右 + 1)
         document.getElementById('video-player').addEventListener('ended', () => {
-            // list 排序是最新(0)到最舊(N)，所以時間上的「下一部」是 index - 1
-            if (currentIndex > 0) {
-                console.log("自動播放下一部影片 (較新的時間段)");
-                playVideo(currentIndex - 1);
+            if (currentIndex < recordingData.length - 1) {
+                playVideo(currentIndex + 1);
             } else {
                 document.getElementById('now-playing').innerText = "已播放至最新畫面！";
             }
+        });
+
+        // 按下滑鼠離開進度條時隱藏 tooltip
+        document.getElementById('timeline-slider').addEventListener('pointerup', () => {
+            document.getElementById('preview-tooltip').style.display = 'none';
+        });
+        document.getElementById('timeline-slider').addEventListener('pointerout', () => {
+            document.getElementById('preview-tooltip').style.display = 'none';
         });
 
         window.onload = fetchRecordings;
