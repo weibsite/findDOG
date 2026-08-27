@@ -1,46 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>遠端本機視訊 (方案C: WebRTC 超低延遲)</title>
+    <title>Q比直播</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8">
     <style>
-        body { text-align: center; background-color: #222; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        h1 { color: #f0f0f0; margin-bottom: 20px; }
-        #video-container { position: relative; display: inline-block; max-width: 100%; }
-        video { border: 2px solid #444; border-radius: 8px; max-width: 100%; height: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.5); cursor: pointer; background-color: #000; }
-        .btn { margin-top: 15px; padding: 10px 20px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn:hover { background-color: #45a049; }
-        .btn-alt { background-color: #008CBA; }
-        .btn-alt:hover { background-color: #007bb5; }
-        #status-text { color: #ffeb3b; font-weight: bold; margin-bottom: 15px; display: block; }
-        :fullscreen video { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
-        :-webkit-full-screen video { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
-        :-ms-fullscreen video { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
+        body { text-align: center; background-color: #121212; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #f0f0f0; margin-bottom: 20px; font-size: 24px; }
+        #player-container { margin: 0 auto; max-width: 1000px; position: relative; }
+        video { width: 100%; border: 2px solid #333; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); background-color: #000; }
+        
+        /* 播放按鈕覆蓋層 */
+        #start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 40px); background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; z-index: 5; cursor: pointer; }
+        #start-overlay h2 { color: #4CAF50; margin-bottom: 10px; font-size: 28px; }
+        #start-overlay p { color: #ddd; font-size: 16px; }
+        
+        /* 時間軸 UI */
+        #timeline-container { position: relative; margin: 40px auto 20px auto; max-width: 1000px; padding: 10px 0; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #4CAF50; height: 8px; }
+        
+        .timeline-labels { display: flex; justify-content: space-between; color: #aaa; font-size: 12px; margin-top: 10px; font-weight: bold; }
+        
+        /* 預覽浮動框 */
+        #preview-tooltip {
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #preview-tooltip img { width: 160px; height: 90px; object-fit: cover; border-radius: 4px; background-color: #000; display: block; }
+        #preview-tooltip .time { font-size: 14px; font-weight: bold; color: #4CAF50; margin-top: 5px; }
+        
+        #now-playing { margin-top: 10px; font-size: 18px; color: #4CAF50; font-weight: bold; }
+        .live-badge { background-color: red; color: white; padding: 2px 6px; border-radius: 4px; font-size: 14px; vertical-align: middle; margin-left: 10px; display: none; }
     </style>
 </head>
 <body>
-    <h1>本機視訊直播 (WebRTC 終極順暢版)</h1>
-    <span id="status-text">連線中... 正在取得動態網域</span>
+    <h1>Q比直播</h1>
     
-    <div id="video-container">
-        <!-- 注意：使用 video 標籤，需加上 autoplay, playsinline -->
-        <video id="video-feed" autoplay playsinline title="點擊放大全螢幕" onclick="toggleFullScreen()"></video>
+    <div id="player-container">
+        <div id="start-overlay" onclick="startLive()">
+            <h2 id="status-text">連線中...</h2>
+            <p>點擊畫面開始觀看即時影像</p>
+        </div>
+        <video id="video-player" controls autoplay playsinline></video>
+        <div id="now-playing">
+            <span id="playing-text">準備就緒...</span>
+            <span id="live-badge" class="live-badge">LIVE</span>
+        </div>
     </div>
-    <br>
-    <button class="btn" onclick="startWebRTC()" id="start-btn" style="display:none;">開始視訊連線</button>
-    <button class="btn" onclick="toggleFullScreen()">切換全螢幕</button>
-    <br><br>
-    <a href="webD.htm" class="btn" style="background-color: #9c27b0;">觀看歷史回放 (DVR)</a>
-    <br><br>
-    <a href="webA.htm" class="btn btn-alt">退回方案A (舊版影像)</a>
-    <a href="webB.htm" class="btn btn-alt" style="background-color: #f44336;">退回方案B (舊版影像+聲音)</a>
+    
+    <div id="timeline-container">
+        <!-- 預覽框 -->
+        <div id="preview-tooltip">
+            <img id="preview-img" src="">
+            <div id="preview-time" class="time">--:--:--</div>
+        </div>
+        
+        <!-- 拖曳條 -->
+        <input type="range" id="timeline-slider" min="0" max="0" value="0" step="1" disabled>
+        
+        <!-- 時間刻度標籤 -->
+        <div class="timeline-labels">
+            <span id="time-start">歷史畫面</span>
+            <span style="color:#fff;">拖曳時間軸以回放歷史</span>
+            <span id="time-end">LIVE 即時</span>
+        </div>
+    </div>
 
     <script>
         let serverHttpUrl = "";
+        let recordingData = [];
+        let currentIndex = -1; // -1 means uninitialized, max means LIVE
         let pc = null;
+        let webrtcStream = new MediaStream();
+        let isLiveConnected = false;
 
-        async function fetchDynamicUrl() {
+        async function initApp() {
             try {
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
@@ -48,22 +94,63 @@
                     let ws_url = configData.ws_url;
                     serverHttpUrl = ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
                     
-                    document.getElementById('status-text').innerText = "取得網址成功，點擊下方按鈕開始連線";
-                    document.getElementById('status-text').style.color = "#4CAF50";
-                    document.getElementById('start-btn').style.display = "inline-block";
-                } else {
-                    document.getElementById('status-text').innerText = "讀取 config.json 失敗，無 ws_url。";
-                    document.getElementById('status-text').style.color = "red";
+                    document.getElementById('status-text').innerText = "▶ 點擊開始播放";
+                    fetchRecordings(); // 偷偷在背景抓錄影清單
+                    
+                    // 每分鐘更新一次歷史清單
+                    setInterval(fetchRecordings, 60000);
                 }
             } catch (e) {
-                document.getElementById('status-text').innerText = "連線錯誤：" + e;
-                document.getElementById('status-text').style.color = "red";
+                document.getElementById('status-text').innerText = "讀取網域失敗";
             }
         }
 
-        async function startWebRTC() {
-            document.getElementById('status-text').innerText = "WebRTC 協商中，請稍候...";
-            document.getElementById('start-btn').style.display = "none";
+        async function fetchRecordings() {
+            try {
+                const recRes = await fetch(serverHttpUrl + '/api/recordings');
+                const recData = await recRes.json();
+                recordingData = recData.recordings.reverse(); // 舊到新
+                updateTimeline();
+            } catch (e) {
+                console.log("無法載入錄影清單", e);
+            }
+        }
+
+        function formatTime(filename) {
+            const timeStr = filename.split('_')[2].replace('.mp4', '');
+            return timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+        }
+
+        function updateTimeline() {
+            const slider = document.getElementById('timeline-slider');
+            if (recordingData.length === 0) return;
+            
+            slider.disabled = false;
+            
+            // Slider max is length (where index == length means LIVE)
+            const wasAtLive = (currentIndex === parseInt(slider.max)) || currentIndex === -1;
+            slider.max = recordingData.length;
+            
+            if (wasAtLive) {
+                slider.value = slider.max;
+                currentIndex = recordingData.length;
+            }
+            
+            document.getElementById('time-start').innerText = formatTime(recordingData[0].filename);
+        }
+
+        // WebRTC 連線 (只連一次)
+        async function startLive() {
+            document.getElementById('start-overlay').style.display = 'none';
+            if (!isLiveConnected) {
+                connectWebRTC();
+            } else {
+                switchToLive();
+            }
+        }
+
+        async function connectWebRTC() {
+            document.getElementById('playing-text').innerText = "LIVE 連線中...";
             
             const config = {
                 sdpSemantics: 'unified-plan',
@@ -78,100 +165,116 @@
             };
 
             pc = new RTCPeerConnection(config);
-
-            // 建立一個空的本地 MediaStream，用來接收影像和聲音
-            const remoteStream = new MediaStream();
-            document.getElementById('video-feed').srcObject = remoteStream;
-
-            // 當伺服器傳送影音軌道時，通通加進這個 MediaStream 中
             pc.addEventListener('track', function(evt) {
-                remoteStream.addTrack(evt.track);
-                document.getElementById('video-feed').play().catch(e => console.log('Autoplay blocked', e));
+                webrtcStream.addTrack(evt.track);
             });
-
-            // 加入接收方向的要求 (我們要接收影片跟聲音)
             pc.addTransceiver('video', { direction: 'recvonly' });
             pc.addTransceiver('audio', { direction: 'recvonly' });
 
-            // 建立 Offer
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // 等待 ICE 候選者收集完成 (這樣 SDP 裡面才會包含 STUN/TURN 的公網 IP)
-            document.getElementById('status-text').innerText = "正在收集網路路徑 (ICE Gathering)...";
             await new Promise((resolve) => {
-                if (pc.iceGatheringState === 'complete') {
-                    resolve();
-                } else {
-                    const checkState = () => {
-                        if (pc.iceGatheringState === 'complete') {
-                            pc.removeEventListener('icegatheringstatechange', checkState);
-                            resolve();
-                        }
-                    };
+                if (pc.iceGatheringState === 'complete') resolve();
+                else {
+                    const checkState = () => { if (pc.iceGatheringState === 'complete') { pc.removeEventListener('icegatheringstatechange', checkState); resolve(); } };
                     pc.addEventListener('icegatheringstatechange', checkState);
-                    // 設定超時強制送出
-                    setTimeout(() => {
-                        pc.removeEventListener('icegatheringstatechange', checkState);
-                        resolve();
-                    }, 3000);
+                    setTimeout(() => { pc.removeEventListener('icegatheringstatechange', checkState); resolve(); }, 3000);
                 }
             });
 
-            // 傳送給後端
             try {
                 const response = await fetch(serverHttpUrl + '/webrtc/offer', {
-                    body: JSON.stringify({
-                        sdp: pc.localDescription.sdp,
-                        type: pc.localDescription.type,
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
+                    headers: { 'Content-Type': 'application/json' },
                     method: 'POST'
                 });
-
                 const answer = await response.json();
                 await pc.setRemoteDescription(answer);
-                document.getElementById('status-text').innerText = "WebRTC 握手完成，等待媒體連線...";
                 
-                pc.addEventListener('iceconnectionstatechange', function() {
-                    console.log('ICE state:', pc.iceConnectionState);
-                    if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-                        document.getElementById('status-text').innerText = "WebRTC 媒體連線成功！(P2P直連)";
-                        document.getElementById('status-text').style.color = "#4CAF50";
-                    } else if (pc.iceConnectionState === 'failed') {
-                        document.getElementById('status-text').innerText = "WebRTC 連線失敗 (可能被NAT防火牆阻擋)";
-                        document.getElementById('status-text').style.color = "red";
-                    } else {
-                        document.getElementById('status-text').innerText = "連線狀態: " + pc.iceConnectionState;
-                    }
-                });
+                isLiveConnected = true;
+                switchToLive();
+                
             } catch (e) {
-                document.getElementById('status-text').innerText = "WebRTC 協商失敗：" + e;
-                document.getElementById('status-text').style.color = "red";
-                document.getElementById('start-btn').style.display = "inline-block";
+                document.getElementById('playing-text').innerText = "連線失敗: " + e;
             }
         }
 
-        function toggleFullScreen() {
-            const elem = document.getElementById("video-feed");
-            if (!document.fullscreenElement && !document.mozFullScreenElement &&
-                !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                if (elem.requestFullscreen) { elem.requestFullscreen(); }
-                else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
-                else if (elem.mozRequestFullScreen) { elem.mozRequestFullScreen(); }
-                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT); }
+        function switchToLive() {
+            currentIndex = recordingData.length;
+            document.getElementById('timeline-slider').value = currentIndex;
+            
+            const player = document.getElementById('video-player');
+            player.src = ""; // 清除 mp4
+            player.srcObject = webrtcStream;
+            player.play().catch(e=>console.log(e));
+            
+            document.getElementById('playing-text').innerText = "目前正在觀看即時畫面";
+            document.getElementById('live-badge').style.display = "inline-block";
+        }
+
+        function playHistory(index) {
+            if (index < 0 || index >= recordingData.length) return;
+            currentIndex = index;
+            const rec = recordingData[index];
+            
+            document.getElementById('timeline-slider').value = index;
+            
+            const player = document.getElementById('video-player');
+            player.srcObject = null; // 清除 WebRTC
+            player.src = serverHttpUrl + '/recordings/' + rec.filename;
+            player.play().catch(e=>console.log(e));
+            
+            document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
+            document.getElementById('live-badge').style.display = "none";
+        }
+
+        // Timeline Slider 事件
+        const slider = document.getElementById('timeline-slider');
+        const tooltip = document.getElementById('preview-tooltip');
+
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.value);
+            tooltip.style.display = 'flex';
+            
+            const percent = (idx / slider.max) * 100 || 0;
+            tooltip.style.left = `calc(${percent}% + (${8 - percent * 0.16}px))`;
+            
+            if (idx === parseInt(slider.max)) {
+                // LIVE
+                document.getElementById('preview-img').style.display = 'none';
+                document.getElementById('preview-time').innerText = "切換回 LIVE 即時畫面";
             } else {
-                if (document.exitFullscreen) { document.exitFullscreen(); }
-                else if (document.msExitFullscreen) { document.msExitFullscreen(); }
-                else if (document.mozCancelFullScreen) { document.mozCancelFullScreen(); }
-                else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+                // History
+                const rec = recordingData[idx];
+                document.getElementById('preview-img').style.display = 'block';
+                document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail;
+                document.getElementById('preview-time').innerText = formatTime(rec.filename);
             }
-        }
+        });
 
-        // 載入網頁時自動抓取網址
-        window.onload = fetchDynamicUrl;
+        slider.addEventListener('change', (e) => {
+            tooltip.style.display = 'none';
+            const idx = parseInt(e.target.value);
+            if (idx === parseInt(slider.max)) {
+                switchToLive();
+            } else {
+                playHistory(idx);
+            }
+        });
+
+        document.getElementById('video-player').addEventListener('ended', () => {
+            if (currentIndex < recordingData.length - 1) {
+                playHistory(currentIndex + 1);
+            } else if (currentIndex === recordingData.length - 1) {
+                switchToLive(); // 歷史播完自動跳回 LIVE
+            }
+        });
+
+        slider.addEventListener('pointerup', () => tooltip.style.display = 'none');
+        slider.addEventListener('pointerout', () => tooltip.style.display = 'none');
+
+        window.onload = initApp;
     </script>
 </body>
 </html>
