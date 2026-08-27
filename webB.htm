@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>遠端本機視訊 (方案B: 影像+聲音)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <style>
+        body { text-align: center; background-color: #222; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #f0f0f0; margin-bottom: 20px; }
+        #video-container { position: relative; display: inline-block; max-width: 100%; }
+        img { border: 2px solid #444; border-radius: 8px; max-width: 100%; height: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.5); cursor: pointer; }
+        .btn { margin-top: 15px; padding: 10px 20px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background-color: #45a049; }
+        .btn-alt { background-color: #f44336; }
+        .btn-alt:hover { background-color: #da190b; }
+        #status-text { color: #ffeb3b; font-weight: bold; margin-bottom: 15px; display: block; }
+        :fullscreen img { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
+        :-webkit-full-screen img { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
+        :-ms-fullscreen img { border: none; border-radius: 0; width: 100vw; height: 100vh; object-fit: contain; background: black; }
+    </style>
+</head>
+<body>
+    <h1>本機視訊直播 (方案B: 影像+聲音)</h1>
+    <span id="status-text">連線中... 正在取得動態網域</span>
+    
+    <audio id="audio-feed" controls style="display:none;"></audio>
+    
+    <div id="video-container">
+        <img id="video-feed" src="" alt="等待畫面..." title="點擊放大全螢幕" onclick="toggleFullScreen()" style="display: none;" />
+    </div>
+    <br>
+    <button class="btn" onclick="startAudio()" id="audio-btn" style="display:none;">啟用聲音並開始</button>
+    <button class="btn" onclick="toggleFullScreen()">切換全螢幕</button>
+    <a href="webA.htm" class="btn btn-alt">切換到方案A (純影像)</a>
+
+    <script>
+        let serverHttpUrl = "";
+
+        async function fetchDynamicUrl() {
+            try {
+                const configRes = await fetch('config.json?t=' + Date.now());
+                const configData = await configRes.json();
+                if (configData && configData.ws_url) {
+                    let ws_url = configData.ws_url;
+                    // 將 ws:// 或 wss:// 轉換為 http:// 或 https://，並去掉後面的 /ws
+                    serverHttpUrl = ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
+                    
+                    document.getElementById('status-text').innerText = "連線成功！取得網址: " + serverHttpUrl;
+                    document.getElementById('status-text').style.color = "#4CAF50";
+                    
+                    // 設定影像來源
+                    const videoImg = document.getElementById('video-feed');
+                    videoImg.src = serverHttpUrl + "/webcam_feed";
+                    videoImg.style.display = "inline-block";
+
+                    // 顯示啟用聲音的按鈕
+                    document.getElementById('audio-btn').style.display = "inline-block";
+                } else {
+                    document.getElementById('status-text').innerText = "讀取 config.json 失敗，無 ws_url。";
+                    document.getElementById('status-text').style.color = "red";
+                }
+            } catch (e) {
+                document.getElementById('status-text').innerText = "連線錯誤：" + e;
+                document.getElementById('status-text').style.color = "red";
+            }
+        }
+
+        function startAudio() {
+            if (!serverHttpUrl) {
+                alert("尚未取得伺服器網址！");
+                return;
+            }
+            var audio = document.getElementById("audio-feed");
+            if (!audio.src || audio.src === window.location.href) {
+                audio.src = serverHttpUrl + "/audio_feed";
+            }
+            audio.play().then(() => {
+                alert("聲音已啟用！");
+            }).catch((e) => {
+                alert("啟用聲音失敗：" + e);
+            });
+        }
+
+        function toggleFullScreen() {
+            const elem = document.getElementById("video-feed");
+            if (!document.fullscreenElement && !document.mozFullScreenElement &&
+                !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                if (elem.requestFullscreen) { elem.requestFullscreen(); }
+                else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+                else if (elem.mozRequestFullScreen) { elem.mozRequestFullScreen(); }
+                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT); }
+            } else {
+                if (document.exitFullscreen) { document.exitFullscreen(); }
+                else if (document.msExitFullscreen) { document.msExitFullscreen(); }
+                else if (document.mozCancelFullScreen) { document.mozCancelFullScreen(); }
+                else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+            }
+        }
+
+        // 載入網頁時啟動
+        window.onload = fetchDynamicUrl;
+    </script>
+</body>
+</html>
