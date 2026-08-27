@@ -95,6 +95,27 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
+            // 等待 ICE 候選者收集完成 (這樣 SDP 裡面才會包含 STUN/TURN 的公網 IP)
+            document.getElementById('status-text').innerText = "正在收集網路路徑 (ICE Gathering)...";
+            await new Promise((resolve) => {
+                if (pc.iceGatheringState === 'complete') {
+                    resolve();
+                } else {
+                    const checkState = () => {
+                        if (pc.iceGatheringState === 'complete') {
+                            pc.removeEventListener('icegatheringstatechange', checkState);
+                            resolve();
+                        }
+                    };
+                    pc.addEventListener('icegatheringstatechange', checkState);
+                    // 設定超時強制送出
+                    setTimeout(() => {
+                        pc.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }, 3000);
+                }
+            });
+
             // 傳送給後端
             try {
                 const response = await fetch(serverHttpUrl + '/webrtc/offer', {
