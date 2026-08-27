@@ -13,6 +13,7 @@
         /* 播放按鈕覆蓋層 */
         #start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 40px); background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; z-index: 5; cursor: pointer; }
         #start-overlay h2 { color: #4CAF50; margin-bottom: 10px; font-size: 28px; }
+        #start-overlay p { color: #ddd; font-size: 16px; }
         
         #timestamp-overlay {
             position: absolute;
@@ -29,7 +30,6 @@
             padding: 4px 8px;
             border-radius: 4px;
         }
-        #start-overlay p { color: #ddd; font-size: 16px; }
         
         /* 時間軸 UI */
         #timeline-container { position: relative; margin: 40px auto 20px auto; max-width: 1000px; padding: 10px 0; }
@@ -128,12 +128,12 @@
         let pc = null;
         let webrtcStream = new MediaStream();
         let isLiveConnected = false;
-        let activePlayerId = 1;
+        let currentHistoryStartTime = null;
 
+        let activePlayerId = 1;
         function getActivePlayer() { return document.getElementById('video-player-' + activePlayerId); }
         function getNextPlayer() { return document.getElementById('video-player-' + (activePlayerId === 1 ? 2 : 1)); }
-        let currentHistoryStartTime = null;
-        
+
         function formatTimestamp(dateObj) {
             const yyyy = dateObj.getFullYear();
             const MM = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -157,7 +157,6 @@
                 // History Mode
                 if (currentHistoryStartTime) {
                     const player = getActivePlayer();
-                    // Add video.currentTime (in seconds) to the file start time
                     const playTime = new Date(currentHistoryStartTime.getTime() + (player.currentTime || 0) * 1000);
                     document.getElementById('timestamp-overlay').innerText = formatTimestamp(playTime);
                 }
@@ -170,13 +169,9 @@
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) {
-                    let ws_url = configData.ws_url;
-                    serverHttpUrl = ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
-                    
+                    serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
                     document.getElementById('status-text').innerText = "▶ 點擊開始播放";
-                    fetchRecordings(); // 偷偷在背景抓錄影清單
-                    
-                    // 每分鐘更新一次歷史清單
+                    fetchRecordings();
                     setInterval(fetchRecordings, 60000);
                 }
             } catch (e) {
@@ -186,7 +181,6 @@
 
         async function fetchRecordings() {
             try {
-                // 每分鐘都重新抓取最新的網域，以防 Cloudflare 重新連線換網址
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) {
@@ -195,7 +189,7 @@
                 
                 const recRes = await fetch(serverHttpUrl + '/api/recordings');
                 const recData = await recRes.json();
-                recordingData = recData.recordings.reverse(); // 舊到新
+                recordingData = recData.recordings.reverse();
                 updateTimeline();
             } catch (e) {
                 console.log("無法載入錄影清單", e);
@@ -212,8 +206,6 @@
             if (recordingData.length === 0) return;
             
             slider.disabled = false;
-            
-            // Slider max is length (where index == length means LIVE)
             const wasAtLive = (currentIndex === parseInt(slider.max)) || currentIndex === -1;
             slider.max = recordingData.length;
             
@@ -228,7 +220,6 @@
             document.getElementById('time-start').innerText = formatTime(recordingData[0].filename);
         }
 
-        // WebRTC 連線 (只連一次)
         async function startLive() {
             document.getElementById('start-overlay').style.display = 'none';
             if (!isLiveConnected) {
@@ -240,7 +231,6 @@
 
         async function connectWebRTC() {
             document.getElementById('playing-text').innerText = "LIVE 連線中...";
-            
             const config = {
                 sdpSemantics: 'unified-plan',
                 iceServers: [
@@ -283,7 +273,6 @@
                 
                 isLiveConnected = true;
                 switchToLive();
-                
             } catch (e) {
                 document.getElementById('playing-text').innerText = "連線失敗: " + e;
             }
@@ -295,20 +284,22 @@
             slider.value = currentIndex;
             slider.classList.add('live-mode');
             
-            const player = getActivePlayer();
-            player.src = ""; // 清除 mp4
-            player.srcObject = webrtcStream;
-            player.play().catch(e=>console.log(e));
+            const next = getNextPlayer();
+            next.src = "";
+            next.style.display = "none";
+            next.pause();
+            
+            const active = getActivePlayer();
+            active.style.display = "block";
+            active.src = "";
+            active.srcObject = webrtcStream;
+            active.play().catch(e=>console.log(e));
             
             document.getElementById('playing-text').innerText = "目前正在觀看即時畫面";
             document.getElementById('live-badge').style.display = "inline-block";
         }
 
-        function playHistory(index) {
-            if (index < 0 || index >= recordingData.length) return;
-            currentIndex = index;
-            const rec = recordingData[index];
-            
+        function updateHistoryStartTime(rec) {
             const nameParts = rec.filename.split('_');
             const dStr = nameParts[1]; 
             const tStr = nameParts[2].split('.')[0]; 
@@ -319,21 +310,86 @@
             const min = parseInt(tStr.substring(2,4));
             const sec = parseInt(tStr.substring(4,6));
             currentHistoryStartTime = new Date(year, month, day, hour, min, sec);
+        }
+
+        function preloadNext(index) {
+            if (index >= recordingData.length) return;
+            const nextRec = recordingData[index];
+            const nextPlayer = getNextPlayer();
+            nextPlayer.srcObject = null;
+            nextPlayer.src = serverHttpUrl + '/recordings/' + nextRec.filename;
+            nextPlayer.preload = "auto";
+            nextPlayer.load();
+        }
+
+        function playHistory(index) {
+            if (index < 0 || index >= recordingData.length) return;
+            currentIndex = index;
+            const rec = recordingData[index];
+            
+            updateHistoryStartTime(rec);
             
             const slider = document.getElementById('timeline-slider');
             slider.value = index;
             slider.classList.remove('live-mode');
             
-            const player = getActivePlayer();
-            player.srcObject = null; // 清除 WebRTC
-            player.src = serverHttpUrl + '/recordings/' + rec.filename;
-            player.play().catch(e=>console.log(e));
+            const active = getActivePlayer();
+            active.style.display = 'block';
+            active.srcObject = null;
+            active.src = serverHttpUrl + '/recordings/' + rec.filename;
+            active.play().catch(e=>console.log(e));
             
             document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
             document.getElementById('live-badge').style.display = "none";
+            
+            preloadNext(index + 1);
         }
 
-        // Timeline Slider 事件
+        function switchToNextVideo() {
+            // Check if we reached the end of history
+            if (currentIndex >= recordingData.length - 1) {
+                switchToLive();
+                return;
+            }
+            currentIndex++;
+            const rec = recordingData[currentIndex];
+            
+            const oldActive = getActivePlayer();
+            activePlayerId = (activePlayerId === 1) ? 2 : 1;
+            const newActive = getActivePlayer();
+            
+            oldActive.style.display = 'none';
+            oldActive.pause();
+            
+            newActive.style.display = 'block';
+            newActive.play().catch(e=>console.log(e));
+            
+            const slider = document.getElementById('timeline-slider');
+            slider.value = currentIndex;
+            updateHistoryStartTime(rec);
+            document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
+            
+            // Preload the next one in advance
+            preloadNext(currentIndex + 1);
+        }
+
+        function handleTimeUpdate(e) {
+            const player = e.target;
+            if (currentIndex < recordingData.length && player === getActivePlayer()) {
+                // 如果影片播放到剩餘 0.5 秒以內，強制無縫切換下一部，避免 ended 事件死機
+                if (player.duration && player.currentTime >= player.duration - 0.5) {
+                    switchToNextVideo();
+                }
+            }
+        }
+
+        document.getElementById('video-player-1').addEventListener('timeupdate', handleTimeUpdate);
+        document.getElementById('video-player-2').addEventListener('timeupdate', handleTimeUpdate);
+        
+        // 保險起見保留 ended 事件，如果 timeupdate 沒攔截到，這裡還是會觸發
+        document.getElementById('video-player-1').addEventListener('ended', () => { if (getActivePlayer().id === 'video-player-1') switchToNextVideo(); });
+        document.getElementById('video-player-2').addEventListener('ended', () => { if (getActivePlayer().id === 'video-player-2') switchToNextVideo(); });
+
         const slider = document.getElementById('timeline-slider');
         const tooltip = document.getElementById('preview-tooltip');
 
@@ -345,11 +401,9 @@
             tooltip.style.left = `calc(${percent}% + (${8 - percent * 0.16}px))`;
             
             if (idx === parseInt(slider.max)) {
-                // LIVE
                 document.getElementById('preview-img').style.display = 'none';
                 document.getElementById('preview-time').innerText = "切換回 LIVE 即時畫面";
             } else {
-                // History
                 const rec = recordingData[idx];
                 document.getElementById('preview-img').style.display = 'block';
                 document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail;
@@ -366,8 +420,6 @@
                 playHistory(idx);
             }
         });
-
-
 
         slider.addEventListener('pointerup', () => tooltip.style.display = 'none');
         slider.addEventListener('pointerout', () => tooltip.style.display = 'none');
