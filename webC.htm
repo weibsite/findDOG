@@ -13,6 +13,22 @@
         /* 播放按鈕覆蓋層 */
         #start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 40px); background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; z-index: 5; cursor: pointer; }
         #start-overlay h2 { color: #4CAF50; margin-bottom: 10px; font-size: 28px; }
+        
+        #timestamp-overlay {
+            position: absolute;
+            bottom: 60px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+            z-index: 2;
+            pointer-events: none;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
         #start-overlay p { color: #ddd; font-size: 16px; }
         
         /* 時間軸 UI */
@@ -79,6 +95,7 @@
             <p>點擊畫面開始觀看即時影像</p>
         </div>
         <video id="video-player" controls autoplay playsinline></video>
+        <div id="timestamp-overlay">----/--/-- --:--:--</div>
         <div id="now-playing">
             <span id="playing-text">準備就緒...</span>
             <span id="live-badge" class="live-badge">LIVE</span>
@@ -110,6 +127,38 @@
         let pc = null;
         let webrtcStream = new MediaStream();
         let isLiveConnected = false;
+        let currentHistoryStartTime = null;
+        
+        function formatTimestamp(dateObj) {
+            const yyyy = dateObj.getFullYear();
+            const MM = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            let h = dateObj.getHours();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (h === 0) h = 12;
+            const hh = String(h).padStart(2, '0');
+            const mm = String(dateObj.getMinutes()).padStart(2, '0');
+            const ss = String(dateObj.getSeconds()).padStart(2, '0');
+            return `${yyyy}/${MM}/${dd} ${ampm} ${hh}:${mm}:${ss}`;
+        }
+        
+        function updateClock() {
+            const slider = document.getElementById('timeline-slider');
+            if (currentIndex === parseInt(slider.max) || currentIndex === -1) {
+                // LIVE Mode
+                document.getElementById('timestamp-overlay').innerText = formatTimestamp(new Date());
+            } else {
+                // History Mode
+                if (currentHistoryStartTime) {
+                    const player = document.getElementById('video-player');
+                    // Add video.currentTime (in seconds) to the file start time
+                    const playTime = new Date(currentHistoryStartTime.getTime() + (player.currentTime || 0) * 1000);
+                    document.getElementById('timestamp-overlay').innerText = formatTimestamp(playTime);
+                }
+            }
+        }
+        setInterval(updateClock, 250);
 
         async function initApp() {
             try {
@@ -247,6 +296,17 @@
             if (index < 0 || index >= recordingData.length) return;
             currentIndex = index;
             const rec = recordingData[index];
+            
+            const nameParts = rec.filename.split('_');
+            const dStr = nameParts[1]; 
+            const tStr = nameParts[2].split('.')[0]; 
+            const year = parseInt(dStr.substring(0,4));
+            const month = parseInt(dStr.substring(4,6)) - 1;
+            const day = parseInt(dStr.substring(6,8));
+            const hour = parseInt(tStr.substring(0,2));
+            const min = parseInt(tStr.substring(2,4));
+            const sec = parseInt(tStr.substring(4,6));
+            currentHistoryStartTime = new Date(year, month, day, hour, min, sec);
             
             const slider = document.getElementById('timeline-slider');
             slider.value = index;
