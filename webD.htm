@@ -5,88 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8">
     <style>
-        body { text-align: center; background-color: #1a1a1a; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        h1 { color: #f0f0f0; margin-bottom: 20px; }
-        #player-container { margin: 0 auto; max-width: 800px; }
-        video { width: 100%; border: 2px solid #444; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); background-color: #000; }
+        body { text-align: center; background-color: #121212; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #f0f0f0; margin-bottom: 20px; font-size: 24px; }
+        #player-container { margin: 0 auto; max-width: 1000px; position: relative; }
+        video { width: 100%; border: 2px solid #333; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); background-color: #000; }
         .btn { margin-top: 15px; padding: 10px 20px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn:hover { background-color: #45a049; }
         .btn-alt { background-color: #008CBA; }
-        #list-container { margin-top: 20px; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left; background: #2a2a2a; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; }
-        .record-item { padding: 10px; border-bottom: 1px solid #444; cursor: pointer; display: flex; justify-content: space-between; }
-        .record-item:hover { background-color: #3a3a3a; }
-        .record-title { font-weight: bold; color: #4CAF50; }
-        .record-size { color: #aaa; font-size: 0.9em; }
+        
+        /* 監視器列表樣式 */
+        #list-container { margin-top: 20px; max-width: 1000px; margin-left: auto; margin-right: auto; text-align: left; }
+        #recordings-list { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding: 10px 0; scrollbar-width: thin; }
+        #recordings-list::-webkit-scrollbar { height: 8px; }
+        #recordings-list::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        
+        .record-item { flex: 0 0 auto; width: 160px; background: #222; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .record-item:hover { border-color: #4CAF50; transform: scale(1.05); }
+        .record-item.active { border-color: #4CAF50; background: #333; }
+        
+        .thumb { width: 100%; height: 90px; background-color: #000; object-fit: cover; }
+        .info { padding: 5px 8px; font-size: 12px; }
+        .time-badge { font-weight: bold; color: #4CAF50; display: block; margin-bottom: 3px; }
+        .size-badge { color: #aaa; }
+        
+        #now-playing { margin-top: 10px; font-size: 18px; color: #4CAF50; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>歷史影像回放</h1>
+    <h1>歷史影像回放 (自動串接播放)</h1>
+    
     <div id="player-container">
         <video id="video-player" controls autoplay playsinline></video>
+        <div id="now-playing">準備就緒...</div>
     </div>
     
     <div id="list-container">
-        <h3 style="margin-top:0;">可用錄影檔 (自動載入中...)</h3>
+        <h3 style="margin-top:10px; color:#ddd;">可用錄影檔 (橫向滑動)</h3>
         <div id="recordings-list"></div>
     </div>
     
     <br>
-    <a href="webC.htm" class="btn btn-alt">返回即時視訊 (方案C)</a>
+    <a href="webC.htm" class="btn btn-alt">返回即時視訊 (Live)</a>
 
     <script>
         let serverHttpUrl = "";
+        let recordingData = [];
+        let currentIndex = -1;
 
         async function fetchRecordings() {
             try {
-                // 先取得動態網域
                 const configRes = await fetch('config.json?t=' + Date.now());
                 const configData = await configRes.json();
                 if (configData && configData.ws_url) {
                     let ws_url = configData.ws_url;
                     serverHttpUrl = ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
                     
-                    // 向後端請求錄影清單
                     const recRes = await fetch(serverHttpUrl + '/api/recordings');
                     const recData = await recRes.json();
                     
-                    renderList(recData.recordings);
+                    recordingData = recData.recordings;
+                    renderList();
                 }
             } catch (e) {
                 document.getElementById('recordings-list').innerHTML = "<p style='color:red;'>無法載入錄影清單：" + e + "</p>";
             }
         }
 
-        function renderList(recordings) {
+        function renderList() {
             const listDiv = document.getElementById('recordings-list');
             listDiv.innerHTML = "";
             
-            if (recordings.length === 0) {
+            if (recordingData.length === 0) {
                 listDiv.innerHTML = "<p>目前還沒有任何錄影資料。</p>";
                 return;
             }
 
-            recordings.forEach((rec, index) => {
+            recordingData.forEach((rec, index) => {
                 const item = document.createElement('div');
                 item.className = 'record-item';
+                item.id = 'rec-' + index;
+                
+                // 擷取時間字串 (如 HH:MM:SS) 為了版面簡潔
+                const timeStr = rec.filename.split('_')[2].replace('.mp4', '');
+                const displayTime = timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+
                 item.innerHTML = `
-                    <span class="record-title">${rec.filename}</span>
-                    <span class="record-size">${rec.time} | ${rec.size_mb} MB</span>
+                    <img class="thumb" src="${serverHttpUrl}/recordings/${rec.thumbnail}" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%2290%22%20style%3D%22background%3A%23333%22%3E%3Ctext%20fill%3D%22%23777%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3E無預覽%3C%2Ftext%3E%3C%2Fsvg%3E'">
+                    <div class="info">
+                        <span class="time-badge">${displayTime}</span>
+                        <span class="size-badge">${rec.size_mb} MB</span>
+                    </div>
                 `;
-                item.onclick = () => playVideo(rec.filename);
+                item.onclick = () => playVideo(index);
                 listDiv.appendChild(item);
                 
-                // 自動播放最新的第一個影片
-                if (index === 0) {
-                    playVideo(rec.filename);
+                // 自動播放最新的第一個影片 (如果有)
+                if (index === 0 && currentIndex === -1) {
+                    playVideo(0);
                 }
             });
         }
 
-        function playVideo(filename) {
+        function playVideo(index) {
+            if (index < 0 || index >= recordingData.length) return;
+            
+            // 清除之前的 highlight
+            if (currentIndex !== -1) {
+                const oldItem = document.getElementById('rec-' + currentIndex);
+                if (oldItem) oldItem.classList.remove('active');
+            }
+            
+            currentIndex = index;
+            const rec = recordingData[index];
+            
+            // Highlight current
+            const newItem = document.getElementById('rec-' + index);
+            if (newItem) {
+                newItem.classList.add('active');
+                newItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+
             const player = document.getElementById('video-player');
-            player.src = serverHttpUrl + '/recordings/' + filename;
+            player.src = serverHttpUrl + '/recordings/' + rec.filename;
             player.play();
+            
+            document.getElementById('now-playing').innerText = "播放中: " + rec.filename;
         }
+
+        // 自動串聯播放下一部 (時間順序)
+        document.getElementById('video-player').addEventListener('ended', () => {
+            // list 排序是最新(0)到最舊(N)，所以時間上的「下一部」是 index - 1
+            if (currentIndex > 0) {
+                console.log("自動播放下一部影片 (較新的時間段)");
+                playVideo(currentIndex - 1);
+            } else {
+                document.getElementById('now-playing').innerText = "已播放至最新畫面！";
+            }
+        });
 
         window.onload = fetchRecordings;
     </script>
