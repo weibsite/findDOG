@@ -103,7 +103,20 @@
 
                 const answer = await response.json();
                 await pc.setRemoteDescription(answer);
-                document.getElementById('status-text').innerText = "WebRTC 連線成功！";
+                document.getElementById('status-text').innerText = "WebRTC 握手完成，等待媒體連線...";
+                
+                pc.addEventListener('iceconnectionstatechange', function() {
+                    console.log('ICE state:', pc.iceConnectionState);
+                    if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+                        document.getElementById('status-text').innerText = "WebRTC 媒體連線成功！(P2P直連)";
+                        document.getElementById('status-text').style.color = "#4CAF50";
+                    } else if (pc.iceConnectionState === 'failed') {
+                        document.getElementById('status-text').innerText = "WebRTC 連線失敗 (可能被NAT防火牆阻擋)";
+                        document.getElementById('status-text').style.color = "red";
+                    } else {
+                        document.getElementById('status-text').innerText = "連線狀態: " + pc.iceConnectionState;
+                    }
+                });
             } catch (e) {
                 document.getElementById('status-text').innerText = "WebRTC 協商失敗：" + e;
                 document.getElementById('status-text').style.color = "red";
