@@ -91,6 +91,14 @@
 </style>
 </head>
 <body>
+
+    <div id="login-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#121212;z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+        <h2 style="color:#4CAF50;margin-bottom:20px;">Q比直播 - 系統登入</h2>
+        <input type="password" id="login-pwd" placeholder="請輸入密碼" style="padding:10px;font-size:16px;border-radius:4px;border:1px solid #555;background:#222;color:#fff;margin-bottom:15px;">
+        <button onclick="doLogin()" style="padding:10px 30px;font-size:16px;background:#4CAF50;color:#fff;border:none;border-radius:4px;cursor:pointer;">登入</button>
+        <div id="login-err" style="color:red;margin-top:15px;display:none;">密碼錯誤</div>
+    </div>
+
     <h1>Q比直播</h1>
     
     <div id="player-container">
@@ -132,6 +140,49 @@
     </div>
 
     <script>
+
+        let authToken = localStorage.getItem('auth_token') || "";
+
+        async function doLogin() {
+            const pwd = document.getElementById('login-pwd').value;
+            try {
+                // Ensure serverHttpUrl is loaded first
+                if(!serverHttpUrl) {
+                    const configRes = await fetch('config.json?t=' + Date.now());
+                    const configData = await configRes.json();
+                    serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
+                }
+                const res = await fetch(serverHttpUrl + '/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pwd})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('auth_token', authToken);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    initApp(); // start app
+                } else {
+                    document.getElementById('login-err').style.display = 'block';
+                }
+            } catch(e) {
+                alert("連線錯誤");
+            }
+        }
+        
+        function authFetch(url, options={}) {
+            if(!options.headers) options.headers = {};
+            options.headers['Authorization'] = 'Bearer ' + authToken;
+            return fetch(url, options).then(res => {
+                if(res.status === 401) {
+                    localStorage.removeItem('auth_token');
+                    window.location.reload();
+                }
+                return res;
+            });
+        }
+
         let serverHttpUrl = "";
         let allRecordingData = [];
         let recordingData = [];
@@ -184,7 +235,7 @@
                     serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
                     document.getElementById('status-text').innerText = "▶ 點擊開始播放";
                     fetchRecordings();
-                    setInterval(fetchRecordings, 60000);
+                    setInterval(() => { if(authToken) fetchRecordings(); }, 60000);
                 }
             } catch (e) {
                 document.getElementById('status-text').innerText = "讀取網域失敗";
@@ -199,7 +250,7 @@
                     serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
                 }
                 
-                const recRes = await fetch(serverHttpUrl + '/api/recordings');
+                const recRes = await authFetch(serverHttpUrl + '/api/recordings');
                 const recData = await recRes.json();
                 allRecordingData = recData.recordings.reverse();
                 applyFilter();
@@ -268,7 +319,7 @@
             for(let i = start; i <= end; i++) {
                 if(!recordingData[i].imgPreloaded) {
                     const img = new Image();
-                    img.src = serverHttpUrl + '/recordings/' + recordingData[i].thumbnail;
+                    img.src = serverHttpUrl + '/recordings/' + recordingData[i].thumbnail + '?token=' + authToken;
                     recordingData[i].imgPreloaded = true;
                 }
             }
@@ -341,7 +392,7 @@
             });
 
             try {
-                const response = await fetch(serverHttpUrl + '/webrtc/offer', {
+                const response = await authFetch(serverHttpUrl + '/webrtc/offer', {
                     body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
                     headers: { 'Content-Type': 'application/json' },
                     method: 'POST'
@@ -395,7 +446,7 @@
             const nextRec = recordingData[index];
             const nextPlayer = getNextPlayer();
             nextPlayer.srcObject = null;
-            nextPlayer.src = serverHttpUrl + '/recordings/' + nextRec.filename;
+            nextPlayer.src = serverHttpUrl + '/recordings/' + nextRec.filename + '?token=' + authToken;
             nextPlayer.preload = "auto";
             nextPlayer.load();
         }
@@ -414,7 +465,7 @@
             const active = getActivePlayer();
             active.style.display = 'block';
             active.srcObject = null;
-            active.src = serverHttpUrl + '/recordings/' + rec.filename;
+            active.src = serverHttpUrl + '/recordings/' + rec.filename + '?token=' + authToken;
             active.play().catch(e=>console.log(e));
             
             document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
@@ -485,7 +536,7 @@
             } else {
                 const rec = recordingData[idx];
                 document.getElementById('preview-img').style.display = 'block';
-                document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail;
+                document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail + '?token=' + authToken;
                 document.getElementById('preview-time').innerText = formatTime(rec.filename);
             }
         });
@@ -503,7 +554,12 @@
         slider.addEventListener('pointerup', () => tooltip.style.display = 'none');
         slider.addEventListener('pointerout', () => tooltip.style.display = 'none');
 
-        window.onload = initApp;
+        window.onload = async () => {
+            if(authToken) {
+                document.getElementById('login-overlay').style.display = 'none';
+                initApp();
+            }
+        };
     </script>
 </body>
 </html>
