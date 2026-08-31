@@ -84,7 +84,11 @@
         
         #now-playing { margin-top: 10px; font-size: 18px; color: #4CAF50; font-weight: bold; }
         .live-badge { background-color: red; color: white; padding: 2px 6px; border-radius: 4px; font-size: 14px; vertical-align: middle; margin-left: 10px; display: none; }
-    </style>
+    
+        #filter-buttons { margin-bottom: 15px; }
+        #filter-buttons button { background: #333; color: #fff; border: 1px solid #555; padding: 5px 15px; border-radius: 4px; cursor: pointer; margin: 0 5px; }
+        #filter-buttons button.active { background: #4CAF50; border-color: #4CAF50; font-weight: bold; }
+</style>
 </head>
 <body>
     <h1>Q比直播</h1>
@@ -104,6 +108,12 @@
     </div>
     
     <div id="timeline-container">
+        <div id="filter-buttons">
+            <button id="btn-filter-1h" onclick="setFilter('1h')">近 1 小時</button>
+            <button id="btn-filter-6h" onclick="setFilter('6h')">近 6 小時</button>
+            <button id="btn-filter-24h" onclick="setFilter('24h')">近 1 天</button>
+            <button id="btn-filter-all" onclick="setFilter('all')" class="active">全部</button>
+        </div>
         <!-- 預覽框 -->
         <div id="preview-tooltip">
             <img id="preview-img" src="">
@@ -123,7 +133,9 @@
 
     <script>
         let serverHttpUrl = "";
+        let allRecordingData = [];
         let recordingData = [];
+        let activeFilter = 'all';
         let currentIndex = -1; // -1 means uninitialized, max means LIVE
         let pc = null;
         let webrtcStream = new MediaStream();
@@ -189,10 +201,76 @@
                 
                 const recRes = await fetch(serverHttpUrl + '/api/recordings');
                 const recData = await recRes.json();
-                recordingData = recData.recordings.reverse();
-                updateTimeline();
+                allRecordingData = recData.recordings.reverse();
+                applyFilter();
             } catch (e) {
                 console.log("無法載入錄影清單", e);
+            }
+        }
+
+
+        function setFilter(f) {
+            activeFilter = f;
+            document.querySelectorAll('#filter-buttons button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-filter-' + f).classList.add('active');
+            applyFilter();
+        }
+
+        function parseFileDate(filename) {
+            const nameParts = filename.split('_');
+            const dStr = nameParts[1]; 
+            const tStr = nameParts[2].split('.')[0]; 
+            const year = parseInt(dStr.substring(0,4));
+            const month = parseInt(dStr.substring(4,6)) - 1;
+            const day = parseInt(dStr.substring(6,8));
+            const hour = parseInt(tStr.substring(0,2));
+            const min = parseInt(tStr.substring(2,4));
+            const sec = parseInt(tStr.substring(4,6));
+            return new Date(year, month, day, hour, min, sec);
+        }
+
+        function applyFilter() {
+            let currentRec = (currentIndex >= 0 && currentIndex < recordingData.length) ? recordingData[currentIndex] : null;
+            
+            if (activeFilter === 'all') {
+                recordingData = allRecordingData.slice();
+            } else {
+                const now = new Date();
+                let ms = 0;
+                if (activeFilter === '1h') ms = 60 * 60 * 1000;
+                else if (activeFilter === '6h') ms = 6 * 60 * 60 * 1000;
+                else if (activeFilter === '24h') ms = 24 * 60 * 60 * 1000;
+                
+                recordingData = allRecordingData.filter(rec => {
+                    const t = parseFileDate(rec.filename);
+                    return (now - t) <= ms;
+                });
+            }
+            
+            if (currentRec) {
+                let newIdx = recordingData.findIndex(r => r.filename === currentRec.filename);
+                if (newIdx !== -1) {
+                    currentIndex = newIdx;
+                } else {
+                    currentIndex = recordingData.length; // fallback
+                }
+            } else {
+                currentIndex = recordingData.length;
+            }
+            updateTimeline();
+            preloadThumbnails(currentIndex);
+        }
+
+        function preloadThumbnails(centerIndex) {
+            if (!recordingData || recordingData.length === 0) return;
+            const start = Math.max(0, centerIndex - 30);
+            const end = Math.min(recordingData.length - 1, centerIndex + 30);
+            for(let i = start; i <= end; i++) {
+                if(!recordingData[i].imgPreloaded) {
+                    const img = new Image();
+                    img.src = serverHttpUrl + '/recordings/' + recordingData[i].thumbnail;
+                    recordingData[i].imgPreloaded = true;
+                }
             }
         }
 
@@ -394,6 +472,8 @@
         const tooltip = document.getElementById('preview-tooltip');
 
         slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.value);
+            preloadThumbnails(idx); // 動態預載縮圖
             const idx = parseInt(e.target.value);
             tooltip.style.display = 'flex';
             
