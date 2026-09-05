@@ -46,7 +46,7 @@
         .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
         .pixel-input:focus { background-color: #fef3c7; }
         .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
-        .leaflet-popup-pane { z-index: 4000 !important; }
+        .leaflet-popup-pane { z-index: 99999 !important; }
         .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .user-avatar-pixel { width: 16px; height: 16px; border: 3px solid #1a202c; box-sizing: border-box; }
         .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
@@ -534,8 +534,11 @@
                                 </div>`,
                                 {className: 'pixel-popup-dark', offset: [0, -30], maxWidth: 450}
                             );
-                            camMarker.on('mouseover', function(e) { this.openPopup(); });
+                            camMarker.on('mouseover', function(e) {
+                                if (window.innerWidth > 640) this.openPopup();
+                            });
                             camMarker.on('click', function(e) {
+                                this.openPopup();
                                 if (window.innerWidth <= 640) {
                                     setTimeout(() => map.setView([cam.lat, cam.lng], map.getZoom()), 50);
                                 }
