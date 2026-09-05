@@ -147,9 +147,14 @@ function initFoundPrizeAnimation() {
                 ], {animate: false});
             }
 
-            if (typeof window.requestFogRender === 'function') {
+            if (typeof window.requestFogRender === 'function' && !window.originalRequestFogRender) {
                 window.originalRequestFogRender = window.requestFogRender;
                 window.requestFogRender = function() {}; 
+            }
+            
+            if (typeof window.renderMap === 'function' && !window.originalRenderMap) {
+                window.originalRenderMap = window.renderMap;
+                window.renderMap = function() {}; 
             }
             
             if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
@@ -160,6 +165,14 @@ function initFoundPrizeAnimation() {
                 fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                 fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
             }
+            
+            // 建立除錯計數器面板
+            let oldCounter = document.getElementById('anim-counter');
+            if (oldCounter) oldCounter.remove();
+            let counterDiv = document.createElement('div');
+            counterDiv.id = 'anim-counter';
+            counterDiv.style.cssText = 'position:fixed; top:70px; right:10px; z-index:99999; background:rgba(0,0,0,0.85); color:white; padding:12px; border-radius:8px; font-size:14px; border:1px solid #3b82f6; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events:auto;';
+            document.body.appendChild(counterDiv);
             
             const duration = 60000;
             const startTime = Date.now();
@@ -187,26 +200,21 @@ function initFoundPrizeAnimation() {
                     color: actorColor,
                     active: false,
                     marker: null,
-                    polyline: null
+                    polyline: null,
+                    // 加上極微小的隨機偏移，防止走到同一個終點時視覺完全重疊
+                    offsetX: (Math.random()-0.5)*0.0003,
+                    offsetY: (Math.random()-0.5)*0.0003
                 };
             });
             
             let lastRenderTime = 0;
             let animationFrameId;
+            let hasTakenSnapshot = false;
             
             function animateFrame() {
                 try {
                     const now = Date.now();
                     const elapsed = now - startTime;
-                    
-                    if (elapsed > duration) {
-                        cancelAnimationFrame(animationFrameId);
-                        showCenterToast("🎉 動畫結束！後續抽獎功能建置中...", 6000);
-                        if (typeof window.originalRequestFogRender === 'function') {
-                            window.requestFogRender = window.originalRequestFogRender;
-                        }
-                        return;
-                    }
                     
                     if (now - lastRenderTime > 80) {
                         lastRenderTime = now;
@@ -232,17 +240,25 @@ function initFoundPrizeAnimation() {
                                 let currentPos = actor.path[actor.pathIdx];
                                 
                                 if (currentPos) {
+                                    let ptLat = (currentPos.lat !== undefined ? currentPos.lat : currentPos[0]) + actor.offsetX;
+                                    let ptLng = (currentPos.lng !== undefined ? currentPos.lng : currentPos[1]) + actor.offsetY;
+                                    
                                     if (!actor.marker) {
                                         const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
-                                        actor.marker = L.marker([currentPos.lat, currentPos.lng], {icon: icon, zIndexOffset: 20000});
+                                        actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: 20000});
                                         if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
                                         
                                         actor.polyline = L.polyline([], {color: actor.color, weight: 4, opacity: 0.8});
                                         if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
                                     } else {
-                                        actor.marker.setLatLng([currentPos.lat, currentPos.lng]);
+                                        actor.marker.setLatLng([ptLat, ptLng]);
                                         if (actor.polyline) {
-                                            actor.polyline.setLatLngs(actor.path.slice(0, actor.pathIdx + 1));
+                                            // 繪製軌跡時也加上偏移，讓軌跡線稍微散開
+                                            let offsetPath = actor.path.slice(0, actor.pathIdx + 1).map(p => [
+                                                (p.lat !== undefined ? p.lat : p[0]) + actor.offsetX,
+                                                (p.lng !== undefined ? p.lng : p[1]) + actor.offsetY
+                                            ]);
+                                            actor.polyline.setLatLngs(offsetPath);
                                         }
                                     }
                                     
@@ -253,7 +269,7 @@ function initFoundPrizeAnimation() {
                                         const radius = (20 / mpp) * FOG_SCALE;
                                         
                                         if (actor.lastFogIdx < 0) {
-                                            let p = map.latLngToContainerPoint([currentPos.lat, currentPos.lng]);
+                                            let p = map.latLngToContainerPoint([ptLat, ptLng]);
                                             if (p.x > -50 && p.y > -50) {
                                                 lowResCtx.beginPath();
                                                 lowResCtx.arc(p.x * FOG_SCALE, p.y * FOG_SCALE, radius, 0, Math.PI * 2);
@@ -263,10 +279,10 @@ function initFoundPrizeAnimation() {
                                         } else {
                                             lowResCtx.beginPath();
                                             let firstPt = actor.path[actor.lastFogIdx];
-                                            let fp = map.latLngToContainerPoint([firstPt.lat, firstPt.lng]);
+                                            let fp = map.latLngToContainerPoint([firstPt.lat + actor.offsetX, firstPt.lng + actor.offsetY]);
                                             lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
                                             for(let k = actor.lastFogIdx + 1; k <= actor.pathIdx; k++) {
-                                                let tp = map.latLngToContainerPoint([actor.path[k].lat, actor.path[k].lng]);
+                                                let tp = map.latLngToContainerPoint([actor.path[k].lat + actor.offsetX, actor.path[k].lng + actor.offsetY]);
                                                 lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
                                             }
                                             lowResCtx.lineWidth = radius * 2;
@@ -286,14 +302,68 @@ function initFoundPrizeAnimation() {
                             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                             fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
                         }
+                        
+                        // 更新除錯面板
+                        let activeActors = actors.filter(a => a.active).length;
+                        let renderedMarkers = document.querySelectorAll('.custom-div-icon').length;
+                        counterDiv.innerHTML = `
+                            <div style="margin-bottom:5px; font-weight:bold; color:#10b981;">📊 渲染狀態監控</div>
+                            動畫進度: ${Math.min(60, Math.floor(elapsed/1000))}s / 60s<br>
+                            名單總人數: ${joins.length}<br>
+                            已進場人數: ${activeActors}<br>
+                            畫面中標記數: <span style="color:#f59e0b; font-weight:bold;">${renderedMarkers}</span>
+                        `;
                     }
+                    
+                    if (elapsed > duration) {
+                        cancelAnimationFrame(animationFrameId);
+                        
+                        // 擷取完成瞬間的 DOM 截圖
+                        let mPane = document.querySelector('.leaflet-marker-pane');
+                        let oPane = document.querySelector('.leaflet-overlay-pane');
+                        let snapshotHtml = mPane ? mPane.innerHTML : "";
+                        let snapshotSvg = oPane ? oPane.innerHTML : "";
+                        
+                        showCenterToast("🎉 動畫結束！後續抽獎功能建置中...", 6000);
+                        
+                        let toggleBtn = document.createElement('button');
+                        toggleBtn.innerHTML = "👀 切換至截圖畫面 (檢查是否消失)";
+                        toggleBtn.style.cssText = 'margin-top:10px; padding:6px 12px; background:#3b82f6; border:none; color:white; border-radius:5px; cursor:pointer; width:100%; font-weight:bold;';
+                        let isShowingSnapshot = false;
+                        let liveMarkerHtml = "";
+                        let liveSvgHtml = "";
+                        
+                        toggleBtn.onclick = () => {
+                            if (!isShowingSnapshot) {
+                                liveMarkerHtml = mPane.innerHTML;
+                                liveSvgHtml = oPane.innerHTML;
+                                mPane.innerHTML = snapshotHtml;
+                                oPane.innerHTML = snapshotSvg;
+                                toggleBtn.innerHTML = "🔙 切換回 Live (目前狀態)";
+                                toggleBtn.style.background = "#ef4444";
+                                isShowingSnapshot = true;
+                            } else {
+                                mPane.innerHTML = liveMarkerHtml;
+                                oPane.innerHTML = liveSvgHtml;
+                                toggleBtn.innerHTML = "👀 切換至截圖畫面 (檢查是否消失)";
+                                toggleBtn.style.background = "#3b82f6";
+                                isShowingSnapshot = false;
+                            }
+                        };
+                        counterDiv.appendChild(toggleBtn);
+                        
+                        // 不恢復原本的 renderMap，防止原系統洗掉我們的標記
+                        // 但保留霧的更新機制以防破圖
+                        if (typeof window.originalRequestFogRender === 'function') {
+                            window.requestFogRender = window.originalRequestFogRender;
+                        }
+                        return;
+                    }
+                    
                     animationFrameId = requestAnimationFrame(animateFrame);
                 } catch(err) {
                     console.error("animateFrame Error: ", err);
                     alert("動畫發生錯誤: " + err.message);
-                    if (typeof window.originalRequestFogRender === 'function') {
-                        window.requestFogRender = window.originalRequestFogRender;
-                    }
                 }
             }
             animationFrameId = requestAnimationFrame(animateFrame);
