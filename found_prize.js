@@ -128,6 +128,21 @@ function initFoundPrizeAnimation() {
                 }
             }
             
+            // 切割過長的軌跡，讓每個人分配到的軌跡變短，不僅能打散人群，也能大幅放慢他們移動的速度
+            let fragmentedPaths = [];
+            allPaths.forEach(path => {
+                const MAX_LEN = 20; // 每個軌跡最多分配 20 個點
+                if (path.length > MAX_LEN) {
+                    for (let i = 0; i < path.length; i += (MAX_LEN - 1)) {
+                        let chunk = path.slice(i, i + MAX_LEN);
+                        if (chunk.length >= 2) fragmentedPaths.push(chunk);
+                    }
+                } else {
+                    fragmentedPaths.push(path);
+                }
+            });
+            if (fragmentedPaths.length > 0) allPaths = fragmentedPaths;
+            
             if (typeof allUsersData !== 'undefined') Object.keys(allUsersData).forEach(k => delete allUsersData[k]);
             if (typeof localHistory !== 'undefined') localHistory.length = 0;
             if (typeof ws !== 'undefined' && ws) ws.close();
@@ -176,7 +191,8 @@ function initFoundPrizeAnimation() {
             
             const duration = 60000;
             const startTime = Date.now();
-            const spawnInterval = Math.max(500, 45000 / joins.length);
+            // 修正進場間隔：確保所有人在前 45 秒內全部進場完畢
+            const spawnInterval = 45000 / joins.length;
             
             function getIconHtml(color, name) {
                 const safeName = typeof escapeHTML === 'function' ? escapeHTML(name) : String(name).replace(/</g, '&lt;');
