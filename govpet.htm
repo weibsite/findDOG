@@ -257,7 +257,7 @@ function showModal(m) { customModalText.innerText = m; customModal.classList.rem
 function showHTMLModal(h) { customModalText.innerHTML = h; customModal.classList.remove('hidden'); }
 document.getElementById('custom-modal-btn').addEventListener('click', () => customModal.classList.add('hidden'));
 function showConfirm(m, cb) { document.getElementById('confirm-modal-text').innerText = m; document.getElementById('confirm-modal').classList.remove('hidden'); const okBtn = document.getElementById('confirm-ok-btn'), cancelBtn = document.getElementById('confirm-cancel-btn'); const newOk = okBtn.cloneNode(true), newCancel = cancelBtn.cloneNode(true); okBtn.parentNode.replaceChild(newOk, okBtn); cancelBtn.parentNode.replaceChild(newCancel, cancelBtn); newOk.addEventListener('click', () => { document.getElementById('confirm-modal').classList.add('hidden'); cb(); }); newCancel.addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden')); }
-        function escapeHTML(str) { return (str||'').replace(/[&<>\'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); }
+        function escapeHTML(str) { return (str||'').replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)); }
         
         function formatLostDate(dateStr) {
             if (!dateStr) return '未知';
@@ -284,7 +284,7 @@ function showConfirm(m, cb) { document.getElementById('confirm-modal-text').inne
         if (!document.getElementById('thumbnail-styles')) {
             const s = document.createElement('style');
             s.id = 'thumbnail-styles';
-            s.innerHTML = 
+            s.innerHTML = `
                 .thumbnail-marker {
                     position: absolute;
                     transform: translate(-50%, -100%);
@@ -303,7 +303,7 @@ function showConfirm(m, cb) { document.getElementById('confirm-modal-text').inne
                     font-size: 14px !important;
                     padding: 4px 0 !important;
                 }
-            ;
+            `;
             document.head.appendChild(s);
         }
         
@@ -313,21 +313,21 @@ function showConfirm(m, cb) { document.getElementById('confirm-modal-text').inne
         
         let markerHtml = '';
         if (!hasPhoto || !photoUrl) {
-            markerHtml = <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: default !important; background: transparent;"><div style="background-color: ; width: 10px; height: 10px; border-radius: 50%; opacity: 0.9; border: 1.5px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6);"></div></div>;
+            markerHtml = `<div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: default !important; background: transparent;"><div style="background-color: ${markerColor}; width: 10px; height: 10px; border-radius: 50%; opacity: 0.9; border: 1.5px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6);"></div></div>`;
         } else {
-            let pulseHtml = isCurrent ? <div class="center-pulse-square" style="border-color: #ef4444; width: 100%; height: 100%; left: 0; top: 0; position: absolute; z-index: 10;"></div> : '';
-            markerHtml = \
-            <div class="thumbnail-marker" style="z-index: \;">
-                <div style="position: absolute; inset: 0; border-radius: 12px; border: 3px solid \; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column;">
-                    \
+            let pulseHtml = isCurrent ? `<div class="center-pulse-square" style="border-color: #ef4444; width: 100%; height: 100%; left: 0; top: 0; position: absolute; z-index: 10;"></div>` : '';
+            markerHtml = `
+            <div class="thumbnail-marker" style="z-index: ${isCurrent ? 3000 : 1000};">
+                <div style="position: absolute; inset: 0; border-radius: 12px; border: 3px solid ${isCurrent ? '#ef4444' : markerColor}; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column;">
+                    ${pulseHtml}
                     <div style="flex: 1; width: 100%; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
-                        <img src="\" style="width: 100%; height: 100%; object-fit: cover; border: none; display: block;" onerror="this.style.display='none'">
+                        <img src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover; border: none; display: block;" onerror="this.style.display='none'">
                     </div>
                     <div class="thumb-date" style="position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.5); color: white; text-align: center; font-size: 10px; padding: 2px 0; font-weight: bold; white-space: nowrap; line-height: 1; transition: all 0.2s ease-in-out;">
-                        \
+                        ${dateText}
                     </div>
                 </div>
-            </div>\;
+            </div>`;
         }
 
         
