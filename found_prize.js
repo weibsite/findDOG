@@ -10,44 +10,69 @@ function initFoundPrizeAnimation() {
     }
     
     if (btn.hasAttribute('data-fp-bound')) return;
-    btn.setAttribute('data-fp-bound', 'true');
-    
     btn.addEventListener('click', async () => {
-        if (!confirm("即將開始尋獲抽獎動畫！\n這將從伺服器載入完整歷史軌跡並重置地圖（動畫結束後重新整理網頁即可恢復）。確定要開始嗎？")) return;
+        let oldModal = document.getElementById('fp-style-modal');
+        if (oldModal) oldModal.remove();
         
-        const hideIds = ['admin-panel', 'status-toast', 'project-select-wrapper', 'locate-btn', 'spectator-btn', 'toggle-fog-btn', 'nav-pin-btn', 'force-upload-btn', 'my-route-btn', 'eva-grid-btn', 'playback-controls'];
-        hideIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
+        let modal = document.createElement('div');
+        modal.id = 'fp-style-modal';
+        modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; z-index:999999; border:4px solid black; box-shadow:5px 5px 0px black; text-align:center; min-width:320px; font-family:sans-serif;';
         
-        showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
+        modal.innerHTML = `
+            <h2 style="font-size:20px; font-weight:bold; margin-bottom:15px; color:#1f2937;">🎉 選擇最後的抽獎呈現方式</h2>
+            <p style="font-size:14px; margin-bottom:15px; color:#4b5563; line-height:1.5;">60秒的進場動畫結束後，將自動抽出 2 位幸運兒。<br>請選擇您想測試的視覺特效：</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button id="fp-style-1" style="padding:12px; background:#3b82f6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🔦 風格 A：聚光燈輪盤 (運鏡切換)</button>
+                <button id="fp-style-2" style="padding:12px; background:#8b5cf6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🌪️ 風格 B：迷霧大逃殺 (毒圈縮小)</button>
+                <button id="fp-style-3" style="padding:12px; background:#ef4444; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">📡 風格 C：天降幸運雷達 (全局鎖定)</button>
+            </div>
+            <button id="fp-cancel" style="margin-top:15px; padding:8px 20px; background:#d1d5db; border:2px solid black; cursor:pointer; font-weight:bold;">取消</button>
+        `;
+        document.body.appendChild(modal);
         
-        if (typeof ws !== 'undefined' && ws) {
-            const originalOnMessage = ws.onmessage;
-            ws.onmessage = async (event) => {
-                let res;
-                try {
-                    res = JSON.parse(event.data);
-                } catch(e) {
-                    if (originalOnMessage) originalOnMessage(event);
-                    return;
-                }
-                
-                if (res.type === 'animation_paths_data') {
-                    ws.onmessage = originalOnMessage;
-                    startAnimation(res.paths);
-                } else {
-                    if (originalOnMessage) originalOnMessage(event);
-                }
-            };
+        const startWithStyle = (styleId) => {
+            modal.remove();
+            window.PRIZE_DRAW_STYLE = styleId;
             
-            if (typeof wsSend === 'function' && typeof currentProjectKey !== 'undefined') {
-                wsSend("admin_get_animation_paths", {project: currentProjectKey});
+            const hideIds = ['admin-panel', 'status-toast', 'project-select-wrapper', 'locate-btn', 'spectator-btn', 'toggle-fog-btn', 'nav-pin-btn', 'force-upload-btn', 'my-route-btn', 'eva-grid-btn', 'playback-controls'];
+            hideIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            
+            showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
+        
+            if (typeof ws !== 'undefined' && ws) {
+                const originalOnMessage = ws.onmessage;
+                ws.onmessage = async (event) => {
+                    let res;
+                    try {
+                        res = JSON.parse(event.data);
+                    } catch(e) {
+                        if (originalOnMessage) originalOnMessage(event);
+                        return;
+                    }
+                    
+                    if (res.type === 'animation_paths_data') {
+                        ws.onmessage = originalOnMessage;
+                        startAnimation(res.paths);
+                    } else {
+                        if (originalOnMessage) originalOnMessage(event);
+                    }
+                };
+                
+                if (typeof wsSend === 'function' && typeof currentProjectKey !== 'undefined') {
+                    wsSend("admin_get_animation_paths", {project: currentProjectKey});
+                } else {
+                    ws.send(JSON.stringify({ type: 'get_animation_paths' }));
+                }
             }
-        } else {
-            alert("伺服器尚未連線！");
-        }
+        };
+        
+        document.getElementById('fp-style-1').onclick = () => startWithStyle(1);
+        document.getElementById('fp-style-2').onclick = () => startWithStyle(2);
+        document.getElementById('fp-style-3').onclick = () => startWithStyle(3);
+        document.getElementById('fp-cancel').onclick = () => modal.remove();
     });
 
     async function startAnimation(serverPaths) {
@@ -365,45 +390,9 @@ function initFoundPrizeAnimation() {
                     if (elapsed > duration) {
                         cancelAnimationFrame(animationFrameId);
                         
-                        // 恢復滑鼠感應
                         let lock = document.getElementById('anim-pointer-lock');
                         if (lock) lock.remove();
                         
-                        // 擷取完成瞬間的 DOM 截圖
-                        let mPane = document.querySelector('.leaflet-marker-pane');
-                        let oPane = document.querySelector('.leaflet-overlay-pane');
-                        let snapshotHtml = mPane ? mPane.innerHTML : "";
-                        let snapshotSvg = oPane ? oPane.innerHTML : "";
-                        
-                        showCenterToast("🎉 動畫結束！後續抽獎功能建置中...", 6000);
-                        
-                        let toggleBtn = document.createElement('button');
-                        toggleBtn.innerHTML = "👀 切換至截圖畫面 (檢查是否消失)";
-                        toggleBtn.style.cssText = 'margin-top:10px; padding:6px 12px; background:#3b82f6; border:none; color:white; border-radius:5px; cursor:pointer; width:100%; font-weight:bold;';
-                        let isShowingSnapshot = false;
-                        let liveMarkerHtml = "";
-                        let liveSvgHtml = "";
-                        
-                        toggleBtn.onclick = () => {
-                            if (!isShowingSnapshot) {
-                                liveMarkerHtml = mPane.innerHTML;
-                                liveSvgHtml = oPane.innerHTML;
-                                mPane.innerHTML = snapshotHtml;
-                                oPane.innerHTML = snapshotSvg;
-                                toggleBtn.innerHTML = "🔙 切換回 Live (目前狀態)";
-                                toggleBtn.style.background = "#ef4444";
-                                isShowingSnapshot = true;
-                            } else {
-                                mPane.innerHTML = liveMarkerHtml;
-                                oPane.innerHTML = liveSvgHtml;
-                                toggleBtn.innerHTML = "👀 切換至截圖畫面 (檢查是否消失)";
-                                toggleBtn.style.background = "#3b82f6";
-                                isShowingSnapshot = false;
-                            }
-                        };
-                        counterDiv.appendChild(toggleBtn);
-                        
-                        // 不恢復原本的 renderMap，防止原系統洗掉我們的標記
                         // 但保留霧的更新機制以防破圖
                         if (typeof window.originalRequestFogRender === 'function') {
                             window.requestFogRender = window.originalRequestFogRender;
@@ -422,7 +411,159 @@ function initFoundPrizeAnimation() {
             console.error("startAnimation Error: ", err);
             alert("初始化動畫失敗: " + err.message);
         }
-    } // <--- This closes startAnimation
+    }
+    
+    async function runDrawStyle1(allActors, winners) {
+        showCenterToast("🔦 [風格A] 聚光燈輪盤啟動...", 3000);
+        allActors.forEach(a => {
+            if (a.polyline) a.polyline.setStyle({opacity: 0.1});
+        });
+        
+        let overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; pointer-events:none; transition: background 1s;';
+        document.body.appendChild(overlay);
+        
+        const panTo = (actor, delay) => new Promise(res => {
+            setTimeout(() => {
+                map.flyTo([actor.currentLat, actor.currentLng], 18, {duration: 0.8});
+                res();
+            }, delay);
+        });
+        
+        for(let i=0; i<3; i++) {
+            let fake = allActors[Math.floor(Math.random() * allActors.length)];
+            await panTo(fake, 1200);
+        }
+        
+        await panTo(winners[0], 1500);
+        setTimeout(() => {
+            winners[0].marker.getElement().style.transform += ' scale(2.5)';
+            winners[0].marker.getElement().style.zIndex = 30000;
+            showCenterToast(`🎉 第一位中獎者：${winners[0].name}！`, 4000);
+        }, 1000);
+        
+        for(let i=0; i<2; i++) {
+            let fake = allActors[Math.floor(Math.random() * allActors.length)];
+            await panTo(fake, 1800);
+        }
+        
+        await panTo(winners[1], 1500);
+        setTimeout(() => {
+            winners[1].marker.getElement().style.transform += ' scale(2.5)';
+            winners[1].marker.getElement().style.zIndex = 30000;
+            showCenterToast(`🎉 第一位：${winners[0].name}\n🎉 第二位：${winners[1].name}\n\n抽獎結束！`, 10000);
+            overlay.style.background = 'rgba(0,0,0,0)';
+            setTimeout(() => overlay.remove(), 1000);
+        }, 1000);
+    }
+
+    async function runDrawStyle2(allActors, winners) {
+        showCenterToast("🌪️ [風格B] 迷霧大逃殺開始！毒圈縮小中...", 4000);
+        
+        if (typeof routesLayer !== 'undefined') routesLayer.clearLayers();
+        if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
+            lowResCtx.globalCompositeOperation = 'source-over';
+            lowResCtx.fillStyle = 'black';
+            lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+            fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+            fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
+        }
+        
+        let pool = [...allActors];
+        const shrinkPool = (targetCount, delay) => new Promise(res => {
+            setTimeout(() => {
+                let keep = [...winners];
+                while(keep.length < targetCount && pool.length > keep.length) {
+                    let k = pool[Math.floor(Math.random() * pool.length)];
+                    if (!keep.includes(k)) keep.push(k);
+                }
+                pool.forEach(a => {
+                    if (!keep.includes(a) && a.marker) {
+                        a.marker.remove();
+                        a.active = false;
+                    }
+                });
+                pool = keep;
+                
+                lowResCtx.globalCompositeOperation = 'source-over';
+                lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+                lowResCtx.globalCompositeOperation = 'destination-out';
+                pool.forEach(a => {
+                    let p = map.latLngToContainerPoint([a.currentLat, a.currentLng]);
+                    lowResCtx.beginPath();
+                    lowResCtx.arc(p.x * 0.08, p.y * 0.08, 15, 0, Math.PI * 2);
+                    lowResCtx.fill();
+                });
+                fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+                fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
+                
+                res();
+            }, delay);
+        });
+        
+        await shrinkPool(50, 1000);
+        await shrinkPool(15, 2000);
+        await shrinkPool(2, 2500);
+        
+        setTimeout(() => {
+            map.fitBounds([
+                [winners[0].currentLat, winners[0].currentLng],
+                [winners[1].currentLat, winners[1].currentLng]
+            ], {padding: [50, 50]});
+            
+            winners.forEach(w => w.marker.getElement().style.transform += ' scale(3)');
+            showCenterToast(`🎉 最終存活的兩位幸運兒：\n1. ${winners[0].name}\n2. ${winners[1].name}！`, 10000);
+        }, 1000);
+    }
+
+    async function runDrawStyle3(allActors, winners) {
+        showCenterToast("📡 [風格C] 天降幸運雷達鎖定中...", 3000);
+        
+        allActors.forEach(a => {
+            if (!winners.includes(a)) {
+                if (a.marker) a.marker.getElement().style.opacity = '0.3';
+                if (a.polyline) a.polyline.setStyle({opacity: 0.1});
+            }
+        });
+        
+        map.fitBounds([
+            [winners[0].currentLat, winners[0].currentLng],
+            [winners[1].currentLat, winners[1].currentLng]
+        ], {padding: [100, 100]});
+        
+        setTimeout(() => {
+            winners.forEach((w, i) => {
+                let circle = L.circleMarker([w.currentLat, w.currentLng], {
+                    radius: 10,
+                    color: i === 0 ? '#fbbf24' : '#60a5fa',
+                    fillColor: i === 0 ? '#f59e0b' : '#3b82f6',
+                    fillOpacity: 0.8,
+                    weight: 4
+                }).addTo(map);
+                
+                let r = 10;
+                let iv = setInterval(() => {
+                    r += 5;
+                    circle.setRadius(r);
+                    circle.setStyle({opacity: Math.max(0, 1 - r/150), fillOpacity: Math.max(0, 0.8 - r/150)});
+                    if (r > 150) {
+                        clearInterval(iv);
+                        circle.remove();
+                    }
+                }, 50);
+                
+                w.marker.getElement().style.transform += ' scale(2.5)';
+                w.marker.getElement().style.zIndex = 30000;
+            });
+            
+            L.polyline([
+                [winners[0].currentLat, winners[0].currentLng],
+                [winners[1].currentLat, winners[1].currentLng]
+            ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
+            
+            showCenterToast(`🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`, 10000);
+        }, 2000);
+    }
 } // <--- This closes initFoundPrizeAnimation
 
 if (document.readyState === 'loading') {
