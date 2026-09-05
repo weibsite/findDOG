@@ -570,6 +570,7 @@
                 on('close-gps-modal-btn','click',()=>{ $('central-gps-error-modal').classList.remove('show'); finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444'; });
             }else{
                 em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;
+
             }
 
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
@@ -1231,6 +1232,33 @@
         }, {passive: false});
 
         window.addEventListener('DOMContentLoaded',initSystem);
-    </script>
+    
+function renderCameras() {
+    if(typeof camerasLayer!=='undefined') camerasLayer.clearLayers();
+    if(!window.lastNearbyCameras) return;
+    let showK = document.getElementById('toggle-k-cams-checkbox') && document.getElementById('toggle-k-cams-checkbox').checked;
+    window.lastNearbyCameras.forEach(cam => {
+        if (!showK && cam.name && /\d+\.?\d*\s*[Kk]/.test(cam.name)) return;
+        let ic = '📷', bg = '#2563eb', c = 'white', ani = 'none';
+        let camMarker = L.marker([cam.lat, cam.lng], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="user-label-container" style="bottom:12px;">
+                    <div style="pointer-events:auto;cursor:pointer;font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
+                    </div>`
+            }),
+            zIndexOffset: -1000
+        }).addTo(camerasLayer).bindPopup(
+            `<div class="relative inline-block border-2 border-white shadow-[4px_4px_0px_#000] bg-black overflow-hidden rounded m-0 p-0" style="max-width: 400px; max-height: 400px; line-height: 0;">
+                <img src="${cam.cam_url}" style="max-width: 400px; max-height: 400px; object-fit: contain; display: block;" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
+                <div class="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-sm font-bold text-left pointer-events-none whitespace-pre-wrap leading-normal" style="text-shadow: 1px 1px 2px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">${escapeHTML(cam.name)}</div>
+            </div>`,
+            {className: 'pixel-popup-dark', offset: [0, -30], maxWidth: 450}
+        );
+        camMarker.on('mouseover', function(e) { this.openPopup(); });
+    });
+}
+document.getElementById('toggle-k-cams-checkbox').addEventListener('change', renderCameras);
+</script>
 </body>
 </html>
