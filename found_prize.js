@@ -48,7 +48,7 @@ function initFoundPrizeAnimation() {
         } else {
             alert("伺服器尚未連線！");
         }
-    }); // <--- This closes btn.addEventListener
+    });
 
     async function startAnimation(serverPaths) {
         let csvText = "";
@@ -84,7 +84,6 @@ function initFoundPrizeAnimation() {
         }
         
         let allPaths = serverPaths && serverPaths.length > 0 ? serverPaths : [];
-        
         if (allPaths.length === 0) {
             for(let i=0; i<50; i++) {
                 let path = [];
@@ -102,18 +101,12 @@ function initFoundPrizeAnimation() {
         if (typeof allUsersData !== 'undefined') {
             Object.keys(allUsersData).forEach(k => delete allUsersData[k]);
         }
-        if (typeof localHistory !== 'undefined') {
-            localHistory.length = 0;
-        }
-        if (typeof ws !== 'undefined' && ws) {
-            ws.close();
-        }
+        if (typeof localHistory !== 'undefined') localHistory.length = 0;
+        if (typeof ws !== 'undefined' && ws) ws.close();
         if (typeof markersLayer !== 'undefined' && markersLayer) markersLayer.clearLayers();
         if (typeof sightingsLayer !== 'undefined' && sightingsLayer) sightingsLayer.clearLayers();
         if (typeof routesLayer !== 'undefined' && routesLayer) routesLayer.clearLayers();
         if (typeof isFogVisible !== 'undefined') isFogVisible = true;
-        if (typeof renderMap === 'function') renderMap();
-        if (typeof requestFogRender === 'function') requestFogRender();
         
         if (typeof map !== 'undefined' && map) {
             const offsetLat = 0.027;
@@ -121,7 +114,28 @@ function initFoundPrizeAnimation() {
             map.fitBounds([
                 [center[0] - offsetLat, center[1] - offsetLng],
                 [center[0] + offsetLat, center[1] + offsetLng]
-            ], {animate: true, duration: 1});
+            ], {animate: false});
+            
+            map.dragging.disable();
+            map.touchZoom.disable();
+            map.doubleClickZoom.disable();
+            map.scrollWheelZoom.disable();
+            map.boxZoom.disable();
+            map.keyboard.disable();
+        }
+
+        if (typeof window.requestFogRender === 'function') {
+            window.originalRequestFogRender = window.requestFogRender;
+            window.requestFogRender = function() {}; 
+        }
+        
+        if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
+            lowResCtx.globalCompositeOperation = 'source-over';
+            lowResCtx.fillStyle = 'rgba(15,20,25,0.95)';
+            lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+            fogCtx.imageSmoothingEnabled = false;
+            fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+            fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
         }
         
         const duration = 60000;
@@ -150,7 +164,6 @@ function initFoundPrizeAnimation() {
                 isIdle: isIdle,
                 path: path,
                 pathIdx: startIdx,
-                history: [],
                 color: actorColor,
                 active: false,
                 lastStepTime: startTime,
@@ -168,12 +181,23 @@ function initFoundPrizeAnimation() {
             if (elapsed > duration) {
                 cancelAnimationFrame(animationFrameId);
                 showCenterToast("🎉 動畫結束！後續抽獎功能建置中...", 6000);
+                if (typeof map !== 'undefined' && map) {
+                    map.dragging.enable();
+                    map.touchZoom.enable();
+                    map.doubleClickZoom.enable();
+                    map.scrollWheelZoom.enable();
+                }
                 return;
             }
             
-            if (now - lastRenderTime > 100) {
+            if (now - lastRenderTime > 80) {
                 lastRenderTime = now;
-                Object.keys(allUsersData).forEach(k => delete allUsersData[k]);
+                let needFogUpdate = false;
+                
+                if (typeof lowResCtx !== 'undefined') {
+                    lowResCtx.globalCompositeOperation = 'destination-out';
+                    lowResCtx.fillStyle = 'black';
+                }
                 
                 actors.forEach(actor => {
                     if (elapsed >= actor.spawnTime) {
@@ -182,63 +206,59 @@ function initFoundPrizeAnimation() {
                             actor.lastStepTime = now;
                         }
                         
+                        let currentPos = null;
                         if (actor.isIdle) {
-                            if (actor.history.length === 0) {
-                                const pos = actor.path[actor.pathIdx];
-                                let ptLat = pos.lat !== undefined ? pos.lat : pos[0];
-                                let ptLng = pos.lng !== undefined ? pos.lng : pos[1];
-                                if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
-                                    actor.history.push({lat: ptLat, lng: ptLng, timestamp: now});
-                                }
-                            }
+                            if (!actor.marker) currentPos = actor.path[actor.pathIdx];
                         } else {
-                            const stepInterval = 100; 
+                            const stepInterval = 200;
                             if (now - actor.lastStepTime > stepInterval) {
                                 actor.lastStepTime = now;
-                                
-                                if (actor.pathIdx < actor.path.length - 1) {
-                                    actor.pathIdx++;
-                                } else {
+                                if (actor.pathIdx < actor.path.length - 1) actor.pathIdx++;
+                                else {
                                     actor.path = [...actor.path].reverse();
                                     actor.pathIdx = 0;
                                 }
+                                currentPos = actor.path[actor.pathIdx];
+                            }
+                        }
+                        
+                        if (currentPos) {
+                            let ptLat = currentPos.lat !== undefined ? currentPos.lat : currentPos[0];
+                            let ptLng = currentPos.lng !== undefined ? currentPos.lng : currentPos[1];
+                            
+                            if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
+                                if (!actor.marker) {
+                                    const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
+                                    actor.marker = L.marker([ptLat, ptLng], {icon: icon});
+                                    if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
+                                } else {
+                                    actor.marker.setLatLng([ptLat, ptLng]);
+                                }
                                 
-                                const pos = actor.path[actor.pathIdx];
-                                if (pos) {
-                                    let ptLat = pos.lat !== undefined ? pos.lat : pos[0];
-                                    let ptLng = pos.lng !== undefined ? pos.lng : pos[1];
-                                    if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
-                                        actor.history.push({lat: ptLat, lng: ptLng, timestamp: now});
-                                        if (actor.history.length > 300) {
-                                            actor.history.shift();
-                                        }
+                                if (typeof lowResCtx !== 'undefined' && typeof map !== 'undefined') {
+                                    const p = map.latLngToContainerPoint([ptLat, ptLng]);
+                                    const FOG_SCALE = 0.08;
+                                    const c = map.getCenter();
+                                    const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
+                                    const radius = (20 / mpp) * FOG_SCALE;
+                                    
+                                    if (p.x > -50 && p.y > -50) {
+                                        lowResCtx.beginPath();
+                                        lowResCtx.arc(p.x * FOG_SCALE, p.y * FOG_SCALE, radius, 0, Math.PI * 2);
+                                        lowResCtx.fill();
+                                        needFogUpdate = true;
                                     }
                                 }
                             }
                         }
-                        
-                        if (actor.history.length > 0) {
-                            const latest = actor.history[actor.history.length - 1];
-                            
-                            if (!actor.marker) {
-                                const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
-                                actor.marker = L.marker([latest.lat, latest.lng], {icon: icon});
-                                if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
-                            } else {
-                                actor.marker.setLatLng([latest.lat, latest.lng]);
-                            }
-                            
-                            allUsersData[actor.id] = {
-                                userName: actor.name,
-                                color: actor.color,
-                                history: actor.history,
-                                lastUpdate: now
-                            };
-                        }
                     }
                 });
                 
-                if (typeof requestFogRender === 'function') requestFogRender();
+                if (needFogUpdate && typeof fogCtx !== 'undefined') {
+                    fogCtx.imageSmoothingEnabled = false;
+                    fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+                    fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
+                }
             }
             
             animationFrameId = requestAnimationFrame(animateFrame);
