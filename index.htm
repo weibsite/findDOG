@@ -534,19 +534,16 @@
                                 zIndexOffset: -1000
                             }).addTo(camerasLayer).bindPopup(
                                 `<div class="relative inline-block overflow-hidden rounded m-0 p-0" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); line-height: 0;">
-                                    <img src="${cam.cam_url}" onload="let p=this.closest('.leaflet-popup'); if(p){p.style.width=this.width+'px'; p.style.height=this.height+'px';} if(window.innerWidth<=640){let pt=map.project([${cam.lat}, ${cam.lng}], map.getZoom()); pt.y -= (this.height/2 + 20); map.setView(map.unproject(pt, map.getZoom()), map.getZoom());}" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); object-fit: contain; display: block;" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
+                                    <img src="${cam.cam_url}" onload="setTimeout(() => { let p=this.closest('.leaflet-popup'); if(p){p.style.width=this.clientWidth+'px'; p.style.height=this.clientHeight+'px';} if(window.innerWidth<=640){let pt=map.project([${cam.lat}, ${cam.lng}], map.getZoom()); pt.y -= (this.clientHeight/2 + 15); map.panTo(map.unproject(pt, map.getZoom()), {animate: true});} }, 50);" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); object-fit: contain; display: block;" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
                                     <div class="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-sm font-bold text-left pointer-events-none whitespace-pre-wrap leading-normal" style="text-shadow: 1px 1px 2px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">${escapeHTML(cam.name)}</div>
                                 </div>`,
-                                {className: 'camera-popup-naked', offset: [0, -30], maxWidth: 450, closeButton: false}
+                                {className: 'camera-popup-naked', offset: [0, -30], maxWidth: 450, closeButton: false, autoPan: false}
                             );
                             camMarker.on('mouseover', function(e) {
                                 if (window.innerWidth > 640) this.openPopup();
                             });
                             camMarker.on('click', function(e) {
                                 this.openPopup();
-                                if (window.innerWidth <= 640) {
-                                    setTimeout(() => map.setView([cam.lat, cam.lng], map.getZoom()), 50);
-                                }
                             });
                         });
                     }
