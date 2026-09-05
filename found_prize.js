@@ -234,13 +234,6 @@ function initFoundPrizeAnimation() {
                     
                     if (now - lastRenderTime > 80) {
                         lastRenderTime = now;
-                        let needFogUpdate = false;
-                        
-                        if (typeof lowResCtx !== 'undefined') {
-                            lowResCtx.globalCompositeOperation = 'destination-out';
-                            lowResCtx.strokeStyle = 'black';
-                            lowResCtx.fillStyle = 'black';
-                        }
                         
                         actors.forEach(actor => {
                             if (elapsed >= actor.spawnTime) {
@@ -269,7 +262,6 @@ function initFoundPrizeAnimation() {
                                     } else {
                                         actor.marker.setLatLng([ptLat, ptLng]);
                                         if (actor.polyline) {
-                                            // 繪製軌跡時也加上偏移，讓軌跡線稍微散開
                                             let offsetPath = actor.path.slice(0, actor.pathIdx + 1).map(p => [
                                                 (p.lat !== undefined ? p.lat : p[0]) + actor.offsetX,
                                                 (p.lng !== undefined ? p.lng : p[1]) + actor.offsetY
@@ -277,43 +269,50 @@ function initFoundPrizeAnimation() {
                                             actor.polyline.setLatLngs(offsetPath);
                                         }
                                     }
-                                    
-                                    if (typeof lowResCtx !== 'undefined' && typeof map !== 'undefined' && actor.pathIdx > actor.lastFogIdx) {
-                                        const FOG_SCALE = 0.08;
-                                        const c = map.getCenter();
-                                        const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
-                                        const radius = (20 / mpp) * FOG_SCALE;
-                                        
-                                        if (actor.lastFogIdx < 0) {
-                                            let p = map.latLngToContainerPoint([ptLat, ptLng]);
-                                            if (p.x > -50 && p.y > -50) {
-                                                lowResCtx.beginPath();
-                                                lowResCtx.arc(p.x * FOG_SCALE, p.y * FOG_SCALE, radius, 0, Math.PI * 2);
-                                                lowResCtx.fill();
-                                                needFogUpdate = true;
-                                            }
-                                        } else {
-                                            lowResCtx.beginPath();
-                                            let firstPt = actor.path[actor.lastFogIdx];
-                                            let fp = map.latLngToContainerPoint([firstPt.lat + actor.offsetX, firstPt.lng + actor.offsetY]);
-                                            lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
-                                            for(let k = actor.lastFogIdx + 1; k <= actor.pathIdx; k++) {
-                                                let tp = map.latLngToContainerPoint([actor.path[k].lat + actor.offsetX, actor.path[k].lng + actor.offsetY]);
-                                                lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
-                                            }
-                                            lowResCtx.lineWidth = radius * 2;
-                                            lowResCtx.lineCap = 'round';
-                                            lowResCtx.lineJoin = 'round';
-                                            lowResCtx.stroke();
-                                            needFogUpdate = true;
-                                        }
-                                        actor.lastFogIdx = actor.pathIdx;
-                                    }
                                 }
                             }
                         });
                         
-                        if (needFogUpdate && typeof fogCtx !== 'undefined') {
+                        if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined' && typeof map !== 'undefined') {
+                            // 每次重畫都先填滿黑霧，徹底解決縮放與平移時的破圖與消失問題
+                            lowResCtx.globalCompositeOperation = 'source-over';
+                            lowResCtx.fillStyle = 'rgba(15,20,25,0.95)';
+                            lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+                            
+                            lowResCtx.globalCompositeOperation = 'destination-out';
+                            const FOG_SCALE = 0.08;
+                            const c = map.getCenter();
+                            const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
+                            const radius = (20 / mpp) * FOG_SCALE;
+                            
+                            lowResCtx.lineWidth = radius * 2;
+                            lowResCtx.lineCap = 'round';
+                            lowResCtx.lineJoin = 'round';
+                            lowResCtx.strokeStyle = 'black';
+                            
+                            // 批次繪製所有人的歷史軌跡，這比畫圓圈快幾百倍
+                            lowResCtx.beginPath();
+                            actors.forEach(actor => {
+                                if (actor.active && actor.pathIdx >= 0) {
+                                    let firstPt = actor.path[0];
+                                    let fp = map.latLngToContainerPoint([
+                                        (firstPt.lat !== undefined ? firstPt.lat : firstPt[0]) + actor.offsetX,
+                                        (firstPt.lng !== undefined ? firstPt.lng : firstPt[1]) + actor.offsetY
+                                    ]);
+                                    lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
+                                    
+                                    for(let k = 0; k <= actor.pathIdx; k++) {
+                                        let curr = actor.path[k];
+                                        let tp = map.latLngToContainerPoint([
+                                            (curr.lat !== undefined ? curr.lat : curr[0]) + actor.offsetX,
+                                            (curr.lng !== undefined ? curr.lng : curr[1]) + actor.offsetY
+                                        ]);
+                                        lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
+                                    }
+                                }
+                            });
+                            lowResCtx.stroke();
+                            
                             fogCtx.imageSmoothingEnabled = false;
                             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                             fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
