@@ -81,7 +81,6 @@ function initFoundPrizeAnimation() {
                 else if (p.bounds && p.bounds.length >= 2) center = [(p.bounds[0][0] + p.bounds[1][0]) / 2, (p.bounds[0][1] + p.bounds[1][1]) / 2];
             }
             
-            // 距離計算輔助函數 (Haversine)
             const getDist = (lat1, lon1, lat2, lon2) => {
                 const R = 6371e3;
                 const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
@@ -92,13 +91,13 @@ function initFoundPrizeAnimation() {
 
             let allPaths = [];
             if (serverPaths && serverPaths.length > 0) {
-                // 將有瞬間位移(大於50公尺)的軌跡切斷，確保軌跡連續
                 serverPaths.forEach(rawPath => {
                     let currentSegment = [];
                     for(let i=0; i<rawPath.length; i++) {
                         let pt = rawPath[i];
                         let lat = pt.lat !== undefined ? pt.lat : pt[0];
                         let lng = pt.lng !== undefined ? pt.lng : pt[1];
+                        if (isNaN(lat) || isNaN(lng)) continue;
                         if (currentSegment.length === 0) {
                             currentSegment.push({lat, lng});
                         } else {
@@ -121,7 +120,7 @@ function initFoundPrizeAnimation() {
                     let lat = center[0] + (Math.random()-0.5)*0.02;
                     let lng = center[1] + (Math.random()-0.5)*0.02;
                     for(let j=0; j<20; j++) {
-                        if (!isNaN(lat) && !isNaN(lng)) path.push({lat, lng});
+                        path.push({lat, lng});
                         lat += (Math.random()-0.5)*0.0005;
                         lng += (Math.random()-0.5)*0.0005;
                     }
@@ -137,7 +136,6 @@ function initFoundPrizeAnimation() {
             if (typeof routesLayer !== 'undefined' && routesLayer) routesLayer.clearLayers();
             
             if (typeof isFogVisible !== 'undefined') isFogVisible = true;
-            // 啟用觀看模式，防止地圖自動彈回 GPS 定位
             if (typeof isSpectatorMode !== 'undefined') isSpectatorMode = true;
             
             if (typeof map !== 'undefined' && map) {
@@ -175,7 +173,6 @@ function initFoundPrizeAnimation() {
             const actors = joins.map((j, idx) => {
                 const isIdle = Math.random() < 0.3;
                 let path = allPaths[Math.floor(Math.random() * allPaths.length)];
-                const maxStartIdx = Math.max(1, path.length - 2);
                 let actorColor = '#ffffff';
                 if (typeof generateRandomColor === 'function') actorColor = generateRandomColor();
                 
@@ -185,11 +182,10 @@ function initFoundPrizeAnimation() {
                     spawnTime: idx * spawnInterval,
                     isIdle: isIdle,
                     path: path,
-                    pathIdx: Math.floor(Math.random() * maxStartIdx),
-                    history: [],
+                    pathIdx: isIdle ? path.length - 1 : 0,
+                    lastFogIdx: -1,
                     color: actorColor,
                     active: false,
-                    lastStepTime: startTime,
                     marker: null,
                     polyline: null
                 };
@@ -218,72 +214,68 @@ function initFoundPrizeAnimation() {
                         
                         if (typeof lowResCtx !== 'undefined') {
                             lowResCtx.globalCompositeOperation = 'destination-out';
+                            lowResCtx.strokeStyle = 'black';
                             lowResCtx.fillStyle = 'black';
                         }
                         
                         actors.forEach(actor => {
                             if (elapsed >= actor.spawnTime) {
-                                if (!actor.active) {
-                                    actor.active = true;
-                                    actor.lastStepTime = now;
+                                if (!actor.active) actor.active = true;
+                                
+                                if (!actor.isIdle) {
+                                    let aliveTime = elapsed - actor.spawnTime;
+                                    let totalWalkTime = duration - actor.spawnTime;
+                                    let progress = Math.min(1.0, Math.max(0.0, aliveTime / totalWalkTime));
+                                    actor.pathIdx = Math.floor(progress * (actor.path.length - 1));
                                 }
                                 
-                                let currentPos = null;
-                                if (actor.isIdle) {
-                                    if (!actor.marker) {
-                                        currentPos = actor.path[actor.pathIdx];
-                                        if (currentPos) actor.history.push(currentPos);
-                                    }
-                                } else {
-                                    const stepInterval = 200;
-                                    if (now - actor.lastStepTime > stepInterval) {
-                                        actor.lastStepTime = now;
-                                        if (actor.pathIdx < actor.path.length - 1) actor.pathIdx++;
-                                        else {
-                                            actor.path = [...actor.path].reverse();
-                                            actor.pathIdx = 0;
-                                        }
-                                        currentPos = actor.path[actor.pathIdx];
-                                        if (currentPos) {
-                                            actor.history.push(currentPos);
-                                            if (actor.history.length > 200) actor.history.shift();
-                                        }
-                                    }
-                                }
+                                let currentPos = actor.path[actor.pathIdx];
                                 
                                 if (currentPos) {
-                                    let ptLat = currentPos.lat !== undefined ? currentPos.lat : currentPos[0];
-                                    let ptLng = currentPos.lng !== undefined ? currentPos.lng : currentPos[1];
-                                    
-                                    if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
-                                        if (!actor.marker) {
-                                            const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
-                                            actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: 20000});
-                                            if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
-                                            
-                                            actor.polyline = L.polyline([[ptLat, ptLng]], {color: actor.color, weight: 4, opacity: 0.8});
-                                            if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
-                                        } else {
-                                            actor.marker.setLatLng([ptLat, ptLng]);
-                                            if (actor.polyline) {
-                                                actor.polyline.setLatLngs(actor.history.map(p => [p.lat !== undefined ? p.lat : p[0], p.lng !== undefined ? p.lng : p[1]]));
-                                            }
-                                        }
+                                    if (!actor.marker) {
+                                        const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
+                                        actor.marker = L.marker([currentPos.lat, currentPos.lng], {icon: icon, zIndexOffset: 20000});
+                                        if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
                                         
-                                        if (typeof lowResCtx !== 'undefined' && typeof map !== 'undefined') {
-                                            const p = map.latLngToContainerPoint([ptLat, ptLng]);
-                                            const FOG_SCALE = 0.08;
-                                            const c = map.getCenter();
-                                            const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
-                                            const radius = (20 / mpp) * FOG_SCALE;
-                                            
+                                        actor.polyline = L.polyline([], {color: actor.color, weight: 4, opacity: 0.8});
+                                        if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
+                                    } else {
+                                        actor.marker.setLatLng([currentPos.lat, currentPos.lng]);
+                                        if (actor.polyline) {
+                                            actor.polyline.setLatLngs(actor.path.slice(0, actor.pathIdx + 1));
+                                        }
+                                    }
+                                    
+                                    if (typeof lowResCtx !== 'undefined' && typeof map !== 'undefined' && actor.pathIdx > actor.lastFogIdx) {
+                                        const FOG_SCALE = 0.08;
+                                        const c = map.getCenter();
+                                        const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
+                                        const radius = (20 / mpp) * FOG_SCALE;
+                                        
+                                        if (actor.lastFogIdx < 0) {
+                                            let p = map.latLngToContainerPoint([currentPos.lat, currentPos.lng]);
                                             if (p.x > -50 && p.y > -50) {
                                                 lowResCtx.beginPath();
                                                 lowResCtx.arc(p.x * FOG_SCALE, p.y * FOG_SCALE, radius, 0, Math.PI * 2);
                                                 lowResCtx.fill();
                                                 needFogUpdate = true;
                                             }
+                                        } else {
+                                            lowResCtx.beginPath();
+                                            let firstPt = actor.path[actor.lastFogIdx];
+                                            let fp = map.latLngToContainerPoint([firstPt.lat, firstPt.lng]);
+                                            lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
+                                            for(let k = actor.lastFogIdx + 1; k <= actor.pathIdx; k++) {
+                                                let tp = map.latLngToContainerPoint([actor.path[k].lat, actor.path[k].lng]);
+                                                lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
+                                            }
+                                            lowResCtx.lineWidth = radius * 2;
+                                            lowResCtx.lineCap = 'round';
+                                            lowResCtx.lineJoin = 'round';
+                                            lowResCtx.stroke();
+                                            needFogUpdate = true;
                                         }
+                                        actor.lastFogIdx = actor.pathIdx;
                                     }
                                 }
                             }
