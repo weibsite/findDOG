@@ -189,6 +189,18 @@ function initFoundPrizeAnimation() {
             counterDiv.style.cssText = 'position:fixed; top:70px; right:10px; z-index:99999; background:rgba(0,0,0,0.85); color:white; padding:12px; border-radius:8px; font-size:14px; border:1px solid #3b82f6; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events:auto;';
             document.body.appendChild(counterDiv);
             
+            // 關閉地圖上所有圖標與線條的滑鼠感應，避免滑鼠移過去觸發彈出視窗
+            let oldLock = document.getElementById('anim-pointer-lock');
+            if (oldLock) oldLock.remove();
+            let style = document.createElement('style');
+            style.id = 'anim-pointer-lock';
+            style.innerHTML = `
+                .leaflet-marker-pane, .leaflet-overlay-pane, .leaflet-interactive {
+                    pointer-events: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            
             const duration = 60000;
             const startTime = Date.now();
             // 修正進場間隔：確保所有人在前 45 秒內全部進場完畢
@@ -354,6 +366,10 @@ function initFoundPrizeAnimation() {
                     
                     if (elapsed > duration) {
                         cancelAnimationFrame(animationFrameId);
+                        
+                        // 恢復滑鼠感應
+                        let lock = document.getElementById('anim-pointer-lock');
+                        if (lock) lock.remove();
                         
                         // 擷取完成瞬間的 DOM 截圖
                         let mPane = document.querySelector('.leaflet-marker-pane');
