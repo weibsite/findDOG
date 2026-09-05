@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         btn.addEventListener('click', async () => {
-            if (!confirm("即將開始尋獲抽獎動畫！\n這將從伺服器載入完整歷史軌跡並重置地圖（動畫結束後重新整理網頁即可恢復）。確定要開始嗎？")) return;
+            if (!confirm("即將開始尋獲抽獎動畫！\n這將重置您當前的地圖畫面（動畫結束後重新整理網頁即可恢復）。確定要開始嗎？")) return;
             
             // 1. 隱藏不必要的 UI，只留地圖
             const hideIds = ['admin-panel', 'status-toast', 'project-select-wrapper', 'locate-btn', 'spectator-btn', 'toggle-fog-btn', 'nav-pin-btn', 'force-upload-btn', 'my-route-btn', 'eva-grid-btn', 'playback-controls'];
@@ -20,38 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el) el.style.display = 'none';
             });
             
-            showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
-            
-            // 攔截 WS 訊息來接收 animation_paths_data
-            if (typeof ws !== 'undefined' && ws) {
-                const originalOnMessage = ws.onmessage;
-                ws.onmessage = async (event) => {
-                    let res;
-                    try {
-                        res = JSON.parse(event.data);
-                    } catch(e) {
-                        if (originalOnMessage) originalOnMessage(event);
-                        return;
-                    }
-                    
-                    if (res.type === 'animation_paths_data') {
-                        ws.onmessage = originalOnMessage; // 恢復 (雖然等下就要 close 了)
-                        startAnimation(res.paths);
-                    } else {
-                        if (originalOnMessage) originalOnMessage(event);
-                    }
-                };
-                
-                // 送出請求
-                if (typeof wsSend === 'function' && typeof currentProjectKey !== 'undefined') {
-                    wsSend("admin_get_animation_paths", {project: currentProjectKey});
-                }
-            } else {
-                alert("伺服器尚未連線！");
-            }
-        });
-        
-        async function startAnimation(serverPaths) {
             // 2. 讀取 joins.csv
             let csvText = "";
             try {
@@ -77,20 +45,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showCenterToast(`🎉 尋獲抽獎演出開始！\n共載入 ${joins.length} 位參與者...`);
             
+            // 3. 收集歷史路徑 (從當前所有志工身上收集)
+            let allPaths = [];
+            // typeof allUsersData !== 'undefined' 確保全域變數存在
+            if (typeof allUsersData !== 'undefined') {
+                Object.values(allUsersData).forEach(u => {
+                    if (u.history && u.history.length > 5) {
+                        allPaths.push(u.history);
+                    }
+                });
+            }
+            if (typeof localHistory !== 'undefined' && localHistory.length > 5) {
+                allPaths.push(localHistory);
+            }
+            
             // 專案中心點
             let center = [24.675, 121.767]; // 宜蘭預設
             if (typeof PROJECTS !== 'undefined' && typeof currentProjectKey !== 'undefined' && PROJECTS[currentProjectKey]) {
                 const p = PROJECTS[currentProjectKey];
-                if (p.lat !== undefined && p.lng !== undefined) {
-                    center = [p.lat, p.lng];
-                } else if (p.bounds && p.bounds.length >= 2) {
-                    center = [(p.bounds[0][0] + p.bounds[1][0]) / 2, (p.bounds[0][1] + p.bounds[1][1]) / 2];
-                }
+                center = [p.lat, p.lng];
             }
             
-            let allPaths = serverPaths && serverPaths.length > 0 ? serverPaths : [];
-            
-            // 如果連伺服器都沒有軌跡，只好隨機產生一些在中心點附近的假軌跡備用
+            // 如果剛好沒有人有歷史軌跡，隨機產生一些在中心點附近的假軌跡備用
             if (allPaths.length === 0) {
                 for(let i=0; i<50; i++) {
                     let path = [];
@@ -132,15 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof renderMap === 'function') renderMap();
             if (typeof requestFogRender === 'function') requestFogRender();
             
-            // 移動視角到中心點，並縮放至涵蓋約半徑 3 公里的視野
+            // 移動視角到中心點
             if (typeof map !== 'undefined' && map) {
-                // 1緯度約 111 公里，3公里約 0.027 度；經度依台灣緯度算約 0.029 度
-                const offsetLat = 0.027;
-                const offsetLng = 0.029;
-                map.fitBounds([
-                    [center[0] - offsetLat, center[1] - offsetLng],
-                    [center[0] + offsetLat, center[1] + offsetLng]
-                ], {animate: true, duration: 1});
+                map.setView(center, 14, {animate: true, duration: 1});
             }
             
             // 5. 設定動畫參數
@@ -220,8 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             } else {
                                 // 探索模式：每隔一段時間走一步
-                                // Server 給的真實軌跡很密，可以走快一點 (例如 50ms 走一點)
-                                const stepInterval = 50; 
+                                const stepInterval = 200; // 每 200ms 走一步
                                 if (now - actor.lastStepTime > stepInterval) {
                                     actor.lastStepTime = now;
                                     
@@ -266,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 開始動畫
             animationFrameId = requestAnimationFrame(animateFrame);
-        }
+            
+        });
     }, 1000);
 });
