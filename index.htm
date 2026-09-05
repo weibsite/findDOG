@@ -407,7 +407,7 @@
             
             map=L.map('map',{zoomControl:false}).setView([23.5,121],8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map); L.control.zoom({position:'bottomright'}).addTo(map);
-            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
+            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); camerasLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
             
             map.on('click',e=>{if(isDrawingRoute){currentRoutePoints.push([e.latlng.lat,e.latlng.lng]); updateDrawingRoutePreview();} resetPowerSavingTimer();});
             map.on('mousedown touchstart',e=>{if(isClearingHistory){let ck=false; for(let i=0;i<clearHistoryCircles.length;i++){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1); ck=true; break;}} if(ck)isErasingClear=true; else{isPaintingClear=true; let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}}});
@@ -458,12 +458,24 @@
                     $('sync-ping').style.backgroundColor='#10b981'; 
                     text('toast-text',"連線成功"); 
                     wsReconnectDelay=3000; 
-                    wsSend("init", { light: true }); 
+                    wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 2500});
+            } 
                     if(localHistory.length)saveLocationToServer(null,true);
                 };
                 ws.onmessage=e=>{
                     const res=JSON.parse(e.data);
-                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true }); drawAllProjects(); updateAnimalInfoCard(); }
+                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 2500});
+            } drawAllProjects(); updateAnimalInfoCard(); }
                     
                     if(res.type==='sync'){ 
                         allUsersData=res.data.locations||{}; 
@@ -500,6 +512,31 @@
                             window.latestStatusText = res.data.text;
                             renderSightings();
                         }
+                    }
+                    else if(res.type==='nearby_cameras_result'){
+                        if(typeof camerasLayer!=='undefined') camerasLayer.clearLayers();
+                        res.data.forEach(cam => {
+                            let ic = '📷', bg = '#2563eb', c = 'white', ani = 'none';
+                            L.marker([cam.lat, cam.lng], {
+                                icon: L.divIcon({
+                                    className: 'custom-div-icon',
+                                    html: `<div class="user-label-container" style="bottom:12px;">
+                                        <div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">
+                                        📍 ${escapeHTML(cam.name)}</div>
+                                        <div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
+                                        </div>`
+                                }),
+                                zIndexOffset: -1000
+                            }).addTo(camerasLayer).bindPopup(
+                                `<div class="p-2 w-64 font-bold text-white text-center">
+                                    <div class="text-sm mb-2 text-blue-300 whitespace-pre-wrap">${escapeHTML(cam.name)}</div>
+                                    <img src="${cam.cam_url}" class="w-full h-auto border-2 border-white rounded shadow-[2px_2px_0px_#000] mb-2 bg-black" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
+                                    <a href="https://www.google.com/maps/dir/?api=1&destination=${cam.lat},${cam.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline w-full shadow-[2px_2px_0px_#000]" style="color:white !important;">🚀 導航至此路口</a>
+                                </div>`,
+                                {className: 'pixel-popup-dark', offset: [0, -30]}
+                            );
+                        });
+                        // if(res.data.length>0) showCenterToast(`📡 載入 ${res.data.length} 支附近路口監視器`);
                     }
                     else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
                     else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
@@ -670,6 +707,12 @@
             if(isMyRouteMode)$('my-route-btn').click(); 
             updateVisualSelectText();
             wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 2500});
+            }
         });
 
         function updateAnimalInfoCard() {
