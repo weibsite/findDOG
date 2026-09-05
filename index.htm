@@ -517,11 +517,11 @@
                         if(typeof camerasLayer!=='undefined') camerasLayer.clearLayers();
                         res.data.forEach(cam => {
                             let ic = '📷', bg = '#2563eb', c = 'white', ani = 'none';
-                            L.marker([cam.lat, cam.lng], {
+                            let camMarker = L.marker([cam.lat, cam.lng], {
                                 icon: L.divIcon({
                                     className: 'custom-div-icon',
                                     html: `<div class="user-label-container" style="bottom:12px;">
-                                        <div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
+                                        <div style="pointer-events:auto;cursor:pointer;font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
                                         </div>`
                                 }),
                                 zIndexOffset: -1000
@@ -533,6 +533,7 @@
                                 </div>`,
                                 {className: 'pixel-popup-dark', offset: [0, -30]}
                             );
+                            camMarker.on('mouseover', function(e) { this.openPopup(); });
                         });
                         // if(res.data.length>0) showCenterToast(`📡 載入 ${res.data.length} 支附近路口監視器`);
                     }
