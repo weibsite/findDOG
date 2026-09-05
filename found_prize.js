@@ -232,25 +232,43 @@ function initFoundPrizeAnimation() {
                     const now = Date.now();
                     const elapsed = now - startTime;
                     
-                    if (now - lastRenderTime > 80) {
+                    if (now - lastRenderTime > 40) { // 加快渲染頻率，讓插值動畫更滑順
                         lastRenderTime = now;
                         
                         actors.forEach(actor => {
                             if (elapsed >= actor.spawnTime) {
                                 if (!actor.active) actor.active = true;
                                 
+                                let exactIdx = 0;
                                 if (!actor.isIdle) {
                                     let aliveTime = elapsed - actor.spawnTime;
                                     let totalWalkTime = duration - actor.spawnTime;
                                     let progress = Math.min(1.0, Math.max(0.0, aliveTime / totalWalkTime));
-                                    actor.pathIdx = Math.floor(progress * (actor.path.length - 1));
+                                    exactIdx = progress * (actor.path.length - 1);
+                                } else {
+                                    exactIdx = actor.path.length - 1;
                                 }
                                 
-                                let currentPos = actor.path[actor.pathIdx];
+                                let baseIdx = Math.floor(exactIdx);
+                                let remainder = exactIdx - baseIdx;
                                 
-                                if (currentPos) {
-                                    let ptLat = (currentPos.lat !== undefined ? currentPos.lat : currentPos[0]) + actor.offsetX;
-                                    let ptLng = (currentPos.lng !== undefined ? currentPos.lng : currentPos[1]) + actor.offsetY;
+                                let currentPos = actor.path[baseIdx];
+                                let nextPos = actor.path[Math.min(baseIdx + 1, actor.path.length - 1)];
+                                
+                                if (currentPos && nextPos) {
+                                    let cLat = currentPos.lat !== undefined ? currentPos.lat : currentPos[0];
+                                    let cLng = currentPos.lng !== undefined ? currentPos.lng : currentPos[1];
+                                    let nLat = nextPos.lat !== undefined ? nextPos.lat : nextPos[0];
+                                    let nLng = nextPos.lng !== undefined ? nextPos.lng : nextPos[1];
+                                    
+                                    // 完美線性插值，讓移動跟線條長出來的過程如絲般滑順
+                                    let ptLat = cLat + (nLat - cLat) * remainder + actor.offsetX;
+                                    let ptLng = cLng + (nLng - cLng) * remainder + actor.offsetY;
+                                    
+                                    actor.currentLat = ptLat;
+                                    actor.currentLng = ptLng;
+                                    actor.baseIdx = baseIdx;
+                                    actor.remainder = remainder;
                                     
                                     if (!actor.marker) {
                                         const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
@@ -262,10 +280,11 @@ function initFoundPrizeAnimation() {
                                     } else {
                                         actor.marker.setLatLng([ptLat, ptLng]);
                                         if (actor.polyline) {
-                                            let offsetPath = actor.path.slice(0, actor.pathIdx + 1).map(p => [
+                                            let offsetPath = actor.path.slice(0, baseIdx + 1).map(p => [
                                                 (p.lat !== undefined ? p.lat : p[0]) + actor.offsetX,
                                                 (p.lng !== undefined ? p.lng : p[1]) + actor.offsetY
                                             ]);
+                                            if (remainder > 0) offsetPath.push([ptLat, ptLng]);
                                             actor.polyline.setLatLngs(offsetPath);
                                         }
                                     }
@@ -274,7 +293,6 @@ function initFoundPrizeAnimation() {
                         });
                         
                         if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined' && typeof map !== 'undefined') {
-                            // 每次重畫都先填滿黑霧，徹底解決縮放與平移時的破圖與消失問題
                             lowResCtx.globalCompositeOperation = 'source-over';
                             lowResCtx.fillStyle = 'rgba(15,20,25,0.95)';
                             lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
@@ -290,10 +308,9 @@ function initFoundPrizeAnimation() {
                             lowResCtx.lineJoin = 'round';
                             lowResCtx.strokeStyle = 'black';
                             
-                            // 批次繪製所有人的歷史軌跡，這比畫圓圈快幾百倍
                             lowResCtx.beginPath();
                             actors.forEach(actor => {
-                                if (actor.active && actor.pathIdx >= 0) {
+                                if (actor.active && actor.baseIdx >= 0) {
                                     let firstPt = actor.path[0];
                                     let fp = map.latLngToContainerPoint([
                                         (firstPt.lat !== undefined ? firstPt.lat : firstPt[0]) + actor.offsetX,
@@ -301,13 +318,18 @@ function initFoundPrizeAnimation() {
                                     ]);
                                     lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
                                     
-                                    for(let k = 0; k <= actor.pathIdx; k++) {
+                                    for(let k = 1; k <= actor.baseIdx; k++) {
                                         let curr = actor.path[k];
                                         let tp = map.latLngToContainerPoint([
                                             (curr.lat !== undefined ? curr.lat : curr[0]) + actor.offsetX,
                                             (curr.lng !== undefined ? curr.lng : curr[1]) + actor.offsetY
                                         ]);
                                         lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
+                                    }
+                                    
+                                    if (actor.remainder > 0 && actor.currentLat !== undefined) {
+                                        let currP = map.latLngToContainerPoint([actor.currentLat, actor.currentLng]);
+                                        lowResCtx.lineTo(currP.x * FOG_SCALE, currP.y * FOG_SCALE);
                                     }
                                 }
                             });
