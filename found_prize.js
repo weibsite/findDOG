@@ -130,7 +130,7 @@ function initFoundPrizeAnimation() {
         
         function getIconHtml(color, name) {
             const safeName = typeof escapeHTML === 'function' ? escapeHTML(name) : name;
-            return `<div style="background-color:${color};width:16px;height:16px;border-radius:50%;border:2px solid black;"></div><div style="position:absolute;top:18px;left:-20px;width:56px;text-align:center;font-size:10px;font-weight:bold;color:white;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;">${safeName}</div>`;
+            return `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" style="color:#1a202c; pointer-events:none;">${safeName}</div><div class="user-avatar-pixel" style="background-color:${color};"></div></div>`;
         }
         
         const actors = joins.map((j, idx) => {
@@ -154,8 +154,7 @@ function initFoundPrizeAnimation() {
                 color: actorColor,
                 active: false,
                 lastStepTime: startTime,
-                marker: null,
-                polyline: null
+                marker: null
             };
         });
         
@@ -210,7 +209,7 @@ function initFoundPrizeAnimation() {
                                     let ptLng = pos.lng !== undefined ? pos.lng : pos[1];
                                     if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
                                         actor.history.push({lat: ptLat, lng: ptLng, timestamp: now});
-                                        if (actor.history.length > 50) {
+                                        if (actor.history.length > 300) {
                                             actor.history.shift();
                                         }
                                     }
@@ -222,16 +221,11 @@ function initFoundPrizeAnimation() {
                             const latest = actor.history[actor.history.length - 1];
                             
                             if (!actor.marker) {
-                                const icon = L.divIcon({className: 'custom-user-icon', html: getIconHtml(actor.color, actor.name), iconSize: [16,16], iconAnchor: [8,8]});
+                                const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
                                 actor.marker = L.marker([latest.lat, latest.lng], {icon: icon});
                                 if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
-                                
-                                actor.polyline = L.polyline([], {color: actor.color, weight: 3});
-                                if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
                             } else {
                                 actor.marker.setLatLng([latest.lat, latest.lng]);
-                                const latlngs = actor.history.map(pt => [pt.lat, pt.lng]);
-                                actor.polyline.setLatLngs(latlngs);
                             }
                             
                             allUsersData[actor.id] = {
