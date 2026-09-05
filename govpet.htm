@@ -1025,22 +1025,26 @@ function drawAllProjects(reset = false) {
     
     projectsWithDist.sort((a, b) => a.dist - b.dist);
     
-    const MAX_POINTS = 1000;
+    const MAX_POINTS = 100;
     
     let sampled = [];
     if (projectsWithDist.length > MAX_POINTS) {
         let currentProjItem = projectsWithDist.find(p => p.key === currentProjectKey);
         
-        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-        projectsWithDist.forEach(p => {
-            if (p.center[0] < minLat) minLat = p.center[0];
-            if (p.center[0] > maxLat) maxLat = p.center[0];
-            if (p.center[1] < minLng) minLng = p.center[1];
-            if (p.center[1] > maxLng) maxLng = p.center[1];
-        });
+        let minLat, maxLat, minLng, maxLng;
+        try {
+            let bounds = map.getBounds();
+            minLat = bounds.getSouth();
+            maxLat = bounds.getNorth();
+            minLng = bounds.getWest();
+            maxLng = bounds.getEast();
+        } catch(e) {
+            minLat = 21; maxLat = 26; minLng = 119; maxLng = 122;
+        }
         
-        minLat = Math.floor(minLat * 10) / 10;
-        minLng = Math.floor(minLng * 10) / 10;
+        if (minLat >= maxLat || minLng >= maxLng) {
+            minLat = 21; maxLat = 26; minLng = 119; maxLng = 122;
+        }
         
         let gridSize = 30; 
         let latStep = (maxLat - minLat) / gridSize || 0.01;
