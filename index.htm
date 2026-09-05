@@ -247,6 +247,7 @@
         <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎品</button>
         <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
         <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+        <button id="found-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-yellow-400 text-black hidden md:block">🎉 尋獲抽獎</button>
         
         <button id="close-admin-btn" class="pixel-btn w-full mt-2 p-2 text-xs bg-red-600 text-white border-2 border-black font-bold">❌ 關閉面板</button>
     </div>
@@ -301,7 +302,8 @@
         const text = (id, str) => { if($(id)) $(id).innerText = str; }, html = (id, str) => { if($(id)) $(id).innerHTML = str; };
         const on = (id, ev, cb) => $(id)?.addEventListener(ev, cb);
         const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} }, lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
-        const escapeHTML = str => String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
+        const obfUUID = t => typeof t==='string'?t.replace(/([a-f0-9]{8})-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-([a-f0-9]{12})/gi, '$1-****-****-****-$2'):t;
+        const escapeHTML = str => obfUUID(String(str)).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
         const getBaseHttpUrl = () => NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : "";
         const replaceBtn = (id, cb) => { let el=$(id), clo=el.cloneNode(true); el.parentNode.replaceChild(clo, el); if(cb) clo.addEventListener('click', cb); return clo; };
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
@@ -384,8 +386,8 @@
 
         // --- 核心共用模組 ---
         const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
-        let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
-        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=htmlContent=>{html('custom-modal-text',htmlContent); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
+        let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',obfUUID(msg)); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
+        const showModal=msg=>{text('custom-modal-text',obfUUID(msg)); show('custom-modal');}; const showHTMLModal=htmlContent=>{html('custom-modal-text',obfUUID(htmlContent)); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
         const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
         const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
         const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
