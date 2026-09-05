@@ -375,7 +375,7 @@
         // --- 核心共用模組 ---
         const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
         let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
-        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=html=>{html('custom-modal-text',html); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
+        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=htmlContent=>{html('custom-modal-text',htmlContent); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
         const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
         const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
         const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
