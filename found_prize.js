@@ -275,7 +275,8 @@ function initFoundPrizeAnimation() {
                                         actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: 20000});
                                         if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
                                         
-                                        actor.polyline = L.polyline([], {color: actor.color, weight: 4, opacity: 0.8});
+                                        // 恢復使用虛線 (dashArray) 來呈現原本一點一點的軌跡視覺效果
+                                        actor.polyline = L.polyline([], {color: actor.color, weight: 3, opacity: 0.6, dashArray: '5,5'});
                                         if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
                                     } else {
                                         actor.marker.setLatLng([ptLat, ptLng]);
@@ -303,37 +304,33 @@ function initFoundPrizeAnimation() {
                             const mpp = (40075016.686 * Math.abs(Math.cos(c.lat * Math.PI / 180))) / Math.pow(2, map.getZoom() + 8);
                             const radius = (20 / mpp) * FOG_SCALE;
                             
-                            lowResCtx.lineWidth = radius * 2;
-                            lowResCtx.lineCap = 'round';
-                            lowResCtx.lineJoin = 'round';
-                            lowResCtx.strokeStyle = 'black';
-                            
+                            // 恢復原本「一點一點」畫圓圈的除霧方式，但使用高效能批次渲染
+                            lowResCtx.fillStyle = 'black';
                             lowResCtx.beginPath();
+                            
                             actors.forEach(actor => {
                                 if (actor.active && actor.baseIdx >= 0) {
-                                    let firstPt = actor.path[0];
-                                    let fp = map.latLngToContainerPoint([
-                                        (firstPt.lat !== undefined ? firstPt.lat : firstPt[0]) + actor.offsetX,
-                                        (firstPt.lng !== undefined ? firstPt.lng : firstPt[1]) + actor.offsetY
-                                    ]);
-                                    lowResCtx.moveTo(fp.x * FOG_SCALE, fp.y * FOG_SCALE);
-                                    
-                                    for(let k = 1; k <= actor.baseIdx; k++) {
+                                    for(let k = 0; k <= actor.baseIdx; k++) {
                                         let curr = actor.path[k];
                                         let tp = map.latLngToContainerPoint([
                                             (curr.lat !== undefined ? curr.lat : curr[0]) + actor.offsetX,
                                             (curr.lng !== undefined ? curr.lng : curr[1]) + actor.offsetY
                                         ]);
-                                        lowResCtx.lineTo(tp.x * FOG_SCALE, tp.y * FOG_SCALE);
+                                        // moveTo 斷開路徑，確保畫出來的是獨立的圓圈而不是連線
+                                        lowResCtx.moveTo(tp.x * FOG_SCALE + radius, tp.y * FOG_SCALE);
+                                        lowResCtx.arc(tp.x * FOG_SCALE, tp.y * FOG_SCALE, radius, 0, Math.PI * 2);
                                     }
                                     
                                     if (actor.remainder > 0 && actor.currentLat !== undefined) {
                                         let currP = map.latLngToContainerPoint([actor.currentLat, actor.currentLng]);
-                                        lowResCtx.lineTo(currP.x * FOG_SCALE, currP.y * FOG_SCALE);
+                                        lowResCtx.moveTo(currP.x * FOG_SCALE + radius, currP.y * FOG_SCALE);
+                                        lowResCtx.arc(currP.x * FOG_SCALE, currP.y * FOG_SCALE, radius, 0, Math.PI * 2);
                                     }
                                 }
                             });
-                            lowResCtx.stroke();
+                            
+                            // 一次性 Fill，效能比原本快上萬倍，不會當機
+                            lowResCtx.fill();
                             
                             fogCtx.imageSmoothingEnabled = false;
                             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
