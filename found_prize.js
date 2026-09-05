@@ -81,7 +81,40 @@ function initFoundPrizeAnimation() {
                 else if (p.bounds && p.bounds.length >= 2) center = [(p.bounds[0][0] + p.bounds[1][0]) / 2, (p.bounds[0][1] + p.bounds[1][1]) / 2];
             }
             
-            let allPaths = serverPaths && serverPaths.length > 0 ? serverPaths : [];
+            // 距離計算輔助函數 (Haversine)
+            const getDist = (lat1, lon1, lat2, lon2) => {
+                const R = 6371e3;
+                const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+                const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+                const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
+
+            let allPaths = [];
+            if (serverPaths && serverPaths.length > 0) {
+                // 將有瞬間位移(大於50公尺)的軌跡切斷，確保軌跡連續
+                serverPaths.forEach(rawPath => {
+                    let currentSegment = [];
+                    for(let i=0; i<rawPath.length; i++) {
+                        let pt = rawPath[i];
+                        let lat = pt.lat !== undefined ? pt.lat : pt[0];
+                        let lng = pt.lng !== undefined ? pt.lng : pt[1];
+                        if (currentSegment.length === 0) {
+                            currentSegment.push({lat, lng});
+                        } else {
+                            let last = currentSegment[currentSegment.length-1];
+                            if (getDist(last.lat, last.lng, lat, lng) > 50) {
+                                if (currentSegment.length > 3) allPaths.push([...currentSegment]);
+                                currentSegment = [{lat, lng}];
+                            } else {
+                                currentSegment.push({lat, lng});
+                            }
+                        }
+                    }
+                    if (currentSegment.length > 3) allPaths.push(currentSegment);
+                });
+            }
+            
             if (allPaths.length === 0) {
                 for(let i=0; i<50; i++) {
                     let path = [];
@@ -102,7 +135,10 @@ function initFoundPrizeAnimation() {
             if (typeof markersLayer !== 'undefined' && markersLayer) markersLayer.clearLayers();
             if (typeof sightingsLayer !== 'undefined' && sightingsLayer) sightingsLayer.clearLayers();
             if (typeof routesLayer !== 'undefined' && routesLayer) routesLayer.clearLayers();
+            
             if (typeof isFogVisible !== 'undefined') isFogVisible = true;
+            // 啟用觀看模式，防止地圖自動彈回 GPS 定位
+            if (typeof isSpectatorMode !== 'undefined') isSpectatorMode = true;
             
             if (typeof map !== 'undefined' && map) {
                 const offsetLat = 0.027;
@@ -150,10 +186,12 @@ function initFoundPrizeAnimation() {
                     isIdle: isIdle,
                     path: path,
                     pathIdx: Math.floor(Math.random() * maxStartIdx),
+                    history: [],
                     color: actorColor,
                     active: false,
                     lastStepTime: startTime,
-                    marker: null
+                    marker: null,
+                    polyline: null
                 };
             });
             
@@ -192,7 +230,10 @@ function initFoundPrizeAnimation() {
                                 
                                 let currentPos = null;
                                 if (actor.isIdle) {
-                                    if (!actor.marker) currentPos = actor.path[actor.pathIdx];
+                                    if (!actor.marker) {
+                                        currentPos = actor.path[actor.pathIdx];
+                                        if (currentPos) actor.history.push(currentPos);
+                                    }
                                 } else {
                                     const stepInterval = 200;
                                     if (now - actor.lastStepTime > stepInterval) {
@@ -203,6 +244,10 @@ function initFoundPrizeAnimation() {
                                             actor.pathIdx = 0;
                                         }
                                         currentPos = actor.path[actor.pathIdx];
+                                        if (currentPos) {
+                                            actor.history.push(currentPos);
+                                            if (actor.history.length > 200) actor.history.shift();
+                                        }
                                     }
                                 }
                                 
@@ -213,10 +258,16 @@ function initFoundPrizeAnimation() {
                                     if (ptLat !== undefined && ptLng !== undefined && !isNaN(ptLat) && !isNaN(ptLng)) {
                                         if (!actor.marker) {
                                             const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
-                                            actor.marker = L.marker([ptLat, ptLng], {icon: icon});
+                                            actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: 20000});
                                             if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
+                                            
+                                            actor.polyline = L.polyline([[ptLat, ptLng]], {color: actor.color, weight: 4, opacity: 0.8});
+                                            if (typeof routesLayer !== 'undefined') actor.polyline.addTo(routesLayer);
                                         } else {
                                             actor.marker.setLatLng([ptLat, ptLng]);
+                                            if (actor.polyline) {
+                                                actor.polyline.setLatLngs(actor.history.map(p => [p.lat !== undefined ? p.lat : p[0], p.lng !== undefined ? p.lng : p[1]]));
+                                            }
                                         }
                                         
                                         if (typeof lowResCtx !== 'undefined' && typeof map !== 'undefined') {
