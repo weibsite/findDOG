@@ -232,9 +232,7 @@ function initFoundPrizeAnimation() {
                     color: actorColor,
                     active: false,
                     marker: null,
-                    polyline: null,
-                    offsetX: (Math.random()-0.5)*0.0003,
-                    offsetY: (Math.random()-0.5)*0.0003
+                    polyline: null
                 };
             });
             
@@ -277,8 +275,8 @@ function initFoundPrizeAnimation() {
                                     let nLng = nextPos.lng !== undefined ? nextPos.lng : nextPos[1];
                                     
                                     // 完美線性插值，讓移動跟線條長出來的過程如絲般滑順
-                                    let ptLat = cLat + (nLat - cLat) * remainder + actor.offsetX;
-                                    let ptLng = cLng + (nLng - cLng) * remainder + actor.offsetY;
+                                    let ptLat = cLat + (nLat - cLat) * remainder;
+                                    let ptLng = cLng + (nLng - cLng) * remainder;
                                     
                                     actor.currentLat = ptLat;
                                     actor.currentLng = ptLng;
@@ -297,8 +295,8 @@ function initFoundPrizeAnimation() {
                                         actor.marker.setLatLng([ptLat, ptLng]);
                                         if (actor.polyline) {
                                             let offsetPath = actor.path.slice(0, baseIdx + 1).map(p => [
-                                                (p.lat !== undefined ? p.lat : p[0]) + actor.offsetX,
-                                                (p.lng !== undefined ? p.lng : p[1]) + actor.offsetY
+                                                (p.lat !== undefined ? p.lat : p[0]),
+                                                (p.lng !== undefined ? p.lng : p[1])
                                             ]);
                                             if (remainder > 0) offsetPath.push([ptLat, ptLng]);
                                             actor.polyline.setLatLngs(offsetPath);
@@ -328,8 +326,8 @@ function initFoundPrizeAnimation() {
                                     for(let k = 0; k <= actor.baseIdx; k++) {
                                         let curr = actor.path[k];
                                         let tp = map.latLngToContainerPoint([
-                                            (curr.lat !== undefined ? curr.lat : curr[0]) + actor.offsetX,
-                                            (curr.lng !== undefined ? curr.lng : curr[1]) + actor.offsetY
+                                            (curr.lat !== undefined ? curr.lat : curr[0]),
+                                            (curr.lng !== undefined ? curr.lng : curr[1])
                                         ]);
                                         // moveTo 斷開路徑，確保畫出來的是獨立的圓圈而不是連線
                                         lowResCtx.moveTo(tp.x * FOG_SCALE + radius, tp.y * FOG_SCALE);
