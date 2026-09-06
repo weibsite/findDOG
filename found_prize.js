@@ -123,6 +123,10 @@ function initFoundPrizeAnimation() {
                         let lat = pt.lat !== undefined ? pt.lat : pt[0];
                         let lng = pt.lng !== undefined ? pt.lng : pt[1];
                         if (isNaN(lat) || isNaN(lng)) continue;
+                        
+                        // 過濾邊界：若該點距離遺失中心超過 5 公里 (5000公尺)，直接捨棄該點
+                        if (getDist(center[0], center[1], lat, lng) > 5000) continue;
+                        
                         if (currentSegment.length === 0) {
                             currentSegment.push({lat, lng});
                         } else {
@@ -135,7 +139,7 @@ function initFoundPrizeAnimation() {
                             }
                         }
                     }
-                    if (currentSegment.length > 3) allPaths.push(currentSegment);
+                    if (currentSegment.length > 3) allPaths.push([...currentSegment]);
                 });
             }
             
