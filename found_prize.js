@@ -700,10 +700,24 @@ function initFoundPrizeAnimation() {
         setTimeout(() => {
             requestAnimationFrame(decayFrame);
             
-            // 分三次慢慢放大畫面 (配合毒圈收縮)
-            setTimeout(() => map.setZoom(map.getZoom() + 1), 2000);
-            setTimeout(() => map.setZoom(map.getZoom() + 1), 4000);
-            setTimeout(() => map.setZoom(map.getZoom() + 1), 6000);
+            // 計算最後兩個人的邊界，取得最適合的 Zoom Level (加上一些 padding 避免貼邊)
+            let finalBounds = L.latLngBounds(
+                [winners[0].currentLat, winners[0].currentLng],
+                [winners[1].currentLat, winners[1].currentLng]
+            ).pad(0.3);
+            
+            let targetZoom = map.getBoundsZoom(finalBounds);
+            
+            // 分三次慢慢放大畫面，但絕對不超過能包覆兩人的最大 Zoom Level
+            let stepDelay = duration / 4;
+            for(let i=1; i<=3; i++) {
+                setTimeout(() => {
+                    if (map.getZoom() < targetZoom) {
+                        map.setZoom(map.getZoom() + 1, {animate: true});
+                    }
+                }, i * stepDelay);
+            }
+            
         }, 1200);
     }
 
