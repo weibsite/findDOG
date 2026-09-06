@@ -337,9 +337,16 @@ function initFoundPrizeAnimation() {
                 let furthestWinnerDist = Math.max(distances[0].dist, distances[1].dist);
                 styleDEndRadius = Math.max(20, furthestWinnerDist + 30);
                 
-                let nw = map.getBounds().getNorthWest();
-                styleDStartRadius = getDist(styleDCenter.lat, styleDCenter.lng, nw.lat, nw.lng);
-                
+                styleDStartRadius = 0;
+                actors.forEach(a => {
+                    let aFirst = a.path[0];
+                    let aLat = aFirst.lat !== undefined ? aFirst.lat : aFirst[0];
+                    let aLng = aFirst.lng !== undefined ? aFirst.lng : aFirst[1];
+                    let d = getDist(styleDCenter.lat, styleDCenter.lng, aLat, aLng);
+                    if (d > styleDStartRadius) styleDStartRadius = d;
+                });
+                styleDStartRadius += 500; // 加上緩衝，確保一開始毒圈包住所有人
+                                
                 // 3. 創建超高圖層來顯示毒圈，確保不會被黑霧遮擋
                 if (!map.getPane('toxicPaneD')) {
                     map.createPane('toxicPaneD');
@@ -480,14 +487,21 @@ function initFoundPrizeAnimation() {
                             let initialLoserCount = actors.length - 2;
                             let targetLoserCount = Math.floor(initialLoserCount * (1 - progress));
                             let currentActiveLosers = actors.filter(a => a.active && !styleDWon.includes(a));
-                            while (currentActiveLosers.length > targetLoserCount) {
-                                let victim = styleDLosers.pop();
-                                if (victim && victim.active) {
+                            
+                            if (currentActiveLosers.length > targetLoserCount) {
+                                // 根據距離中心點由遠到近排序，優先淘汰離中心點最遠（最靠近毒圈邊緣）的人
+                                currentActiveLosers.sort((a, b) => {
+                                    let distA = getDist(styleDCenter.lat, styleDCenter.lng, a.currentLat, a.currentLng);
+                                    let distB = getDist(styleDCenter.lat, styleDCenter.lng, b.currentLat, b.currentLng);
+                                    return distB - distA; 
+                                });
+                                
+                                while (currentActiveLosers.length > targetLoserCount) {
+                                    let victim = currentActiveLosers.shift(); // 取出最遠的那個人
                                     if (victim.marker) victim.marker.remove();
                                     if (victim.polyline) victim.polyline.setStyle({opacity: 0});
                                     victim.active = false;
-                                    currentActiveLosers = actors.filter(a => a.active && !styleDWon.includes(a));
-                                } else if (!victim) break;
+                                }
                             }
                         }
                         
