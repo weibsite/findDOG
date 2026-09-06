@@ -287,9 +287,6 @@ function initFoundPrizeAnimation() {
             let styleDCenter = {lat:0, lng:0}, styleDStartRadius = 0, styleDEndRadius = 0, toxicCircleD = null;
             let styleDLosers = [];
             if (styleId === 4) {
-                let w1 = actors[Math.floor(Math.random() * actors.length)];
-                styleDWon.push(w1);
-                
                 const getDist = (lat1, lon1, lat2, lon2) => {
                     const R = 6371e3;
                     const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
@@ -297,43 +294,53 @@ function initFoundPrizeAnimation() {
                     const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
                     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 };
-                
-                let closest = null;
-                let minDist = Infinity;
-                let w1Last = w1.path[w1.path.length-1];
-                let w1Lat = w1Last.lat !== undefined ? w1Last.lat : w1Last[0];
-                let w1Lng = w1Last.lng !== undefined ? w1Last.lng : w1Last[1];
-                
-                actors.forEach(a => {
-                    if (a !== w1) {
-                        let aLast = a.path[a.path.length-1];
-                        let aLat = aLast.lat !== undefined ? aLast.lat : aLast[0];
-                        let aLng = aLast.lng !== undefined ? aLast.lng : aLast[1];
-                        let d = getDist(w1Lat, w1Lng, aLat, aLng);
-                        if (d < minDist) { minDist = d; closest = a; }
-                    }
-                });
-                if (closest) styleDWon.push(closest);
-                else {
-                    while(styleDWon.length < 2) {
-                        let w = actors[Math.floor(Math.random() * actors.length)];
-                        if (!styleDWon.includes(w)) styleDWon.push(w);
+
+                // 1. 尋找「找到了」的出沒點作為毒圈終點
+                let foundSighting = null;
+                if (window.allSightings) {
+                    let sArr = Object.values(window.allSightings).filter(s => s.description && s.description.includes('找到了'));
+                    if (sArr.length > 0) {
+                        foundSighting = sArr[0]; // 取第一個符合的
                     }
                 }
                 
-                let w2Last = styleDWon[1].path[styleDWon[1].path.length-1];
-                let w2Lat = w2Last.lat !== undefined ? w2Last.lat : w2Last[0];
-                let w2Lng = w2Last.lng !== undefined ? w2Last.lng : w2Last[1];
+                if (foundSighting) {
+                    styleDCenter.lat = foundSighting.lat;
+                    styleDCenter.lng = foundSighting.lng;
+                } else {
+                    styleDCenter.lat = map.getCenter().lat;
+                    styleDCenter.lng = map.getCenter().lng;
+                }
                 
-                styleDCenter.lat = (w1Lat + w2Lat) / 2;
-                styleDCenter.lng = (w1Lng + w2Lng) / 2;
-                let wDistMeters = getDist(w1Lat, w1Lng, w2Lat, w2Lng);
-                styleDEndRadius = Math.max(20, wDistMeters / 2 + 30);
+                // 2. 選出離這個中心點「最後位置」最近的兩個人作為勝利者
+                let distances = actors.map(a => {
+                    let aLast = a.path[a.path.length-1];
+                    let aLat = aLast.lat !== undefined ? aLast.lat : aLast[0];
+                    let aLng = aLast.lng !== undefined ? aLast.lng : aLast[1];
+                    return {
+                        actor: a,
+                        dist: getDist(styleDCenter.lat, styleDCenter.lng, aLat, aLng)
+                    };
+                });
+                
+                distances.sort((a, b) => a.dist - b.dist);
+                styleDWon = [distances[0].actor, distances[1].actor];
+                
+                let furthestWinnerDist = Math.max(distances[0].dist, distances[1].dist);
+                styleDEndRadius = Math.max(20, furthestWinnerDist + 30);
                 
                 let nw = map.getBounds().getNorthWest();
                 styleDStartRadius = getDist(styleDCenter.lat, styleDCenter.lng, nw.lat, nw.lng);
                 
+                // 3. 創建超高圖層來顯示毒圈，確保不會被黑霧遮擋
+                if (!map.getPane('toxicPaneD')) {
+                    map.createPane('toxicPaneD');
+                    map.getPane('toxicPaneD').style.zIndex = 99999;
+                    map.getPane('toxicPaneD').style.pointerEvents = 'none';
+                }
+                
                 toxicCircleD = L.circle([styleDCenter.lat, styleDCenter.lng], {
+                    pane: 'toxicPaneD',
                     color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.1, weight: 4, dashArray: '10, 10'
                 }).addTo(map);
                 
@@ -342,6 +349,28 @@ function initFoundPrizeAnimation() {
                     const j = Math.floor(Math.random() * (i + 1));
                     [styleDLosers[i], styleDLosers[j]] = [styleDLosers[j], styleDLosers[i]];
                 }
+                
+                // 4. 計算並排程漸進式鏡頭放大
+                setTimeout(() => {
+                    // 先飛到中心點
+                    map.flyTo([styleDCenter.lat, styleDCenter.lng], map.getZoom(), {animate: true, duration: 1.0});
+                    
+                    let finalBounds = L.latLng([styleDCenter.lat, styleDCenter.lng]).toBounds(styleDEndRadius * 2).pad(0.3);
+                    let targetZoom = map.getBoundsZoom(finalBounds);
+                    let currentZoom = map.getZoom();
+                    
+                    if (targetZoom > currentZoom) {
+                        let zoomSteps = targetZoom - currentZoom;
+                        let stepInterval = 55000 / (zoomSteps + 1); // 在接下來的 55 秒內平均分配放大次數
+                        for (let i = 1; i <= zoomSteps; i++) {
+                            setTimeout(() => {
+                                if (window.PRIZE_DRAW_STYLE === 4 && map.getZoom() < targetZoom) {
+                                    map.setZoom(map.getZoom() + 1, {animate: true});
+                                }
+                            }, i * stepInterval);
+                        }
+                    }
+                }, 1500);
                 
                 setTimeout(() => showCenterToast("🔥 [風格D] 60秒同步大逃殺開始！毒圈收縮中...", 5000), 500);
             }
