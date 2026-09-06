@@ -412,9 +412,36 @@ function initFoundPrizeAnimation() {
                             return;
                         }
                         let winners = [];
-                        while(winners.length < 2) {
-                            let w = activeActors[Math.floor(Math.random() * activeActors.length)];
-                            if (!winners.includes(w)) winners.push(w);
+                        let w1 = activeActors[Math.floor(Math.random() * activeActors.length)];
+                        winners.push(w1);
+                        
+                        // 尋找距離 w1 最近的人作為第二個得獎者，這樣大逃殺毒圈才能合理地縮到極小
+                        let closest = null;
+                        let minDist = Infinity;
+                        const getDist = (lat1, lon1, lat2, lon2) => {
+                            const R = 6371e3;
+                            const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+                            const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+                            const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+                            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                        };
+                        
+                        activeActors.forEach(a => {
+                            if (a !== w1) {
+                                let d = getDist(w1.currentLat, w1.currentLng, a.currentLat, a.currentLng);
+                                if (d < minDist) {
+                                    minDist = d;
+                                    closest = a;
+                                }
+                            }
+                        });
+                        
+                        if (closest) winners.push(closest);
+                        else {
+                            while(winners.length < 2) {
+                                let w = activeActors[Math.floor(Math.random() * activeActors.length)];
+                                if (!winners.includes(w)) winners.push(w);
+                            }
                         }
                         
                         let styleId = window.PRIZE_DRAW_STYLE || 1;
