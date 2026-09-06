@@ -251,10 +251,6 @@ function initFoundPrizeAnimation() {
             // 建立除錯計數器面板
             let oldCounter = document.getElementById('anim-counter');
             if (oldCounter) oldCounter.remove();
-            let counterDiv = document.createElement('div');
-            counterDiv.id = 'anim-counter';
-            counterDiv.style.cssText = 'position:fixed; top:70px; right:10px; z-index:99999; background:rgba(0,0,0,0.85); color:white; padding:12px; border-radius:8px; font-size:14px; border:1px solid #3b82f6; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events:auto;';
-            document.body.appendChild(counterDiv);
             
             // 關閉地圖上所有圖標與線條的滑鼠感應，避免滑鼠移過去觸發彈出視窗
             let oldLock = document.getElementById('anim-pointer-lock');
@@ -591,17 +587,6 @@ function initFoundPrizeAnimation() {
                             fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                             fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
                         }
-                        
-                        // 更新除錯面板
-                        let activeActors = actors.filter(a => a.active).length;
-                        let renderedMarkers = document.querySelectorAll('.custom-div-icon').length;
-                        counterDiv.innerHTML = `
-                            <div style="margin-bottom:5px; font-weight:bold; color:#10b981;">📊 渲染狀態監控</div>
-                            動畫進度: ${Math.min(60, Math.floor(elapsed/1000))}s / 60s<br>
-                            名單總人數: ${joins.length}<br>
-                            已進場人數: ${activeActors}<br>
-                            畫面中標記數: <span style="color:#f59e0b; font-weight:bold;">${renderedMarkers}</span>
-                        `;
                     }
                     
                     if (elapsed > 50000) {
