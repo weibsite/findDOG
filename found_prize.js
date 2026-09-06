@@ -433,7 +433,15 @@ function initFoundPrizeAnimation() {
         }
     }
     
-    async function triggerFinalReveal(winners, message) {
+    async function triggerFinalReveal(allActors, winners, message) {
+        // C 風格的招牌：將所有非中獎者淡化
+        allActors.forEach(a => {
+            if (!winners.includes(a)) {
+                if (a.marker) a.marker.getElement().style.opacity = '0.3';
+                if (a.polyline) a.polyline.setStyle({opacity: 0.1});
+            }
+        });
+        
         map.fitBounds([
             [winners[0].currentLat, winners[0].currentLng],
             [winners[1].currentLat, winners[1].currentLng]
@@ -476,7 +484,7 @@ function initFoundPrizeAnimation() {
     }
 
     async function runDrawStyle1(allActors, winners) {
-        showCenterToast("🔦 [風格A] 聚光燈輪盤啟動...", 3000);
+        showCenterToast("🔦 [風格A] 聚光燈輪盤隨機搜尋中...", 3000);
         allActors.forEach(a => {
             if (a.polyline) a.polyline.setStyle({opacity: 0.1});
         });
@@ -492,32 +500,16 @@ function initFoundPrizeAnimation() {
             }, delay);
         });
         
-        for(let i=0; i<3; i++) {
+        // 單純作為篩選演出：在 5 個隨機路人身上快速運鏡
+        for(let i=0; i<5; i++) {
             let fake = allActors[Math.floor(Math.random() * allActors.length)];
             await panTo(fake, 1200);
         }
         
-        showCenterToast("🔍 尋找第一位...", 2000);
-        await panTo(winners[0], 1500);
-        setTimeout(() => {
-            if (winners[0].marker) winners[0].marker.getElement().style.transform += ' scale(1.5)';
-        }, 1000);
-        
-        for(let i=0; i<2; i++) {
-            let fake = allActors[Math.floor(Math.random() * allActors.length)];
-            await panTo(fake, 1800);
-        }
-        
-        showCenterToast("🔍 尋找第二位...", 2000);
-        await panTo(winners[1], 1500);
-        setTimeout(() => {
-            if (winners[1].marker) winners[1].marker.getElement().style.transform += ' scale(1.5)';
-            
-            overlay.style.background = 'rgba(0,0,0,0)';
-            setTimeout(() => overlay.remove(), 1000);
-            
-            triggerFinalReveal(winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
-        }, 1000);
+        // 篩選結束，將結果傳給 C 進行最終演出
+        overlay.style.background = 'rgba(0,0,0,0)';
+        setTimeout(() => overlay.remove(), 1000);
+        triggerFinalReveal(allActors, winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
     }
 
     async function runDrawStyle2(allActors, winners) {
@@ -568,22 +560,15 @@ function initFoundPrizeAnimation() {
         await shrinkPool(15, 2000);
         await shrinkPool(2, 2500);
         
+        // 毒圈篩選結束，將結果傳給 C 進行最終演出
         setTimeout(() => {
-            triggerFinalReveal(winners, `🎯 大逃殺最終存活：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
+            triggerFinalReveal(allActors, winners, `🎯 大逃殺最終存活：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
         }, 1000);
     }
 
     async function runDrawStyle3(allActors, winners) {
         showCenterToast("📡 [風格C] 天降幸運雷達鎖定中...", 3000);
-        
-        allActors.forEach(a => {
-            if (!winners.includes(a)) {
-                if (a.marker) a.marker.getElement().style.opacity = '0.3';
-                if (a.polyline) a.polyline.setStyle({opacity: 0.1});
-            }
-        });
-        
-        triggerFinalReveal(winners, `🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
+        triggerFinalReveal(allActors, winners, `🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
     }
 } // <--- This closes initFoundPrizeAnimation
 
