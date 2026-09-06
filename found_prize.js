@@ -227,6 +227,9 @@ function initFoundPrizeAnimation() {
                 .leaflet-marker-pane, .leaflet-overlay-pane, .leaflet-interactive {
                     pointer-events: none !important;
                 }
+                #toggle-sighting-track-btn, #spectator-hint {
+                    display: none !important;
+                }
             `;
             document.head.appendChild(style);
             
@@ -394,9 +397,6 @@ function initFoundPrizeAnimation() {
                     if (elapsed > duration) {
                         cancelAnimationFrame(animationFrameId);
                         
-                        let lock = document.getElementById('anim-pointer-lock');
-                        if (lock) lock.remove();
-                        
                         let oldCounter = document.getElementById('anim-counter');
                         if (oldCounter) oldCounter.remove();
                         
@@ -492,6 +492,10 @@ function initFoundPrizeAnimation() {
             ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
             
             showCenterToast(message, 10000);
+            
+            // 演出徹底結束，解除鎖定並還原 UI
+            let lock = document.getElementById('anim-pointer-lock');
+            if (lock) lock.remove();
         }, 2000);
     }
 
