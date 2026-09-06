@@ -437,7 +437,9 @@ function initFoundPrizeAnimation() {
         // C 風格的招牌：將所有非中獎者淡化
         allActors.forEach(a => {
             if (!winners.includes(a)) {
-                if (a.marker) a.marker.getElement().style.opacity = '0.3';
+                if (a.marker && a.marker.getElement()) {
+                    a.marker.getElement().style.opacity = '0.3';
+                }
                 if (a.polyline) a.polyline.setStyle({opacity: 0.1});
             }
         });
@@ -468,7 +470,7 @@ function initFoundPrizeAnimation() {
                     }
                 }, 50);
                 
-                if (w.marker) {
+                if (w.marker && w.marker.getElement()) {
                     w.marker.getElement().style.transform += ' scale(2.5)';
                     w.marker.getElement().style.zIndex = 30000;
                 }
@@ -513,57 +515,103 @@ function initFoundPrizeAnimation() {
     }
 
     async function runDrawStyle2(allActors, winners) {
-        showCenterToast("🌪️ [風格B] 迷霧大逃殺開始！毒圈縮小中...", 4000);
+        showCenterToast("🌪️ [風格B] 迷霧大逃殺開始！毒霧腐蝕中...", 5000);
         
         if (typeof routesLayer !== 'undefined') routesLayer.clearLayers();
-        if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
-            lowResCtx.globalCompositeOperation = 'source-over';
-            lowResCtx.fillStyle = 'black';
-            lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
-            fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
-            fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
-        }
         
-        let pool = [...allActors];
-        const shrinkPool = (targetCount, delay) => new Promise(res => {
-            setTimeout(() => {
-                let keep = [...winners];
-                while(keep.length < targetCount && pool.length > keep.length) {
-                    let k = pool[Math.floor(Math.random() * pool.length)];
-                    if (!keep.includes(k)) keep.push(k);
-                }
-                pool.forEach(a => {
-                    if (!keep.includes(a) && a.marker) {
-                        a.marker.remove();
+        let centerLat = (winners[0].currentLat + winners[1].currentLat) / 2;
+        let centerLng = (winners[0].currentLng + winners[1].currentLng) / 2;
+        
+        // Initial bounds to determine max radius
+        let bounds = map.getBounds();
+        let nw = map.latLngToContainerPoint(bounds.getNorthWest());
+        let se = map.latLngToContainerPoint(bounds.getSouthEast());
+        let maxDist = Math.sqrt(Math.pow(se.x - nw.x, 2) + Math.pow(se.y - nw.y, 2));
+        
+        let startRadius = maxDist; 
+        
+        let w0p = map.latLngToContainerPoint([winners[0].currentLat, winners[0].currentLng]);
+        let w1p = map.latLngToContainerPoint([winners[1].currentLat, winners[1].currentLng]);
+        let wDist = Math.sqrt(Math.pow(w0p.x - w1p.x, 2) + Math.pow(w0p.y - w1p.y, 2));
+        let endRadius = Math.max(100, wDist / 2 + 50); // safe zone just fits the winners
+        
+        let startTime = Date.now();
+        let duration = 6000; // 6 seconds to shrink
+        
+        const decayFrame = () => {
+            let elapsed = Date.now() - startTime;
+            let progress = Math.min(1.0, elapsed / duration);
+            
+            // Non-linear shrink for dramatic effect (fast then slow)
+            let easeProgress = 1 - Math.pow(1 - progress, 3);
+            let currentRadius = startRadius - (startRadius - endRadius) * easeProgress;
+            let centerPoint = map.latLngToContainerPoint([centerLat, centerLng]);
+            
+            // Kill actors outside the radius
+            allActors.forEach(a => {
+                if (a.active && !winners.includes(a)) {
+                    let p = map.latLngToContainerPoint([a.currentLat, a.currentLng]);
+                    let dist = Math.sqrt(Math.pow(p.x - centerPoint.x, 2) + Math.pow(p.y - centerPoint.y, 2));
+                    if (dist > currentRadius) {
+                        if (a.marker) a.marker.remove();
                         a.active = false;
                     }
-                });
-                pool = keep;
-                
+                }
+            });
+            
+            // Render
+            if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
                 lowResCtx.globalCompositeOperation = 'source-over';
+                lowResCtx.fillStyle = 'black';
                 lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+                
                 lowResCtx.globalCompositeOperation = 'destination-out';
-                pool.forEach(a => {
-                    let p = map.latLngToContainerPoint([a.currentLat, a.currentLng]);
-                    lowResCtx.beginPath();
-                    lowResCtx.arc(p.x * 0.08, p.y * 0.08, 15, 0, Math.PI * 2);
-                    lowResCtx.fill();
+                lowResCtx.beginPath();
+                allActors.forEach(a => {
+                    if (a.active) {
+                        let p = map.latLngToContainerPoint([a.currentLat, a.currentLng]);
+                        lowResCtx.moveTo(p.x * 0.08 + 15, p.y * 0.08);
+                        lowResCtx.arc(p.x * 0.08, p.y * 0.08, 15, 0, Math.PI * 2);
+                    }
                 });
+                lowResCtx.fill();
+                
+                // Draw toxic fog OUTSIDE the safe zone
+                lowResCtx.globalCompositeOperation = 'source-over';
+                lowResCtx.fillStyle = 'rgba(20,0,0,0.85)'; // Reddish toxic fog
+                lowResCtx.beginPath();
+                lowResCtx.rect(0, 0, lowResCanvas.width, lowResCanvas.height);
+                lowResCtx.moveTo(centerPoint.x * 0.08 + currentRadius * 0.08, centerPoint.y * 0.08);
+                // Counter-clockwise to punch hole
+                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadius * 0.08, 0, Math.PI * 2, true);
+                lowResCtx.fill();
+                
+                // Draw a boundary red line for the safe zone
+                lowResCtx.strokeStyle = 'rgba(255,50,50,0.8)';
+                lowResCtx.lineWidth = 1;
+                lowResCtx.beginPath();
+                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadius * 0.08, 0, Math.PI * 2);
+                lowResCtx.stroke();
+                
+                fogCtx.imageSmoothingEnabled = false;
                 fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                 fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
-                
-                res();
-            }, delay);
-        });
+            }
+            
+            if (progress < 1.0) {
+                requestAnimationFrame(decayFrame);
+            } else {
+                setTimeout(() => {
+                    triggerFinalReveal(allActors, winners, `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
+                }, 500);
+            }
+        };
         
-        await shrinkPool(50, 1000);
-        await shrinkPool(15, 2000);
-        await shrinkPool(2, 2500);
-        
-        // 毒圈篩選結束，將結果傳給 C 進行最終演出
+        // Pan to the center of the safe zone first so the user sees the shrinking
+        map.flyTo([centerLat, centerLng], map.getZoom(), {animate: true, duration: 1.0});
         setTimeout(() => {
-            triggerFinalReveal(allActors, winners, `🎯 大逃殺最終存活：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
-        }, 1000);
+            requestAnimationFrame(decayFrame);
+        }, 1200);
     }
 
     async function runDrawStyle3(allActors, winners) {
