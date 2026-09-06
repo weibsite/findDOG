@@ -249,8 +249,12 @@ function initFoundPrizeAnimation() {
             if (typeof isSpectatorMode !== 'undefined') isSpectatorMode = true;
             
             if (typeof map !== 'undefined' && map) {
-                const offsetLat = 0.027;
-                const offsetLng = 0.029;
+                let offsetLat = 0.027;
+                let offsetLng = 0.029;
+                if (window.PRIZE_DRAW_STYLE === 1) {
+                    offsetLat = 0.006;
+                    offsetLng = 0.006;
+                }
                 map.fitBounds([
                     [center[0] - offsetLat, center[1] - offsetLng],
                     [center[0] + offsetLat, center[1] + offsetLng]
@@ -867,14 +871,19 @@ function initFoundPrizeAnimation() {
         
         let candidateIndex = 1;
 
-        const panAndPop = async (actor) => {
-            candidateText.innerHTML = `🔍 尋找候選人 ${candidateIndex}/5...`;
+        const panAndPop = async (actor, isFinal) => {
+            let total = candidates.length;
+            if (isFinal) {
+                candidateText.innerHTML = `🎯 鎖定最終得獎者！`;
+            } else {
+                candidateText.innerHTML = `🔍 尋找候選人 ${candidateIndex}/${total}...`;
+            }
             map.flyTo([actor.currentLat, actor.currentLng], 18, {duration: 0.8});
             
             // 等待鏡頭飛到定位
             await new Promise(r => setTimeout(r, 800));
             
-            candidateText.innerHTML = `🎯 鎖定候選人 ${candidateIndex}！`;
+            if (!isFinal) candidateText.innerHTML = `🎯 鎖定候選人 ${candidateIndex}！`;
             candidateIndex++;
             
             // 放大標籤：對內部容器操作，避免 Leaflet 覆寫
@@ -888,37 +897,44 @@ function initFoundPrizeAnimation() {
                 actor.marker.getElement().style.zIndex = 30000;
             }
             
-            // 停頓 600ms 讓畫面看清楚候選人
-            await new Promise(r => setTimeout(r, 600));
+            // 停頓
+            await new Promise(r => setTimeout(r, isFinal ? 2000 : 600));
             
-            // 縮小復原
-            if (actor.marker && actor.marker.getElement()) {
-                let inner = actor.marker.getElement().querySelector('.user-label-container');
-                if (inner) {
-                    inner.style.transform = 'scale(1)';
+            // 如果不是最終得獎者，縮小復原
+            if (!isFinal) {
+                if (actor.marker && actor.marker.getElement()) {
+                    let inner = actor.marker.getElement().querySelector('.user-label-container');
+                    if (inner) {
+                        inner.style.transform = 'scale(1)';
+                    }
+                    actor.marker.getElement().style.zIndex = '';
                 }
-                actor.marker.getElement().style.zIndex = '';
             }
         };
         
-        // 準備 5 名候選人 (包含 2 名真正得獎者，以及 3 名煙霧彈)
+        // 準備候選人 (包含煙霧彈，得獎者放最後)
         let losers = allActors.filter(a => !winners.includes(a));
-        let candidates = [...winners];
+        let candidates = [];
+        let fakeCount = Math.min(losers.length, Math.max(0, 5 - winners.length));
         
-        while(candidates.length < 5 && losers.length > 0) {
+        for (let i = 0; i < fakeCount; i++) {
             let fake = losers.splice(Math.floor(Math.random() * losers.length), 1)[0];
             candidates.push(fake);
         }
         
-        // 打亂順序，避免最後一個總是得獎者
+        // 打亂煙霧彈順序
         for (let i = candidates.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
         }
         
+        // 將真正得獎者加到最後
+        candidates.push(...winners);
+        
         // 依序點名候選人
         for(let i=0; i<candidates.length; i++) {
-            await panAndPop(candidates[i]);
+            let isFinal = winners.includes(candidates[i]);
+            await panAndPop(candidates[i], isFinal);
         }
         
         // 篩選結束，將結果傳給最終演出
@@ -926,7 +942,7 @@ function initFoundPrizeAnimation() {
         overlay.style.background = 'rgba(0,0,0,0)';
         setTimeout(() => overlay.remove(), 1000);
         let names = winners.map(w => w.name).join(' & ');
-        triggerFinalReveal(allActors, winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${names}！`);
+        triggerFinalReveal(allActors, winners, `🎯 鎖定完畢！\n🎉 恭喜得獎者：${names}！`);
     }
 
     async function runDrawStyle2(allActors, winners) {
