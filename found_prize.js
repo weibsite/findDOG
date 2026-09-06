@@ -433,6 +433,48 @@ function initFoundPrizeAnimation() {
         }
     }
     
+    async function triggerFinalReveal(winners, message) {
+        map.fitBounds([
+            [winners[0].currentLat, winners[0].currentLng],
+            [winners[1].currentLat, winners[1].currentLng]
+        ], {padding: [100, 100]});
+        
+        setTimeout(() => {
+            winners.forEach((w, i) => {
+                let circle = L.circleMarker([w.currentLat, w.currentLng], {
+                    radius: 10,
+                    color: i === 0 ? '#fbbf24' : '#60a5fa',
+                    fillColor: i === 0 ? '#f59e0b' : '#3b82f6',
+                    fillOpacity: 0.8,
+                    weight: 4
+                }).addTo(map);
+                
+                let r = 10;
+                let iv = setInterval(() => {
+                    r += 5;
+                    circle.setRadius(r);
+                    circle.setStyle({opacity: Math.max(0, 1 - r/150), fillOpacity: Math.max(0, 0.8 - r/150)});
+                    if (r > 150) {
+                        clearInterval(iv);
+                        circle.remove();
+                    }
+                }, 50);
+                
+                if (w.marker) {
+                    w.marker.getElement().style.transform += ' scale(2.5)';
+                    w.marker.getElement().style.zIndex = 30000;
+                }
+            });
+            
+            L.polyline([
+                [winners[0].currentLat, winners[0].currentLng],
+                [winners[1].currentLat, winners[1].currentLng]
+            ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
+            
+            showCenterToast(message, 10000);
+        }, 2000);
+    }
+
     async function runDrawStyle1(allActors, winners) {
         showCenterToast("🔦 [風格A] 聚光燈輪盤啟動...", 3000);
         allActors.forEach(a => {
@@ -455,11 +497,10 @@ function initFoundPrizeAnimation() {
             await panTo(fake, 1200);
         }
         
+        showCenterToast("🔍 尋找第一位...", 2000);
         await panTo(winners[0], 1500);
         setTimeout(() => {
-            winners[0].marker.getElement().style.transform += ' scale(2.5)';
-            winners[0].marker.getElement().style.zIndex = 30000;
-            showCenterToast(`🎉 第一位中獎者：${winners[0].name}！`, 4000);
+            if (winners[0].marker) winners[0].marker.getElement().style.transform += ' scale(1.5)';
         }, 1000);
         
         for(let i=0; i<2; i++) {
@@ -467,13 +508,15 @@ function initFoundPrizeAnimation() {
             await panTo(fake, 1800);
         }
         
+        showCenterToast("🔍 尋找第二位...", 2000);
         await panTo(winners[1], 1500);
         setTimeout(() => {
-            winners[1].marker.getElement().style.transform += ' scale(2.5)';
-            winners[1].marker.getElement().style.zIndex = 30000;
-            showCenterToast(`🎉 第一位：${winners[0].name}\n🎉 第二位：${winners[1].name}\n\n抽獎結束！`, 10000);
+            if (winners[1].marker) winners[1].marker.getElement().style.transform += ' scale(1.5)';
+            
             overlay.style.background = 'rgba(0,0,0,0)';
             setTimeout(() => overlay.remove(), 1000);
+            
+            triggerFinalReveal(winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
         }, 1000);
     }
 
@@ -526,13 +569,7 @@ function initFoundPrizeAnimation() {
         await shrinkPool(2, 2500);
         
         setTimeout(() => {
-            map.fitBounds([
-                [winners[0].currentLat, winners[0].currentLng],
-                [winners[1].currentLat, winners[1].currentLng]
-            ], {padding: [50, 50]});
-            
-            winners.forEach(w => w.marker.getElement().style.transform += ' scale(3)');
-            showCenterToast(`🎉 最終存活的兩位幸運兒：\n1. ${winners[0].name}\n2. ${winners[1].name}！`, 10000);
+            triggerFinalReveal(winners, `🎯 大逃殺最終存活：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
         }, 1000);
     }
 
@@ -546,43 +583,7 @@ function initFoundPrizeAnimation() {
             }
         });
         
-        map.fitBounds([
-            [winners[0].currentLat, winners[0].currentLng],
-            [winners[1].currentLat, winners[1].currentLng]
-        ], {padding: [100, 100]});
-        
-        setTimeout(() => {
-            winners.forEach((w, i) => {
-                let circle = L.circleMarker([w.currentLat, w.currentLng], {
-                    radius: 10,
-                    color: i === 0 ? '#fbbf24' : '#60a5fa',
-                    fillColor: i === 0 ? '#f59e0b' : '#3b82f6',
-                    fillOpacity: 0.8,
-                    weight: 4
-                }).addTo(map);
-                
-                let r = 10;
-                let iv = setInterval(() => {
-                    r += 5;
-                    circle.setRadius(r);
-                    circle.setStyle({opacity: Math.max(0, 1 - r/150), fillOpacity: Math.max(0, 0.8 - r/150)});
-                    if (r > 150) {
-                        clearInterval(iv);
-                        circle.remove();
-                    }
-                }, 50);
-                
-                w.marker.getElement().style.transform += ' scale(2.5)';
-                w.marker.getElement().style.zIndex = 30000;
-            });
-            
-            L.polyline([
-                [winners[0].currentLat, winners[0].currentLng],
-                [winners[1].currentLat, winners[1].currentLng]
-            ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
-            
-            showCenterToast(`🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`, 10000);
-        }, 2000);
+        triggerFinalReveal(winners, `🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
     }
 } // <--- This closes initFoundPrizeAnimation
 
