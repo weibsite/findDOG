@@ -580,37 +580,43 @@ function initFoundPrizeAnimation() {
         let centerLat = (winners[0].currentLat + winners[1].currentLat) / 2;
         let centerLng = (winners[0].currentLng + winners[1].currentLng) / 2;
         
-        // Initial bounds to determine max radius
-        let bounds = map.getBounds();
-        let nw = map.latLngToContainerPoint(bounds.getNorthWest());
-        let se = map.latLngToContainerPoint(bounds.getSouthEast());
-        let maxDist = Math.sqrt(Math.pow(se.x - nw.x, 2) + Math.pow(se.y - nw.y, 2));
+        // 使用真實地理距離(公尺)來計算毒圈，這樣當地圖放大時，毒圈才不會跑位
+        const getDist = (lat1, lon1, lat2, lon2) => {
+            const R = 6371e3;
+            const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+            const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        };
         
-        let startRadius = maxDist; 
+        let nw = map.getBounds().getNorthWest();
+        let startRadiusMeters = getDist(centerLat, centerLng, nw.lat, nw.lng); 
         
-        let w0p = map.latLngToContainerPoint([winners[0].currentLat, winners[0].currentLng]);
-        let w1p = map.latLngToContainerPoint([winners[1].currentLat, winners[1].currentLng]);
-        let wDist = Math.sqrt(Math.pow(w0p.x - w1p.x, 2) + Math.pow(w0p.y - w1p.y, 2));
-        let endRadius = Math.max(100, wDist / 2 + 50); // safe zone just fits the winners
+        let wDistMeters = getDist(winners[0].currentLat, winners[0].currentLng, winners[1].currentLat, winners[1].currentLng);
+        let endRadiusMeters = Math.max(20, wDistMeters / 2 + 30); // 縮到剛好包住兩個得獎者
         
         let startTime = Date.now();
-        let duration = 6000; // 6 seconds to shrink
+        let duration = 8000; // 延長至 8 秒，讓運鏡更充足
         
         const decayFrame = () => {
             let elapsed = Date.now() - startTime;
             let progress = Math.min(1.0, elapsed / duration);
             
-            // Non-linear shrink for dramatic effect (fast then slow)
-            let easeProgress = 1 - Math.pow(1 - progress, 3);
-            let currentRadius = startRadius - (startRadius - endRadius) * easeProgress;
-            let centerPoint = map.latLngToContainerPoint([centerLat, centerLng]);
+            // 平滑收縮曲線
+            let easeProgress = progress * (2 - progress);
+            let currentRadiusMeters = startRadiusMeters - (startRadiusMeters - endRadiusMeters) * easeProgress;
             
-            // Kill actors outside the radius
+            // 將真實地理半徑轉換為當前畫面縮放級別下的 Pixel 半徑
+            let centerPoint = map.latLngToContainerPoint([centerLat, centerLng]);
+            let edgeLat = centerLat + (currentRadiusMeters / 111111); // 緯度1度約111公里
+            let edgePoint = map.latLngToContainerPoint([edgeLat, centerLng]);
+            let currentRadiusPixels = Math.abs(edgePoint.y - centerPoint.y);
+            
+            // 殺死毒圈外的人 (用真實地理距離判斷)
             allActors.forEach(a => {
                 if (a.active && !winners.includes(a)) {
-                    let p = map.latLngToContainerPoint([a.currentLat, a.currentLng]);
-                    let dist = Math.sqrt(Math.pow(p.x - centerPoint.x, 2) + Math.pow(p.y - centerPoint.y, 2));
-                    if (dist > currentRadius) {
+                    let dist = getDist(centerLat, centerLng, a.currentLat, a.currentLng);
+                    if (dist > currentRadiusMeters) {
                         if (a.marker) a.marker.remove();
                         a.active = false;
                     }
@@ -634,21 +640,20 @@ function initFoundPrizeAnimation() {
                 });
                 lowResCtx.fill();
                 
-                // Draw toxic fog OUTSIDE the safe zone
+                // 畫毒圈外圍的紅色濃霧
                 lowResCtx.globalCompositeOperation = 'source-over';
-                lowResCtx.fillStyle = 'rgba(20,0,0,0.85)'; // Reddish toxic fog
+                lowResCtx.fillStyle = 'rgba(20,0,0,0.85)';
                 lowResCtx.beginPath();
                 lowResCtx.rect(0, 0, lowResCanvas.width, lowResCanvas.height);
-                lowResCtx.moveTo(centerPoint.x * 0.08 + currentRadius * 0.08, centerPoint.y * 0.08);
-                // Counter-clockwise to punch hole
-                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadius * 0.08, 0, Math.PI * 2, true);
+                lowResCtx.moveTo(centerPoint.x * 0.08 + currentRadiusPixels * 0.08, centerPoint.y * 0.08);
+                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadiusPixels * 0.08, 0, Math.PI * 2, true);
                 lowResCtx.fill();
                 
-                // Draw a boundary red line for the safe zone
+                // 紅色邊界線
                 lowResCtx.strokeStyle = 'rgba(255,50,50,0.8)';
                 lowResCtx.lineWidth = 1;
                 lowResCtx.beginPath();
-                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadius * 0.08, 0, Math.PI * 2);
+                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadiusPixels * 0.08, 0, Math.PI * 2);
                 lowResCtx.stroke();
                 
                 fogCtx.imageSmoothingEnabled = false;
@@ -665,10 +670,16 @@ function initFoundPrizeAnimation() {
             }
         };
         
-        // Pan to the center of the safe zone first so the user sees the shrinking
+        // 先飛到毒圈正中央
         map.flyTo([centerLat, centerLng], map.getZoom(), {animate: true, duration: 1.0});
+        
         setTimeout(() => {
             requestAnimationFrame(decayFrame);
+            
+            // 分三次慢慢放大畫面 (配合毒圈收縮)
+            setTimeout(() => map.setZoom(map.getZoom() + 1), 2000);
+            setTimeout(() => map.setZoom(map.getZoom() + 1), 4000);
+            setTimeout(() => map.setZoom(map.getZoom() + 1), 6000);
         }, 1200);
     }
 
