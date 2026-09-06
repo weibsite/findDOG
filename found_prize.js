@@ -2,38 +2,66 @@
 // 尋獲抽獎動畫展示腳本
 
 function initFoundPrizeAnimation() {
-    const btn = document.getElementById('found-prize-btn');
-    if (!btn) {
-        console.error("找不到尋獲抽獎按鈕 (found-prize-btn)");
-        setTimeout(initFoundPrizeAnimation, 1000);
-        return;
-    }
+    let btn = document.getElementById('found-prize-btn');
+    if (!btn) return;
     
-    if (btn.hasAttribute('data-fp-bound')) return;
     btn.addEventListener('click', async () => {
-        let oldModal = document.getElementById('fp-style-modal');
-        if (oldModal) oldModal.remove();
+        let oldLock = document.getElementById('anim-pointer-lock');
+        if (oldLock) return;
+        
+        let csvText = "";
+        try {
+            const res = await fetch('joins.csv?t=' + Date.now());
+            csvText = await res.text();
+        } catch(e) {
+            alert("無法載入 joins.csv，請確認檔案是否存在。");
+            return;
+        }
+        const lines = csvText.split('\n').map(l => l.trim().replace(/^\uFEFF/, '')).filter(l => l);
+        const joins = lines.slice(1).map(l => {
+            const parts = l.split(',');
+            return { time: parts[0], name: parts[1] };
+        }).filter(j => j.name);
+        
+        if (joins.length < 2) {
+            alert("參與人數不足 2 人，無法進行抽獎！");
+            return;
+        }
         
         let modal = document.createElement('div');
-        modal.id = 'fp-style-modal';
-        modal.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; z-index:999999; border:4px solid black; box-shadow:5px 5px 0px black; text-align:center; min-width:320px; font-family:sans-serif;';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        modal.style.zIndex = '999999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
         
         modal.innerHTML = `
-            <h2 style="font-size:20px; font-weight:bold; margin-bottom:15px; color:#1f2937;">🎉 選擇最後的抽獎呈現方式</h2>
-            <p style="font-size:14px; margin-bottom:15px; color:#4b5563; line-height:1.5;">60秒的進場動畫結束後，將自動抽出 2 位幸運兒。<br>請選擇您想測試的視覺特效：</p>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button id="fp-style-1" style="padding:12px; background:#3b82f6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🔦 風格 A：聚光燈輪盤 (運鏡切換)</button>
-                <button id="fp-style-2" style="padding:12px; background:#8b5cf6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🌪️ 風格 B：迷霧大逃殺 (毒圈縮小)</button>
-                <button id="fp-style-3" style="padding:12px; background:#ef4444; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">📡 風格 C：天降幸運雷達 (全局鎖定)</button>
-                <button id="fp-style-4" style="padding:12px; background:#f59e0b; color:black; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🔥 風格 D：60秒同步大逃殺 (邊走邊縮圈)</button>
+            <div style="background:white; padding:30px; border:4px solid black; border-radius:10px; width:90%; max-width:400px; text-align:center; box-shadow: 10px 10px 0px rgba(0,0,0,0.8);">
+                <h2 style="font-size:26px; font-weight:bold; margin-bottom:15px; color:#1a202c;">尋回任務圓滿達成</h2>
+                <p style="font-size:18px; margin-bottom:10px;">感謝 <strong>${joins.length}</strong> 位熱心朋友的參與</p>
+                <p style="font-size:16px; margin-bottom:25px; color:#ef4444; font-weight:bold;">奇蹟其實就在身邊，現在為您揭曉 2 位幸運星</p>
+                
+                <div style="margin-bottom:25px; text-align:left; background:#f3f4f6; padding:15px; border-radius:8px; border:2px solid #d1d5db;">
+                    <label style="font-weight:bold; display:block; margin-bottom:8px; color:#374151;">💰 獎金金額：</label>
+                    <input type="number" id="fp-prize-amount" value="5000" style="width:100%; padding:10px; border:2px solid #9ca3af; border-radius:5px; font-size:18px; font-weight:bold; box-sizing:border-box;">
+                </div>
+                
+                <button id="fp-start-draw" style="width:100%; padding:15px; background:#f59e0b; color:white; border:3px solid black; border-radius:8px; cursor:pointer; font-weight:bold; font-size:20px; box-shadow: 4px 4px 0px black; margin-bottom:15px; text-shadow:1px 1px 0px #b45309;">啟動抽獎</button>
+                <button id="fp-cancel" style="padding:10px 30px; background:#e5e7eb; border:2px solid #9ca3af; border-radius:5px; cursor:pointer; font-weight:bold; color:#4b5563;">取消</button>
             </div>
-            <button id="fp-cancel" style="margin-top:15px; padding:8px 20px; background:#d1d5db; border:2px solid black; cursor:pointer; font-weight:bold;">取消</button>
         `;
         document.body.appendChild(modal);
         
         const startWithStyle = (styleId) => {
-            modal.remove();
             window.PRIZE_DRAW_STYLE = styleId;
+            window.PRIZE_AMOUNT = document.getElementById('fp-prize-amount').value || 5000;
+            modal.innerHTML = `<div style="background:white; padding:20px; border:4px solid black; border-radius:10px; text-align:center;"><h2 style="font-size:24px; font-weight:bold;">準備演出...</h2></div>`;
+            showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
             
             const hideIds = ['admin-panel', 'status-toast', 'project-select-wrapper', 'locate-btn', 'spectator-btn', 'toggle-fog-btn', 'nav-pin-btn', 'force-upload-btn', 'my-route-btn', 'eva-grid-btn', 'playback-controls'];
             hideIds.forEach(id => {
@@ -41,8 +69,6 @@ function initFoundPrizeAnimation() {
                 if (el) el.style.display = 'none';
             });
             
-            showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
-        
             if (typeof ws !== 'undefined' && ws) {
                 const originalOnMessage = ws.onmessage;
                 ws.onmessage = async (event) => {
@@ -53,50 +79,53 @@ function initFoundPrizeAnimation() {
                         if (originalOnMessage) originalOnMessage(event);
                         return;
                     }
-                    
                     if (res.type === 'animation_paths_data') {
                         ws.onmessage = originalOnMessage;
-                        startAnimation(res.paths);
+                        modal.remove();
+                        startAnimation(res.paths, joins);
                     } else {
                         if (originalOnMessage) originalOnMessage(event);
                     }
                 };
-                
                 if (typeof wsSend === 'function' && typeof currentProjectKey !== 'undefined') {
                     wsSend("admin_get_animation_paths", {project: currentProjectKey});
                 } else {
                     ws.send(JSON.stringify({ type: 'get_animation_paths' }));
                 }
+            } else {
+                modal.remove();
+                startAnimation(null, joins);
             }
         };
         
-        document.getElementById('fp-style-1').addEventListener('click', () => startWithStyle(1));
-        document.getElementById('fp-style-2').addEventListener('click', () => startWithStyle(2));
-        document.getElementById('fp-style-3').addEventListener('click', () => startWithStyle(3));
-        document.getElementById('fp-style-4').addEventListener('click', () => startWithStyle(4));
+        document.getElementById('fp-start-draw').addEventListener('click', () => startWithStyle(4));
         document.getElementById('fp-cancel').addEventListener('click', () => modal.remove());
     });
+}
 
-    async function startAnimation(serverPaths) {
+    async function startAnimation(serverPaths, preloadedJoins) {
         try {
-            let csvText = "";
-            try {
-                const res = await fetch('joins.csv?t=' + Date.now());
-                csvText = await res.text();
-            } catch(e) {
-                alert("無法載入 joins.csv，請確認檔案是否存在。");
-                return;
-            }
-            
-            const lines = csvText.split('\n').map(l => l.trim().replace(/^\uFEFF/, '')).filter(l => l);
-            const joins = lines.slice(1).map(l => {
-                const parts = l.split(',');
-                return { time: parts[0], name: parts[1] };
-            }).filter(j => j.name);
-            
-            if (joins.length === 0) {
-                alert("joins.csv 內沒有有效資料！");
-                return;
+            let joins = preloadedJoins;
+            if (!joins) {
+                let csvText = "";
+                try {
+                    const res = await fetch('joins.csv?t=' + Date.now());
+                    csvText = await res.text();
+                } catch(e) {
+                    alert("無法載入 joins.csv，請確認檔案是否存在。");
+                    return;
+                }
+                
+                const lines = csvText.split('\n').map(l => l.trim().replace(/^\uFEFF/, '')).filter(l => l);
+                joins = lines.slice(1).map(l => {
+                    const parts = l.split(',');
+                    return { time: parts[0], name: parts[1] };
+                }).filter(j => j.name);
+                
+                if (joins.length === 0) {
+                    alert("joins.csv 內沒有有效資料！");
+                    return;
+                }
             }
             
             showCenterToast(`🎉 尋獲抽獎演出開始！\n共載入 ${joins.length} 位參與者...`);
@@ -723,12 +752,54 @@ function initFoundPrizeAnimation() {
                 [winners[1].currentLat, winners[1].currentLng]
             ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
             
-            showCenterToast(message, 10000);
+            let amount = window.PRIZE_AMOUNT || 5000;
+            let overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
             
-            // 演出徹底結束，解除鎖定並還原 UI
-            let lock = document.getElementById('anim-pointer-lock');
-            if (lock) lock.remove();
-        }, 2000);
+            overlay.innerHTML = `
+                <div style="background:white; padding:30px; border:4px solid black; border-radius:10px; text-align:center; max-width:90%; width:400px; box-shadow: 10px 10px 0px black;">
+                    <h2 style="font-size:32px; font-weight:bold; color:#ef4444; margin-bottom:20px; text-shadow: 2px 2px 0px #fcd34d;">幸運星誕生</h2>
+                    <p style="font-size:22px; font-weight:bold; margin-bottom:10px;">恭喜 <span style="color:#2563eb; font-size:26px;">${winners[0].name}</span></p>
+                    <p style="font-size:22px; font-weight:bold; margin-bottom:25px;">恭喜 <span style="color:#2563eb; font-size:26px;">${winners[1].name}</span></p>
+                    <div style="font-size:24px; font-weight:bold; margin-bottom:30px; background:#fef3c7; padding:15px; border:2px dashed #d97706; color:#b45309; border-radius:8px;">
+                        獲得獎金 ${amount} 💰
+                    </div>
+                    <button id="fp-final-confirm" style="padding:15px 50px; font-size:22px; font-weight:bold; background:#10b981; color:white; border:3px solid black; cursor:pointer; box-shadow:4px 4px 0px black; border-radius:8px; transition:transform 0.1s;">確認</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            
+            document.getElementById('fp-final-confirm').addEventListener('click', () => {
+                overlay.remove();
+                // 演出徹底結束，解除鎖定並還原 UI
+                let lock = document.getElementById('anim-pointer-lock');
+                if (lock) lock.remove();
+                
+                const showIds = ['admin-panel', 'project-select-wrapper', 'locate-btn', 'spectator-btn', 'toggle-fog-btn', 'nav-pin-btn', 'force-upload-btn', 'my-route-btn', 'eva-grid-btn', 'playback-controls'];
+                showIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = '';
+                });
+                
+                isSpectatorMode = false;
+                if (typeof map !== 'undefined' && map) map.dragging.enable();
+                
+                let foundBtn = document.getElementById('found-prize-btn');
+                if (foundBtn) {
+                    foundBtn.innerText = "✨ 再次抽獎";
+                    foundBtn.style.background = "#10b981";
+                }
+            });
+        }, 1000);
     }
 
     async function runDrawStyle1(allActors, winners) {
@@ -956,7 +1027,6 @@ function initFoundPrizeAnimation() {
         showCenterToast("📡 [風格C] 天降幸運雷達鎖定中...", 3000);
         triggerFinalReveal(allActors, winners, `🎯 雷達鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
     }
-} // <--- This closes initFoundPrizeAnimation
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFoundPrizeAnimation);
