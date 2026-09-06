@@ -25,6 +25,7 @@ function initFoundPrizeAnimation() {
                 <button id="fp-style-1" style="padding:12px; background:#3b82f6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🔦 風格 A：聚光燈輪盤 (運鏡切換)</button>
                 <button id="fp-style-2" style="padding:12px; background:#8b5cf6; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🌪️ 風格 B：迷霧大逃殺 (毒圈縮小)</button>
                 <button id="fp-style-3" style="padding:12px; background:#ef4444; color:white; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">📡 風格 C：天降幸運雷達 (全局鎖定)</button>
+                <button id="fp-style-4" style="padding:12px; background:#f59e0b; color:black; border:2px solid black; cursor:pointer; font-weight:bold; font-size:16px;">🔥 風格 D：60秒同步大逃殺 (邊走邊縮圈)</button>
             </div>
             <button id="fp-cancel" style="margin-top:15px; padding:8px 20px; background:#d1d5db; border:2px solid black; cursor:pointer; font-weight:bold;">取消</button>
         `;
@@ -69,10 +70,11 @@ function initFoundPrizeAnimation() {
             }
         };
         
-        document.getElementById('fp-style-1').onclick = () => startWithStyle(1);
-        document.getElementById('fp-style-2').onclick = () => startWithStyle(2);
-        document.getElementById('fp-style-3').onclick = () => startWithStyle(3);
-        document.getElementById('fp-cancel').onclick = () => modal.remove();
+        document.getElementById('fp-style-1').addEventListener('click', () => startWithStyle(1));
+        document.getElementById('fp-style-2').addEventListener('click', () => startWithStyle(2));
+        document.getElementById('fp-style-3').addEventListener('click', () => startWithStyle(3));
+        document.getElementById('fp-style-4').addEventListener('click', () => startWithStyle(4));
+        document.getElementById('fp-cancel').addEventListener('click', () => modal.remove());
     });
 
     async function startAnimation(serverPaths) {
@@ -280,6 +282,70 @@ function initFoundPrizeAnimation() {
             let animationFrameId;
             let hasTakenSnapshot = false;
             
+            let styleId = window.PRIZE_DRAW_STYLE || 1;
+            let styleDWon = [];
+            let styleDCenter = {lat:0, lng:0}, styleDStartRadius = 0, styleDEndRadius = 0, toxicCircleD = null;
+            let styleDLosers = [];
+            if (styleId === 4) {
+                let w1 = actors[Math.floor(Math.random() * actors.length)];
+                styleDWon.push(w1);
+                
+                const getDist = (lat1, lon1, lat2, lon2) => {
+                    const R = 6371e3;
+                    const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+                    const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+                    const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+                    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                };
+                
+                let closest = null;
+                let minDist = Infinity;
+                let w1Last = w1.path[w1.path.length-1];
+                let w1Lat = w1Last.lat !== undefined ? w1Last.lat : w1Last[0];
+                let w1Lng = w1Last.lng !== undefined ? w1Last.lng : w1Last[1];
+                
+                actors.forEach(a => {
+                    if (a !== w1) {
+                        let aLast = a.path[a.path.length-1];
+                        let aLat = aLast.lat !== undefined ? aLast.lat : aLast[0];
+                        let aLng = aLast.lng !== undefined ? aLast.lng : aLast[1];
+                        let d = getDist(w1Lat, w1Lng, aLat, aLng);
+                        if (d < minDist) { minDist = d; closest = a; }
+                    }
+                });
+                if (closest) styleDWon.push(closest);
+                else {
+                    while(styleDWon.length < 2) {
+                        let w = actors[Math.floor(Math.random() * actors.length)];
+                        if (!styleDWon.includes(w)) styleDWon.push(w);
+                    }
+                }
+                
+                let w2Last = styleDWon[1].path[styleDWon[1].path.length-1];
+                let w2Lat = w2Last.lat !== undefined ? w2Last.lat : w2Last[0];
+                let w2Lng = w2Last.lng !== undefined ? w2Last.lng : w2Last[1];
+                
+                styleDCenter.lat = (w1Lat + w2Lat) / 2;
+                styleDCenter.lng = (w1Lng + w2Lng) / 2;
+                let wDistMeters = getDist(w1Lat, w1Lng, w2Lat, w2Lng);
+                styleDEndRadius = Math.max(20, wDistMeters / 2 + 30);
+                
+                let nw = map.getBounds().getNorthWest();
+                styleDStartRadius = getDist(styleDCenter.lat, styleDCenter.lng, nw.lat, nw.lng);
+                
+                toxicCircleD = L.circle([styleDCenter.lat, styleDCenter.lng], {
+                    color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.1, weight: 4, dashArray: '10, 10'
+                }).addTo(map);
+                
+                styleDLosers = actors.filter(a => !styleDWon.includes(a));
+                for (let i = styleDLosers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [styleDLosers[i], styleDLosers[j]] = [styleDLosers[j], styleDLosers[i]];
+                }
+                
+                setTimeout(() => showCenterToast("🔥 [風格D] 60秒同步大逃殺開始！毒圈收縮中...", 5000), 500);
+            }
+            
             function animateFrame() {
                 try {
                     const now = Date.now();
@@ -345,6 +411,44 @@ function initFoundPrizeAnimation() {
                                 }
                             }
                         });
+                        
+                        if (styleId === 4 && toxicCircleD) {
+                            let progress = Math.min(1.0, elapsed / duration);
+                            let easeProgress = progress * (2 - progress);
+                            let currentRadiusMeters = styleDStartRadius - (styleDStartRadius - styleDEndRadius) * easeProgress;
+                            toxicCircleD.setRadius(currentRadiusMeters);
+                            
+                            const getDist = (lat1, lon1, lat2, lon2) => {
+                                const R = 6371e3; const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+                                const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+                                const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+                                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                            };
+                            
+                            actors.forEach(a => {
+                                if (a.active && !styleDWon.includes(a)) {
+                                    let dist = getDist(styleDCenter.lat, styleDCenter.lng, a.currentLat, a.currentLng);
+                                    if (dist > currentRadiusMeters) {
+                                        if (a.marker) a.marker.remove();
+                                        if (a.polyline) a.polyline.setStyle({opacity: 0});
+                                        a.active = false;
+                                    }
+                                }
+                            });
+                            
+                            let initialLoserCount = actors.length - 2;
+                            let targetLoserCount = Math.floor(initialLoserCount * (1 - progress));
+                            let currentActiveLosers = actors.filter(a => a.active && !styleDWon.includes(a));
+                            while (currentActiveLosers.length > targetLoserCount) {
+                                let victim = styleDLosers.pop();
+                                if (victim && victim.active) {
+                                    if (victim.marker) victim.marker.remove();
+                                    if (victim.polyline) victim.polyline.setStyle({opacity: 0});
+                                    victim.active = false;
+                                    currentActiveLosers = actors.filter(a => a.active && !styleDWon.includes(a));
+                                } else if (!victim) break;
+                            }
+                        }
                         
                         if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined' && typeof map !== 'undefined') {
                             lowResCtx.globalCompositeOperation = 'source-over';
@@ -422,11 +526,18 @@ function initFoundPrizeAnimation() {
                             alert("進場人數不足 2 人，無法進行抽獎！");
                             return;
                         }
+                        let styleId = window.PRIZE_DRAW_STYLE || 1;
+                        if (styleId === 4) {
+                            if (toxicCircleD) toxicCircleD.remove();
+                            triggerFinalReveal(actors, styleDWon);
+                            return;
+                        }
+                        
                         let winners = [];
                         let w1 = activeActors[Math.floor(Math.random() * activeActors.length)];
                         winners.push(w1);
                         
-                        // 尋找距離 w1 最近的人作為第二個得獎者，這樣大逃殺毒圈才能合理地縮到極小
+                        // 尋找距離 w1 最近的人作為第二個得獎者
                         let closest = null;
                         let minDist = Infinity;
                         const getDist = (lat1, lon1, lat2, lon2) => {
@@ -455,7 +566,6 @@ function initFoundPrizeAnimation() {
                             }
                         }
                         
-                        let styleId = window.PRIZE_DRAW_STYLE || 1;
                         if (styleId === 1) runDrawStyle1(activeActors, winners);
                         else if (styleId === 2) runDrawStyle2(activeActors, winners);
                         else if (styleId === 3) runDrawStyle3(activeActors, winners);
