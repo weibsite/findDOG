@@ -244,8 +244,8 @@ function initFoundPrizeAnimation() {
             
             const duration = 60000;
             const startTime = Date.now();
-            // 修正進場間隔：確保所有人在前 45 秒內全部進場完畢
-            const spawnInterval = 45000 / joins.length;
+            // 調整進場節奏：確保一半的人在前 15 秒進場，剩下的人在 15~45 秒進場
+            const halfCount = Math.floor(joins.length / 2);
             
             function getIconHtml(color, name) {
                 const safeName = typeof escapeHTML === 'function' ? escapeHTML(name) : String(name).replace(/</g, '&lt;');
@@ -262,11 +262,19 @@ function initFoundPrizeAnimation() {
                 let actorColor = '#ffffff';
                 if (typeof generateRandomColor === 'function') actorColor = generateRandomColor();
                 
+                let sTime = 0;
+                if (idx < halfCount) {
+                    sTime = halfCount > 0 ? (idx / halfCount) * 15000 : 0;
+                } else {
+                    let remain = joins.length - halfCount;
+                    sTime = 15000 + (remain > 1 ? ((idx - halfCount) / (remain - 1)) * 30000 : 0);
+                }
+                
                 return {
                     id: 'anim_user_' + idx,
                     idx: idx,
                     name: j.name,
-                    spawnTime: idx * spawnInterval,
+                    spawnTime: sTime,
                     isIdle: isIdle,
                     path: path,
                     pathIdx: 0,
@@ -361,18 +369,19 @@ function initFoundPrizeAnimation() {
                     
                     if (targetZoom > currentZoom) {
                         let zoomSteps = targetZoom - currentZoom;
-                        let stepInterval = 55000 / (zoomSteps + 1); // 在接下來的 55 秒內平均分配放大次數
+                        let stepInterval = 45000 / (zoomSteps + 1); // 在最後的 45 秒內平均分配放大次數
                         for (let i = 1; i <= zoomSteps; i++) {
                             setTimeout(() => {
                                 if (window.PRIZE_DRAW_STYLE === 4 && map.getZoom() < targetZoom) {
                                     map.setZoom(map.getZoom() + 1, {animate: true});
                                 }
-                            }, i * stepInterval);
+                            }, 13500 + i * stepInterval); // 扣掉一開始的 1.5 秒飛入時間
                         }
                     }
                 }, 1500);
                 
-                setTimeout(() => showCenterToast("🔥 [風格D] 60秒同步大逃殺開始！毒圈收縮中...", 5000), 500);
+                setTimeout(() => showCenterToast("🏃 [風格D] 前15秒和平搜索期：大家陸續進場中...", 5000), 500);
+                setTimeout(() => showCenterToast("🔥 [風格D] 毒霧襲來！大逃殺同步開始！", 5000), 15000);
             }
             
             function animateFrame() {
@@ -442,7 +451,10 @@ function initFoundPrizeAnimation() {
                         });
                         
                         if (styleId === 4 && toxicCircleD) {
-                            let progress = Math.min(1.0, elapsed / duration);
+                            let shrinkElapsed = Math.max(0, elapsed - 15000);
+                            let shrinkDuration = duration - 15000;
+                            let progress = Math.min(1.0, shrinkElapsed / shrinkDuration);
+                            
                             let easeProgress = progress * (2 - progress);
                             let currentRadiusMeters = styleDStartRadius - (styleDStartRadius - styleDEndRadius) * easeProgress;
                             toxicCircleD.setRadius(currentRadiusMeters);
