@@ -315,11 +315,21 @@ function initFoundPrizeAnimation() {
             }
             
             const actors = joins.map((j, idx) => {
-                const isIdle = Math.random() < 0.3;
-                let rawPath = allPaths[Math.floor(Math.random() * allPaths.length)];
-                
-                // 如果是原地不動的幽靈，他的軌跡就只有「最後一個點」，這樣就不會瞬間畫出尾巴了
-                let path = isIdle ? [rawPath[rawPath.length - 1]] : rawPath;
+                let path;
+                let isIdle;
+                if (window.PRIZE_DRAW_STYLE === 1) {
+                    isIdle = true;
+                    let angle = (idx / joins.length) * Math.PI * 2;
+                    let radiusLng = 0.005;
+                    let radiusLat = radiusLng * Math.cos(center[0] * Math.PI / 180);
+                    let pLat = center[0] + Math.sin(angle) * radiusLat;
+                    let pLng = center[1] + Math.cos(angle) * radiusLng;
+                    path = [{lat: pLat, lng: pLng}];
+                } else {
+                    isIdle = Math.random() < 0.3;
+                    let rawPath = allPaths[Math.floor(Math.random() * allPaths.length)];
+                    path = isIdle ? [rawPath[rawPath.length - 1]] : rawPath;
+                }
                 
                 let actorColor = '#ffffff';
                 if (typeof generateRandomColor === 'function') actorColor = generateRandomColor();
