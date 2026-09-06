@@ -224,7 +224,7 @@ function initFoundPrizeAnimation() {
             let style = document.createElement('style');
             style.id = 'anim-pointer-lock';
             style.innerHTML = `
-                .leaflet-marker-pane, .leaflet-overlay-pane, .leaflet-interactive {
+                .leaflet-marker-pane, .leaflet-overlay-pane, .leaflet-interactive, .leaflet-marker-pane * {
                     pointer-events: none !important;
                 }
                 #toggle-sighting-track-btn, #spectator-hint {
