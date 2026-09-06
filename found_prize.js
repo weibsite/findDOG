@@ -492,7 +492,8 @@ function initFoundPrizeAnimation() {
         });
         
         let overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; pointer-events:none; transition: background 1s;';
+        // 使用 CSS 放射狀漸層，在畫面正中央挖出一個「全亮」的聚光燈洞
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100px, rgba(0,0,0,0.8) 250px); z-index:10000; pointer-events:none; transition: background 1s;';
         document.body.appendChild(overlay);
         
         const panTo = (actor, delay) => new Promise(res => {
