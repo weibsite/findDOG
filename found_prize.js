@@ -255,6 +255,7 @@ function initFoundPrizeAnimation() {
                 
                 return {
                     id: 'anim_user_' + idx,
+                    idx: idx,
                     name: j.name,
                     spawnTime: idx * spawnInterval,
                     isIdle: isIdle,
@@ -317,7 +318,7 @@ function initFoundPrizeAnimation() {
                                     
                                     if (!actor.marker) {
                                         const icon = L.divIcon({className: 'custom-div-icon', html: getIconHtml(actor.color, actor.name)});
-                                        actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: 20000});
+                                        actor.marker = L.marker([ptLat, ptLng], {icon: icon, zIndexOffset: actor.idx * 100000});
                                         if (typeof markersLayer !== 'undefined') actor.marker.addTo(markersLayer);
                                         
                                         // 恢復使用虛線 (dashArray) 來呈現原本一點一點的軌跡視覺效果
@@ -611,6 +612,15 @@ function initFoundPrizeAnimation() {
         let startTime = Date.now();
         let duration = 8000; // 延長至 8 秒，讓運鏡更充足
         
+        // 為了確保最後必定只剩 2 人，需要強制隨機淘汰圈內的非得獎者
+        let totalLosers = allActors.filter(a => a.active && !winners.includes(a));
+        let initialLoserCount = totalLosers.length;
+        // 打亂順序，這樣 pop() 就是隨機淘汰
+        for (let i = totalLosers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [totalLosers[i], totalLosers[j]] = [totalLosers[j], totalLosers[i]];
+        }
+        
         const decayFrame = () => {
             let elapsed = Date.now() - startTime;
             let progress = Math.min(1.0, elapsed / duration);
@@ -622,7 +632,10 @@ function initFoundPrizeAnimation() {
             // 更新地圖上的毒圈大小
             toxicCircle.setRadius(currentRadiusMeters);
             
-            // 殺死毒圈外的人 (用真實地理距離判斷)
+            // 目標非得獎者存活數量 (隨時間線性遞減至 0)
+            let targetLoserCount = Math.floor(initialLoserCount * (1 - progress));
+            
+            // 物理淘汰：殺死真實在毒圈外的人 (用真實地理距離判斷)
             allActors.forEach(a => {
                 if (a.active && !winners.includes(a)) {
                     let dist = getDist(centerLat, centerLng, a.currentLat, a.currentLng);
@@ -633,6 +646,21 @@ function initFoundPrizeAnimation() {
                     }
                 }
             });
+            
+            // 劇情淘汰：如果物理淘汰殺得不夠快 (例如大家都擠在圈內)，強制暗殺超出配額的非得獎者
+            let currentActiveLosers = allActors.filter(a => a.active && !winners.includes(a));
+            while (currentActiveLosers.length > targetLoserCount) {
+                // 從 totalLosers 取出一個還活著的人來殺
+                let victim = totalLosers.pop();
+                if (victim && victim.active) {
+                    if (victim.marker) victim.marker.remove();
+                    if (victim.polyline) victim.polyline.setStyle({opacity: 0});
+                    victim.active = false;
+                    currentActiveLosers = allActors.filter(a => a.active && !winners.includes(a));
+                } else if (!victim) {
+                    break;
+                }
+            }
             
             // 維持原本地圖底層的黑霧顯示方式 (0.02 漸隱，而不是直接塗黑)
             if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
