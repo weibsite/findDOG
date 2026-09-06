@@ -46,9 +46,15 @@ function initFoundPrizeAnimation() {
                 <p style="font-size:18px; margin-bottom:10px;">感謝 <strong>${joins.length}</strong> 位熱心朋友的參與</p>
                 <p style="font-size:16px; margin-bottom:25px; color:#ef4444; font-weight:bold;">奇蹟其實就在身邊，現在為您揭曉 2 位幸運星</p>
                 
-                <div style="margin-bottom:25px; text-align:left; background:#f3f4f6; padding:15px; border-radius:8px; border:2px solid #d1d5db;">
-                    <label style="font-weight:bold; display:block; margin-bottom:8px; color:#374151;">💰 獎金金額：</label>
-                    <input type="number" id="fp-prize-amount" value="5000" style="width:100%; padding:10px; border:2px solid #9ca3af; border-radius:5px; font-size:18px; font-weight:bold; box-sizing:border-box;">
+                <div style="margin-bottom:25px; text-align:left; background:#f3f4f6; padding:15px; border-radius:8px; border:2px solid #d1d5db; display:flex; gap:15px;">
+                    <div style="flex:1;">
+                        <label style="font-weight:bold; display:block; margin-bottom:8px; color:#374151;">💰 獎金金額：</label>
+                        <input type="number" id="fp-prize-amount" value="5000" style="width:100%; padding:10px; border:2px solid #9ca3af; border-radius:5px; font-size:18px; font-weight:bold; box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-weight:bold; display:block; margin-bottom:8px; color:#374151;">🏆 抽獎人數：</label>
+                        <input type="number" id="fp-winner-count" value="2" min="1" style="width:100%; padding:10px; border:2px solid #9ca3af; border-radius:5px; font-size:18px; font-weight:bold; box-sizing:border-box;">
+                    </div>
                 </div>
                 
                 <button id="fp-start-draw" style="width:100%; padding:15px; background:#f59e0b; color:white; border:3px solid black; border-radius:8px; cursor:pointer; font-weight:bold; font-size:20px; box-shadow: 4px 4px 0px black; margin-bottom:15px; text-shadow:1px 1px 0px #b45309;">啟動抽獎</button>
@@ -60,6 +66,7 @@ function initFoundPrizeAnimation() {
         const startWithStyle = (styleId) => {
             window.PRIZE_DRAW_STYLE = styleId;
             window.PRIZE_AMOUNT = document.getElementById('fp-prize-amount').value || 5000;
+            window.PRIZE_WINNER_COUNT = parseInt(document.getElementById('fp-winner-count').value) || 2;
             modal.innerHTML = `<div style="background:white; padding:20px; border:4px solid black; border-radius:10px; text-align:center;"><h2 style="font-size:24px; font-weight:bold;">準備演出...</h2></div>`;
             showCenterToast("⏳ 正在向伺服器請求完整歷史軌跡...", 60000);
             
@@ -360,10 +367,13 @@ function initFoundPrizeAnimation() {
                     };
                 });
                 
-                distances.sort((a, b) => a.dist - b.dist);
-                styleDWon = [distances[0].actor, distances[1].actor];
+                let winnerCount = window.PRIZE_WINNER_COUNT || 2;
+                winnerCount = Math.max(1, Math.min(winnerCount, actors.length));
                 
-                let furthestWinnerDist = Math.max(distances[0].dist, distances[1].dist);
+                distances.sort((a, b) => a.dist - b.dist);
+                styleDWon = distances.slice(0, winnerCount).map(d => d.actor);
+                
+                let furthestWinnerDist = Math.max(...distances.slice(0, winnerCount).map(d => d.dist));
                 styleDEndRadius = Math.max(20, furthestWinnerDist + 30);
                 
                 styleDStartRadius = 0;
@@ -513,7 +523,7 @@ function initFoundPrizeAnimation() {
                                 }
                             });
                             
-                            let initialLoserCount = actors.length - 2;
+                            let initialLoserCount = actors.length - styleDWon.length;
                             let targetLoserCount = Math.floor(initialLoserCount * (1 - progress));
                             let currentActiveLosers = actors.filter(a => a.active && !styleDWon.includes(a));
                             
@@ -681,21 +691,23 @@ function initFoundPrizeAnimation() {
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         };
         
-        let wDist = getDist(winners[0].currentLat, winners[0].currentLng, winners[1].currentLat, winners[1].currentLng);
-        if (wDist < 30) {
-            // 緯度 1 度約 111111 公尺
-            let lngOffset = (25 / 111111) / Math.cos(winners[0].currentLat * Math.PI / 180);
-            winners[0].currentLng -= lngOffset;
-            winners[1].currentLng += lngOffset;
-            
-            // 加入平滑滑動特效
-            if (winners[0].marker && winners[0].marker.getElement()) {
-                winners[0].marker.getElement().style.transition = 'transform 0.5s ease-out';
-                winners[0].marker.setLatLng([winners[0].currentLat, winners[0].currentLng]);
-            }
-            if (winners[1].marker && winners[1].marker.getElement()) {
-                winners[1].marker.getElement().style.transition = 'transform 0.5s ease-out';
-                winners[1].marker.setLatLng([winners[1].currentLat, winners[1].currentLng]);
+        if (winners.length === 2) {
+            let wDist = getDist(winners[0].currentLat, winners[0].currentLng, winners[1].currentLat, winners[1].currentLng);
+            if (wDist < 30) {
+                // 緯度 1 度約 111111 公尺
+                let lngOffset = (25 / 111111) / Math.cos(winners[0].currentLat * Math.PI / 180);
+                winners[0].currentLng -= lngOffset;
+                winners[1].currentLng += lngOffset;
+                
+                // 加入平滑滑動特效
+                if (winners[0].marker && winners[0].marker.getElement()) {
+                    winners[0].marker.getElement().style.transition = 'transform 0.5s ease-out';
+                    winners[0].marker.setLatLng([winners[0].currentLat, winners[0].currentLng]);
+                }
+                if (winners[1].marker && winners[1].marker.getElement()) {
+                    winners[1].marker.getElement().style.transition = 'transform 0.5s ease-out';
+                    winners[1].marker.setLatLng([winners[1].currentLat, winners[1].currentLng]);
+                }
             }
         }
         
@@ -709,10 +721,8 @@ function initFoundPrizeAnimation() {
             }
         });
         
-        map.fitBounds([
-            [winners[0].currentLat, winners[0].currentLng],
-            [winners[1].currentLat, winners[1].currentLng]
-        ], {padding: [100, 100]});
+        let bounds = L.latLngBounds(winners.map(w => [w.currentLat, w.currentLng]));
+        map.fitBounds(bounds, {padding: [100, 100], maxZoom: 18});
         
         setTimeout(() => {
             winners.forEach((w, i) => {
@@ -747,10 +757,11 @@ function initFoundPrizeAnimation() {
                 }
             });
             
-            L.polyline([
-                [winners[0].currentLat, winners[0].currentLng],
-                [winners[1].currentLat, winners[1].currentLng]
-            ], {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
+            if (winners.length >= 2) {
+                let latlngs = winners.map(w => [w.currentLat, w.currentLng]);
+                latlngs.push([winners[0].currentLat, winners[0].currentLng]);
+                L.polyline(latlngs, {color: '#ef4444', weight: 6, dashArray: '10,10', className: 'radar-line'}).addTo(map);
+            }
             
             let amount = window.PRIZE_AMOUNT || 5000;
             let overlay = document.createElement('div');
@@ -765,11 +776,14 @@ function initFoundPrizeAnimation() {
             overlay.style.alignItems = 'center';
             overlay.style.justifyContent = 'center';
             
+            let winnerHTML = winners.map(w => `<p style="font-size:22px; font-weight:bold; margin-bottom:10px;">恭喜 <span style="color:#2563eb; font-size:26px;">${w.name}</span></p>`).join('');
+            
             overlay.innerHTML = `
                 <div style="background:white; padding:30px; border:4px solid black; border-radius:10px; text-align:center; max-width:90%; width:400px; box-shadow: 10px 10px 0px black;">
                     <h2 style="font-size:32px; font-weight:bold; color:#ef4444; margin-bottom:20px; text-shadow: 2px 2px 0px #fcd34d;">幸運星誕生</h2>
-                    <p style="font-size:22px; font-weight:bold; margin-bottom:10px;">恭喜 <span style="color:#2563eb; font-size:26px;">${winners[0].name}</span></p>
-                    <p style="font-size:22px; font-weight:bold; margin-bottom:25px;">恭喜 <span style="color:#2563eb; font-size:26px;">${winners[1].name}</span></p>
+                    <div style="max-height:40vh; overflow-y:auto; margin-bottom:15px;">
+                        ${winnerHTML}
+                    </div>
                     <div style="font-size:24px; font-weight:bold; margin-bottom:30px; background:#fef3c7; padding:15px; border:2px dashed #d97706; color:#b45309; border-radius:8px;">
                         獲得獎金 ${amount} 💰
                     </div>
