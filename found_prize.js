@@ -57,13 +57,17 @@ function initFoundPrizeAnimation() {
                     </div>
                 </div>
                 
-                <button id="fp-start-draw" style="width:100%; padding:15px; background:#f59e0b; color:white; border:3px solid black; border-radius:8px; cursor:pointer; font-weight:bold; font-size:20px; box-shadow: 4px 4px 0px black; margin-bottom:15px; text-shadow:1px 1px 0px #b45309;">啟動抽獎</button>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button id="fp-start-draw" style="flex:2; padding:15px; background:#f59e0b; color:white; border:3px solid black; border-radius:8px; cursor:pointer; font-weight:bold; font-size:20px; box-shadow: 4px 4px 0px black; text-shadow:1px 1px 0px #b45309;">啟動抽獎</button>
+                    <button id="fp-start-share" style="flex:1; padding:15px; background:#8b5cf6; color:white; border:3px solid black; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; box-shadow: 4px 4px 0px black;">分享抽獎</button>
+                </div>
                 <button id="fp-cancel" style="padding:10px 30px; background:#e5e7eb; border:2px solid #9ca3af; border-radius:5px; cursor:pointer; font-weight:bold; color:#4b5563;">取消</button>
             </div>
         `;
         document.body.appendChild(modal);
         
-        const startWithStyle = (styleId) => {
+        const startWithStyle = (styleId, overrideJoins = null) => {
+            let activeJoins = overrideJoins || joins;
             window.PRIZE_DRAW_STYLE = styleId;
             window.PRIZE_AMOUNT = document.getElementById('fp-prize-amount').value || 5000;
             window.PRIZE_WINNER_COUNT = parseInt(document.getElementById('fp-winner-count').value) || 2;
@@ -89,7 +93,7 @@ function initFoundPrizeAnimation() {
                     if (res.type === 'animation_paths_data') {
                         ws.onmessage = originalOnMessage;
                         modal.remove();
-                        startAnimation(res.paths, joins);
+                        startAnimation(res.paths, activeJoins);
                     } else {
                         if (originalOnMessage) originalOnMessage(event);
                     }
@@ -101,11 +105,31 @@ function initFoundPrizeAnimation() {
                 }
             } else {
                 modal.remove();
-                startAnimation(null, joins);
+                startAnimation(null, activeJoins);
             }
         };
         
         document.getElementById('fp-start-draw').addEventListener('click', () => startWithStyle(4));
+        
+        document.getElementById('fp-start-share').addEventListener('click', async () => {
+            try {
+                const res = await fetch('share.csv?t=' + Date.now());
+                if (!res.ok) throw new Error("File not found");
+                let csvText = await res.text();
+                let shareJoins = csvText.trim().split('\n').filter(l => l).map(l => l.trim());
+                if (shareJoins.length < 1) {
+                    alert("分享清單人數不足！");
+                    return;
+                }
+                document.getElementById('fp-prize-amount').value = 10000;
+                document.getElementById('fp-winner-count').value = 1;
+                startWithStyle(1, shareJoins);
+            } catch (e) {
+                console.error(e);
+                alert("讀取 share.csv 失敗！請確認檔案是否存在。");
+            }
+        });
+        
         document.getElementById('fp-cancel').addEventListener('click', () => modal.remove());
     });
 }
@@ -274,10 +298,12 @@ function initFoundPrizeAnimation() {
             // 在前 50 秒隱藏「找到了」標記
             document.body.classList.add('hide-found-markers');
             
-            const duration = 60000;
+            const duration = (window.PRIZE_DRAW_STYLE === 1) ? 10000 : 60000;
             const startTime = Date.now();
-            // 調整進場節奏：確保一半的人在前 15 秒進場，剩下的人在 15~45 秒進場
+            
             const halfCount = Math.floor(joins.length / 2);
+            const quarterTime = duration * 0.25;
+            const threeQuarterTime = duration * 0.75;
             
             function getIconHtml(color, name) {
                 const safeName = typeof escapeHTML === 'function' ? escapeHTML(name) : String(name).replace(/</g, '&lt;');
@@ -296,10 +322,10 @@ function initFoundPrizeAnimation() {
                 
                 let sTime = 0;
                 if (idx < halfCount) {
-                    sTime = halfCount > 0 ? (idx / halfCount) * 15000 : 0;
+                    sTime = halfCount > 0 ? (idx / halfCount) * quarterTime : 0;
                 } else {
                     let remain = joins.length - halfCount;
-                    sTime = 15000 + (remain > 1 ? ((idx - halfCount) / (remain - 1)) * 30000 : 0);
+                    sTime = quarterTime + (remain > 1 ? ((idx - halfCount) / (remain - 1)) * (threeQuarterTime - quarterTime) : 0);
                 }
                 
                 return {
@@ -589,7 +615,7 @@ function initFoundPrizeAnimation() {
                         }
                     }
                     
-                    if (elapsed > 50000) {
+                    if (elapsed > Math.max(0, duration - 10000)) {
                         document.body.classList.remove('hide-found-markers');
                     }
                     
@@ -605,14 +631,19 @@ function initFoundPrizeAnimation() {
                         }
                         
                         let activeActors = actors.filter(a => a.active && a.marker);
-                        if (activeActors.length < 2) {
-                            alert("進場人數不足 2 人，無法進行抽獎！");
+                        let winnerCount = window.PRIZE_WINNER_COUNT || 2;
+                        winnerCount = Math.max(1, Math.min(winnerCount, activeActors.length));
+                        
+                        if (activeActors.length < winnerCount) {
+                            alert("進場人數不足，無法進行抽獎！");
                             return;
                         }
+                        
                         let styleId = window.PRIZE_DRAW_STYLE || 1;
                         if (styleId === 4) {
                             if (toxicCircleD) toxicCircleD.remove();
-                            let msg = `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${styleDWon[0].name} & ${styleDWon[1].name}！`;
+                            let names = styleDWon.map(w => w.name).join(' & ');
+                            let msg = `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${names}！`;
                             triggerFinalReveal(actors, styleDWon, msg);
                             return;
                         }
@@ -621,9 +652,6 @@ function initFoundPrizeAnimation() {
                         let w1 = activeActors[Math.floor(Math.random() * activeActors.length)];
                         winners.push(w1);
                         
-                        // 尋找距離 w1 最近的人作為第二個得獎者
-                        let closest = null;
-                        let minDist = Infinity;
                         const getDist = (lat1, lon1, lat2, lon2) => {
                             const R = 6371e3;
                             const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
@@ -632,22 +660,22 @@ function initFoundPrizeAnimation() {
                             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                         };
                         
-                        activeActors.forEach(a => {
-                            if (a !== w1) {
-                                let d = getDist(w1.currentLat, w1.currentLng, a.currentLat, a.currentLng);
-                                if (d < minDist) {
-                                    minDist = d;
-                                    closest = a;
+                        // 若需要多位得獎者，依序找出距離最近的人加入
+                        while (winners.length < winnerCount) {
+                            let closest = null;
+                            let minDist = Infinity;
+                            activeActors.forEach(a => {
+                                if (!winners.includes(a)) {
+                                    // 找與目前所有得獎者群集最靠近的人（簡單取與w1的距離）
+                                    let d = getDist(w1.currentLat, w1.currentLng, a.currentLat, a.currentLng);
+                                    if (d < minDist) {
+                                        minDist = d;
+                                        closest = a;
+                                    }
                                 }
-                            }
-                        });
-                        
-                        if (closest) winners.push(closest);
-                        else {
-                            while(winners.length < 2) {
-                                let w = activeActors[Math.floor(Math.random() * activeActors.length)];
-                                if (!winners.includes(w)) winners.push(w);
-                            }
+                            });
+                            if (closest) winners.push(closest);
+                            else break;
                         }
                         
                         if (styleId === 1) runDrawStyle1(activeActors, winners);
@@ -875,11 +903,12 @@ function initFoundPrizeAnimation() {
             await panAndPop(candidates[i]);
         }
         
-        // 篩選結束，將結果傳給 C 進行最終演出
+        // 篩選結束，將結果傳給最終演出
         candidateText.remove();
         overlay.style.background = 'rgba(0,0,0,0)';
         setTimeout(() => overlay.remove(), 1000);
-        triggerFinalReveal(allActors, winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
+        let names = winners.map(w => w.name).join(' & ');
+        triggerFinalReveal(allActors, winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${names}！`);
     }
 
     async function runDrawStyle2(allActors, winners) {
