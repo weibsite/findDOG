@@ -466,6 +466,33 @@ function initFoundPrizeAnimation() {
     }
     
     async function triggerFinalReveal(allActors, winners, message) {
+        // 如果兩名得獎者重疊或太近，將他們左右錯開 (像是頒獎台排排站)
+        const getDist = (lat1, lon1, lat2, lon2) => {
+            const R = 6371e3;
+            const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
+            const d1 = (lat2-lat1) * Math.PI/180, d2 = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(d1/2)*Math.sin(d1/2) + Math.cos(r1)*Math.cos(r2)*Math.sin(d2/2)*Math.sin(d2/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        };
+        
+        let wDist = getDist(winners[0].currentLat, winners[0].currentLng, winners[1].currentLat, winners[1].currentLng);
+        if (wDist < 30) {
+            // 緯度 1 度約 111111 公尺
+            let lngOffset = (25 / 111111) / Math.cos(winners[0].currentLat * Math.PI / 180);
+            winners[0].currentLng -= lngOffset;
+            winners[1].currentLng += lngOffset;
+            
+            // 加入平滑滑動特效
+            if (winners[0].marker && winners[0].marker.getElement()) {
+                winners[0].marker.getElement().style.transition = 'transform 0.5s ease-out';
+                winners[0].marker.setLatLng([winners[0].currentLat, winners[0].currentLng]);
+            }
+            if (winners[1].marker && winners[1].marker.getElement()) {
+                winners[1].marker.getElement().style.transition = 'transform 0.5s ease-out';
+                winners[1].marker.setLatLng([winners[1].currentLat, winners[1].currentLng]);
+            }
+        }
+        
         // C 風格的招牌：將所有非中獎者淡化
         allActors.forEach(a => {
             if (!winners.includes(a)) {
