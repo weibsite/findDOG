@@ -545,10 +545,24 @@ function initFoundPrizeAnimation() {
             }
         };
         
-        // 單純作為篩選演出：在 5 個隨機路人身上快速運鏡並放大檢視
-        for(let i=0; i<5; i++) {
-            let fake = allActors[Math.floor(Math.random() * allActors.length)];
-            await panAndPop(fake);
+        // 準備 5 名候選人 (包含 2 名真正得獎者，以及 3 名煙霧彈)
+        let losers = allActors.filter(a => !winners.includes(a));
+        let candidates = [...winners];
+        
+        while(candidates.length < 5 && losers.length > 0) {
+            let fake = losers.splice(Math.floor(Math.random() * losers.length), 1)[0];
+            candidates.push(fake);
+        }
+        
+        // 打亂順序，避免最後一個總是得獎者
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        
+        // 依序點名候選人
+        for(let i=0; i<candidates.length; i++) {
+            await panAndPop(candidates[i]);
         }
         
         // 篩選結束，將結果傳給 C 進行最終演出
