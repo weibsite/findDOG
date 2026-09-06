@@ -230,8 +230,15 @@ function initFoundPrizeAnimation() {
                 #toggle-sighting-track-btn, #spectator-hint {
                     display: none !important;
                 }
+                body.hide-found-markers .sighting-found-marker {
+                    opacity: 0 !important;
+                    transition: opacity 2s ease-in-out;
+                }
             `;
             document.head.appendChild(style);
+            
+            // 在前 50 秒隱藏「找到了」標記
+            document.body.classList.add('hide-found-markers');
             
             const duration = 60000;
             const startTime = Date.now();
@@ -393,6 +400,10 @@ function initFoundPrizeAnimation() {
                             已進場人數: ${activeActors}<br>
                             畫面中標記數: <span style="color:#f59e0b; font-weight:bold;">${renderedMarkers}</span>
                         `;
+                    }
+                    
+                    if (elapsed > 50000) {
+                        document.body.classList.remove('hide-found-markers');
                     }
                     
                     if (elapsed > duration) {
