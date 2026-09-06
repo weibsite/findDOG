@@ -396,7 +396,11 @@ function initFoundPrizeAnimation() {
                 toxicCircleD = L.circle([styleDCenter.lat, styleDCenter.lng], {
                     pane: 'toxicPaneD',
                     color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.1, weight: 4, dashArray: '10, 10'
-                }).addTo(map);
+                });
+                
+                setTimeout(() => {
+                    if (toxicCircleD) toxicCircleD.addTo(map);
+                }, 14000);
                 
                 styleDLosers = actors.filter(a => !styleDWon.includes(a));
                 for (let i = styleDLosers.length - 1; i > 0; i--) {
@@ -426,8 +430,8 @@ function initFoundPrizeAnimation() {
                     }
                 }, 1500);
                 
-                setTimeout(() => showCenterToast("感謝你們的參與 有你們參與 讓這個任務成為可能", 5000), 500);
-                setTimeout(() => showCenterToast("我只能以這微小的心意來表達我的感謝 謝謝你們 有緣再見!", 5000), 15000);
+                setTimeout(() => showCenterToast("感謝你們的參與 有你們參與\n讓這個任務成為可能", 5000), 10000);
+                setTimeout(() => showCenterToast("我只能以這微小的心意 來表達我的感謝\n謝謝你們 有緣再見!", 5000), 25000);
             }
             
             function animateFrame() {
