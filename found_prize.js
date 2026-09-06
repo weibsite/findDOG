@@ -474,8 +474,14 @@ function initFoundPrizeAnimation() {
                     }
                 }, 50);
                 
+                // 改對內部容器操作，避免 Leaflet 覆寫 transform
                 if (w.marker && w.marker.getElement()) {
-                    w.marker.getElement().style.transform += ' scale(2.5)';
+                    let inner = w.marker.getElement().querySelector('.user-label-container');
+                    if (inner) {
+                        inner.style.transition = 'transform 0.3s';
+                        inner.style.transform = 'scale(2.5)';
+                        inner.style.transformOrigin = 'bottom center';
+                    }
                     w.marker.getElement().style.zIndex = 30000;
                 }
             });
@@ -490,7 +496,6 @@ function initFoundPrizeAnimation() {
     }
 
     async function runDrawStyle1(allActors, winners) {
-        showCenterToast("🔦 [風格A] 聚光燈輪盤隨機搜尋中...", 3000);
         allActors.forEach(a => {
             if (a.polyline) a.polyline.setStyle({opacity: 0.1});
         });
@@ -500,25 +505,42 @@ function initFoundPrizeAnimation() {
         overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100px, rgba(0,0,0,0.8) 250px); z-index:10000; pointer-events:none; transition: background 1s;';
         document.body.appendChild(overlay);
         
+        let candidateText = document.createElement('div');
+        candidateText.style.cssText = 'position:fixed; top:20px; right:20px; background:rgba(0,0,0,0.8); color:#fbbf24; padding:10px 20px; border-radius:10px; font-size:20px; font-weight:bold; z-index:10001; border:2px solid #fbbf24; pointer-events:none; transition: opacity 0.3s;';
+        document.body.appendChild(candidateText);
+        
+        let candidateIndex = 1;
+
         const panAndPop = async (actor) => {
+            candidateText.innerHTML = `🔍 尋找候選人 ${candidateIndex}/5...`;
             map.flyTo([actor.currentLat, actor.currentLng], 18, {duration: 0.8});
             
             // 等待鏡頭飛到定位
             await new Promise(r => setTimeout(r, 800));
             
-            // 放大標籤
+            candidateText.innerHTML = `🎯 鎖定候選人 ${candidateIndex}！`;
+            candidateIndex++;
+            
+            // 放大標籤：對內部容器操作，避免 Leaflet 覆寫
             if (actor.marker && actor.marker.getElement()) {
-                actor.marker.getElement().style.transition = 'transform 0.3s';
-                actor.marker.getElement().style.transform += ' scale(2.5)';
+                let inner = actor.marker.getElement().querySelector('.user-label-container');
+                if (inner) {
+                    inner.style.transition = 'transform 0.3s';
+                    inner.style.transform = 'scale(2.5)';
+                    inner.style.transformOrigin = 'bottom center';
+                }
                 actor.marker.getElement().style.zIndex = 30000;
             }
             
             // 停頓 600ms 讓畫面看清楚候選人
             await new Promise(r => setTimeout(r, 600));
             
-            // 縮小復原 (交接給 C 之前，未中獎者要縮小)
+            // 縮小復原
             if (actor.marker && actor.marker.getElement()) {
-                actor.marker.getElement().style.transform = actor.marker.getElement().style.transform.replace(' scale(2.5)', '');
+                let inner = actor.marker.getElement().querySelector('.user-label-container');
+                if (inner) {
+                    inner.style.transform = 'scale(1)';
+                }
                 actor.marker.getElement().style.zIndex = '';
             }
         };
@@ -530,6 +552,7 @@ function initFoundPrizeAnimation() {
         }
         
         // 篩選結束，將結果傳給 C 進行最終演出
+        candidateText.remove();
         overlay.style.background = 'rgba(0,0,0,0)';
         setTimeout(() => overlay.remove(), 1000);
         triggerFinalReveal(allActors, winners, `🎯 輪盤鎖定完畢！\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
