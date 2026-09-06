@@ -426,8 +426,8 @@ function initFoundPrizeAnimation() {
                     }
                 }, 1500);
                 
-                setTimeout(() => showCenterToast("🏃 [風格D] 前15秒和平搜索期：大家陸續進場中...", 5000), 500);
-                setTimeout(() => showCenterToast("🔥 [風格D] 毒霧襲來！大逃殺同步開始！", 5000), 15000);
+                setTimeout(() => showCenterToast("感謝你們的參與 有你們參與 讓這個任務成為可能", 5000), 500);
+                setTimeout(() => showCenterToast("我只能以這微小的心意來表達我的感謝 謝謝你們 有緣再見!", 5000), 15000);
             }
             
             function animateFrame() {
