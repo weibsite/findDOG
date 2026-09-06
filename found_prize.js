@@ -496,17 +496,33 @@ function initFoundPrizeAnimation() {
         overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 100px, rgba(0,0,0,0.8) 250px); z-index:10000; pointer-events:none; transition: background 1s;';
         document.body.appendChild(overlay);
         
-        const panTo = (actor, delay) => new Promise(res => {
-            setTimeout(() => {
-                map.flyTo([actor.currentLat, actor.currentLng], 18, {duration: 0.8});
-                res();
-            }, delay);
-        });
+        const panAndPop = async (actor) => {
+            map.flyTo([actor.currentLat, actor.currentLng], 18, {duration: 0.8});
+            
+            // 等待鏡頭飛到定位
+            await new Promise(r => setTimeout(r, 800));
+            
+            // 放大標籤
+            if (actor.marker && actor.marker.getElement()) {
+                actor.marker.getElement().style.transition = 'transform 0.3s';
+                actor.marker.getElement().style.transform += ' scale(2.5)';
+                actor.marker.getElement().style.zIndex = 30000;
+            }
+            
+            // 停頓 600ms 讓畫面看清楚候選人
+            await new Promise(r => setTimeout(r, 600));
+            
+            // 縮小復原 (交接給 C 之前，未中獎者要縮小)
+            if (actor.marker && actor.marker.getElement()) {
+                actor.marker.getElement().style.transform = actor.marker.getElement().style.transform.replace(' scale(2.5)', '');
+                actor.marker.getElement().style.zIndex = '';
+            }
+        };
         
-        // 單純作為篩選演出：在 5 個隨機路人身上快速運鏡
+        // 單純作為篩選演出：在 5 個隨機路人身上快速運鏡並放大檢視
         for(let i=0; i<5; i++) {
             let fake = allActors[Math.floor(Math.random() * allActors.length)];
-            await panTo(fake, 1200);
+            await panAndPop(fake);
         }
         
         // 篩選結束，將結果傳給 C 進行最終演出
