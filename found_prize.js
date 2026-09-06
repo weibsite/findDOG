@@ -202,6 +202,20 @@ function initFoundPrizeAnimation() {
             }
             
             if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
+                // 將 fogCanvas 從地圖圖層抽離，直接蓋在 map 容器上，避免受 Leaflet 縮放的 CSS Transform 干擾破圖
+                if (fogCanvas && fogCanvas.parentElement) {
+                    let mapContainer = document.getElementById('map');
+                    if (mapContainer) {
+                        fogCanvas.style.position = 'absolute';
+                        fogCanvas.style.top = '0px';
+                        fogCanvas.style.left = '0px';
+                        fogCanvas.style.zIndex = '400';
+                        fogCanvas.style.pointerEvents = 'none';
+                        fogCanvas.style.transform = 'none';
+                        mapContainer.appendChild(fogCanvas);
+                    }
+                }
+                
                 lowResCtx.globalCompositeOperation = 'source-over';
                 lowResCtx.fillStyle = 'rgba(15,20,25,0.95)';
                 lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
@@ -496,6 +510,17 @@ function initFoundPrizeAnimation() {
             // 演出徹底結束，解除鎖定並還原 UI
             let lock = document.getElementById('anim-pointer-lock');
             if (lock) lock.remove();
+            
+            // 將 fogCanvas 放回原本的地圖圖層
+            if (typeof fogCanvas !== 'undefined' && typeof map !== 'undefined') {
+                fogCanvas.style.position = '';
+                fogCanvas.style.top = '';
+                fogCanvas.style.left = '';
+                fogCanvas.style.zIndex = '';
+                fogCanvas.style.transform = '';
+                let pane = map.getPane('fogPane');
+                if (pane) pane.appendChild(fogCanvas);
+            }
         }, 2000);
     }
 
@@ -669,6 +694,8 @@ function initFoundPrizeAnimation() {
                 requestAnimationFrame(decayFrame);
             } else {
                 setTimeout(() => {
+                    if (typeof lowResCtx !== 'undefined') lowResCtx.clearRect(0, 0, lowResCanvas.width, lowResCanvas.height);
+                    if (typeof fogCtx !== 'undefined') fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                     triggerFinalReveal(allActors, winners, `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
                 }, 500);
             }
