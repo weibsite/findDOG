@@ -116,7 +116,11 @@ function initFoundPrizeAnimation() {
                 const res = await fetch('share.csv?t=' + Date.now());
                 if (!res.ok) throw new Error("File not found");
                 let csvText = await res.text();
-                let shareJoins = csvText.trim().split('\n').filter(l => l).map(l => l.trim());
+                let lines = csvText.trim().replace(/^\uFEFF/, '').split('\n').filter(l => l).map(l => l.trim());
+                let shareJoins = lines.slice(1).map(l => {
+                    const parts = l.split(',');
+                    return { name: parts[0], url: parts.length > 1 ? parts[parts.length - 1] : '' };
+                }).filter(j => j.name);
                 if (shareJoins.length < 1) {
                     alert("分享清單人數不足！");
                     return;
@@ -332,6 +336,7 @@ function initFoundPrizeAnimation() {
                     id: 'anim_user_' + idx,
                     idx: idx,
                     name: j.name,
+                    url: j.url,
                     spawnTime: sTime,
                     isIdle: isIdle,
                     path: path,
@@ -793,7 +798,10 @@ function initFoundPrizeAnimation() {
             overlay.style.alignItems = 'center';
             overlay.style.justifyContent = 'center';
             
-            let winnerHTML = winners.map(w => `<p style="font-size:22px; font-weight:bold; margin-bottom:10px;">恭喜 <span style="color:#2563eb; font-size:26px;">${w.name}</span></p>`).join('');
+            let winnerHTML = winners.map(w => {
+                let nameHtml = w.url ? `<a href="${w.url}" target="_blank" style="color:#2563eb; font-size:26px; text-decoration:underline; cursor:pointer;">${w.name}</a>` : `<span style="color:#2563eb; font-size:26px;">${w.name}</span>`;
+                return `<p style="font-size:22px; font-weight:bold; margin-bottom:10px;">恭喜 ${nameHtml}</p>`;
+            }).join('');
             
             overlay.innerHTML = `
                 <div style="background:white; padding:30px; border:4px solid black; border-radius:10px; text-align:center; max-width:90%; width:400px; box-shadow: 10px 10px 0px black;">
