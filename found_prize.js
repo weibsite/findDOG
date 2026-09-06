@@ -393,10 +393,30 @@ function initFoundPrizeAnimation() {
                         let lock = document.getElementById('anim-pointer-lock');
                         if (lock) lock.remove();
                         
+                        let oldCounter = document.getElementById('anim-counter');
+                        if (oldCounter) oldCounter.remove();
+                        
                         // 但保留霧的更新機制以防破圖
                         if (typeof window.originalRequestFogRender === 'function') {
                             window.requestFogRender = window.originalRequestFogRender;
                         }
+                        
+                        let activeActors = actors.filter(a => a.active && a.marker);
+                        if (activeActors.length < 2) {
+                            alert("進場人數不足 2 人，無法進行抽獎！");
+                            return;
+                        }
+                        let winners = [];
+                        while(winners.length < 2) {
+                            let w = activeActors[Math.floor(Math.random() * activeActors.length)];
+                            if (!winners.includes(w)) winners.push(w);
+                        }
+                        
+                        let styleId = window.PRIZE_DRAW_STYLE || 1;
+                        if (styleId === 1) runDrawStyle1(activeActors, winners);
+                        else if (styleId === 2) runDrawStyle2(activeActors, winners);
+                        else if (styleId === 3) runDrawStyle3(activeActors, winners);
+                        
                         return;
                     }
                     
