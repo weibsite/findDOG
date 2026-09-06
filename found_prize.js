@@ -202,20 +202,6 @@ function initFoundPrizeAnimation() {
             }
             
             if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
-                // 將 fogCanvas 從地圖圖層抽離，直接蓋在 map 容器上，避免受 Leaflet 縮放的 CSS Transform 干擾破圖
-                if (fogCanvas && fogCanvas.parentElement) {
-                    let mapContainer = document.getElementById('map');
-                    if (mapContainer) {
-                        fogCanvas.style.position = 'absolute';
-                        fogCanvas.style.top = '0px';
-                        fogCanvas.style.left = '0px';
-                        fogCanvas.style.zIndex = '400';
-                        fogCanvas.style.pointerEvents = 'none';
-                        fogCanvas.style.transform = 'none';
-                        mapContainer.appendChild(fogCanvas);
-                    }
-                }
-                
                 lowResCtx.globalCompositeOperation = 'source-over';
                 lowResCtx.fillStyle = 'rgba(15,20,25,0.95)';
                 lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
@@ -510,17 +496,6 @@ function initFoundPrizeAnimation() {
             // 演出徹底結束，解除鎖定並還原 UI
             let lock = document.getElementById('anim-pointer-lock');
             if (lock) lock.remove();
-            
-            // 將 fogCanvas 放回原本的地圖圖層
-            if (typeof fogCanvas !== 'undefined' && typeof map !== 'undefined') {
-                fogCanvas.style.position = '';
-                fogCanvas.style.top = '';
-                fogCanvas.style.left = '';
-                fogCanvas.style.zIndex = '';
-                fogCanvas.style.transform = '';
-                let pane = map.getPane('fogPane');
-                if (pane) pane.appendChild(fogCanvas);
-            }
         }, 2000);
     }
 
@@ -602,14 +577,14 @@ function initFoundPrizeAnimation() {
     }
 
     async function runDrawStyle2(allActors, winners) {
-        showCenterToast("🌪️ [風格B] 迷霧大逃殺開始！毒霧腐蝕中...", 5000);
+        showCenterToast("🌪️ [風格B] 迷霧大逃殺開始！毒圈收縮中...", 5000);
         
         if (typeof routesLayer !== 'undefined') routesLayer.clearLayers();
         
         let centerLat = (winners[0].currentLat + winners[1].currentLat) / 2;
         let centerLng = (winners[0].currentLng + winners[1].currentLng) / 2;
         
-        // 使用真實地理距離(公尺)來計算毒圈，這樣當地圖放大時，毒圈才不會跑位
+        // 使用真實地理距離(公尺)來計算毒圈
         const getDist = (lat1, lon1, lat2, lon2) => {
             const R = 6371e3;
             const r1 = lat1 * Math.PI/180, r2 = lat2 * Math.PI/180;
@@ -624,6 +599,15 @@ function initFoundPrizeAnimation() {
         let wDistMeters = getDist(winners[0].currentLat, winners[0].currentLng, winners[1].currentLat, winners[1].currentLng);
         let endRadiusMeters = Math.max(20, wDistMeters / 2 + 30); // 縮到剛好包住兩個得獎者
         
+        // 建立紅色毒圈 (Leaflet 圓形，會自動跟隨地圖縮放，不會破圖)
+        let toxicCircle = L.circle([centerLat, centerLng], {
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.1,
+            weight: 4,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
         let startTime = Date.now();
         let duration = 8000; // 延長至 8 秒，讓運鏡更充足
         
@@ -635,11 +619,8 @@ function initFoundPrizeAnimation() {
             let easeProgress = progress * (2 - progress);
             let currentRadiusMeters = startRadiusMeters - (startRadiusMeters - endRadiusMeters) * easeProgress;
             
-            // 將真實地理半徑轉換為當前畫面縮放級別下的 Pixel 半徑
-            let centerPoint = map.latLngToContainerPoint([centerLat, centerLng]);
-            let edgeLat = centerLat + (currentRadiusMeters / 111111); // 緯度1度約111公里
-            let edgePoint = map.latLngToContainerPoint([edgeLat, centerLng]);
-            let currentRadiusPixels = Math.abs(edgePoint.y - centerPoint.y);
+            // 更新地圖上的毒圈大小
+            toxicCircle.setRadius(currentRadiusMeters);
             
             // 殺死毒圈外的人 (用真實地理距離判斷)
             allActors.forEach(a => {
@@ -647,15 +628,16 @@ function initFoundPrizeAnimation() {
                     let dist = getDist(centerLat, centerLng, a.currentLat, a.currentLng);
                     if (dist > currentRadiusMeters) {
                         if (a.marker) a.marker.remove();
+                        if (a.polyline) a.polyline.setStyle({opacity: 0});
                         a.active = false;
                     }
                 }
             });
             
-            // Render
+            // 維持原本地圖底層的黑霧顯示方式 (0.02 漸隱，而不是直接塗黑)
             if (typeof lowResCtx !== 'undefined' && typeof fogCtx !== 'undefined') {
                 lowResCtx.globalCompositeOperation = 'source-over';
-                lowResCtx.fillStyle = 'black';
+                lowResCtx.fillStyle = 'rgba(15,20,25,0.02)';
                 lowResCtx.fillRect(0, 0, lowResCanvas.width, lowResCanvas.height);
                 
                 lowResCtx.globalCompositeOperation = 'destination-out';
@@ -669,22 +651,6 @@ function initFoundPrizeAnimation() {
                 });
                 lowResCtx.fill();
                 
-                // 畫毒圈外圍的紅色濃霧
-                lowResCtx.globalCompositeOperation = 'source-over';
-                lowResCtx.fillStyle = 'rgba(20,0,0,0.85)';
-                lowResCtx.beginPath();
-                lowResCtx.rect(0, 0, lowResCanvas.width, lowResCanvas.height);
-                lowResCtx.moveTo(centerPoint.x * 0.08 + currentRadiusPixels * 0.08, centerPoint.y * 0.08);
-                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadiusPixels * 0.08, 0, Math.PI * 2, true);
-                lowResCtx.fill();
-                
-                // 紅色邊界線
-                lowResCtx.strokeStyle = 'rgba(255,50,50,0.8)';
-                lowResCtx.lineWidth = 1;
-                lowResCtx.beginPath();
-                lowResCtx.arc(centerPoint.x * 0.08, centerPoint.y * 0.08, currentRadiusPixels * 0.08, 0, Math.PI * 2);
-                lowResCtx.stroke();
-                
                 fogCtx.imageSmoothingEnabled = false;
                 fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                 fogCtx.drawImage(lowResCanvas, 0, 0, lowResCanvas.width, lowResCanvas.height, 0, 0, fogCanvas.width, fogCanvas.height);
@@ -693,9 +659,8 @@ function initFoundPrizeAnimation() {
             if (progress < 1.0) {
                 requestAnimationFrame(decayFrame);
             } else {
+                toxicCircle.remove();
                 setTimeout(() => {
-                    if (typeof lowResCtx !== 'undefined') lowResCtx.clearRect(0, 0, lowResCanvas.width, lowResCanvas.height);
-                    if (typeof fogCtx !== 'undefined') fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
                     triggerFinalReveal(allActors, winners, `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${winners[0].name} & ${winners[1].name}！`);
                 }, 500);
             }
