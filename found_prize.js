@@ -305,8 +305,8 @@ function initFoundPrizeAnimation() {
 
                 // 1. 尋找「找到了」的出沒點作為毒圈終點
                 let foundSighting = null;
-                if (window.allSightings) {
-                    let sArr = Object.values(window.allSightings).filter(s => s.description && s.description.includes('找到了'));
+                if (typeof allSightings !== 'undefined' && allSightings) {
+                    let sArr = Object.values(allSightings).filter(s => s.description && s.description.includes('找到了'));
                     if (sArr.length > 0) {
                         foundSighting = sArr[0]; // 取第一個符合的
                     }
@@ -570,7 +570,8 @@ function initFoundPrizeAnimation() {
                         let styleId = window.PRIZE_DRAW_STYLE || 1;
                         if (styleId === 4) {
                             if (toxicCircleD) toxicCircleD.remove();
-                            triggerFinalReveal(actors, styleDWon);
+                            let msg = `🎯 大逃殺毒圈收縮完畢：\n🎉 恭喜得獎者：${styleDWon[0].name} & ${styleDWon[1].name}！`;
+                            triggerFinalReveal(actors, styleDWon, msg);
                             return;
                         }
                         
