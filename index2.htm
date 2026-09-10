@@ -255,36 +255,77 @@
             color: #60a5fa; font-size: 14px; font-weight: 900;
         }
 
-        /* --- 省電按鈕 (保持浮動可見) --- */
-        #mobile-power-btn {
+        /* --- 手機版地圖左下控制組 (縮放與定位) --- */
+        #mobile-left-controls {
             position: fixed; z-index: 2100; display: none;
-            background: rgba(30, 30, 40, 0.85); backdrop-filter: blur(8px);
-            border: 1.5px solid rgba(255,255,255,0.15); border-radius: 20px;
-            padding: 5px 12px; color: white; font-size: 10px; font-weight: 800;
-            cursor: pointer; -webkit-tap-highlight-color: transparent;
-            transition: background 0.2s;
+            flex-direction: column; gap: 6px;
+            left: 10px; bottom: 74px;
         }
-        #mobile-power-btn:active { background: rgba(60, 60, 80, 0.9); }
+        .mobile-map-btn {
+            width: 40px; height: 40px;
+            background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            color: black; font-size: 24px; font-weight: bold; line-height: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-map-btn:active { background: #f3f4f6; }
+        .mobile-map-btn svg { width: 22px; height: 22px; color: black; }
+
+        /* --- 專案選擇 Bottom Sheet --- */
+        #project-sheet-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            background: rgba(0,0,0,0.5); opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none; display: none;
+        }
+        #project-sheet-overlay.show { display: block; opacity: 1; pointer-events: auto; }
+        #project-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2501;
+            background: rgba(30, 35, 50, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-top: 2px solid rgba(255,255,255,0.12);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: 80vh; display: flex; flex-direction: column;
+        }
+        #project-sheet.show { transform: translateY(0); }
+        #project-sheet .sheet-list {
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
+        }
+        .project-sheet-item {
+            padding: 14px 16px; border-radius: 12px;
+            background: rgba(255,255,255,0.08); color: white;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .project-sheet-item.active {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.5);
+        }
+        .project-sheet-item .dist { font-size: 11px; opacity: 0.7; }
 
         /* 手機版隱藏桌面版的元素 */
         @media (max-width: 640px) {
             #project-select-wrapper, #status-toast,
             #step-panel, #power-saving-btn, #quick-camera-btn,
-            .desktop-bottom-links { display: none !important; }
-            #mobile-bottom-bar, #mobile-top-bar, #mobile-float-right, #mobile-power-btn { display: flex !important; }
+            .desktop-bottom-links, .leaflet-control-zoom { display: none !important; }
+            #mobile-bottom-bar, #mobile-top-bar, #mobile-float-right, #mobile-left-controls { display: flex !important; }
             /* 底部列上方的浮動位置 */
             #mobile-float-right { bottom: 74px; }
-            #mobile-power-btn { left: 10px; bottom: 74px; }
             /* 工具箱內的按鈕隱藏原始位置 */
             .tool-in-sheet { display: none !important; }
             /* 觀看模式和定位按鈕重新定位到底部列旁 */
             #spectator-btn, #locate-btn { display: none !important; }
-            /* 將公告面板的位置下移，避開新的 top bar */
-            #announcement-panel { top: 68px !important; }
+            /* 將公告面板貼近右上角 */
+            #announcement-panel { top: 48px !important; right: 4px !important; }
         }
         @media (min-width: 641px) {
             #mobile-bottom-bar, #mobile-top-bar, #tool-sheet-overlay, #tool-sheet,
-            #mobile-float-right, #mobile-power-btn { display: none !important; }
+            #project-sheet-overlay, #project-sheet,
+            #mobile-float-right, #mobile-left-controls { display: none !important; }
         }
     </style>
 
@@ -403,7 +444,7 @@
             <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
             <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
             <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
-            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-white tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
         </div>
         <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
         <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
@@ -494,7 +535,6 @@
             <div class="top-left" id="mobile-top-project-trigger">
                 <span class="top-project-name" id="mobile-project-name">載入中...</span>
                 <span class="top-project-arrow">▼</span>
-                <select id="mobile-switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
             </div>
             <div class="top-center-links">
                 <a href="runrun.htm" class="text-orange-400">浪浪地圖</a>
@@ -503,7 +543,7 @@
                 <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400">聯絡作者</a>
             </div>
             <div class="top-right">
-                <div class="top-status-dot" id="mobile-sync-dot"></div>
+                <div class="top-status-dot" id="mobile-sync-dot" style="margin-right: 12px;"></div>
                 <div class="top-profile-dot" id="mobile-profile-trigger"></div>
             </div>
         </div>
@@ -512,8 +552,9 @@
     <!-- 手機版底部操作列 -->
     <div id="mobile-bottom-bar">
         <div class="bar-main">
-            <div class="bar-item" id="mobile-locate-btn">
-                <span class="bar-icon text-[24px]">⌖</span>
+            <div class="bar-item" id="mobile-power-bar-btn">
+                <span class="bar-icon">🌙</span>
+                <span class="bar-label">省電</span>
             </div>
             <div class="bar-item" id="mobile-tool-btn">
                 <span class="bar-icon">🛠️</span>
@@ -566,10 +607,27 @@
         </div>
     </div>
 
-    <!-- 手機版省電按鈕 (浮動) -->
-    <div id="mobile-power-btn">🌙 省電</div>
+    <!-- 專案選擇 Bottom Sheet -->
+    <div id="project-sheet-overlay"></div>
+    <div id="project-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title text-white font-bold text-center mb-2">選擇協尋專案</div>
+        <div class="sheet-list" id="mobile-project-list"></div>
+    </div>
 
-    <!-- 手機版步數/禮物浮動區 -->
+    <!-- 手機版地圖左下控制組 (縮放、定位) -->
+    <div id="mobile-left-controls">
+        <button class="mobile-map-btn" id="mobile-zoom-in-btn">+</button>
+        <button class="mobile-map-btn" id="mobile-zoom-out-btn">-</button>
+        <button class="mobile-map-btn" id="mobile-locate-float-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 手機版步數浮動區 -->
     <div id="mobile-float-right">
         <div class="float-steps" id="mobile-steps-trigger">
             👣 <span class="steps-num" id="mobile-step-value">0</span>
@@ -661,7 +719,7 @@
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx, fogRenderPending=false, FOG_SCALE=0.08;
         let currentProjectHasPrize=false, lotteryTickets=0, lotteryTimeRemaining=300, isTrackingStarted=false, lastFullSyncTime=0, slotSpinning=false, slotTimer=null;
         let isMapInteracting=false, mapInteractionTimer=null, powerSavingTimer=null, wakeLock=null, isPowerSaving=false, geoFailCount=0, gpsIntervalId=null, lastSetViewTime1=0, lastSetViewTime2=0;
-        let isAnnounceCollapsed=lsGet('dogMap_announceCollapsed')==='true', animalInfoCollapseTimer=null, viewerPhotos=[], currentViewerIndex=0, touchStartX=0, touchEndX=0, galleryLoadedCount=0, currentGalleryType='photos';
+        let isAnnounceCollapsed=lsGet('dogMap_announceCollapsed')==='true', animalInfoCollapseTimer=null, announceTextCollapseTimer=null, viewerPhotos=[], currentViewerIndex=0, touchStartX=0, touchEndX=0, galleryLoadedCount=0, currentGalleryType='photos';
         let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false, isClearingHistory=false, isPaintingClear=false, isErasingClear=false, lastPaintLatLng=null, clearHistoryCircles=[], currentClearRadius=100;
 
         function getSortedProjectKeys() { return Object.keys(PROJECTS).sort((a,b)=>{ let pA=PROJECTS[a], pB=PROJECTS[b], latA=(pA.bounds[0][0]+pA.bounds[1][0])/2, lngA=(pA.bounds[0][1]+pA.bounds[1][1])/2, latB=(pB.bounds[0][0]+pB.bounds[1][0])/2, lngB=(pB.bounds[0][1]+pB.bounds[1][1])/2; if(lastSavedPos) return getDistance(lastSavedPos.lat,lastSavedPos.lng,latA,lngA)-getDistance(lastSavedPos.lat,lastSavedPos.lng,latB,lngB); return Math.abs(latA-latB)>0.01?latB-latA:lngA-lngB; }); }
@@ -978,10 +1036,10 @@
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; 
-            let ms=$('mobile-switch-project-select'); if(ms) ms.innerHTML='';
+            let mobileList=$('mobile-project-list'); if(mobileList) mobileList.innerHTML='';
             if(!Object.keys(PROJECTS).length){
                 s.innerHTML='<option value="">目前無協尋專案</option>'; 
-                if(ms) ms.innerHTML='<option value="">目前無協尋專案</option>';
+                if(mobileList) mobileList.innerHTML='<div class="project-sheet-item">目前無協尋專案</div>';
                 text('project-display-text', '目前無協尋專案');
                 currentProjectKey=null; hide('animal-info-section'); return;
             } 
@@ -992,15 +1050,37 @@
                     let dist=getDistance(lastSavedPos.lat,lastSavedPos.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2); 
                     dt=dist<1000?` (${Math.round(dist)}m)`:` (${(dist/1000).toFixed(1)}km)`;
                 } 
-                let optHtml = `<option value="${k}" data-rawname="${escapeHTML(p.animalName||p.name)}" data-dist="${dt}">🎯 ${escapeHTML(p.animalName||p.name)}${dt}</option>`;
-                s.innerHTML += optHtml;
-                if(ms) ms.innerHTML += optHtml;
+                let rawName = escapeHTML(p.animalName||p.name);
+                s.innerHTML += `<option value="${k}" data-rawname="${rawName}" data-dist="${dt}">🎯 ${rawName}${dt}</option>`;
+                if (mobileList) {
+                    let div = document.createElement('div');
+                    div.className = 'project-sheet-item';
+                    div.innerHTML = `<span>${rawName}</span><span class="dist">${dt}</span>`;
+                    div.onclick = () => {
+                        currentProjectKey = k;
+                        s.value = k;
+                        s.dispatchEvent(new Event('change'));
+                        document.getElementById('project-sheet-overlay').classList.remove('show');
+                        document.getElementById('project-sheet').classList.remove('show');
+                        updateProjectDropdown(); // re-render to update active class
+                    };
+                    mobileList.appendChild(div);
+                }
             });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey])fk=currentProjectKey; else if(currentProjectKey){for(let k in PROJECTS)if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey){fk=k; break;}}
-            if(fk){currentProjectKey=fk; s.value=currentProjectKey; if(ms) ms.value=currentProjectKey;}else{if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; if(ms) ms.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);}}
+            if(fk){currentProjectKey=fk; s.value=currentProjectKey;}else{if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);}}
             if(currentProjectKey&&PROJECTS[currentProjectKey]){
                 window.history.replaceState(null,'',`?${encodeURIComponent(PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name||currentProjectKey)}`);
                 updateVisualSelectText();
+                if(mobileList){
+                    Array.from(mobileList.children).forEach(el => {
+                        if(el.querySelector('span').innerText === (PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name)){
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                    });
+                }
             }
         }
         
@@ -1046,7 +1126,22 @@
             text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             html('announcement-text', escapeHTML(allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。").replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s<]+)/g, url=>`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`));
             let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){let m=p.actionLink.url.match(/(https?:\/\/[^\s<]+)/); ac.innerHTML=`<a href="${m?m[1]:p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`;}
-            applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){$('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'),5000);}
+            applyAnnouncePanelCollapseState();
+            if (window.innerWidth <= 640) {
+                $('animal-info-section').classList.remove('mobile-collapsed');
+                if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
+                if (announceTextCollapseTimer) clearTimeout(announceTextCollapseTimer);
+                animalInfoCollapseTimer = setTimeout(() => {
+                    $('animal-info-section').classList.add('mobile-collapsed');
+                    announceTextCollapseTimer = setTimeout(() => {
+                        if (!isAnnounceCollapsed) {
+                            isAnnounceCollapsed = true;
+                            lsSet('dogMap_announceCollapsed', isAnnounceCollapsed);
+                            applyAnnouncePanelCollapseState();
+                        }
+                    }, 3000);
+                }, 5000);
+            }
         }
         function drawAllProjects() {
             allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
@@ -1345,7 +1440,26 @@
         const handleCardSwipe=()=>{if(Math.abs(cardTouchEndX-cardTouchStartX)>40)switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1);};
         on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
         const openGallery=()=>{text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal');};
-        ais.addEventListener('click',e=>{if(isCardSwiping){e.preventDefault();e.stopPropagation();return;} if(e.target.classList.contains('gallery-btn-overlay'))openGallery(); else if(e.target.id==='animal-main-photo')openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000);} });
+        ais.addEventListener('click', e => {
+            if (isCardSwiping) { e.preventDefault(); e.stopPropagation(); return; }
+            if (e.target.classList.contains('gallery-btn-overlay')) openGallery();
+            else if (e.target.id === 'animal-main-photo') openCompareModal();
+            else if (ais.classList.contains('mobile-collapsed')) {
+                ais.classList.remove('mobile-collapsed');
+                if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
+                if (announceTextCollapseTimer) clearTimeout(announceTextCollapseTimer);
+                animalInfoCollapseTimer = setTimeout(() => {
+                    ais.classList.add('mobile-collapsed');
+                    announceTextCollapseTimer = setTimeout(() => {
+                        if (!isAnnounceCollapsed) {
+                            isAnnounceCollapsed = true;
+                            lsSet('dogMap_announceCollapsed', isAnnounceCollapsed);
+                            applyAnnouncePanelCollapseState();
+                        }
+                    }, 3000);
+                }, 5000);
+            }
+        });
         on('header-gallery-btn','click',e=>{e.stopPropagation(); openGallery();}); on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
         
         function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 pixel-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 pixel-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
@@ -1585,11 +1699,24 @@
             });
 
             // --- 底部操作列按鈕 ---
-            // 定位
-            document.getElementById('mobile-locate-btn')?.addEventListener('click', () => {
+            // --- 底部操作列按鈕 ---
+            // 省電 (原定位位置)
+            document.getElementById('mobile-power-bar-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterPowerSavingMode();
+            });
+            // --- 左下地圖控制組 (縮放、定位) ---
+            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', () => {
+                if (map) map.zoomIn();
+            });
+            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', () => {
+                if (map) map.zoomOut();
+            });
+            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', () => {
                 const origBtn = document.getElementById('locate-btn');
                 if (origBtn) origBtn.click();
             });
+
             // 觀看模式
             document.getElementById('mobile-spectator-btn')?.addEventListener('click', () => {
                 const origBtn = document.getElementById('spectator-btn');
@@ -1611,19 +1738,16 @@
                 if (icon) icon.textContent = isProjectLocked ? '🔒' : '🔓';
             }
 
-            // --- 省電按鈕 ---
-            document.getElementById('mobile-power-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                enterPowerSavingMode();
+            // --- 頂部列：專案切換 Bottom Sheet ---
+            const projectOverlay = document.getElementById('project-sheet-overlay');
+            const projectSheet = document.getElementById('project-sheet');
+            document.getElementById('mobile-top-project-trigger')?.addEventListener('click', () => {
+                projectOverlay?.classList.add('show');
+                projectSheet?.classList.add('show');
             });
-
-            // --- 頂部列：專案切換代理 ---
-            document.getElementById('mobile-switch-project-select')?.addEventListener('change', (e) => {
-                const sel = document.getElementById('switch-project-select');
-                if (sel) {
-                    sel.value = e.target.value;
-                    sel.dispatchEvent(new Event('change'));
-                }
+            projectOverlay?.addEventListener('click', () => {
+                projectSheet?.classList.remove('show');
+                setTimeout(() => projectOverlay?.classList.remove('show'), 300);
             });
             
             // 頂部列：點擊狀態燈 → 觸發原生登入/連線面板
@@ -1643,11 +1767,7 @@
                 const origPanel = document.getElementById('step-panel');
                 if (origPanel) origPanel.click();
             });
-            // 禮物：點擊 → 觸發原始禮物容器
-            document.getElementById('mobile-gift-trigger')?.addEventListener('click', () => {
-                const origGift = document.getElementById('floating-gift-container');
-                if (origGift) origGift.click();
-            });
+
 
             // --- 同步函式：定時同步桌面版狀態到手機版 UI ---
             function syncMobileUI() {
