@@ -166,11 +166,11 @@
             transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
         }
         #tool-sheet.show { transform: translateY(0); }
-        #tool-sheet .sheet-handle {
+        #tool-sheet .sheet-handle, #project-sheet .sheet-handle {
             width: 36px; height: 4px; background: rgba(255,255,255,0.3);
             border-radius: 2px; margin: 0 auto 12px auto;
         }
-        #tool-sheet .sheet-title {
+        #tool-sheet .sheet-title, #project-sheet .sheet-title {
             color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 800;
             text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; text-align: center;
         }
@@ -587,7 +587,10 @@
     <div id="project-sheet-overlay"></div>
     <div id="project-sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">切換名單</div>
+        <div class="flex justify-between items-center px-4 mb-2">
+            <div class="sheet-title mb-0">切換名單</div>
+            <button id="close-project-sheet-btn" class="text-gray-400 hover:text-white text-2xl leading-none font-bold">&times;</button>
+        </div>
         <div id="mobile-project-list" class="sheet-list">
             <!-- JS動態生成專案清單 -->
         </div>
@@ -1022,6 +1025,7 @@
                         s.dispatchEvent(new Event('change'));
                         document.getElementById('project-sheet-overlay').classList.remove('show');
                         document.getElementById('project-sheet').classList.remove('show');
+                        if (PROJECTS[currentProjectKey]) document.getElementById('announcement-panel')?.classList.remove('hidden');
                         updateProjectDropdown(); // re-render to update active class
                     };
                     mobileList.appendChild(div);
@@ -1446,7 +1450,18 @@
         $('viewer-next-btn').addEventListener('click',()=>{if(currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}else{switchToAdjacentProjectPhotos(1);}});
         let vc=$('photo-viewer-container'); vc.addEventListener('touchstart',e=>touchStartX=e.changedTouches[0].screenX); vc.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX; if(touchEndX<touchStartX-50){ $('viewer-next-btn').click(); }else if(touchEndX>touchStartX+50){ $('viewer-prev-btn').click(); } });
         
-        const zoomToProject=(key)=>{ let p=PROJECTS[key]; if(!p)return; let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); };
+        const zoomToProject=(key)=>{ 
+            let p=PROJECTS[key]; if(!p)return; 
+            let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2;
+            let bounds = L.latLngBounds([[cLat-300/111000, cLng-300/(111000*Math.cos(cLat*Math.PI/180))], [cLat+300/111000, cLng+300/(111000*Math.cos(cLat*Math.PI/180))]]);
+            if (lastSavedPos) {
+                bounds.extend([lastSavedPos.lat, lastSavedPos.lng]);
+            }
+            map.flyToBounds(bounds, {animate:true, duration:1.5}); 
+            isMapInteracting=true; 
+            if(mapInteractionTimer)clearTimeout(mapInteractionTimer); 
+            mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); 
+        };
 
         // --- 管理與設定操作 ---
         on('sync-ping','click',e=>{ 
@@ -1607,6 +1622,7 @@
                         return;
                     }
                     
+                    if (e.isTrusted === false) return; // Allow synthetic clicks from tool sheet to pass through without two-tap logic
                     if(btn.classList.contains('two-tap')&&!btn.classList.contains('show-desc')){
                         document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.remove('collapsed'); if(b!==btn)b.classList.remove('show-desc');}); 
                         btn.classList.add('show-desc'); 
@@ -1733,11 +1749,19 @@
             document.getElementById('mobile-top-project-trigger')?.addEventListener('click', () => {
                 projectOverlay?.classList.add('show');
                 projectSheet?.classList.add('show');
+                document.getElementById('announcement-panel')?.classList.add('hidden');
             });
-            projectOverlay?.addEventListener('click', () => {
+            const closeProjectSheet = () => {
                 projectSheet?.classList.remove('show');
-                setTimeout(() => projectOverlay?.classList.remove('show'), 300);
-            });
+                setTimeout(() => {
+                    projectOverlay?.classList.remove('show');
+                    if (PROJECTS[currentProjectKey]) {
+                        document.getElementById('announcement-panel')?.classList.remove('hidden');
+                    }
+                }, 300);
+            };
+            projectOverlay?.addEventListener('click', closeProjectSheet);
+            document.getElementById('close-project-sheet-btn')?.addEventListener('click', closeProjectSheet);
             
             // 頂部列：點擊狀態燈 → 觸發原生登入/連線面板
             document.getElementById('mobile-sync-dot')?.addEventListener('click', () => {
