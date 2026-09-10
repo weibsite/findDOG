@@ -35,23 +35,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; touch-action: none; -webkit-text-size-adjust: none; }
-        input, textarea, select { touch-action: manipulation; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif; touch-action: none; -webkit-text-size-adjust: none; }
+        input, textarea, select { touch-action: manipulation; font-family: inherit; }
         
         #map-container { position: relative; width: 100vw; height: 100vh; }
         #map { width: 100%; height: 100%; background-color: #1a202c; }
-        .pixel-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
-        .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
-        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
-        .pixel-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
+        .pixel-panel { background-color: white; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; }
+        .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; font-family: 'Courier New', Courier, monospace; }
+        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #1a202c; }
+        .pixel-input { border: 2px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
         .pixel-input:focus { background-color: #fef3c7; }
-        .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
-        .leaflet-popup-pane { z-index: 99999 !important; }
-        .camera-popup-naked .leaflet-popup-content-wrapper { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
-        .camera-popup-naked .leaflet-popup-tip-container { display: none !important; }
-        .camera-popup-naked .leaflet-popup-content { margin: 0 !important; line-height: 0 !important; padding: 0 !important; width: auto !important; }
-        .camera-popup-naked .leaflet-popup-close-button { display: none !important; }
 
+        /* Safe Area 適配 */
+        @supports (padding: env(safe-area-inset-top)) {
+            .safe-top { padding-top: env(safe-area-inset-top); }
+            .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        }
+
+        /* Modal 內保持 4px 粗邊框以維持 Pixel 感 */
+        .pixel-panel-modal { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
+        .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
         .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .user-avatar-pixel { width: 16px; height: 16px; border: 3px solid #1a202c; box-sizing: border-box; }
         .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
@@ -95,12 +98,248 @@
 
         #central-gps-error-modal { display: none; }
         #central-gps-error-modal.show { display: flex; }
+
+        /* ========== 手機版 UI 改造 ========== */
+
+        /* --- 底部操作列 --- */
+        #mobile-bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+            display: none; /* JS show on mobile */
+            flex-direction: column;
+            background: rgba(26, 32, 44, 0.88);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-top: 2px solid rgba(255,255,255,0.1);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        #mobile-bottom-bar .bar-main {
+            display: flex; align-items: center; justify-content: space-around;
+            height: 56px; padding: 0 8px; position: relative;
+        }
+        #mobile-bottom-bar .bar-link-row {
+            display: flex; justify-content: center; gap: 12px;
+            padding: 4px 0 2px 0; border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        #mobile-bottom-bar .bar-link-row a {
+            font-size: 9px; font-weight: 800; text-decoration: none; opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        #mobile-bottom-bar .bar-link-row a:hover { opacity: 1; }
+        #mobile-bottom-bar .bar-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; color: rgba(255,255,255,0.75); font-size: 10px; font-weight: 800;
+            cursor: pointer; padding: 4px 10px; transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-bottom-bar .bar-item:active { color: #f59e0b; }
+        #mobile-bottom-bar .bar-item .bar-icon { font-size: 20px; line-height: 1; }
+        #mobile-bottom-bar .bar-item .bar-label { font-family: inherit; text-transform: none; letter-spacing: 0.05em; }
+
+        /* 中央相機凸起按鈕 */
+        #mobile-bottom-bar .bar-camera {
+            position: relative; top: -16px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #f59e0b; border: 3px solid #1a202c;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; color: #1a202c;
+            transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-bottom-bar .bar-camera:active { transform: scale(0.92); }
+        #mobile-bottom-bar .bar-camera span { font-size: 26px; line-height: 1; }
+
+        /* --- 工具箱 Bottom Sheet --- */
+        #tool-sheet-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            background: rgba(0,0,0,0.5); opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none; display: none;
+        }
+        #tool-sheet-overlay.show { display: block; opacity: 1; pointer-events: auto; }
+        #tool-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2501;
+            background: rgba(30, 35, 50, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-top: 2px solid rgba(255,255,255,0.12);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        #tool-sheet.show { transform: translateY(0); }
+        #tool-sheet .sheet-handle {
+            width: 36px; height: 4px; background: rgba(255,255,255,0.3);
+            border-radius: 2px; margin: 0 auto 12px auto;
+        }
+        #tool-sheet .sheet-title {
+            color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; text-align: center;
+        }
+        #tool-sheet .sheet-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+        #tool-sheet .sheet-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 4px; padding: 14px 6px; border-radius: 10px;
+            background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+            font-size: 10px; font-weight: 700; cursor: pointer;
+            transition: background 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        #tool-sheet .sheet-item:active { background: rgba(255,255,255,0.18); }
+        #tool-sheet .sheet-item .sheet-icon { font-size: 22px; line-height: 1; }
+
+        /* --- 頂部薄條 --- */
+        #mobile-top-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            display: none; /* JS show on mobile */
+            flex-direction: column; justify-content: center;
+            height: 40px; padding: 0 8px;
+            padding-top: env(safe-area-inset-top, 0px);
+            background: rgba(26, 32, 44, 0.75);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        #mobile-top-bar .top-main-row {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            height: 40px;
+        }
+        #mobile-top-bar .top-left {
+            display: flex; align-items: center; gap: 4px; flex-shrink: 1; min-width: 0; position: relative;
+        }
+        #mobile-top-bar .top-project-name {
+            color: #f59e0b; font-size: 13px; font-weight: 900;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            cursor: pointer; max-width: 25vw;
+        }
+        #mobile-top-bar .top-project-arrow { color: rgba(255,255,255,0.4); font-size: 10px; }
+        
+        #mobile-top-bar .top-center-links {
+            display: flex; align-items: center; justify-content: space-evenly; flex: 1; padding: 0 4px;
+        }
+        #mobile-top-bar .top-center-links a {
+            font-size: 11px; font-weight: 800; text-decoration: none;
+            transition: opacity 0.2s; white-space: nowrap;
+        }
+
+        #mobile-top-bar .top-right {
+            display: flex; align-items: center; gap: 6px; flex: shrink-0;
+        }
+        #mobile-top-bar .top-status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #ef4444; border: 1.5px solid rgba(255,255,255,0.3);
+            transition: background 0.3s;
+        }
+        #mobile-top-bar .top-profile-dot {
+            width: 16px; height: 16px; border-radius: 3px;
+            border: 1.5px solid rgba(255,255,255,0.3); cursor: pointer;
+        }
+
+        /* --- 浮動元件現代化 (禮物/步數) --- */
+        #mobile-float-right {
+            position: fixed; z-index: 2100;
+            right: 10px; display: none; /* JS positions */
+            flex-direction: column; gap: 6px; align-items: flex-end;
+        }
+        #mobile-float-right .float-steps {
+            background: rgba(26, 32, 44, 0.85); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.12); border-radius: 20px;
+            padding: 3px 10px; display: flex; align-items: center; gap: 4px;
+            color: white; font-size: 11px; font-weight: 800; cursor: pointer;
+        }
+        /* --- 步數浮動 --- */
+        #mobile-float-right .float-steps .steps-num {
+            color: #60a5fa; font-size: 14px; font-weight: 900;
+        }
+
+        /* --- 管理面板隱藏狀態 --- */
+        #admin-panel.admin-collapsed button:not(#close-admin-btn):not(#expand-admin-btn),
+        #admin-panel.admin-collapsed .border-b-2,
+        #admin-panel.admin-collapsed #admin-current-proj,
+        #admin-panel.admin-collapsed input {
+            display: none !important;
+        }
+        #admin-panel.admin-collapsed #expand-admin-btn {
+            display: block !important;
+        }
+
+        /* --- 手機版地圖左下 (縮放與定位) --- */
+        #mobile-left-controls {
+            position: fixed; z-index: 2100; display: none;
+            flex-direction: column; gap: 6px;
+            left: 10px; bottom: 74px;
+        }
+        .mobile-map-btn {
+            width: 40px; height: 40px;
+            background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            color: black; font-size: 24px; font-weight: bold; line-height: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-map-btn:active { background: #f3f4f6; }
+        .mobile-map-btn svg { width: 22px; height: 22px; color: black; }
+
+        /* --- 專案選擇 Bottom Sheet --- */
+        #project-sheet-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            background: rgba(0,0,0,0.5); opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none; display: none;
+        }
+        #project-sheet-overlay.show { display: block; opacity: 1; pointer-events: auto; }
+        #project-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2501;
+            background: rgba(30, 35, 50, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-top: 2px solid rgba(255,255,255,0.12);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: 80vh; display: flex; flex-direction: column;
+        }
+        #project-sheet.show { transform: translateY(0); }
+        #project-sheet .sheet-list {
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
+        }
+        .project-sheet-item {
+            padding: 14px 16px; border-radius: 12px;
+            background: rgba(255,255,255,0.08); color: white;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .project-sheet-item.active {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.5);
+        }
+        .project-sheet-item .dist { font-size: 11px; opacity: 0.7; }
+
+        /* 手機版隱藏桌面版的元素 */
+        @media (max-width: 640px) {
+            #project-select-wrapper, #status-toast,
+            #step-panel, #power-saving-btn, #quick-camera-btn,
+            .desktop-bottom-links, .leaflet-control-zoom { display: none !important; }
+            #mobile-bottom-bar, #mobile-top-bar, #mobile-float-right, #mobile-left-controls { display: flex !important; }
+            /* 底部列上方的浮動位置 */
+            #mobile-float-right { bottom: 74px; }
+            /* 工具箱內的按鈕隱藏原始位置 */
+            .tool-in-sheet { display: none !important; }
+            /* 觀看模式和定位按鈕重新定位到底部列旁 */
+            #spectator-btn, #locate-btn { display: none !important; }
+            /* 將公告面板貼近右上角 */
+            #announcement-panel { top: 48px !important; right: 4px !important; }
+        }
+        @media (min-width: 641px) {
+            #mobile-bottom-bar, #mobile-top-bar, #tool-sheet-overlay, #tool-sheet,
+            #project-sheet-overlay, #project-sheet,
+            #mobile-float-right, #mobile-left-controls { display: none !important; }
+        }
     </style>
+
 </head>
 <body>
     <div id="map-container"><div id="map"></div></div>
     
-<div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
+    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
         <div class="text-6xl mb-6 opacity-50 animate-pulse">🌙</div>
         <div class="text-2xl font-black tracking-widest mb-2 text-gray-400">省電模式運作中</div>
         <div class="text-sm font-bold text-gray-600 mb-8">GPS 定位仍在背景上傳</div>
@@ -160,12 +399,12 @@
         <button id="lock-project-btn" class="pixel-btn bg-red-600 text-white shadow-[4px_4px_0px_#1a202c] transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔒</button>
     </div>
     
-    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
-    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
-    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
-    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="地圖放置標記">📍 導航標記</button>
-    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
+    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="切換出沒線索">👁️ 隱藏線索</button>
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="重播走過路徑">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="地圖放置標記">📍 導航標記</button>
+    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn tool-in-sheet" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
     
     <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
     <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
@@ -211,7 +450,7 @@
             <img id="animal-main-photo" src="" class="w-full h-full object-cover transition-opacity duration-500 cursor-pointer select-none" draggable="false">
             <div id="card-next-btn" class="absolute right-0 top-0 bottom-6 w-8 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70 backdrop-blur-sm transition-all duration-500">&gt;</div>
             <div class="gallery-btn-overlay absolute bottom-0 right-0 h-6 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 shadow-[-2px_-2px_0px_#1a202c]">📸 看相簿</div>
-            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-gray-700 tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
+            <div id="collapsed-photo-label" class="absolute inset-0 flex items-center justify-center font-black text-white tracking-widest pointer-events-none opacity-0 transition-opacity duration-500 z-10 text-sm">照片</div>
         </div>
         <div class="text-red-600 mb-1 border-b-2 border-black pb-1 text-[11px] sm:text-xs flex justify-between items-center mt-2"><span>📢 最新公告</span><div class="flex items-center gap-1"><button id="header-gallery-btn" class="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#1a202c] cursor-pointer hover:bg-blue-700">📸 看相簿</button><button id="toggle-announce-panel-btn" class="px-1 py-0.5 border-2 border-black bg-yellow-400 text-black font-extrabold cursor-pointer text-[10px] shadow-[2px_2px_0px_#1a202c]">➖</button></div></div>
         <div id="announcement-content-wrapper" class="transition-all duration-300 overflow-y-auto max-h-40">
@@ -230,28 +469,30 @@
 
     <!-- 管理員面板更新 -->
     <div id="admin-panel" class="absolute top-16 left-4 right-4 md:right-[120px] md:left-auto md:w-[450px] z-[11000] pixel-panel p-3 hidden bg-white/95 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[50vh]">
-    <div class="flex flex-wrap gap-2 items-center justify-center">
-        <div class="text-red-600 border-b-2 border-black pb-1 w-full text-sm font-bold text-center">🛡️ 管理員工具</div>
-        <div class="text-[10px] text-center font-bold mb-1 text-blue-700 bg-blue-100 border border-blue-300 rounded px-2 py-1 w-full" id="admin-current-proj"></div>
-        
-        <button id="clear-history-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button>
-        <button id="add-sighting-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
-        <button id="manage-sightings-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
-        <button id="add-route-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
-        
-        <button id="upload-gpx-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-lime-600 text-white">📁 上傳 GPX</button>
-        <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
-        <button id="manage-routes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
-        
-        <button id="update-announce-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
-        <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎品</button>
-        <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
-        <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
-        <button id="found-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-yellow-400 text-black hidden md:block">🎉 尋獲抽獎</button>
-        
-        <button id="close-admin-btn" class="pixel-btn w-full mt-2 p-2 text-xs bg-red-600 text-white border-2 border-black font-bold">❌ 關閉面板</button>
+        <div class="flex flex-wrap gap-2 items-center justify-center">
+            <div class="text-red-600 border-b-2 border-black pb-1 w-full text-sm font-bold text-center">🛡️ 管理工具</div>
+            <div class="text-[10px] text-center font-bold mb-1 text-blue-700 bg-blue-100 border border-blue-300 rounded px-2 py-1 w-full" id="admin-current-proj"></div>
+            
+            <button id="clear-history-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-400 text-white">🧹 清除軌跡</button>
+            <button id="add-sighting-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-green-500 text-white">📍 標記出現</button>
+            <button id="manage-sightings-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-blue-500 text-white">📝 管理標記</button>
+            <button id="add-route-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-orange-500 text-white">🗺️ 畫新路線</button>
+            
+            <button id="upload-gpx-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-lime-600 text-white">📂 上傳 GPX</button>
+            <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
+            <button id="manage-routes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-indigo-500 text-white">📋 管理路線</button>
+            
+            <button id="update-announce-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
+            <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎項</button>
+            <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">🏆 管理獎項</button>
+            <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+            
+            <div class="w-full flex gap-2 mt-2">
+                <button id="expand-admin-btn" class="pixel-btn flex-1 p-2 text-xs bg-blue-600 text-white border-2 border-black font-bold hidden">🔽 展開面板</button>
+                <button id="close-admin-btn" class="pixel-btn flex-1 p-2 text-xs bg-red-600 text-white border-2 border-black font-bold">🚪 登出</button>
+            </div>
+        </div>
     </div>
-</div>
     
     <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
     
@@ -293,7 +534,110 @@
     <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
     <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
     
-    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="govpet.htm" class="text-purple-600 hover:text-purple-800 no-underline font-black">走失協尋</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3 desktop-bottom-links"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="govpet.htm" class="text-purple-600 hover:text-purple-800 no-underline font-black">走失協尋</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+
+    <!-- ========== 手機版新 UI 元素 ========== -->
+
+    <!-- 手機版頂部薄條 -->
+    <div id="mobile-top-bar">
+        <div class="top-main-row">
+            <div class="top-left" id="mobile-top-project-trigger">
+                <span class="top-project-name" id="mobile-project-name">載入中...</span>
+                <span class="top-project-arrow">▼</span>
+                <select id="mobile-switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
+            </div>
+            <div class="top-center-links">
+                <a href="runrun.htm" class="text-orange-400">浪浪地圖</a>
+                <a href="govpet.htm" class="text-purple-400">走失協尋</a>
+                <a href="/helpme.htm" target="_blank" class="text-blue-400">免費刊登</a>
+                <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400">聯絡作者</a>
+            </div>
+            <div class="top-right" style="gap: 12px; margin-right: 4px;">
+                <div class="top-status-dot" id="mobile-sync-dot" style="margin-right: 4px;"></div>
+                <div class="top-profile-dot" id="mobile-profile-trigger"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手機版底部操作列 -->
+    <div id="mobile-bottom-bar">
+        <div class="bar-main">
+            <div class="bar-item" id="mobile-power-bar-btn">
+                <span class="bar-icon text-[22px]">🌙</span>
+                <span class="bar-label">省電</span>
+            </div>
+            <div class="bar-item" id="mobile-tool-btn">
+                <span class="bar-icon">🛠️</span>
+                <span class="bar-label">工具</span>
+            </div>
+            <a href="runrun.htm?go" class="bar-camera" id="mobile-camera-btn">
+                <span>📷</span>
+            </a>
+            <div class="bar-item" id="mobile-spectator-btn">
+                <span class="bar-icon">👁️</span>
+                <span class="bar-label" id="mobile-spectator-label">觀看</span>
+            </div>
+            <div class="bar-item" id="mobile-lock-btn">
+                <span class="bar-icon" id="mobile-lock-icon">🔒</span>
+                <span class="bar-label">鎖定</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具箱 Bottom Sheet -->
+    <div id="tool-sheet-overlay"></div>
+    <div id="tool-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">工具箱</div>
+        <div class="sheet-grid">
+            <div class="sheet-item" data-target="toggle-sighting-track-btn">
+                <span class="sheet-icon">👁️</span>
+                <span>線索顯示</span>
+            </div>
+            <div class="sheet-item" data-target="my-route-btn">
+                <span class="sheet-icon">🐍</span>
+                <span>我的軌跡</span>
+            </div>
+            <div class="sheet-item" data-target="eva-grid-btn">
+                <span class="sheet-icon">🕸️</span>
+                <span>完成度</span>
+            </div>
+            <div class="sheet-item" data-target="force-upload-btn">
+                <span class="sheet-icon">📤</span>
+                <span>強制打卡</span>
+            </div>
+            <div class="sheet-item" data-target="nav-pin-btn">
+                <span class="sheet-icon">📍</span>
+                <span>導航標記</span>
+            </div>
+            <div class="sheet-item" data-target="toggle-fog-btn">
+                <span class="sheet-icon">🌫️</span>
+                <span>迷霧開關</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手機版地圖左下控制組 (縮放、定位) -->
+    <div id="mobile-left-controls">
+        <button class="mobile-map-btn" id="mobile-zoom-in-btn">+</button>
+        <button class="mobile-map-btn" id="mobile-zoom-out-btn">-</button>
+        <button class="mobile-map-btn" id="mobile-locate-float-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 手機版步數/禮物浮動區 -->
+    <div id="mobile-float-right">
+        <div class="float-steps" id="mobile-steps-trigger">
+            👣 <span class="steps-num" id="mobile-step-value">0</span>
+        </div>
+    </div>
+
+    <!-- 手機版公告彈出面板 (已移除，改用原始面板) -->
+
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -302,8 +646,7 @@
         const text = (id, str) => { if($(id)) $(id).innerText = str; }, html = (id, str) => { if($(id)) $(id).innerHTML = str; };
         const on = (id, ev, cb) => $(id)?.addEventListener(ev, cb);
         const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(e){} }, lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
-        const obfUUID = t => typeof t==='string'?t.replace(/([a-f0-9]{8})-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-([a-f0-9]{12})/gi, '$1-****-****-****-$2'):t;
-        const escapeHTML = str => obfUUID(String(str)).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
+        const escapeHTML = str => String(str).replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[m]));
         const getBaseHttpUrl = () => NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : "";
         const replaceBtn = (id, cb) => { let el=$(id), clo=el.cloneNode(true); el.parentNode.replaceChild(clo, el); if(cb) clo.addEventListener('click', cb); return clo; };
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
@@ -378,7 +721,7 @@
         let fogCanvas, fogCtx, lowResCanvas, lowResCtx, tempCanvas, tempCtx, fogRenderPending=false, FOG_SCALE=0.08;
         let currentProjectHasPrize=false, lotteryTickets=0, lotteryTimeRemaining=300, isTrackingStarted=false, lastFullSyncTime=0, slotSpinning=false, slotTimer=null;
         let isMapInteracting=false, mapInteractionTimer=null, powerSavingTimer=null, wakeLock=null, isPowerSaving=false, geoFailCount=0, gpsIntervalId=null, lastSetViewTime1=0, lastSetViewTime2=0;
-        let isAnnounceCollapsed=lsGet('dogMap_announceCollapsed')==='true', animalInfoCollapseTimer=null, viewerPhotos=[], currentViewerIndex=0, touchStartX=0, touchEndX=0, galleryLoadedCount=0, currentGalleryType='photos';
+        let isAnnounceCollapsed=lsGet('dogMap_announceCollapsed')==='true', animalInfoCollapseTimer=null, announceTextCollapseTimer=null, viewerPhotos=[], currentViewerIndex=0, touchStartX=0, touchEndX=0, galleryLoadedCount=0, currentGalleryType='photos';
         let cardTouchStartX=0, cardTouchStartY=0, cardTouchEndX=0, cardTouchEndY=0, isCardSwiping=false, isClearingHistory=false, isPaintingClear=false, isErasingClear=false, lastPaintLatLng=null, clearHistoryCircles=[], currentClearRadius=100;
 
         function getSortedProjectKeys() { return Object.keys(PROJECTS).sort((a,b)=>{ let pA=PROJECTS[a], pB=PROJECTS[b], latA=(pA.bounds[0][0]+pA.bounds[1][0])/2, lngA=(pA.bounds[0][1]+pA.bounds[1][1])/2, latB=(pB.bounds[0][0]+pB.bounds[1][0])/2, lngB=(pB.bounds[0][1]+pB.bounds[1][1])/2; if(lastSavedPos) return getDistance(lastSavedPos.lat,lastSavedPos.lng,latA,lngA)-getDistance(lastSavedPos.lat,lastSavedPos.lng,latB,lngB); return Math.abs(latA-latB)>0.01?latB-latA:lngA-lngB; }); }
@@ -386,8 +729,8 @@
 
         // --- 核心共用模組 ---
         const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
-        let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',obfUUID(msg)); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
-        const showModal=msg=>{text('custom-modal-text',obfUUID(msg)); show('custom-modal');}; const showHTMLModal=htmlContent=>{html('custom-modal-text',obfUUID(htmlContent)); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
+        let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
+        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=html=>{html('custom-modal-text',html); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
         const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
         const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
         const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
@@ -415,7 +758,7 @@
             
             map=L.map('map',{zoomControl:false}).setView([23.5,121],8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map); L.control.zoom({position:'bottomright'}).addTo(map);
-            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); camerasLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
+            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
             
             map.on('click',e=>{if(isDrawingRoute){currentRoutePoints.push([e.latlng.lat,e.latlng.lng]); updateDrawingRoutePreview();} resetPowerSavingTimer();});
             map.on('mousedown touchstart',e=>{if(isClearingHistory){let ck=false; for(let i=0;i<clearHistoryCircles.length;i++){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1); ck=true; break;}} if(ck)isErasingClear=true; else{isPaintingClear=true; let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}}});
@@ -466,24 +809,12 @@
                     $('sync-ping').style.backgroundColor='#10b981'; 
                     text('toast-text',"連線成功"); 
                     wsReconnectDelay=3000; 
-                    wsSend("init", { light: true });
-            let p = PROJECTS[currentProjectKey];
-            if (p) {
-                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
-                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
-                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
-            } 
+                    wsSend("init", { light: true }); 
                     if(localHistory.length)saveLocationToServer(null,true);
                 };
                 ws.onmessage=e=>{
                     const res=JSON.parse(e.data);
-                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true });
-            let p = PROJECTS[currentProjectKey];
-            if (p) {
-                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
-                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
-                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
-            } drawAllProjects(); updateAnimalInfoCard(); }
+                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true }); drawAllProjects(); updateAnimalInfoCard(); }
                     
                     if(res.type==='sync'){ 
                         allUsersData=res.data.locations||{}; 
@@ -520,44 +851,6 @@
                             window.latestStatusText = res.data.text;
                             renderSightings();
                         }
-                    }
-                    else if(res.type==='nearby_cameras_result'){
-                        if(typeof camerasLayer!=='undefined') camerasLayer.clearLayers();
-                        res.data.forEach(cam => {
-                            if (cam.name && cam.name.includes('國道')) return;
-                            let ic = '📷', bg = '#2563eb', c = 'white', ani = 'none';
-                            let camMarker = L.marker([cam.lat, cam.lng], {
-                                icon: L.divIcon({
-                                    className: 'custom-div-icon',
-                                    html: `<div class="user-label-container" style="bottom:12px;">
-                                        <div style="pointer-events:auto;cursor:pointer;font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
-                                        </div>`
-                                }),
-                                zIndexOffset: -1000
-                            }).addTo(camerasLayer).bindPopup(
-                                `<div class="relative inline-block overflow-hidden rounded m-0 p-0" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); line-height: 0;">
-                                    <img src="${cam.cam_url}" onload="setTimeout(() => { let p=this.closest('.leaflet-popup'); if(p){p.style.width=this.clientWidth+'px'; p.style.height=this.clientHeight+'px';} if(window.innerWidth<=640 && this.clientHeight > 20){let pt=map.project([${cam.lat}, ${cam.lng}], map.getZoom()); pt.y -= (this.clientHeight/2 + 15); map.panTo(map.unproject(pt, map.getZoom()), {animate: true});} }, 50);" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); object-fit: contain; display: block;" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
-                                    <div class="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-sm font-bold text-left pointer-events-none whitespace-pre-wrap leading-normal" style="text-shadow: 1px 1px 2px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">${escapeHTML(cam.name)}</div>
-                                </div>`,
-                                {className: 'camera-popup-naked', offset: [0, -30], maxWidth: 450, closeButton: false, autoPan: false}
-                            );
-                            camMarker.on('mouseover', function(e) {
-                                if (window.innerWidth > 640) this.openPopup();
-                            });
-                            camMarker.on('click', function(e) {
-                                this.openPopup();
-                                if (window.innerWidth <= 640) {
-                                    setTimeout(() => {
-                                        let p = this.getPopup();
-                                        let h = p && p.getElement() ? p.getElement().clientHeight : 0;
-                                        if (h < 50) h = window.innerHeight * 0.3; // fallback if image not loaded yet
-                                        let pt = map.project([cam.lat, cam.lng], map.getZoom());
-                                        pt.y -= (h/2 + 15);
-                                        map.panTo(map.unproject(pt, map.getZoom()), {animate: true});
-                                    }, 100);
-                                }
-                            });
-                        });
                     }
                     else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
                     else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
@@ -606,7 +899,6 @@
                 on('close-gps-modal-btn','click',()=>{ $('central-gps-error-modal').classList.remove('show'); finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444'; });
             }else{
                 em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;
-
             }
 
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
@@ -695,8 +987,10 @@
 
         function updateProjectDropdown() {
             let s=$('switch-project-select'); s.innerHTML=''; 
+            let mobileList=$('mobile-project-list'); if(mobileList) mobileList.innerHTML='';
             if(!Object.keys(PROJECTS).length){
                 s.innerHTML='<option value="">目前無協尋專案</option>'; 
+                if(mobileList) mobileList.innerHTML='<div class="project-sheet-item">目前無協尋專案</div>';
                 text('project-display-text', '目前無協尋專案');
                 currentProjectKey=null; hide('animal-info-section'); return;
             } 
@@ -707,13 +1001,37 @@
                     let dist=getDistance(lastSavedPos.lat,lastSavedPos.lng,(p.bounds[0][0]+p.bounds[1][0])/2,(p.bounds[0][1]+p.bounds[1][1])/2); 
                     dt=dist<1000?` (${Math.round(dist)}m)`:` (${(dist/1000).toFixed(1)}km)`;
                 } 
-                s.innerHTML+=`<option value="${k}" data-rawname="${escapeHTML(p.animalName||p.name)}" data-dist="${dt}">🎯 ${escapeHTML(p.animalName||p.name)}${dt}</option>`;
+                let rawName = escapeHTML(p.animalName||p.name);
+                s.innerHTML += `<option value="${k}" data-rawname="${rawName}" data-dist="${dt}">🎯 ${rawName}${dt}</option>`;
+                if (mobileList) {
+                    let div = document.createElement('div');
+                    div.className = 'project-sheet-item';
+                    div.innerHTML = `<span>${rawName}</span><span class="dist">${dt}</span>`;
+                    div.onclick = () => {
+                        currentProjectKey = k;
+                        s.value = k;
+                        s.dispatchEvent(new Event('change'));
+                        document.getElementById('project-sheet-overlay').classList.remove('show');
+                        document.getElementById('project-sheet').classList.remove('show');
+                        updateProjectDropdown(); // re-render to update active class
+                    };
+                    mobileList.appendChild(div);
+                }
             });
             let fk=null; if(currentProjectKey&&PROJECTS[currentProjectKey])fk=currentProjectKey; else if(currentProjectKey){for(let k in PROJECTS)if(PROJECTS[k].animalName===currentProjectKey||PROJECTS[k].name===currentProjectKey){fk=k; break;}}
             if(fk){currentProjectKey=fk; s.value=currentProjectKey;}else{if(sortedKeys.length){currentProjectKey=sortedKeys[0]; s.value=currentProjectKey; lsSet('dogMap_currentProject',currentProjectKey);}}
             if(currentProjectKey&&PROJECTS[currentProjectKey]){
                 window.history.replaceState(null,'',`?${encodeURIComponent(PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name||currentProjectKey)}`);
                 updateVisualSelectText();
+                if(mobileList){
+                    Array.from(mobileList.children).forEach(el => {
+                        if(el.querySelector('span').innerText === (PROJECTS[currentProjectKey].animalName||PROJECTS[currentProjectKey].name)){
+                            el.classList.add('active');
+                        } else {
+                            el.classList.remove('active');
+                        }
+                    });
+                }
             }
         }
         
@@ -729,12 +1047,6 @@
             if(isMyRouteMode)$('my-route-btn').click(); 
             updateVisualSelectText();
             wsSend("init", { light: true });
-            let p = PROJECTS[currentProjectKey];
-            if (p) {
-                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
-                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
-                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
-            }
         });
 
         function updateAnimalInfoCard() {
@@ -759,7 +1071,22 @@
             text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             html('announcement-text', escapeHTML(allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。").replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s<]+)/g, url=>`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`));
             let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){let m=p.actionLink.url.match(/(https?:\/\/[^\s<]+)/); ac.innerHTML=`<a href="${m?m[1]:p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`;}
-            applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){$('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'),5000);}
+            applyAnnouncePanelCollapseState();
+            if (window.innerWidth <= 640) {
+                $('animal-info-section').classList.remove('mobile-collapsed');
+                if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
+                if (announceTextCollapseTimer) clearTimeout(announceTextCollapseTimer);
+                animalInfoCollapseTimer = setTimeout(() => {
+                    $('animal-info-section').classList.add('mobile-collapsed');
+                    announceTextCollapseTimer = setTimeout(() => {
+                        if (!isAnnounceCollapsed) {
+                            isAnnounceCollapsed = true;
+                            lsSet('dogMap_announceCollapsed', isAnnounceCollapsed);
+                            applyAnnouncePanelCollapseState();
+                        }
+                    }, 3000);
+                }, 5000);
+            }
         }
         function drawAllProjects() {
             allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
@@ -854,10 +1181,7 @@
                 }
                 else if(idx<=10){let r=229+25*(1-idx/10), g=231+9*(1-idx/10), b=235-97*(1-idx/10); bg=`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; ani='none';}
                 else {bg='#e5e7eb'; ani='none';}
-                
-                let extraClass = (d.description && d.description.includes('找到了')) ? ' sighting-found-marker' : '';
-                
-                L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon' + extraClass,html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
+                L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
             if(tPts.length>=2){ show('toggle-sighting-track-btn'); if(isSightingTrackVisible){ tPts.sort((a,b)=>a.score-b.score); let lls=tPts.map(p=>[p.lat,p.lng]), tc=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4']; for(let i=0;i<lls.length-1;i++){let p1=lls[i], p2=lls[i+1], sc=tc[i%tc.length]; L.polyline([p1,p2],{color:sc,weight:4,dashArray:'10, 10',opacity:0.8,pane:'trackPane'}).addTo(sightingTrackLayer); let a=Math.atan2(map.project(p2,16).y-map.project(p1,16).y,map.project(p2,16).x-map.project(p1,16).x)*180/Math.PI; L.marker([(p1[0]+p2[0])/2,(p1[1]+p2[1])/2],{icon:L.divIcon({className:'custom-div-icon',html:`<div style="transform:rotate(${a}deg);font-size:20px;color:${sc};text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;line-height:1;">➤</div>`,iconSize:[20,20],iconAnchor:[10,10]}),interactive:false,pane:'trackPane',zIndexOffset:-100}).addTo(sightingTrackLayer);} } }else hide('toggle-sighting-track-btn');
         }
         on('toggle-sighting-track-btn','click',()=>{ isSightingTrackVisible=!isSightingTrackVisible; let b=$('toggle-sighting-track-btn'); if(isSightingTrackVisible){b.innerText="👁️ 隱藏線索"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";}else{b.innerText="❌ 顯示線索"; b.style.cssText="background-color:#ef4444;color:white;";} renderSightings(); });
@@ -1061,7 +1385,26 @@
         const handleCardSwipe=()=>{if(Math.abs(cardTouchEndX-cardTouchStartX)>40)switchProjectByDirection(cardTouchEndX-cardTouchStartX<0?1:-1);};
         on('card-prev-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(-1);}); on('card-next-btn','click',e=>{e.preventDefault(); e.stopPropagation(); switchProjectByDirection(1);});
         const openGallery=()=>{text('gallery-title',`${PROJECTS[currentProjectKey]?.animalName} 的相簿`); renderGallery('photos'); show('gallery-modal');};
-        ais.addEventListener('click',e=>{if(isCardSwiping){e.preventDefault();e.stopPropagation();return;} if(e.target.classList.contains('gallery-btn-overlay'))openGallery(); else if(e.target.id==='animal-main-photo')openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000);} });
+        ais.addEventListener('click', e => {
+            if (isCardSwiping) { e.preventDefault(); e.stopPropagation(); return; }
+            if (e.target.classList.contains('gallery-btn-overlay')) openGallery();
+            else if (e.target.id === 'animal-main-photo') openCompareModal();
+            else if (ais.classList.contains('mobile-collapsed')) {
+                ais.classList.remove('mobile-collapsed');
+                if (animalInfoCollapseTimer) clearTimeout(animalInfoCollapseTimer);
+                if (announceTextCollapseTimer) clearTimeout(announceTextCollapseTimer);
+                animalInfoCollapseTimer = setTimeout(() => {
+                    ais.classList.add('mobile-collapsed');
+                    announceTextCollapseTimer = setTimeout(() => {
+                        if (!isAnnounceCollapsed) {
+                            isAnnounceCollapsed = true;
+                            lsSet('dogMap_announceCollapsed', isAnnounceCollapsed);
+                            applyAnnouncePanelCollapseState();
+                        }
+                    }, 3000);
+                }, 5000);
+            }
+        });
         on('header-gallery-btn','click',e=>{e.stopPropagation(); openGallery();}); on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
         
         function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 pixel-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 pixel-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
@@ -1096,11 +1439,27 @@
         
         const zoomToProject=(key)=>{ let p=PROJECTS[key]; if(!p)return; let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); };
 
-        // --- 管理員與定位操作 ---
-        on('sync-ping','click',e=>{ e.stopPropagation(); $('admin-pwd-input').value=""; show('admin-login-modal'); });
+        // --- 管理與設定操作 ---
+        on('sync-ping','click',e=>{ 
+            e.stopPropagation(); 
+            if(isAdmin) {
+                if ($('admin-panel').classList.contains('hidden')) {
+                    show('admin-panel');
+                    $('admin-panel').classList.remove('admin-collapsed');
+                } else if ($('admin-panel').classList.contains('admin-collapsed')) {
+                    $('admin-panel').classList.remove('admin-collapsed');
+                } else {
+                    $('admin-panel').classList.add('admin-collapsed');
+                }
+            } else {
+                $('admin-pwd-input').value=""; 
+                show('admin-login-modal'); 
+            }
+        });
         on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
         on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
         on('close-admin-btn','click',()=>{ hide('admin-panel'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
+        on('expand-admin-btn', 'click', () => { $('admin-panel').classList.remove('admin-collapsed'); });
         on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
         on('manage-blacklist-btn','click',()=>{ html('blacklist-container','<p class="text-center mt-4">載入中...</p>'); wsSend("admin_get_blacklist"); show('manage-blacklist-modal'); }); on('close-blacklist-btn','click',()=>hide('manage-blacklist-modal')); on('save-restrict-prob-btn','click',()=>{ wsSend("admin_update_restrict_prob",{prob:$('restrict-prob-input').value}); text('save-restrict-prob-btn',"⏳"); setTimeout(()=>text('save-restrict-prob-btn',"儲存"),1000); });
         
@@ -1172,7 +1531,7 @@
                     
                     // 開啟設定屬性對話框
                     show('gpx-config-modal');
-                    hide('admin-panel');
+                    $('admin-panel').classList.add('admin-collapsed');
                 } catch(err) {
                     showCenterToast("⚠️ 無法解析此 GPX 檔案，請確認格式！");
                 }
@@ -1182,7 +1541,7 @@
         });
 
         $('gpx-route-weight').addEventListener('input', e => text('gpx-route-weight-val', e.target.value));
-        on('gpx-config-cancel', 'click', () => { hide('gpx-config-modal'); show('admin-panel'); tempGpxPoints = []; });
+        on('gpx-config-cancel', 'click', () => { hide('gpx-config-modal'); $('admin-panel').classList.remove('admin-collapsed'); tempGpxPoints = []; });
         on('gpx-config-save', 'click', () => {
             if(tempGpxPoints.length === 0) return;
             const name = $('gpx-route-name').value || '未命名 GPX';
@@ -1202,7 +1561,7 @@
             });
             showCenterToast("✅ GPX 路線上傳成功！");
             hide('gpx-config-modal');
-            show('admin-panel');
+            $('admin-panel').classList.remove('admin-collapsed');
             tempGpxPoints = [];
         });
 
@@ -1251,8 +1610,8 @@
         });
 
         $('clear-radius').addEventListener('input',e=>{currentClearRadius=parseInt(e.target.value); text('clear-radius-val',currentClearRadius);});
-        on('clear-history-btn','click',()=>{ if(!isAdmin)return; isClearingHistory=true; map.dragging.disable(); clearHistoryCircles=[]; show('clear-history-panel'); hide('admin-panel'); showCenterToast("🧹 直接在畫面上拖曳塗抹要清除的範圍！\n點擊或塗抹已標示的紅圈即可取消。"); });
-        const exitClearMode=()=>{ isClearingHistory=false; map.dragging.enable(); clearHistoryCircles.forEach(c=>map.removeLayer(c.layer)); clearHistoryCircles=[]; hide('clear-history-panel'); show('admin-panel'); }; on('clear-history-cancel','click',exitClearMode);
+        on('clear-history-btn','click',()=>{ if(!isAdmin)return; isClearingHistory=true; map.dragging.disable(); clearHistoryCircles=[]; show('clear-history-panel'); $('admin-panel').classList.add('admin-collapsed'); showCenterToast("🟡 請在地圖上點擊要清除範圍。"); });
+        const exitClearMode=()=>{ isClearingHistory=false; map.dragging.enable(); clearHistoryCircles.forEach(c=>map.removeLayer(c.layer)); clearHistoryCircles=[]; hide('clear-history-panel'); $('admin-panel').classList.remove('admin-collapsed'); }; on('clear-history-cancel','click',exitClearMode);
         on('clear-history-confirm','click',()=>{ if(clearHistoryCircles.length===0)return showCenterToast("⚠️ 請至少標示一個清除範圍！"); showConfirm("確定要清除這些紅圈範圍內的所有足跡嗎？\n清除後將無法復原！",()=>{let areas=clearHistoryCircles.map(c=>({lat:c.lat,lng:c.lng,radius:c.radius})); wsSend("admin_clear_history",{areas:areas,project:currentProjectKey}); Object.values(allUsersData).forEach(u=>{if(u.history)u.history=u.history.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius));}); localHistory=localHistory.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius)); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); renderMap(); requestFogRender(); showCenterToast("✅ 軌跡清理指令已送出並於本地生效！"); exitClearMode();}); });
 
         on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)); if (isDesktop) document.getElementById('desktop-loc-hint')?.classList.remove('hidden'); startLocationServices(false); connectWebSocket(); });
@@ -1269,16 +1628,159 @@
             }
             mapLastTapTime = now;
         }, {passive: false});
+        // 自動隱藏管理面板
+        $('admin-panel').addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if (btn && btn.id !== 'close-admin-btn' && btn.id !== 'expand-admin-btn') {
+                $('admin-panel').classList.add('admin-collapsed');
+            }
+        });
 
-        window.addEventListener('DOMContentLoaded',initSystem);
+                window.addEventListener('DOMContentLoaded',initSystem);
+
+        // ========== 手機版 UI 控制邏輯 ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth > 640) return; // 僅手機版啟用
+
+            // --- 工具箱 Bottom Sheet ---
+            const toolOverlay = document.getElementById('tool-sheet-overlay');
+            const toolSheet = document.getElementById('tool-sheet');
+            function openToolSheet() {
+                toolOverlay.classList.add('show');
+                toolSheet.classList.add('show');
+            }
+            function closeToolSheet() {
+                toolSheet.classList.remove('show');
+                setTimeout(() => toolOverlay.classList.remove('show'), 300);
+            }
+            document.getElementById('mobile-tool-btn')?.addEventListener('click', openToolSheet);
+            toolOverlay?.addEventListener('click', closeToolSheet);
+            
+            // 工具箱內的項目 → 觸發原始按鈕的 click
+            document.querySelectorAll('#tool-sheet .sheet-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const origBtn = document.getElementById(targetId);
+                    if (origBtn) origBtn.click();
+                    closeToolSheet();
+                });
+            });
+
+            // --- 底部操作列按鈕 ---
+            // --- 底部操作列按鈕 ---
+            // 省電 (原定位位置)
+            document.getElementById('mobile-power-bar-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterPowerSavingMode();
+            });
+            // --- 左下地圖控制組 (縮放、定位) ---
+            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', () => {
+                if (map) map.zoomIn();
+            });
+            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', () => {
+                if (map) map.zoomOut();
+            });
+            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('locate-btn');
+                if (origBtn) origBtn.click();
+            });
+
+            // 觀看模式
+            document.getElementById('mobile-spectator-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('spectator-btn');
+                if (origBtn) origBtn.click();
+                // 同步 label
+                setTimeout(() => {
+                    const label = document.getElementById('mobile-spectator-label');
+                    if (label) label.textContent = isSpectatorMode ? '退出' : '觀看';
+                }, 50);
+            });
+            // 鎖定
+            document.getElementById('mobile-lock-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('lock-project-btn');
+                if (origBtn) origBtn.click();
+                setTimeout(syncMobileLock, 50);
+            });
+            function syncMobileLock() {
+                const icon = document.getElementById('mobile-lock-icon');
+                if (icon) icon.textContent = isProjectLocked ? '🔒' : '🔓';
+            }
+
+            // --- 頂部列：專案切換 Bottom Sheet ---
+            const projectOverlay = document.getElementById('project-sheet-overlay');
+            const projectSheet = document.getElementById('project-sheet');
+            document.getElementById('mobile-top-project-trigger')?.addEventListener('click', () => {
+                projectOverlay?.classList.add('show');
+                projectSheet?.classList.add('show');
+            });
+            projectOverlay?.addEventListener('click', () => {
+                projectSheet?.classList.remove('show');
+                setTimeout(() => projectOverlay?.classList.remove('show'), 300);
+            });
+            
+            // 頂部列：點擊狀態燈 → 觸發原生登入/連線面板
+            document.getElementById('mobile-sync-dot')?.addEventListener('click', () => {
+                const trigger = document.getElementById('sync-ping');
+                if (trigger) trigger.click();
+            });
+
+            // 頂部列：點擊個人色塊 → 觸發個人資料編輯
+            document.getElementById('mobile-profile-trigger')?.addEventListener('click', () => {
+                const trigger = document.getElementById('profile-edit-trigger');
+                if (trigger) trigger.click();
+            });
+
+            // --- 步數面板：點擊 → 觸發原始步數面板點擊 ---
+            document.getElementById('mobile-steps-trigger')?.addEventListener('click', () => {
+                const origPanel = document.getElementById('step-panel');
+                if (origPanel) origPanel.click();
+            });
+
+
+            // --- 同步函式：定時同步桌面版狀態到手機版 UI ---
+            function syncMobileUI() {
+                // 同步專案名稱
+                const projText = document.getElementById('project-display-text');
+                const mobileProjName = document.getElementById('mobile-project-name');
+                if (projText && mobileProjName) mobileProjName.textContent = projText.textContent;
+
+                // 同步連線狀態燈
+                const syncPing = document.getElementById('sync-ping');
+                const mobileDot = document.getElementById('mobile-sync-dot');
+                if (syncPing && mobileDot) mobileDot.style.background = syncPing.style.backgroundColor || '#ef4444';
+
+                // 同步個人資料色塊
+                const profileDot = document.getElementById('profile-edit-trigger');
+                const mobileProfileDot = document.getElementById('mobile-profile-trigger');
+                if (profileDot && mobileProfileDot) mobileProfileDot.style.backgroundColor = profileDot.style.backgroundColor || '#666';
+
+                // 同步步數
+                const stepsVal = document.getElementById('step-counter-value');
+                const mobileSteps = document.getElementById('mobile-step-value');
+                if (stepsVal && mobileSteps) mobileSteps.textContent = stepsVal.textContent;
+
+                // 同步鎖定
+                syncMobileLock();
+            }
+
+            // 每秒同步一次
+            setInterval(syncMobileUI, 1000);
+            // 初始同步
+            setTimeout(syncMobileUI, 500);
+            setTimeout(syncMobileUI, 2000);
+
+            // 觀看提示自動消失
+            setTimeout(() => {
+                const hint = document.getElementById('spectator-hint');
+                if (hint && !hint.classList.contains('hidden')) {
+                    hint.style.transition = 'opacity 0.5s';
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.classList.add('hidden'), 500);
+                    try { localStorage.setItem('dogMap_spectatorHintShown', 'true'); } catch(e){}
+                }
+            }, 4000);
+        });
     
-</script>
-<script>
-    (function(){
-        var s = document.createElement('script');
-        s.src = 'found_prize.js' + (window.location.protocol === 'file:' ? '' : '?t=' + Date.now());
-        document.body.appendChild(s);
-    })();
 </script>
 </body>
 </html>
