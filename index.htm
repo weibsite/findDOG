@@ -544,7 +544,6 @@
             <div class="top-left" id="mobile-top-project-trigger">
                 <span class="top-project-name" id="mobile-project-name">載入中...</span>
                 <span class="top-project-arrow">▼</span>
-                <select id="mobile-switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
             </div>
             <div class="top-center-links">
                 <a href="runrun.htm" class="text-orange-400">浪浪地圖</a>
@@ -581,6 +580,16 @@
                 <span class="bar-icon" id="mobile-lock-icon">🔒</span>
                 <span class="bar-label">鎖定</span>
             </div>
+        </div>
+    </div>
+
+    <!-- 專案選擇 Bottom Sheet -->
+    <div id="project-sheet-overlay"></div>
+    <div id="project-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">切換名單</div>
+        <div id="mobile-project-list" class="sheet-list">
+            <!-- JS動態生成專案清單 -->
         </div>
     </div>
 
@@ -1673,16 +1682,28 @@
                 e.stopPropagation();
                 enterPowerSavingMode();
             });
-            // --- 左下地圖控制組 (縮放、定位) ---
-            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', () => {
+            // --- 手機版獨立地圖控制 (左下方) ---
+            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
                 if (map) map.zoomIn();
             });
-            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', () => {
+            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
                 if (map) map.zoomOut();
             });
-            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', () => {
-                const origBtn = document.getElementById('locate-btn');
-                if (origBtn) origBtn.click();
+            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (isSpectatorMode) {
+                    showCenterToast("觀看模式下無法定位！");
+                    return;
+                }
+                if (lastSavedPos) {
+                    map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, {animate: true});
+                    isMapInteracting = false;
+                } else {
+                    showCenterToast("正在取得位置...");
+                    map.locate({setView: true, maxZoom: 17});
+                }
             });
 
             // 觀看模式
