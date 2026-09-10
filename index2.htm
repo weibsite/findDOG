@@ -35,17 +35,32 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: 'Courier New', Courier, monospace; touch-action: none; -webkit-text-size-adjust: none; }
-        input, textarea, select { touch-action: manipulation; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif; touch-action: none; -webkit-text-size-adjust: none; }
+        input, textarea, select { touch-action: manipulation; font-family: inherit; }
         
         #map-container { position: relative; width: 100vw; height: 100vh; }
         #map { width: 100%; height: 100%; background-color: #1a202c; }
-        .glass-panel { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
-        .glass-btn { background-color: #f59e0b; color: #1a202c; border: 4px solid #1a202c; box-shadow: 4px 4px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; }
-        .glass-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #1a202c; }
-        .glass-input { border: 4px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
-        .glass-input:focus { background-color: #fef3c7; }
+        .pixel-panel { background-color: white; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; }
+        .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; font-family: 'Courier New', Courier, monospace; }
+        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0px #1a202c; }
+        .pixel-input { border: 2px solid #1a202c; border-radius: 0px !important; outline: none; font-weight: bold; }
+        .pixel-input:focus { background-color: #fef3c7; }
+
+        /* Safe Area 適配 */
+        @supports (padding: env(safe-area-inset-top)) {
+            .safe-top { padding-top: env(safe-area-inset-top); }
+            .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        }
+
+        /* Modal 內保持 4px 粗邊框以維持 Pixel 感 */
+        .pixel-panel-modal { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
+        .leaflet-popup-pane { z-index: 99999 !important; }
+        .camera-popup-naked .leaflet-popup-content-wrapper { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+        .camera-popup-naked .leaflet-popup-tip-container { display: none !important; }
+        .camera-popup-naked .leaflet-popup-content { margin: 0 !important; line-height: 0 !important; padding: 0 !important; width: auto !important; }
+        .camera-popup-naked .leaflet-popup-close-button { display: none !important; }
+
         .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .user-avatar-pixel { width: 16px; height: 16px; border: 3px solid #1a202c; box-sizing: border-box; }
         .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
@@ -89,143 +104,221 @@
 
         #central-gps-error-modal { display: none; }
         #central-gps-error-modal.show { display: flex; }
+
+        /* ========== 手機版 UI 改造 ========== */
+
+        /* --- 底部操作列 --- */
+        #mobile-bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+            display: none; /* JS show on mobile */
+            flex-direction: column;
+            background: rgba(26, 32, 44, 0.88);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-top: 2px solid rgba(255,255,255,0.1);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        #mobile-bottom-bar .bar-main {
+            display: flex; align-items: center; justify-content: space-around;
+            height: 56px; padding: 0 8px; position: relative;
+        }
+        #mobile-bottom-bar .bar-link-row {
+            display: flex; justify-content: center; gap: 12px;
+            padding: 4px 0 2px 0; border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        #mobile-bottom-bar .bar-link-row a {
+            font-size: 9px; font-weight: 800; text-decoration: none; opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        #mobile-bottom-bar .bar-link-row a:hover { opacity: 1; }
+        #mobile-bottom-bar .bar-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; color: rgba(255,255,255,0.75); font-size: 10px; font-weight: 800;
+            cursor: pointer; padding: 4px 10px; transition: color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-bottom-bar .bar-item:active { color: #f59e0b; }
+        #mobile-bottom-bar .bar-item .bar-icon { font-size: 20px; line-height: 1; }
+        #mobile-bottom-bar .bar-item .bar-label { font-family: inherit; text-transform: none; letter-spacing: 0.05em; }
+
+        /* 中央相機凸起按鈕 */
+        #mobile-bottom-bar .bar-camera {
+            position: relative; top: -16px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #f59e0b; border: 3px solid #1a202c;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; color: #1a202c;
+            transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-bottom-bar .bar-camera:active { transform: scale(0.92); }
+        #mobile-bottom-bar .bar-camera span { font-size: 26px; line-height: 1; }
+
+        /* --- 工具箱 Bottom Sheet --- */
+        #tool-sheet-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            background: rgba(0,0,0,0.5); opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none; display: none;
+        }
+        #tool-sheet-overlay.show { display: block; opacity: 1; pointer-events: auto; }
+        #tool-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2501;
+            background: rgba(30, 35, 50, 0.96);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-top: 2px solid rgba(255,255,255,0.12);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        #tool-sheet.show { transform: translateY(0); }
+        #tool-sheet .sheet-handle {
+            width: 36px; height: 4px; background: rgba(255,255,255,0.3);
+            border-radius: 2px; margin: 0 auto 12px auto;
+        }
+        #tool-sheet .sheet-title {
+            color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; text-align: center;
+        }
+        #tool-sheet .sheet-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+        #tool-sheet .sheet-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 4px; padding: 14px 6px; border-radius: 10px;
+            background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+            font-size: 10px; font-weight: 700; cursor: pointer;
+            transition: background 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        #tool-sheet .sheet-item:active { background: rgba(255,255,255,0.18); }
+        #tool-sheet .sheet-item .sheet-icon { font-size: 22px; line-height: 1; }
+
+        /* --- 頂部薄條 --- */
+        #mobile-top-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            display: none; /* JS show on mobile */
+            align-items: center; justify-content: space-between;
+            height: 40px; padding: 0 10px;
+            padding-top: env(safe-area-inset-top, 0px);
+            background: rgba(26, 32, 44, 0.75);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        #mobile-top-bar .top-left {
+            display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+        }
+        #mobile-top-bar .top-project-name {
+            color: #f59e0b; font-size: 13px; font-weight: 900;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            cursor: pointer; max-width: 55vw;
+        }
+        #mobile-top-bar .top-project-arrow { color: rgba(255,255,255,0.4); font-size: 10px; }
+        #mobile-top-bar .top-right {
+            display: flex; align-items: center; gap: 8px;
+        }
+        #mobile-top-bar .top-status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #ef4444; border: 1.5px solid rgba(255,255,255,0.3);
+            transition: background 0.3s;
+        }
+        #mobile-top-bar .top-profile-dot {
+            width: 16px; height: 16px; border-radius: 3px;
+            border: 1.5px solid rgba(255,255,255,0.3); cursor: pointer;
+        }
+        #mobile-top-bar .top-announce-btn {
+            color: rgba(255,255,255,0.7); font-size: 18px; cursor: pointer;
+            position: relative; -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-top-bar .top-announce-btn .announce-dot {
+            position: absolute; top: -2px; right: -4px;
+            width: 7px; height: 7px; background: #ef4444; border-radius: 50%;
+        }
+
+        /* --- 公告面板 (手機版改為全屏下滑 Modal) --- */
+        #mobile-announce-sheet {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 2600;
+            display: none; flex-direction: column;
+        }
+        #mobile-announce-sheet.show { display: flex; }
+        #mobile-announce-sheet .announce-backdrop {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+        }
+        #mobile-announce-sheet .announce-card {
+            position: relative; margin: auto 12px; margin-top: calc(48px + env(safe-area-inset-top, 0px));
+            background: white; border: 3px solid #1a202c; box-shadow: 4px 4px 0px #1a202c;
+            max-height: 65vh; overflow-y: auto; z-index: 1;
+        }
+
+        /* --- 浮動元件現代化 (禮物/步數) --- */
+        #mobile-float-right {
+            position: fixed; z-index: 2100;
+            right: 10px; display: none; /* JS positions */
+            flex-direction: column; gap: 6px; align-items: flex-end;
+        }
+        #mobile-float-right .float-steps {
+            background: rgba(26, 32, 44, 0.85); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.12); border-radius: 20px;
+            padding: 3px 10px; display: flex; align-items: center; gap: 4px;
+            color: white; font-size: 11px; font-weight: 800; cursor: pointer;
+        }
+        #mobile-float-right .float-steps .steps-num {
+            color: #60a5fa; font-size: 14px; font-weight: 900;
+        }
+        #mobile-float-right .float-gift {
+            background: rgba(26, 32, 44, 0.85); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.12); border-radius: 20px;
+            padding: 4px 10px; display: flex; align-items: center; gap: 6px;
+            color: white; cursor: pointer; position: relative;
+        }
+        #mobile-float-right .float-gift .gift-emoji { font-size: 20px; }
+        #mobile-float-right .float-gift .gift-badge {
+            position: absolute; top: -4px; right: -4px;
+            background: #ef4444; color: white; font-size: 9px; font-weight: 900;
+            min-width: 16px; height: 16px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1.5px solid #1a202c;
+        }
+        #mobile-float-right .float-gift .gift-time {
+            font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7);
+        }
+
+        /* --- 省電按鈕 (保持浮動可見) --- */
+        #mobile-power-btn {
+            position: fixed; z-index: 2100; display: none;
+            background: rgba(30, 30, 40, 0.85); backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.15); border-radius: 20px;
+            padding: 5px 12px; color: white; font-size: 10px; font-weight: 800;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s;
+        }
+        #mobile-power-btn:active { background: rgba(60, 60, 80, 0.9); }
+
+        /* 手機版隱藏桌面版的元素 */
+        @media (max-width: 640px) {
+            #project-select-wrapper, #status-toast, #announcement-panel,
+            #step-panel, #power-saving-btn, #quick-camera-btn,
+            #floating-gift-container,
+            .desktop-bottom-links { display: none !important; }
+            #mobile-bottom-bar, #mobile-top-bar, #mobile-float-right, #mobile-power-btn { display: flex !important; }
+            /* 底部列上方的浮動位置 */
+            #mobile-float-right { bottom: 74px; }
+            #mobile-power-btn { left: 10px; bottom: 74px; }
+            /* 工具箱內的按鈕隱藏原始位置 */
+            .tool-in-sheet { display: none !important; }
+            /* 觀看模式和定位按鈕重新定位到底部列旁 */
+            #spectator-btn, #locate-btn { display: none !important; }
+        }
+        @media (min-width: 641px) {
+            #mobile-bottom-bar, #mobile-top-bar, #tool-sheet-overlay, #tool-sheet,
+            #mobile-float-right, #mobile-power-btn, #mobile-announce-sheet { display: none !important; }
+        }
     </style>
 
-<!-- ================= V2 MODERN UI INJECTED ================= -->
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-    body { font-family: 'Noto Sans TC', sans-serif !important; background: #0f172a; }
-    
-    /* Glassmorphism Classes */
-    .glass-panel {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.6);
-        color: #1e293b;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .glass-panel-dark {
-        background: rgba(15, 23, 42, 0.85);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        color: #f8fafc;
-    }
-    .glass-input {
-        background: rgba(255, 255, 255, 0.5);
-        border: 2px solid rgba(0, 0, 0, 0.1);
-        border-radius: 16px;
-        color: #0f172a;
-        transition: all 0.2s;
-        outline: none;
-    }
-    .glass-input:focus {
-        background: #fff;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-    }
-    
-    /* Modern Buttons */
-    .glass-btn {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
-        color: white;
-        border: none;
-        border-radius: 16px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-    .glass-btn:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
-    }
-    .glass-btn:active {
-        transform: translateY(1px) scale(0.98);
-    }
-    .glass-btn.bg-gray-400 { background: linear-gradient(135deg, #94a3b8, #64748b); box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); }
-    .glass-btn.bg-red-500 { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
-    .glass-btn.bg-green-500 { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); }
-    .glass-btn.bg-yellow-400 { background: linear-gradient(135deg, #fbbf24, #d97706); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
-    
-    /* Animations */
-    @keyframes radar-scan {
-        0% { transform: scale(0); opacity: 0.8; }
-        100% { transform: scale(4); opacity: 0; }
-    }
-    .radar-wave {
-        position: absolute; top: 50%; left: 50%;
-        width: 100px; height: 100px; margin: -50px 0 0 -50px;
-        border-radius: 50%; border: 4px solid #22c55e;
-        animation: radar-scan 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
-        pointer-events: none; z-index: 10000;
-    }
-    @keyframes float-up {
-        0% { transform: translateY(0) scale(1); opacity: 1; }
-        100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
-    }
-    .step-float-text {
-        position: absolute; color: #f59e0b; font-weight: 900; font-size: 24px;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 9999;
-        animation: float-up 1s ease-out forwards;
-    }
-    
-    /* Bottom Navigation Bar for Mobile */
-    .mobile-bottom-nav {
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        width: 90%; max-width: 400px; height: 70px;
-        background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255,255,255,0.4); border-radius: 35px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        display: flex; justify-content: space-around; z-index: 10000;
-        padding: 0 15px; align-items: center;
-    }
-    .nav-item {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 50px; height: 50px; border-radius: 25px; cursor: pointer;
-        transition: all 0.3s; color: #64748b; text-decoration: none; font-size: 10px; font-weight: 700;
-    }
-    .nav-item:hover, .nav-item.active { background: rgba(59, 130, 246, 0.1); color: #3b82f6; transform: translateY(-5px); }
-    .nav-item div { font-size: 20px; margin-bottom: 2px; }
-    
-    /* FAB (Floating Action Button) */
-    .fab-radar {
-        position: fixed; bottom: 100px; right: 20px; width: 60px; height: 60px;
-        background: linear-gradient(135deg, #10b981, #059669); border-radius: 30px;
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); z-index: 10000;
-        display: flex; align-items: center; justify-content: center; color: white;
-        font-size: 24px; cursor: pointer; transition: all 0.3s;
-    }
-    .fab-radar:hover { transform: scale(1.1) rotate(15deg); }
-    
-    /* Daily Steps Widget */
-    .steps-widget {
-        position: fixed; top: 20px; right: 20px; z-index: 9999;
-        background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
-        padding: 10px 15px; color: white; display: flex; align-items: center; gap: 10px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s; cursor: pointer;
-    }
-    .steps-widget:hover { transform: scale(1.05); }
-    .steps-progress-bg { width: 80px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
-    .steps-progress-bar { height: 100%; background: #f59e0b; width: 0%; transition: width 0.5s ease-out; }
-    .steps-count { font-weight: 900; font-size: 14px; color: #fcd34d; line-height: 1; }
-    
-    /* Confetti Canvas */
-    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 99999; }
-</style>
-<!-- ========================================================= -->
-\n</head>
+</head>
 <body>
     <div id="map-container"><div id="map"></div></div>
     
-    <div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
+<div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
         <div class="text-6xl mb-6 opacity-50 animate-pulse">🌙</div>
         <div class="text-2xl font-black tracking-widest mb-2 text-gray-400">省電模式運作中</div>
         <div class="text-sm font-bold text-gray-600 mb-8">GPS 定位仍在背景上傳</div>
@@ -234,25 +327,26 @@
 
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
     
-    <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] glass-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
+    <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
 
     <div id="central-gps-error-modal" class="fixed inset-0 z-[30000] bg-black/80 items-center justify-center p-4">
-        <div class="glass-panel p-6 w-full max-w-sm text-center relative shadow-[8px_8px_0px_rgba(0,0,0,0.8)] border-4 border-red-600 bg-white">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center relative shadow-[8px_8px_0px_rgba(0,0,0,0.8)] border-4 border-red-600 bg-white">
             <h2 class="text-2xl font-black text-red-600 mb-4 border-b-4 border-red-600 pb-2">⚠️ 缺少定位權限</h2>
             <p class="text-gray-900 font-bold mb-4 leading-relaxed text-sm">由於您可能是透過 LINE 內部開啟本網頁，導致無法取得 GPS 定位。</p>
-            <button id="copy-url-btn" class="glass-btn w-full py-4 bg-blue-600 text-white font-black text-lg mb-4 animate-pulse">👉 點此複製網址 👈</button>
+            <button id="copy-url-btn" class="pixel-btn w-full py-4 bg-blue-600 text-white font-black text-lg mb-4 animate-pulse">👉 點此複製網址 👈</button>
             <p class="text-gray-800 font-bold text-sm leading-relaxed mb-4 bg-yellow-200 p-2 border-2 border-black">請改用 <span class="text-blue-600">Safari</span> 或 <span class="text-green-600">Chrome</span> 貼上開啟。</p>
             <p class="text-gray-700 font-bold text-[11px] mt-2 border-t-2 border-dashed border-gray-400 pt-2">💡 或點擊右上角/右下角的 ︙ 選擇「在瀏覽器中開啟」</p>
-            <button id="close-gps-modal-btn" class="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 border border-white/40 font-black text-xl shadow-[4px_4px_0px_#000]">X</button>
+            <button id="close-gps-modal-btn" class="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 border-4 border-black font-black text-xl shadow-[4px_4px_0px_#000]">X</button>
         </div>
     </div>
 
-    <div id="startup-overlay" class="absolute inset-0 z-[3000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
-        <div class="glass-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
+    <div id="desktop-loc-hint" class="hidden fixed top-8 left-1/2 transform -translate-x-1/2 z-[50001] bg-yellow-400 text-black font-black px-8 py-4 border-4 border-black shadow-[6px_6px_0px_#1a202c] animate-bounce pointer-events-none text-xl text-center whitespace-nowrap">⬆️ 請點選上方「允許」以存取位置資訊 ⬆️</div>
+    <div id="startup-overlay" class="absolute inset-0 z-[50000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
+        <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
-            <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="glass-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
-            <button id="master-start-btn" class="glass-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button><div id="error-msg" class="hidden"></div>
+            <input type="text" id="user-name-input" maxlength="15" placeholder="暱稱 (留空則隨機)" class="pixel-input w-full p-3 text-lg mb-4 text-center text-gray-900" />
+            <button id="master-start-btn" class="pixel-btn w-full py-4 px-4 text-lg">開始 [暫時授權定位]</button><div id="error-msg" class="hidden"></div>
         </div>
     </div>
 
@@ -260,44 +354,44 @@
     <div id="win-marquee-container" class="hidden absolute top-1/4 left-0 w-full z-[5000] pointer-events-none overflow-hidden bg-yellow-400/95 border-y-4 border-black py-3 shadow-[0_4px_0_#1a202c]"><div id="win-marquee-text" class="animate-marquee-text text-black font-black text-xl sm:text-2xl tracking-widest drop-shadow-[2px_2px_0px_white]"></div></div>
 
     <!-- Modals -->
-    <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="glass-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
-    <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="glass-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
-    <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="glass-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
-    <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="glass-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="glass-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
+    <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
+    <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
+    <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
     
     <!-- Admin Modals -->
-    <div id="admin-user-info-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-5 w-full max-w-sm text-center relative"><h3 class="text-gray-900 font-bold mb-3 text-lg border-b-2 border-black pb-2 flex items-center justify-center gap-2">🕵️ 玩家稽查 <span id="admin-user-badge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 border-2 border-black">黑名單</span></h3><div class="text-left text-xs space-y-3 font-bold text-gray-800 mb-4 bg-gray-100 p-3 border border-white/40"><p>👤 暱稱：<span id="au-name" class="text-blue-700"></span></p><p>🌐 IP位址：<span id="au-ip" class="text-blue-700"></span></p><p>👣 總步數：<span id="au-steps" class="text-blue-700"></span></p><p>🎟️ 剩餘抽獎次數：<span id="au-tickets" class="text-blue-700"></span></p><p>🎰 歷史抽獎次數：<span id="au-draws" class="text-blue-700"></span></p><div class="border-t-2 border-dashed border-gray-400 pt-2 mt-2"><p class="text-red-600">🏆 最後中獎：</p><p>時間：<span id="au-win-time"></span></p><p>獎項：<span id="au-win-prize"></span></p></div></div><div class="flex flex-col gap-2"><button id="au-restrict-btn" class="glass-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 加入黑名單</button><button id="au-close-btn" class="glass-btn w-full py-2 bg-gray-400 text-sm">❌ 關閉</button></div></div></div>
-    <div id="manage-blacklist-modal" class="hidden absolute inset-0 z-[11500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統黑名單管理</h3><p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">黑名單玩家抽獎機率將被默默降至下方設定的上限。<br>且管理員巡視時會看見其名牌標示為紅色。</p><div class="flex items-center justify-between gap-2 mb-3 bg-red-50 p-2 border-2 border-red-500"><label class="text-xs font-bold text-gray-800 whitespace-nowrap">最高中獎機率(%):</label><input type="number" id="restrict-prob-input" class="glass-input flex-1 p-1 text-sm font-sans" value="10.0" min="0" step="0.1"><button id="save-restrict-prob-btn" class="glass-btn px-3 py-1 bg-blue-500 text-white text-xs">儲存</button></div><div id="blacklist-container" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2 text-left"></div><button id="close-blacklist-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">❌ 關閉列表</button></div></div>
+    <div id="admin-user-info-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-5 w-full max-w-sm text-center relative"><h3 class="text-gray-900 font-bold mb-3 text-lg border-b-2 border-black pb-2 flex items-center justify-center gap-2">🕵️ 玩家稽查 <span id="admin-user-badge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 border-2 border-black">黑名單</span></h3><div class="text-left text-xs space-y-3 font-bold text-gray-800 mb-4 bg-gray-100 p-3 border-4 border-black"><p>👤 暱稱：<span id="au-name" class="text-blue-700"></span></p><p>🌐 IP位址：<span id="au-ip" class="text-blue-700"></span></p><p>👣 總步數：<span id="au-steps" class="text-blue-700"></span></p><p>🎟️ 剩餘抽獎次數：<span id="au-tickets" class="text-blue-700"></span></p><p>🎰 歷史抽獎次數：<span id="au-draws" class="text-blue-700"></span></p><div class="border-t-2 border-dashed border-gray-400 pt-2 mt-2"><p class="text-red-600">🏆 最後中獎：</p><p>時間：<span id="au-win-time"></span></p><p>獎項：<span id="au-win-prize"></span></p></div></div><div class="flex flex-col gap-2"><button id="au-restrict-btn" class="pixel-btn w-full py-3 bg-red-600 text-white text-sm" data-uid="">🚫 加入黑名單</button><button id="au-close-btn" class="pixel-btn w-full py-2 bg-gray-400 text-sm">❌ 關閉</button></div></div></div>
+    <div id="manage-blacklist-modal" class="hidden absolute inset-0 z-[11500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="text-red-600 font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🚫 系統黑名單管理</h3><p class="text-[10px] text-gray-700 font-bold mb-2 text-center leading-tight">黑名單玩家抽獎機率將被默默降至下方設定的上限。<br>且管理員巡視時會看見其名牌標示為紅色。</p><div class="flex items-center justify-between gap-2 mb-3 bg-red-50 p-2 border-2 border-red-500"><label class="text-xs font-bold text-gray-800 whitespace-nowrap">最高中獎機率(%):</label><input type="number" id="restrict-prob-input" class="pixel-input flex-1 p-1 text-sm font-sans" value="10.0" min="0" step="0.1"><button id="save-restrict-prob-btn" class="pixel-btn px-3 py-1 bg-blue-500 text-white text-xs">儲存</button></div><div id="blacklist-container" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2 text-left"></div><button id="close-blacklist-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">❌ 關閉列表</button></div></div>
     
-    <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3><p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p><input type="text" id="profile-name" class="glass-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱" maxlength="15"><div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black"><label class="text-sm font-bold text-gray-800">代表色:</label><input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer"><input type="text" id="profile-hex" class="glass-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7"></div><div class="flex gap-2"><button id="profile-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="profile-save-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button></div></div></div>
+    <div id="profile-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👤 設定個人資料</h3><p id="profile-error" class="text-xs text-red-600 font-bold mb-2 hidden">格式錯誤！限中英數字與底線，長度1-15。</p><input type="text" id="profile-name" class="pixel-input w-full p-2 mb-4 text-center font-bold" placeholder="暱稱" maxlength="15"><div class="flex gap-4 mb-5 items-center justify-center bg-gray-100 p-2 border-2 border-black"><label class="text-sm font-bold text-gray-800">代表色:</label><input type="color" id="profile-color" class="w-12 h-10 p-0 border-2 border-black cursor-pointer"><input type="text" id="profile-hex" class="pixel-input w-24 p-2 text-center text-sm font-bold uppercase" maxlength="7"></div><div class="flex gap-2"><button id="profile-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="profile-save-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認修改</button></div></div></div>
 
     <!-- UI -->
     <div id="project-select-wrapper" class="absolute top-4 left-4 sm:left-1/2 sm:-translate-x-1/2 z-[2000] hidden w-auto min-w-[160px] sm:min-w-[200px] max-w-[65vw] sm:max-w-[90vw] flex items-center gap-2 transition-all">
         <div class="relative w-full">
-            <div class="glass-btn p-3 pr-2 text-sm sm:text-base font-black text-black border border-white/40 bg-yellow-400 shadow-lg w-full text-left sm:text-center flex items-center justify-between pointer-events-none overflow-hidden h-[52px]">
+            <div class="pixel-btn p-3 pr-2 text-sm sm:text-base font-black text-black border-4 border-black bg-yellow-400 shadow-[4px_4px_0px_#1a202c] w-full text-left sm:text-center flex items-center justify-between pointer-events-none overflow-hidden h-[52px]">
                 <span id="project-display-text" class="truncate mr-2 flex-1 text-center">載入中...</span>
                 <span class="font-black text-black shrink-0">▼</span>
             </div>
             <select id="switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
         </div>
         <!-- 💡 鎖定按鈕預設為紅色鎖定狀態 -->
-        <button id="lock-project-btn" class="glass-btn bg-red-600 text-white shadow-lg transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔒</button>
+        <button id="lock-project-btn" class="pixel-btn bg-red-600 text-white shadow-[4px_4px_0px_#1a202c] transition-colors shrink-0 flex items-center justify-center text-xl h-[52px] w-[52px]" title="鎖定目前專案與周邊">🔒</button>
     </div>
     
-    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="切換出沒線索">👁️ 隱藏線索</button>
-    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="重播走過路徑">🐍 我的軌跡</button>
-    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
-    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="手動上傳座標">📤 強制打卡</button>
-    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn two-tap" data-desc="地圖放置標記">📍 導航標記</button>
-    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] glass-btn p-2 text-xs hidden collapsible-btn" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
+    <button id="toggle-sighting-track-btn" class="absolute bottom-[23rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="切換出沒線索">👁️ 隱藏線索</button>
+    <button id="my-route-btn" class="absolute bottom-[20rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="重播走過路徑">🐍 我的軌跡</button>
+    <button id="eva-grid-btn" class="absolute bottom-[17rem] left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="區域搜索涵蓋率">🕸️ 完成度</button>
+    <button id="force-upload-btn" class="absolute bottom-56 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="手動上傳座標">📤 強制打卡</button>
+    <button id="nav-pin-btn" class="absolute bottom-44 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn two-tap tool-in-sheet" data-desc="地圖放置標記">📍 導航標記</button>
+    <button id="toggle-fog-btn" class="absolute bottom-32 left-4 z-[2000] pixel-btn p-2 text-xs hidden collapsible-btn tool-in-sheet" data-desc="切換地圖迷霧">👁️ 關閉迷霧</button>
     
-    <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] glass-btn p-2 text-xs hidden">觀看模式</button>
-    <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] glass-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
-    <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] glass-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
+    <button id="spectator-btn" class="absolute bottom-20 left-4 z-[2000] pixel-btn p-2 text-xs hidden">觀看模式</button>
+    <div id="spectator-hint" class="hidden absolute bottom-20 left-[100px] z-[2000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-red-600 flex items-center gap-1 border-2 border-red-500 shadow-[2px_2px_0px_rgba(239,68,68,1)] bg-white pointer-events-none"><span class="animate-pulse text-sm">⬅️</span> 可以按這裡來觀看目前目標中心</div>
+    <button id="locate-btn" class="absolute bottom-8 left-4 z-[2000] pixel-btn p-3 hidden flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2m10-10h-2M4 12H2" /></svg></button>
 
-    <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-1 flex gap-1 bg-white/95 shadow-lg"><button id="pb-start" class="glass-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="glass-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="glass-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="glass-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="glass-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
+    <div id="playback-controls" class="hidden absolute bottom-12 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-1 flex gap-1 bg-white/95 shadow-[4px_4px_0px_#1a202c]"><button id="pb-start" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;&lt;</button><button id="pb-prev" class="pixel-btn px-3 py-2 text-sm bg-gray-400 text-white">&lt;</button><button id="pb-pause" class="pixel-btn px-3 py-2 text-sm bg-yellow-400 text-black font-black">=</button><button id="pb-speed" class="pixel-btn px-3 py-2 text-sm bg-green-500 text-white">&gt;</button><button id="pb-end" class="pixel-btn px-3 py-2 text-sm bg-blue-500 text-white">&gt;&gt;</button></div>
 
-    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border border-white/40 rounded-full h-[63px] w-[63px] hover:w-[113px] flex items-center justify-center shadow-lg cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
+    <a href="runrun.htm?go" id="quick-camera-btn" class="group absolute bottom-[23px] left-1/2 transform -translate-x-1/2 z-[2000] bg-yellow-400 border-4 border-black rounded-full h-[63px] w-[63px] hover:w-[113px] flex items-center justify-center shadow-[4px_4px_0px_#1a202c] cursor-pointer no-underline text-black transition-all duration-300 ease-in-out hover:scale-105 active:scale-95">
         <span class="text-[28px] shrink-0 pointer-events-none" style="line-height: 1;">📷</span>
         <span class="camera-text max-w-0 opacity-0 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out group-hover:max-w-[60px] group-hover:opacity-100 group-hover:ml-1 font-black text-xs tracking-widest pointer-events-none">回報浪浪</span>
     </a>
@@ -309,24 +403,24 @@
                 <div style="font-size:38px;filter:drop-shadow(2px 2px 0px #1a202c);line-height:1;">🎁</div>
                 <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
             </div>
-            <div id="gift-timer" class="glass-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
+            <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
         
         <div class="flex flex-col gap-2 items-end pointer-events-auto">
-            <button id="power-saving-btn" class="sm:hidden glass-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-lg cursor-pointer flex flex-col items-center justify-center min-w-[75px] border-gray-600">
+            <button id="power-saving-btn" class="sm:hidden pixel-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col items-center justify-center min-w-[75px] border-gray-600">
                 <div class="text-xl mb-0.5">🌙</div>
                 <div class="tracking-widest">省電</div>
             </button>
-            <div id="step-panel" class="glass-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-lg cursor-pointer min-w-[75px]">
+            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]">
                 👣 累積步數<br>
                 <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
             </div>
         </div>
     </div>
 
-    <div id="status-toast" class="absolute top-4 right-4 z-[3000] glass-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black cursor-pointer" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
+    <div id="status-toast" class="absolute top-4 right-4 z-[3000] pixel-panel p-2 text-sm font-bold text-gray-900 hidden flex items-center gap-2 pointer-events-auto cursor-help"><div class="w-3 h-3 bg-red-500 border-2 border-black cursor-pointer" id="sync-ping"></div><span id="toast-text" class="flex-1 whitespace-nowrap">斷線中...</span><div id="profile-edit-trigger" class="w-4 h-4 border-2 border-black cursor-pointer shadow-[2px_2px_0px_#1a202c]"></div></div>
     
-    <div id="announcement-panel" class="absolute top-16 right-4 z-[3000] glass-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
+    <div id="announcement-panel" class="absolute top-16 right-4 z-[3000] pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 w-48 sm:w-56 pointer-events-auto shadow-md transition-all duration-300 hidden">
         <div id="animal-info-section" class="cursor-pointer mb-2 relative group border-2 border-black bg-gray-200 transition-all duration-500 overflow-hidden h-[120px]">
             <div id="animal-photo-loader" class="absolute inset-0 bg-black/80 flex items-center justify-center z-[15] hidden">
                 <div class="w-8 h-8 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div>
@@ -345,53 +439,57 @@
         <div id="announcement-action-container" class="mt-2 hidden"></div>
     </div>
     
-    <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4"><button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] cursor-pointer">✕</button><div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2"><div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg"><input type="file" id="compare-file-input" accept="image/*" class="hidden"><div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors"><div class="text-5xl sm:text-6xl mb-4">📸</div><div class="text-white font-bold text-sm sm:text-lg mb-2">點擊選擇本機照片</div><div class="text-gray-400 text-[10px] sm:text-xs font-bold whitespace-pre-wrap leading-relaxed">上傳後會出現在左邊</div></div><div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container"><img id="compare-local-img" src=""></div><button id="compare-reselect-btn" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 glass-btn px-4 py-2 bg-blue-500 text-white text-xs z-10 shadow-[2px_2px_0px_#000]">🔄 重新選擇</button></div><div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg"><div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap border border-gray-500">放大的目標照片</div><button id="compare-prev-btn" class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&lt;</button><button id="compare-next-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&gt;</button><div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center"><img id="compare-main-img" src=""></div></div></div><button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 glass-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button></div>
-    <div id="gallery-modal" class="hidden absolute inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4"><div class="w-full max-w-md bg-white border border-white/40 p-4 flex flex-col h-[80vh] glass-panel"><h3 class="text-xl font-bold mb-2 border-b-2 border-black pb-2 text-center" id="gallery-title">動物相簿</h3><div class="flex gap-2 mb-2"><button id="tab-photos" class="flex-1 glass-btn py-2 bg-blue-500 text-white border-2 border-black">📸 相片</button><button id="tab-videos" class="flex-1 glass-btn py-2 bg-gray-400 text-white border-2 border-black">🎥 影片</button></div><div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div><button id="close-gallery-btn" class="glass-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button></div></div>
-    <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container"><img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-all duration-300 pointer-events-none opacity-0"><div id="viewer-loading" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[25]"><div class="w-12 h-12 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div></div><div id="viewer-title" class="absolute top-4 left-0 w-full text-center text-white text-lg font-bold drop-shadow-[2px_2px_0px_#000] z-10 px-4 pointer-events-none"></div><button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer shadow-[2px_2px_0px_#000]">關閉 ✕</button><div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4"><button id="viewer-prev-btn" class="glass-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-lg text-sm whitespace-nowrap">&lt; 上一張</button><button id="viewer-next-btn" class="glass-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-lg text-sm whitespace-nowrap">下一張 &gt;</button></div><div id="viewer-toast" class="hidden absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[100] text-center text-lg transition-opacity duration-300 pointer-events-none"></div></div></div>
+    <div id="photo-compare-modal" class="hidden fixed inset-0 z-[13000] bg-black/95 flex flex-col touch-none p-2 pt-14 pb-4"><button id="compare-close-btn" class="absolute top-2 right-2 z-[14000] text-white text-2xl font-black bg-red-600 w-10 h-10 flex items-center justify-center border-2 border-white shadow-[2px_2px_0px_#000] cursor-pointer">✕</button><div class="flex-1 flex flex-row w-full h-full overflow-hidden gap-2"><div id="compare-left-pane" class="hidden flex-1 border-4 border-dashed border-gray-500 bg-gray-900 flex-col items-center justify-center relative overflow-hidden rounded-lg"><input type="file" id="compare-file-input" accept="image/*" class="hidden"><div id="compare-upload-prompt" class="flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-gray-800 w-full h-full transition-colors"><div class="text-5xl sm:text-6xl mb-4">📸</div><div class="text-white font-bold text-sm sm:text-lg mb-2">點擊選擇本機照片</div><div class="text-gray-400 text-[10px] sm:text-xs font-bold whitespace-pre-wrap leading-relaxed">上傳後會出現在左邊</div></div><div class="compare-img-container hidden absolute inset-0 m-auto flex items-center justify-center" id="compare-local-container"><img id="compare-local-img" src=""></div><button id="compare-reselect-btn" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 pixel-btn px-4 py-2 bg-blue-500 text-white text-xs z-10 shadow-[2px_2px_0px_#000]">🔄 重新選擇</button></div><div id="compare-right-pane" class="flex-1 border-4 border-gray-700 bg-black flex items-center justify-center relative overflow-hidden rounded-lg"><div id="compare-right-label" class="hidden absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold z-10 whitespace-nowrap border border-gray-500">放大的目標照片</div><button id="compare-prev-btn" class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&lt;</button><button id="compare-next-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 flex items-center justify-center font-black z-[1000] border-2 border-white hover:bg-black/90 active:scale-95 shadow-[2px_2px_0px_#000]">&gt;</button><div class="compare-img-container absolute inset-0 m-auto flex items-center justify-center"><img id="compare-main-img" src=""></div></div></div><button id="enable-compare-btn" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 pixel-btn px-6 py-3 bg-blue-500 text-white text-sm sm:text-base z-50 shadow-[4px_4px_0px_#000]">🔍 開啟比對模式</button></div>
+    <div id="gallery-modal" class="hidden absolute inset-0 z-[10500] bg-black/90 flex flex-col items-center justify-center p-4"><div class="w-full max-w-md bg-white border-4 border-black p-4 flex flex-col h-[80vh] pixel-panel"><h3 class="text-xl font-bold mb-2 border-b-2 border-black pb-2 text-center" id="gallery-title">動物相簿</h3><div class="flex gap-2 mb-2"><button id="tab-photos" class="flex-1 pixel-btn py-2 bg-blue-500 text-white border-2 border-black">📸 相片</button><button id="tab-videos" class="flex-1 pixel-btn py-2 bg-gray-400 text-white border-2 border-black">🎥 影片</button></div><div id="gallery-content" class="flex-1 overflow-y-auto bg-gray-200 border-2 border-black p-2 space-y-4 relative"></div><button id="close-gallery-btn" class="pixel-btn w-full mt-4 py-3 bg-red-500 text-white text-sm">❌ 關閉相簿</button></div></div>
+    <div id="photo-viewer-modal" class="hidden fixed inset-0 z-[12000] bg-black/95 flex flex-col items-center justify-center p-0 touch-none"><div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="photo-viewer-container"><img id="viewer-img" src="" class="max-w-full max-h-[85vh] object-contain transition-all duration-300 pointer-events-none opacity-0"><div id="viewer-loading" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[25]"><div class="w-12 h-12 border-4 border-gray-600 border-t-yellow-400 rounded-full animate-spin"></div></div><div id="viewer-title" class="absolute top-4 left-0 w-full text-center text-white text-lg font-bold drop-shadow-[2px_2px_0px_#000] z-10 px-4 pointer-events-none"></div><button id="viewer-close-btn" class="absolute top-4 right-4 z-20 text-white bg-red-600/80 rounded border-2 border-white px-3 py-1 text-sm font-bold cursor-pointer shadow-[2px_2px_0px_#000]">關閉 ✕</button><div class="absolute bottom-6 left-0 w-full flex justify-center gap-6 z-20 px-4"><button id="viewer-prev-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c] text-sm whitespace-nowrap">&lt; 上一張</button><button id="viewer-next-btn" class="pixel-btn px-6 py-3 bg-gray-200 text-black border-2 border-black shadow-[4px_4px_0px_#1a202c] text-sm whitespace-nowrap">下一張 &gt;</button></div><div id="viewer-toast" class="hidden absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-black/80 text-yellow-400 font-bold px-6 py-4 border-2 border-white shadow-[4px_4px_0px_#000] z-[100] text-center text-lg transition-opacity duration-300 pointer-events-none"></div></div></div>
 
-    <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3><p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p><div class="bg-gray-200 border border-white/40 p-4 mb-4 shadow-lg"><div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div><div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2"><div id="reel-1" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div><div id="reel-2" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div><div id="reel-3" class="w-16 h-16 bg-white border border-white/40 flex items-center justify-center">❓</div></div></div><div class="flex flex-col gap-3"><button id="slot-draw-btn" class="glass-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button><div class="flex gap-2"><button id="slot-check-pool-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white text-xs">🎁 中獎記錄</button><button id="slot-close-btn" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 關閉</button></div></div></div></div>
-    <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl" id="prize-pool-title">🎁 我的中獎紀錄</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border border-white/40 bg-white p-3 mb-4 text-left space-y-3 shadow-lg"></div><button id="prize-pool-close-btn" class="glass-btn w-full py-2 bg-gray-400">關閉</button></div></div>
+    <div id="slot-machine-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-2 text-2xl" id="slot-machine-title">🎰 探索抽獎</h3><p class="text-xs font-bold text-gray-700 mb-4 leading-relaxed">探索過程會累積抽獎次數 請盡早抽獎避免遺失<br><span class="text-red-500 text-[11px]">不同目標的獎池獨立！如中獎請自行截圖。</span></p><div class="bg-gray-200 border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_#1a202c]"><div class="text-sm font-bold text-gray-800 mb-2">剩餘可抽獎次數: <span id="slot-tickets-display" class="text-xl font-black text-red-600">0</span></div><div id="slot-reels" class="flex justify-center gap-3 text-5xl h-16 my-2"><div id="reel-1" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-2" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div><div id="reel-3" class="w-16 h-16 bg-white border-4 border-black flex items-center justify-center">❓</div></div></div><div class="flex flex-col gap-3"><button id="slot-draw-btn" class="pixel-btn w-full py-4 bg-red-500 text-white text-xl">🚀 開始抽獎！</button><div class="flex gap-2"><button id="slot-check-pool-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white text-xs">🎁 中獎記錄</button><button id="slot-close-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 關閉</button></div></div></div></div>
+    <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl" id="prize-pool-title">🎁 我的中獎紀錄</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border-4 border-black bg-white p-3 mb-4 text-left space-y-3 shadow-[4px_4px_0px_#1a202c]"></div><button id="prize-pool-close-btn" class="pixel-btn w-full py-2 bg-gray-400">關閉</button></div></div>
 
     <!-- 管理員面板更新 -->
-    <div id="admin-panel" class="absolute top-4 right-[120px] z-[11000] glass-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]">
-        <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
-        <div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div>
-        <button id="clear-history-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button>
-        <button id="add-sighting-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
-        <button id="manage-sightings-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
-        <button id="add-route-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
-        <!-- 新增上傳 GPX 按鈕 -->
-        <button id="upload-gpx-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-lime-600 text-white">📁 上傳 GPX</button>
-        <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
-        <button id="manage-routes-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
+    <div id="admin-panel" class="absolute top-16 left-4 right-4 md:right-[120px] md:left-auto md:w-[450px] z-[11000] pixel-panel p-3 hidden bg-white/95 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[50vh]">
+    <div class="flex flex-wrap gap-2 items-center justify-center">
+        <div class="text-red-600 border-b-2 border-black pb-1 w-full text-sm font-bold text-center">🛡️ 管理員工具</div>
+        <div class="text-[10px] text-center font-bold mb-1 text-blue-700 bg-blue-100 border border-blue-300 rounded px-2 py-1 w-full" id="admin-current-proj"></div>
         
-        <button id="update-announce-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
-        <button id="add-prize-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button>
-        <button id="manage-prizes-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
-        <button id="manage-blacklist-btn" class="glass-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
-        <button id="close-admin-btn" class="glass-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
+        <button id="clear-history-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button>
+        <button id="add-sighting-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
+        <button id="manage-sightings-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
+        <button id="add-route-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
+        
+        <button id="upload-gpx-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-lime-600 text-white">📁 上傳 GPX</button>
+        <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
+        <button id="manage-routes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
+        
+        <button id="update-announce-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
+        <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎品</button>
+        <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
+        <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+        
+        <button id="close-admin-btn" class="pixel-btn w-full mt-2 p-2 text-xs bg-red-600 text-white border-2 border-black font-bold">❌ 關閉面板</button>
     </div>
+</div>
     
-    <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="glass-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="glass-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="glass-btn w-full py-2 bg-gray-400">取消</button></div></div>
+    <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
     
-    <div id="sighting-icon-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">🏷️ 選擇線索圖示</h3><div class="grid grid-cols-4 gap-3 mb-6" id="sighting-icon-grid"></div><button id="sighting-icon-cancel-btn" class="glass-btn w-full py-2 bg-gray-400">取消</button></div></div>
+    <div id="sighting-icon-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">🏷️ 選擇線索圖示</h3><div class="grid grid-cols-4 gap-3 mb-6" id="sighting-icon-grid"></div><button id="sighting-icon-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
     
-    <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標或地址</h3><input type="text" id="coord-input-value" class="glass-input w-full p-3 mb-4 text-center font-mono text-sm" placeholder="貼上座標、網址或輸入地址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="coordinate-input-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">✍️ 輸入座標或地址</h3><input type="text" id="coord-input-value" class="pixel-input w-full p-3 mb-4 text-center font-mono text-sm" placeholder="貼上座標、網址或輸入地址..." /><div class="flex gap-2"><button id="coord-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="coord-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     
-    <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
+    <div id="manage-sightings-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">📋 管理出沒點</h3><div id="sightings-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-modal-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
     
-    <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">直接在畫面上拖曳塗抹要清除的範圍！點擊或塗抹已標示的紅圈即可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="glass-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
+    <div id="clear-history-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🧹 清理軌跡</h3><p class="text-xs text-gray-700 font-bold mb-2 text-center">直接在畫面上拖曳塗抹要清除的範圍！點擊或塗抹已標示的紅圈即可取消。</p><div class="flex items-center gap-2 mb-3"><label class="text-xs font-bold whitespace-nowrap">範圍半徑: <span id="clear-radius-val">100</span>m</label><input type="range" id="clear-radius" min="10" max="1000" step="10" value="100" class="w-full cursor-pointer"></div><div class="flex gap-2"><button id="clear-history-cancel" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="clear-history-confirm" class="pixel-btn flex-1 py-2 bg-red-600 text-white text-xs">🗑️ 確認清除</button></div></div>
 
-    <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] glass-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="glass-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="glass-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="glass-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
+    <div id="route-drawing-panel" class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 z-[3000] pixel-panel p-4 bg-white/95 w-11/12 max-w-sm"><h3 class="text-center font-bold mb-2 text-red-600 border-b-2 border-black pb-1">🗺️ 繪製路線</h3><input type="text" id="route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 text-sm font-bold"><div class="flex gap-4 mb-3 items-center"><div class="flex-col flex"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="route-color" value="#ff0000" class="w-10 h-10 p-0 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="route-weight-val">5</span>px</label><input type="range" id="route-weight" min="2" max="12" value="5" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="route-undo-btn" class="pixel-btn flex-1 py-2 bg-yellow-400 text-xs">↩️ 復原</button><button id="route-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400 text-xs">❌ 取消</button><button id="route-finish-btn" class="pixel-btn flex-1 py-2 bg-green-500 text-white text-xs">✅ 完成</button></div></div>
     
-    <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="glass-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
-    <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="glass-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="glass-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
+    <div id="manage-routes-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[75vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2">🛤️ 管理路線</h3><div id="routes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2"></div><button id="close-manage-routes-btn" class="pixel-btn w-full py-3 bg-gray-400 text-white">關閉</button></div></div>
+    <div id="edit-route-modal" class="hidden absolute inset-0 z-[9000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-lg">📝 編輯路線屬性</h3><input type="text" id="edit-route-name" class="pixel-input w-full p-2 mb-3 font-bold"><div class="flex gap-4 mb-4 items-center"><div class="flex-col flex items-center"><label class="text-xs font-bold mb-1">顏色</label><input type="color" id="edit-route-color" class="w-10 h-10 border-2 border-black cursor-pointer"></div><div class="flex-1"><label class="text-xs font-bold mb-1 block">粗細: <span id="edit-route-weight-val">5</span>px</label><input type="range" id="edit-route-weight" min="2" max="12" class="w-full cursor-pointer"></div></div><div class="flex gap-2"><button id="edit-route-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="edit-route-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">儲存</button></div></div></div>
     
     <!-- 新增：GPX 屬性設定 Modal -->
     <div id="gpx-config-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
-        <div class="glass-panel p-6 w-full max-w-sm text-center">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center">
             <h3 class="font-bold mb-4 text-lg">📁 設定 GPX 路線</h3>
-            <input type="text" id="gpx-route-name" placeholder="路線名稱" class="glass-input w-full p-2 mb-3 font-bold">
+            <input type="text" id="gpx-route-name" placeholder="路線名稱" class="pixel-input w-full p-2 mb-3 font-bold">
             <div class="flex gap-4 mb-4 items-center">
                 <div class="flex-col flex items-center">
                     <label class="text-xs font-bold mb-1">顏色</label>
@@ -403,16 +501,128 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button id="gpx-config-cancel" class="glass-btn flex-1 py-2 bg-gray-400">取消</button>
-                <button id="gpx-config-save" class="glass-btn flex-1 py-2 bg-blue-500 text-white">上傳路線</button>
+                <button id="gpx-config-cancel" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button>
+                <button id="gpx-config-save" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">上傳路線</button>
             </div>
         </div>
     </div>
 
-    <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="glass-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="glass-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="glass-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
-    <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="glass-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="glass-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="glass-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
+    <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
+    <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
     
-    <div class="absolute bottom-2 right-2 z-[2000] glass-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="govpet.htm" class="text-purple-600 hover:text-purple-800 no-underline font-black">走失協尋</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+    <div class="absolute bottom-2 right-2 z-[2000] pixel-panel p-1 px-2 text-[10px] sm:text-[11px] font-bold bg-white/90 text-right pointer-events-auto flex gap-3 desktop-bottom-links"><a href="runrun.htm" class="text-orange-600 hover:text-orange-800 no-underline font-black">浪浪地圖</a><a href="govpet.htm" class="text-purple-600 hover:text-purple-800 no-underline font-black">走失協尋</a><a href="/helpme.htm" target="_blank" class="text-blue-600 hover:text-blue-800 no-underline font-black">免費協尋刊登</a><a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-600 hover:text-green-800 no-underline font-black">聯絡阿偉</a></div>
+
+    <!-- ========== 手機版新 UI 元素 ========== -->
+
+    <!-- 手機版頂部薄條 -->
+    <div id="mobile-top-bar">
+        <div class="top-left" id="mobile-top-project-trigger">
+            <span class="top-project-name" id="mobile-project-name">載入中...</span>
+            <span class="top-project-arrow">▼</span>
+        </div>
+        <div class="top-right">
+            <div class="top-status-dot" id="mobile-sync-dot"></div>
+            <div class="top-announce-btn" id="mobile-announce-trigger">📋<span class="announce-dot"></span></div>
+            <div class="top-profile-dot" id="mobile-profile-trigger"></div>
+        </div>
+    </div>
+
+    <!-- 手機版底部操作列 -->
+    <div id="mobile-bottom-bar">
+        <div class="bar-main">
+            <div class="bar-item" id="mobile-locate-btn">
+                <span class="bar-icon">📍</span>
+                <span class="bar-label">定位</span>
+            </div>
+            <div class="bar-item" id="mobile-tool-btn">
+                <span class="bar-icon">🛠️</span>
+                <span class="bar-label">工具</span>
+            </div>
+            <a href="runrun.htm?go" class="bar-camera" id="mobile-camera-btn">
+                <span>📷</span>
+            </a>
+            <div class="bar-item" id="mobile-spectator-btn">
+                <span class="bar-icon">👁️</span>
+                <span class="bar-label" id="mobile-spectator-label">觀看</span>
+            </div>
+            <div class="bar-item" id="mobile-lock-btn">
+                <span class="bar-icon" id="mobile-lock-icon">🔒</span>
+                <span class="bar-label">鎖定</span>
+            </div>
+        </div>
+        <div class="bar-link-row">
+            <a href="runrun.htm" class="text-orange-400">浪浪地圖</a>
+            <a href="govpet.htm" class="text-purple-400">走失協尋</a>
+            <a href="/helpme.htm" target="_blank" class="text-blue-400">免費刊登</a>
+            <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400">聯絡阿偉</a>
+        </div>
+    </div>
+
+    <!-- 工具箱 Bottom Sheet -->
+    <div id="tool-sheet-overlay"></div>
+    <div id="tool-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">工具箱</div>
+        <div class="sheet-grid">
+            <div class="sheet-item" data-target="toggle-sighting-track-btn">
+                <span class="sheet-icon">👁️</span>
+                <span>線索顯示</span>
+            </div>
+            <div class="sheet-item" data-target="my-route-btn">
+                <span class="sheet-icon">🐍</span>
+                <span>我的軌跡</span>
+            </div>
+            <div class="sheet-item" data-target="eva-grid-btn">
+                <span class="sheet-icon">🕸️</span>
+                <span>完成度</span>
+            </div>
+            <div class="sheet-item" data-target="force-upload-btn">
+                <span class="sheet-icon">📤</span>
+                <span>強制打卡</span>
+            </div>
+            <div class="sheet-item" data-target="nav-pin-btn">
+                <span class="sheet-icon">📍</span>
+                <span>導航標記</span>
+            </div>
+            <div class="sheet-item" data-target="toggle-fog-btn">
+                <span class="sheet-icon">🌫️</span>
+                <span>迷霧開關</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 手機版省電按鈕 (浮動) -->
+    <div id="mobile-power-btn">🌙 省電</div>
+
+    <!-- 手機版步數/禮物浮動區 -->
+    <div id="mobile-float-right">
+        <div class="float-steps" id="mobile-steps-trigger">
+            👣 <span class="steps-num" id="mobile-step-value">0</span>
+        </div>
+        <div class="float-gift hidden" id="mobile-gift-trigger">
+            <span class="gift-emoji">🎁</span>
+            <span class="gift-time" id="mobile-gift-timer">60:00</span>
+            <span class="gift-badge" id="mobile-gift-badge">0</span>
+        </div>
+    </div>
+
+    <!-- 手機版公告彈出面板 -->
+    <div id="mobile-announce-sheet">
+        <div class="announce-backdrop" id="mobile-announce-close-backdrop"></div>
+        <div class="announce-card p-4" id="mobile-announce-card">
+            <div id="mobile-animal-photo-section" class="relative mb-3 border-2 border-black bg-gray-200 overflow-hidden" style="height:180px;">
+                <img id="mobile-animal-photo" src="" class="w-full h-full object-cover">
+                <div class="absolute left-0 top-0 bottom-0 w-10 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70" id="mobile-card-prev">&lt;</div>
+                <div class="absolute right-0 top-0 bottom-0 w-10 bg-black/40 text-white flex items-center justify-center z-20 font-black cursor-pointer hover:bg-black/70" id="mobile-card-next">&gt;</div>
+                <div class="absolute bottom-0 right-0 h-7 px-2 flex items-center justify-center bg-blue-600 text-white text-xs border-l-2 border-t-2 border-black z-30 cursor-pointer hover:bg-blue-700 font-bold" id="mobile-gallery-btn">📸 看相簿</div>
+            </div>
+            <div id="mobile-animal-name" class="font-black text-blue-700 text-sm mb-2 pb-1 border-b border-dashed border-gray-400"></div>
+            <div class="text-red-600 font-bold text-xs mb-1">📢 最新公告</div>
+            <div id="mobile-announce-text" class="leading-relaxed whitespace-pre-wrap text-xs text-gray-800 max-h-40 overflow-y-auto"></div>
+            <button id="mobile-announce-close-btn" class="pixel-btn w-full mt-3 py-2 bg-gray-500 text-white text-xs">關閉</button>
+        </div>
+    </div>
+
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -505,7 +715,7 @@
         // --- 核心共用模組 ---
         const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
         let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
-        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=html=>{html('custom-modal-text',html); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
+        const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=htmlContent=>{html('custom-modal-text',htmlContent); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
         const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
         const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
         const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
@@ -533,7 +743,7 @@
             
             map=L.map('map',{zoomControl:false}).setView([23.5,121],8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map); L.control.zoom({position:'bottomright'}).addTo(map);
-            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
+            markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); camerasLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
             
             map.on('click',e=>{if(isDrawingRoute){currentRoutePoints.push([e.latlng.lat,e.latlng.lng]); updateDrawingRoutePreview();} resetPowerSavingTimer();});
             map.on('mousedown touchstart',e=>{if(isClearingHistory){let ck=false; for(let i=0;i<clearHistoryCircles.length;i++){let c=clearHistoryCircles[i]; if(getDistance(e.latlng.lat,e.latlng.lng,c.lat,c.lng)<=c.radius){map.removeLayer(c.layer); clearHistoryCircles.splice(i,1); ck=true; break;}} if(ck)isErasingClear=true; else{isPaintingClear=true; let l=L.circle(e.latlng,{radius:currentClearRadius,color:'red',fillColor:'#ef4444',fillOpacity:0.4,dashArray:'5,5',weight:2}).addTo(map); clearHistoryCircles.push({lat:e.latlng.lat,lng:e.latlng.lng,radius:currentClearRadius,layer:l}); lastPaintLatLng=e.latlng;}}});
@@ -564,7 +774,7 @@
             let mapLastTapTime = 0;
             $('map-container').addEventListener('touchend', e => {
                 if(!isMobileDevice) return;
-                if(e.target.closest('.glass-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+                if(e.target.closest('.pixel-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
                 let now = Date.now();
                 if(now - mapLastTapTime < 300) {
                     e.preventDefault(); 
@@ -584,12 +794,24 @@
                     $('sync-ping').style.backgroundColor='#10b981'; 
                     text('toast-text',"連線成功"); 
                     wsReconnectDelay=3000; 
-                    wsSend("init", { light: true }); 
+                    wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
+            } 
                     if(localHistory.length)saveLocationToServer(null,true);
                 };
                 ws.onmessage=e=>{
                     const res=JSON.parse(e.data);
-                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true }); drawAllProjects(); updateAnimalInfoCard(); }
+                    if(['sync','projects_updated'].includes(res.type)&&(res.dynamicProjects||res.data?.dynamicProjects)){ const np=res.dynamicProjects||res.data.dynamicProjects; PROJECTS={}; Object.keys(np).forEach(k=>{if(!np[k].isStray)PROJECTS[k]=np[k];}); Object.keys(PROJECTS).forEach(k=>{if(!allAnnouncements[k]||allAnnouncements[k]==="目前無最新公告。")allAnnouncements[k]=PROJECTS[k].announcement||"目前無最新公告。";}); let oldK=currentProjectKey; updateProjectDropdown(); if(oldK!==currentProjectKey&&res.type==='sync')wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
+            } drawAllProjects(); updateAnimalInfoCard(); }
                     
                     if(res.type==='sync'){ 
                         allUsersData=res.data.locations||{}; 
@@ -621,6 +843,50 @@
                         renderMap();
                         requestFogRender();
                     }
+                    else if (res.type === 'status_update') {
+                        if (res.data.project === currentProjectKey) {
+                            window.latestStatusText = res.data.text;
+                            renderSightings();
+                        }
+                    }
+                    else if(res.type==='nearby_cameras_result'){
+                        if(typeof camerasLayer!=='undefined') camerasLayer.clearLayers();
+                        res.data.forEach(cam => {
+                            if (cam.name && cam.name.includes('國道')) return;
+                            let ic = '📷', bg = '#2563eb', c = 'white', ani = 'none';
+                            let camMarker = L.marker([cam.lat, cam.lng], {
+                                icon: L.divIcon({
+                                    className: 'custom-div-icon',
+                                    html: `<div class="user-label-container" style="bottom:12px;">
+                                        <div style="pointer-events:auto;cursor:pointer;font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div>
+                                        </div>`
+                                }),
+                                zIndexOffset: -1000
+                            }).addTo(camerasLayer).bindPopup(
+                                `<div class="relative inline-block overflow-hidden rounded m-0 p-0" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); line-height: 0;">
+                                    <img src="${cam.cam_url}" onload="setTimeout(() => { let p=this.closest('.leaflet-popup'); if(p){p.style.width=this.clientWidth+'px'; p.style.height=this.clientHeight+'px';} if(window.innerWidth<=640 && this.clientHeight > 20){let pt=map.project([${cam.lat}, ${cam.lng}], map.getZoom()); pt.y -= (this.clientHeight/2 + 15); map.panTo(map.unproject(pt, map.getZoom()), {animate: true});} }, 50);" style="max-width: min(400px, 85vw); max-height: min(400px, 45vh); object-fit: contain; display: block;" onerror="this.onerror=null;this.src='https://placehold.co/400x300/000/FFF?text=Camera+Offline';">
+                                    <div class="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-sm font-bold text-left pointer-events-none whitespace-pre-wrap leading-normal" style="text-shadow: 1px 1px 2px black, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">${escapeHTML(cam.name)}</div>
+                                </div>`,
+                                {className: 'camera-popup-naked', offset: [0, -30], maxWidth: 450, closeButton: false, autoPan: false}
+                            );
+                            camMarker.on('mouseover', function(e) {
+                                if (window.innerWidth > 640) this.openPopup();
+                            });
+                            camMarker.on('click', function(e) {
+                                this.openPopup();
+                                if (window.innerWidth <= 640) {
+                                    setTimeout(() => {
+                                        let p = this.getPopup();
+                                        let h = p && p.getElement() ? p.getElement().clientHeight : 0;
+                                        if (h < 50) h = window.innerHeight * 0.3; // fallback if image not loaded yet
+                                        let pt = map.project([cam.lat, cam.lng], map.getZoom());
+                                        pt.y -= (h/2 + 15);
+                                        map.panTo(map.unproject(pt, map.getZoom()), {animate: true});
+                                    }, 100);
+                                }
+                            });
+                        });
+                    }
                     else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
                     else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
                     else if(res.type==='user_appended'){let d=res.data, u=res.uid; if(!allUsersData[u])allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else{allUsersData[u].userName=d.userName; allUsersData[u].color=d.color; if(d.total_steps!==undefined)allUsersData[u].total_steps=d.total_steps;} allUsersData[u].history.push(d.point); if(u===myUid)updateStepsCounterUI(); renderMap();}
@@ -628,11 +894,11 @@
                     else if(res.type==='prize_won_broadcast'){text('win-marquee-text',`🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); let t=$('win-marquee-text'); t.style.animation='none'; t.offsetHeight; t.style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000);}
                     else if(res.type==='admin_login_result'){text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！");}
                     else if(res.type==='admin_action_result'){showModal(res.msg);}
-                    else if(res.type==='admin_user_info_result'){let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="glass-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="glass-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal');}
-                    else if(res.type==='admin_prizes_data'){let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="glass-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true; let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length)av.forEach(i=>{let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input glass-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input glass-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`;}); else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as); let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length)dr.forEach(i=>{ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`;}); else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds); const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`glass-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？",()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );}
-                    else if(res.type==='admin_blacklist_data'){if(res.restrict_prob!==undefined)$('restrict-prob-input').value=res.restrict_prob; let c=$('blacklist-container'); c.innerHTML=''; if(!res.data||!res.data.length)c.innerHTML='<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>'; else{res.data.forEach(u=>{c.innerHTML+=`<div class="border border-white/40 p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(u.uid.substring(0,8))}...</div></div><button class="unban-btn glass-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap" data-uid="${u.uid}">✅ 解除</button></div>`;}); c.querySelectorAll('.unban-btn').forEach(b=>b.addEventListener('click',e=>{wsSend("admin_remove_blacklist",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="處理中...";}));} show('manage-blacklist-modal');}
+                    else if(res.type==='admin_user_info_result'){let d=res.data; text('au-name',escapeHTML(d.userName)); text('au-ip',d.ip); text('au-steps',d.steps.toLocaleString()); text('au-tickets',d.tickets||0); text('au-draws',d.draw_count); text('au-win-time',escapeHTML(d.last_win_time)); text('au-win-prize',escapeHTML(d.last_win_prize)); $('au-restrict-btn').setAttribute('data-uid',d.uid); if(d.is_blacklisted){show('admin-user-badge'); $('au-restrict-btn').innerText="✅ 解除黑名單限制"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-green-500 text-white text-sm";}else{hide('admin-user-badge'); $('au-restrict-btn').innerText="🚫 加入黑名單 (機率降至上限)"; $('au-restrict-btn').className="pixel-btn w-full py-3 bg-red-600 text-white text-sm";} show('admin-user-info-modal');}
+                    else if(res.type==='admin_prizes_data'){let c=$('admin-prizes-list-container'), av=res.data.available||[], dr=res.data.drawn||[]; c.innerHTML=''; let sb=$('save-prizes-btn'); sb.className="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed"; sb.innerText="💾 送出修改"; sb.disabled=true; let as=document.createElement('div'); as.innerHTML='<div class="text-sm font-black text-gray-900 mb-2 border-b-2 border-black pb-1">🎁 現有獎池 (可修改機率)</div>'; if(av.length)av.forEach(i=>{let fp=i.first_prob!==undefined?i.first_prob:70; as.innerHTML+=`<div class="border-2 border-black p-2 bg-white shadow-[2px_2px_0px_#1a202c] mb-2"><div class="font-bold text-gray-900 mb-2">${escapeHTML(i.name)}</div><div class="flex flex-col gap-2 mb-2"><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-blue-600 whitespace-nowrap">一般機率(%):</span><input type="number" class="edit-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${i.prob}" value="${i.prob}" min="0.001" step="0.1"></div><div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-red-600 whitespace-nowrap">首抽機率(%):</span><input type="number" class="edit-first-prob-input pixel-input w-full p-1 text-xs" data-id="${i.id}" data-original="${fp}" value="${fp}" min="0.001" step="0.1"></div></div><div class="text-right border-t-2 border-dashed border-gray-300 pt-2"><button class="delete-prize-btn bg-red-500 text-white font-bold py-1 px-3 text-xs border-2 border-black" data-id="${i.id}">🗑️ 刪除此獎品</button></div></div>`;}); else as.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">目前沒有可抽取的獎品。</p>'; c.appendChild(as); let ds=document.createElement('div'); ds.innerHTML='<div class="text-sm font-black text-gray-900 mt-4 mb-2 border-b-2 border-black pb-1">📜 已被抽走 (歷史紀錄)</div>'; if(dr.length)dr.forEach(i=>{ds.innerHTML+=`<div class="border-2 border-dashed border-gray-400 p-2 bg-gray-100 mb-2 opacity-80"><div class="font-bold text-gray-600 mb-1 line-through">${escapeHTML(i.name)}</div><div class="text-[10px] text-gray-700 font-bold mb-1">${escapeHTML(i.time_str||'')}</div><div class="text-xs font-bold text-red-600">🎉 中獎人：${escapeHTML(i.winner)}</div></div>`;}); else ds.innerHTML+='<p class="text-center text-xs text-gray-500 font-bold py-2">尚未有被抽走的紀錄。</p>'; c.appendChild(ds); const ch=()=>{let hc=false; document.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>{if(i.value!==i.getAttribute('data-original'))hc=true;}); sb.className=`pixel-btn flex-1 py-3 ${hc?'bg-blue-500':'bg-gray-400'} text-white ${hc?'':'cursor-not-allowed'}`; sb.disabled=!hc;}; c.querySelectorAll('.edit-prob-input, .edit-first-prob-input').forEach(i=>i.addEventListener('input',ch)); c.querySelectorAll('.delete-prize-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定要刪除這個未抽出的獎品嗎？",()=>wsSend("delete_prize",{id:e.target.getAttribute('data-id')}))) );}
+                    else if(res.type==='admin_blacklist_data'){if(res.restrict_prob!==undefined)$('restrict-prob-input').value=res.restrict_prob; let c=$('blacklist-container'); c.innerHTML=''; if(!res.data||!res.data.length)c.innerHTML='<p class="text-center text-gray-500 font-bold mt-4">目前沒有黑名單紀錄。</p>'; else{res.data.forEach(u=>{c.innerHTML+=`<div class="border-4 border-black p-3 bg-red-50 mb-2 flex justify-between items-center"><div><div class="font-bold text-red-600">${escapeHTML(u.userName)}</div><div class="text-xs text-gray-700 font-mono mt-1">IP: ${escapeHTML(u.ip)}</div><div class="text-[10px] text-gray-500 font-mono">UID: ${escapeHTML(u.uid.substring(0,8))}...</div></div><button class="unban-btn pixel-btn py-2 px-3 bg-green-500 text-white text-xs whitespace-nowrap" data-uid="${u.uid}">✅ 解除</button></div>`;}); c.querySelectorAll('.unban-btn').forEach(b=>b.addEventListener('click',e=>{wsSend("admin_remove_blacklist",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="處理中...";}));} show('manage-blacklist-modal');}
                     else if(res.type==='my_prizes_data'){text('prize-pool-title','🎁 我的中獎紀錄'); let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length)res.data.forEach(i=>{let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`;}); else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal');}
-                    else if(res.type==='draw_result'){setTimeout(()=>{clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);}else{text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{$('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border border-white/40 shadow-lg no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`);}else showModal(res.msg||"💨 銘謝惠顧，下次再來！");},800);},1500);}
+                    else if(res.type==='draw_result'){setTimeout(()=>{clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);}else{text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{$('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`);}else showModal(res.msg||"💨 銘謝惠顧，下次再來！");},800);},1500);}
                     else if(res.type==='parse_map_url_result'){if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;}}
                     else if(res.type==='search_address_result'){if(window.addressResolver){window.addressResolver(res); window.addressResolver=null;}}
                 };
@@ -653,7 +919,7 @@
 
         function startLocationServices(auto) {
             if(!navigator.geolocation)return handleGeoError({code:0,message:"瀏覽器不支援"},auto);
-            navigator.geolocation.getCurrentPosition(p=>{handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()); finishUIReveal();},e=>handleGeoError(e,auto),{enableHighAccuracy:true,timeout:15000});
+            navigator.geolocation.getCurrentPosition(p=>{document.getElementById('desktop-loc-hint')?.classList.add('hidden'); handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()); finishUIReveal();},e=>{document.getElementById('desktop-loc-hint')?.classList.add('hidden'); handleGeoError(e,auto);},{enableHighAccuracy:true,timeout:15000});
             if(watchId)navigator.geolocation.clearWatch(watchId); watchId=navigator.geolocation.watchPosition(p=>handleValidPosition(p.coords.latitude,p.coords.longitude,Date.now()), e=>{if(isTrackingStarted&&!isSpectatorMode)show('gps-warning');},{enableHighAccuracy:true,maximumAge:5000});
         }
         function handleGeoError(e,auto) {
@@ -668,6 +934,7 @@
                 on('close-gps-modal-btn','click',()=>{ $('central-gps-error-modal').classList.remove('show'); finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444'; });
             }else{
                 em.className="text-red-600 font-bold text-sm mt-4 block whitespace-pre-wrap"; em.onclick=null;
+
             }
 
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
@@ -790,6 +1057,12 @@
             if(isMyRouteMode)$('my-route-btn').click(); 
             updateVisualSelectText();
             wsSend("init", { light: true });
+            let p = PROJECTS[currentProjectKey];
+            if (p) {
+                let cLat = (p.bounds[0][0]+p.bounds[1][0])/2;
+                let cLng = (p.bounds[0][1]+p.bounds[1][1])/2;
+                wsSend("get_nearby_cameras", {lat: cLat, lng: cLng, radius: 10000});
+            }
         });
 
         function updateAnimalInfoCard() {
@@ -813,15 +1086,15 @@
             }
             text('animal-name-date-header',`🐾 ${p.animalName} (遺失: ${p.lostDate})`); show('announcement-panel'); text('admin-current-proj',`針對: ${currentProjectKey}`);
             html('announcement-text', escapeHTML(allAnnouncements[currentProjectKey]||p.announcement||"目前無最新公告。").replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s<]+)/g, url=>`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline font-bold hover:text-blue-800" style="pointer-events: auto;">${url}</a>`));
-            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){let m=p.actionLink.url.match(/(https?:\/\/[^\s<]+)/); ac.innerHTML=`<a href="${m?m[1]:p.actionLink.url}" target="_blank" class="glass-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`;}
+            let ac=$('announcement-action-container'); ac.innerHTML=''; if(p?.actionLink?.url){let m=p.actionLink.url.match(/(https?:\/\/[^\s<]+)/); ac.innerHTML=`<a href="${m?m[1]:p.actionLink.url}" target="_blank" class="pixel-btn block text-center py-2 mt-2 text-xs bg-blue-600 text-white no-underline" style="pointer-events: auto;">🔗 ${p.actionLink.text||"前往連結"}</a>`;}
             applyAnnouncePanelCollapseState(); if(window.innerWidth<=640){$('animal-info-section').classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>$('animal-info-section').classList.add('mobile-collapsed'),5000);}
         }
         function drawAllProjects() {
             allCenterMarkers.forEach(m=>map.removeLayer(m)); allCenterMarkers=[]; if(activeBoundsRectangle){map.removeLayer(activeBoundsRectangle); activeBoundsRectangle=null;}
             Object.keys(PROJECTS).forEach(k=>{
                 let p=PROJECTS[k], c=[(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2], cur=(k===currentProjectKey), ic={'dog':'🐕','cat':'🐈','bird':'🦜','rabbit':'🐇','turtle':'🐢'}[p.type]||'🐾';
-                let rm=(allAnnouncements[k]||p.announcement||"").match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/), rh=rm?`<div class="user-name-tag glass-panel" style="color:#000;background-color:#fef08a;margin-bottom:2px;padding:2px 4px;">💰 $${rm[1]}</div>`:'';
-                let mh=cur?`<div style="position:absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom:12px;pointer-events:auto;">${rh}<div class="user-name-tag glass-panel" style="color:white;background-color:#ef4444;">📍 ${escapeHTML(p.animalName)}遺失中心</div><div style="font-size:32px;animation:bounce 2s infinite;">${ic}</div></div>`:`<div class="user-label-container" style="bottom:12px;pointer-events:auto;opacity:0.8;">${rh}<div class="user-name-tag glass-panel" style="background-color:#e5e7eb;">找 ${escapeHTML(p.animalName)}</div><div style="font-size:24px;">${ic}</div></div>`;
+                let rm=(allAnnouncements[k]||p.announcement||"").match(/懸賞(?:金額)?\s*[:：]?\s*([0-9,]+)/), rh=rm?`<div class="user-name-tag pixel-panel" style="color:#000;background-color:#fef08a;margin-bottom:2px;padding:2px 4px;">💰 $${rm[1]}</div>`:'';
+                let mh=cur?`<div style="position:absolute;"><div class="center-pulse-square"></div></div><div class="user-label-container" style="bottom:12px;pointer-events:auto;">${rh}<div class="user-name-tag pixel-panel" style="color:white;background-color:#ef4444;">📍 ${escapeHTML(p.animalName)}遺失中心</div><div style="font-size:32px;animation:bounce 2s infinite;">${ic}</div></div>`:`<div class="user-label-container" style="bottom:12px;pointer-events:auto;opacity:0.8;">${rh}<div class="user-name-tag pixel-panel" style="background-color:#e5e7eb;">找 ${escapeHTML(p.animalName)}</div><div style="font-size:24px;">${ic}</div></div>`;
                 let m=L.marker(c,{icon:L.divIcon({className:'custom-div-icon',html:mh}),zIndexOffset:cur?Math.floor(Date.now()/1000)+100000:Math.floor(Date.now()/1000)+50000}).addTo(map);
                 m.on('click',()=>{if(!cur){$('switch-project-select').value=k; $('switch-project-select').dispatchEvent(new Event('change'));}}); allCenterMarkers.push(m);
                 if(cur)activeBoundsRectangle=L.rectangle(p.bounds,{color:"#ef4444",weight:3,fillOpacity:0.1,dashArray:'5, 10'}).addTo(map).bindPopup(`<div class="font-bold text-center">📍 ${escapeHTML(p.animalName)}從這裡範圍遺失</div>`,{className:'pixel-popup'});
@@ -844,7 +1117,7 @@
                         L.polyline(ch.map(p=>[p.lat,p.lng]),{color:rc,weight:6,opacity:0.9}).addTo(markersLayer); 
                         let lp=ch[ch.length-1], s=escapeHTML(rn), ts=(targetRouteUid!==myUid)?' (觀察中)':'', nc=`color:${rc};border-color:${rc};`; 
                         if(isAdmin&&td?.blacklisted){nc='color:#fff;background-color:#ef4444;border-color:#7f1d1d;'; ts=' (黑名單)';} 
-                        L.marker([lp.lat,lp.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container"><div class="user-name-tag glass-panel marker-name-btn" data-uid="${targetRouteUid||myUid}" style="${nc} pointer-events:auto;">${s}${ts}</div><div class="user-avatar-pixel blinking-red-pixel" style="background-color:${rc};animation-duration:2s;"></div></div>`}),zIndexOffset:Math.floor(lp.timestamp/1000)+50000}).addTo(markersLayer); 
+                        L.marker([lp.lat,lp.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${targetRouteUid||myUid}" style="${nc} pointer-events:auto;">${s}${ts}</div><div class="user-avatar-pixel blinking-red-pixel" style="background-color:${rc};animation-duration:2s;"></div></div>`}),zIndexOffset:Math.floor(lp.timestamp/1000)+50000}).addTo(markersLayer); 
                         if(snakeInterval)map.panTo([lp.lat,lp.lng],{animate:true,duration:(currentPlaybackSpeed/1000)}); 
                     } 
                 } 
@@ -868,7 +1141,7 @@
                     let rc=isS?dbUserColor:(ud.color||'#3b82f6'), nc=isS?`color:${rc};`:'color:#1a202c;', ts=''; 
                     if(isAdmin&&ud.blacklisted){nc='color:#fff;background-color:#ef4444;border-color:#7f1d1d;'; ts=' (黑名單)';} 
                     
-                    let htmlContent = `<div class="user-label-container"><div class="user-name-tag glass-panel marker-name-btn" data-uid="${u}" style="${nc} pointer-events:auto;">${escapeHTML(ud.userName)}${ts}</div><div class="user-avatar-pixel ${isS?'blinking-red-pixel':''}" style="background-color:${rc};"></div></div>`;
+                    let htmlContent = `<div class="user-label-container"><div class="user-name-tag pixel-panel marker-name-btn" data-uid="${u}" style="${nc} pointer-events:auto;">${escapeHTML(ud.userName)}${ts}</div><div class="user-avatar-pixel ${isS?'blinking-red-pixel':''}" style="background-color:${rc};"></div></div>`;
                     let zIndex = isS?Math.floor(Date.now()/1000)+20000:Math.floor(lp.timestamp/1000);
 
                     if (userMarkers[u]) {
@@ -897,7 +1170,19 @@
 
         function renderSightings() {
             if(!sightingsLayer)return; sightingsLayer.clearLayers(); if(!sightingTrackLayer)sightingTrackLayer=L.layerGroup().addTo(map); sightingTrackLayer.clearLayers(); let tPts=[]; const tReg=/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/;
-            Object.values(allSightings).forEach(d=>{ if(d.project&&d.project!==currentProjectKey)return; let st=d.description||""; if(st.length>10)st=st.substring(0,10)+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag glass-panel" style="background-color:#fef08a;animation:blink-pixel 2s infinite alternate;">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="glass-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
+            let sortedS = Object.values(allSightings).filter(d=>!(d.project&&d.project!==currentProjectKey));
+            sortedS.sort((a,b)=>b.timestamp - a.timestamp);
+            sortedS.forEach((d, idx)=>{ let st=d.description||""; let td=new Date(); let ds=(td.getMonth()+1)+'/'+td.getDate()+' '; if(st.startsWith(ds))st=st.substring(ds.length); if(st.startsWith('0'+ds))st=st.substring(('0'+ds).length); st=st.replace(/\(.*?\)|\（.*?\）/g, '').trim(); if(st.length>12)st=st.substring(0,12).trim()+"..."; st=escapeHTML(st); let pt=d.project&&d.project!==currentProjectKey?` <span class="text-[10px] bg-gray-200 px-1 text-black">(${escapeHTML(d.project)})</span>`:''; let ic=d.icon||'🐾'; 
+                let bg='#fef08a', c='#1a202c', ani='blink-pixel 2s infinite alternate';
+                if(idx===0){
+                    bg='#ef4444'; c='white'; ani='blink-pixel 1s infinite alternate';
+                    if(window.latestStatusText) {
+                        pt += ` <span class="text-[10px] bg-red-700 px-1 text-white border border-white rounded ml-1 font-bold animate-pulse">${escapeHTML(window.latestStatusText)}</span>`;
+                    }
+                }
+                else if(idx<=10){let r=229+25*(1-idx/10), g=231+9*(1-idx/10), b=235-97*(1-idx/10); bg=`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; ani='none';}
+                else {bg='#e5e7eb'; ani='none';}
+                L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
             if(tPts.length>=2){ show('toggle-sighting-track-btn'); if(isSightingTrackVisible){ tPts.sort((a,b)=>a.score-b.score); let lls=tPts.map(p=>[p.lat,p.lng]), tc=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4']; for(let i=0;i<lls.length-1;i++){let p1=lls[i], p2=lls[i+1], sc=tc[i%tc.length]; L.polyline([p1,p2],{color:sc,weight:4,dashArray:'10, 10',opacity:0.8,pane:'trackPane'}).addTo(sightingTrackLayer); let a=Math.atan2(map.project(p2,16).y-map.project(p1,16).y,map.project(p2,16).x-map.project(p1,16).x)*180/Math.PI; L.marker([(p1[0]+p2[0])/2,(p1[1]+p2[1])/2],{icon:L.divIcon({className:'custom-div-icon',html:`<div style="transform:rotate(${a}deg);font-size:20px;color:${sc};text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;line-height:1;">➤</div>`,iconSize:[20,20],iconAnchor:[10,10]}),interactive:false,pane:'trackPane',zIndexOffset:-100}).addTo(sightingTrackLayer);} } }else hide('toggle-sighting-track-btn');
         }
         on('toggle-sighting-track-btn','click',()=>{ isSightingTrackVisible=!isSightingTrackVisible; let b=$('toggle-sighting-track-btn'); if(isSightingTrackVisible){b.innerText="👁️ 隱藏線索"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";}else{b.innerText="❌ 顯示線索"; b.style.cssText="background-color:#ef4444;color:white;";} renderSightings(); });
@@ -1037,7 +1322,7 @@
             } 
             requestFogRender(); 
         });
-        on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(),{draggable:true,zIndexOffset:10000,icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="glass-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
+        on('nav-pin-btn','click',()=>{ let b=$('nav-pin-btn'); if(navMarker){map.removeLayer(navMarker); navMarker=null; b.innerText="📍 導航標記"; b.style.cssText="background-color:#f59e0b;color:#1a202c;";} else {navMarker=L.marker(map.getCenter(),{draggable:true,zIndexOffset:10000,icon:L.divIcon({className:'custom-div-icon',html:`<div style="font-size:36px;margin:-36px 0 0 -18px;cursor:grab;">🎯</div>`})}).addTo(map); let up=()=>navMarker.bindPopup(`<div class="text-center font-bold p-2"><p class="mb-2 text-xs border-b-2 pb-1">可選擇目標前進</p><a href="https://www.google.com/maps/dir/?api=1&destination=${navMarker.getLatLng().lat},${navMarker.getLatLng().lng}" target="_blank" class="pixel-btn block py-2 mt-2 text-sm bg-blue-500 text-white no-underline" style="color: white !important;">🚀 導航至此</a></div>`,{className:'pixel-popup',closeButton:false,offset:[0,-40]}).openPopup(); navMarker.on('dragend',up); up(); b.innerText="❌ 移除標記"; b.style.cssText="background-color:#ef4444;color:white;";} });
         on('force-upload-btn','click',()=>{ if(isSpectatorMode)return showCenterToast("觀看模式無法上傳位置！"); let b=$('force-upload-btn'); b.innerText="⏳ 獲取中..."; b.style.backgroundColor="#9ca3af"; navigator.geolocation.getCurrentPosition(p=>{let pt={lat:p.coords.latitude,lng:p.coords.longitude,timestamp:Date.now()}; localHistory.push(pt); lastSavedPos=pt; localHistory=optimizeHistory(localHistory); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; updateStepsCounterUI(); map.setView([pt.lat,pt.lng],17,{animate:true}); renderMap(); saveLocationToServer(pt,true); b.innerText="📤 強制打卡"; b.style.backgroundColor=""; showCenterToast("✅ 強制打卡成功！");}, ()=>handleGeoError({},false), {enableHighAccuracy:true,timeout:15000}); });
         on('spectator-btn','click',()=>{ isSpectatorMode=!isSpectatorMode; hide('spectator-hint'); let b=$('spectator-btn'); if(isSpectatorMode){b.innerText="退出觀看"; b.style.cssText="background-color:#ef4444;color:white;"; if(watchId){navigator.geolocation.clearWatch(watchId); watchId=null;} if(isMyRouteMode)$('my-route-btn').click(); let p=PROJECTS[currentProjectKey]; if(p)map.setView([(p.bounds[0][0]+p.bounds[1][0])/2, (p.bounds[0][1]+p.bounds[1][1])/2],13); renderMap(); text('toast-text',"觀看模式啟推");} else {b.innerText="觀看模式"; b.style.cssText="background-color:#f59e0b;color:#1a202c;"; text('toast-text',"重新定位中..."); startLocationServices(true);} });
         on('locate-btn','click',()=>{ if(!isSpectatorMode&&lastSavedPos){map.setView([lastSavedPos.lat,lastSavedPos.lng],17,{animate:true}); isMapInteracting=false;} });
@@ -1104,8 +1389,8 @@
         ais.addEventListener('click',e=>{if(isCardSwiping){e.preventDefault();e.stopPropagation();return;} if(e.target.classList.contains('gallery-btn-overlay'))openGallery(); else if(e.target.id==='animal-main-photo')openCompareModal(); else if(ais.classList.contains('mobile-collapsed')){ais.classList.remove('mobile-collapsed'); if(animalInfoCollapseTimer)clearTimeout(animalInfoCollapseTimer); animalInfoCollapseTimer=setTimeout(()=>ais.classList.add('mobile-collapsed'),5000);} });
         on('header-gallery-btn','click',e=>{e.stopPropagation(); openGallery();}); on('close-gallery-btn','click',()=>{ $('gallery-content').innerHTML=''; hide('gallery-modal'); }); on('tab-photos','click',()=>renderGallery('photos')); on('tab-videos','click',()=>renderGallery('videos'));
         
-        function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 glass-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 glass-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
-        function loadMoreGalleryItems() { let c=$('gallery-content'), it=PROJECTS[currentProjectKey]?.[currentGalleryType]; if(!it)return; let ed=Math.min(galleryLoadedCount+2, it.length); for(let i=galleryLoadedCount; i<ed; i++){ let o=typeof it[i]==='string'?{url:it[i]}:it[i], u=o.url?.startsWith('/images/')?getBaseHttpUrl()+o.url:o.url, d=document.createElement('div'); d.className="mb-4 border-2 border-black shadow-lg bg-white"; if(currentGalleryType==='photos'){ d.classList.add('cursor-pointer'); d.onclick=()=>openPhotoViewer(i,it); d.innerHTML=`<img src="${u}" loading="lazy" class="w-full object-cover block border-b-2 border-black">${o.title?`<div class="p-2 text-sm font-bold text-center">${o.title}</div>`:''}`; } else { d.classList.add('p-3'); d.innerHTML=`${o.title?`<div class="text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed pb-1">${o.title}</div>`:''}<video src="${u}" controls preload="metadata" class="w-full border-2 border-black bg-black"></video>`; } c.appendChild(d); } galleryLoadedCount=ed; }
+        function renderGallery(type) { currentGalleryType=type; galleryLoadedCount=0; $('gallery-content').innerHTML=''; $('tab-photos').className=`flex-1 pixel-btn py-2 ${type==='photos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; $('tab-videos').className=`flex-1 pixel-btn py-2 ${type==='videos'?'bg-blue-500':'bg-gray-400'} text-white border-2 border-black`; if(!PROJECTS[currentProjectKey]?.[type]?.length)return html('gallery-content', `<div class="text-center mt-10">目前沒有${type==='photos'?'相片':'影片'}</div>`); loadMoreGalleryItems(); }
+        function loadMoreGalleryItems() { let c=$('gallery-content'), it=PROJECTS[currentProjectKey]?.[currentGalleryType]; if(!it)return; let ed=Math.min(galleryLoadedCount+2, it.length); for(let i=galleryLoadedCount; i<ed; i++){ let o=typeof it[i]==='string'?{url:it[i]}:it[i], u=o.url?.startsWith('/images/')?getBaseHttpUrl()+o.url:o.url, d=document.createElement('div'); d.className="mb-4 border-2 border-black shadow-[4px_4px_0px_#1a202c] bg-white"; if(currentGalleryType==='photos'){ d.classList.add('cursor-pointer'); d.onclick=()=>openPhotoViewer(i,it); d.innerHTML=`<img src="${u}" loading="lazy" class="w-full object-cover block border-b-2 border-black">${o.title?`<div class="p-2 text-sm font-bold text-center">${o.title}</div>`:''}`; } else { d.classList.add('p-3'); d.innerHTML=`${o.title?`<div class="text-sm font-black text-blue-700 mb-2 border-b-2 border-dashed pb-1">${o.title}</div>`:''}<video src="${u}" controls preload="metadata" class="w-full border-2 border-black bg-black"></video>`; } c.appendChild(d); } galleryLoadedCount=ed; }
         $('gallery-content').addEventListener('scroll', function(){ if(this.scrollTop+this.clientHeight>=this.scrollHeight-50) loadMoreGalleryItems(); });
         function openPhotoViewer(i, p) { viewerPhotos=p; currentViewerIndex=i; updatePhotoViewer(); show('photo-viewer-modal'); }
         function updatePhotoViewer() { 
@@ -1154,7 +1439,7 @@
                     showInputModal(`📍 新增出沒點 [${ic}]`, "描述...", "", desc=>{
                         show('position-method-modal');
                         replaceBtn('pos-method-map-btn',()=>{hide('position-method-modal'); showCenterToast("📍 請在地圖上點擊！"); map.once('click',e=>{if(!isCoordinateInTaiwan(e.latlng.lat,e.latlng.lng))return showCenterToast("⚠️ 座標明顯偏離台灣範圍！\n有可能錯誤 或請回報管理員。"); wsSend("add_sighting",{data:{lat:e.latlng.lat,lng:e.latlng.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！");}); });
-                        replaceBtn('pos-method-input-btn',()=>{hide('position-method-modal'); $('coord-input-value').value=""; show('coordinate-input-modal'); replaceBtn('coord-submit-btn',async()=>{let rv=$('coord-input-value').value.trim(); if(!rv)return showCenterToast("⚠️ 請輸入內容！"); let b2=$('coord-submit-btn'); b2.innerText="⏳ 解析中..."; b2.disabled=true; try{if(rv.startsWith("http://")||rv.startsWith("https://")){if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.mapUrlResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("parse_map_url",{url:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"未知錯誤");}else{let p=rv.replace(/[()]/g,'').split(/[,;\s]+/).filter(Boolean).map(Number); if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])&&p[0]<90&&p[1]>100){if(!isCoordinateInTaiwan(p[0],p[1]))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:p[0],lng:p[1],description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([p[0],p[1]],16); showCenterToast("✅ 成功！");}else{if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.addressResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("search_address",{address:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"無法解析該地址");}}}catch(e){let em=e.message||e||"解析失敗"; if(em==="timeout")em="請求處理超時！伺服器可能正忙碌中。"; showHTMLModal(`<div class="text-lg font-black text-red-600 mb-2 border-b-2 border-black pb-1">⚠️ 解析失敗</div><div class="text-sm font-bold text-gray-800 mb-3">${em}</div><p class="text-xs text-gray-600 mb-4 text-left leading-relaxed">請檢查輸入格式，或是您可以點擊下方按鈕前往 Google Maps 手動搜尋。<br>找到正確位置後，<span class="text-red-600 font-bold">長按地圖獲得紅點座標</span> 或 <span class="text-red-600 font-bold">複製分享網址</span>，再回來貼上即可！</p><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rv)}" target="_blank" class="glass-btn block text-center py-3 bg-green-500 text-white mb-2 no-underline text-sm shadow-[2px_2px_0px_#000]">🌍 在 Google Maps 手動找</a>`); window.mapUrlResolver=null; window.addressResolver=null;}finally{b2.innerText="確定"; b2.disabled=false;}}); replaceBtn('coord-cancel-btn',()=>hide('coordinate-input-modal')); });
+                        replaceBtn('pos-method-input-btn',()=>{hide('position-method-modal'); $('coord-input-value').value=""; show('coordinate-input-modal'); replaceBtn('coord-submit-btn',async()=>{let rv=$('coord-input-value').value.trim(); if(!rv)return showCenterToast("⚠️ 請輸入內容！"); let b2=$('coord-submit-btn'); b2.innerText="⏳ 解析中..."; b2.disabled=true; try{if(rv.startsWith("http://")||rv.startsWith("https://")){if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.mapUrlResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("parse_map_url",{url:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"未知錯誤");}else{let p=rv.replace(/[()]/g,'').split(/[,;\s]+/).filter(Boolean).map(Number); if(p.length>=2&&!isNaN(p[0])&&!isNaN(p[1])&&p[0]<90&&p[1]>100){if(!isCoordinateInTaiwan(p[0],p[1]))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:p[0],lng:p[1],description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([p[0],p[1]],16); showCenterToast("✅ 成功！");}else{if(!isSystemReady)throw new Error("伺服器未連線！"); let r=await new Promise((res,rej)=>{let t=setTimeout(()=>rej(new Error("timeout")),8000); window.addressResolver=(d)=>{clearTimeout(t);res(d);}; wsSend("search_address",{address:rv});}); if(r.success&&r.lat&&r.lng){if(!isCoordinateInTaiwan(r.lat,r.lng))throw new Error("座標明顯偏離台灣範圍！"); hide('coordinate-input-modal'); wsSend("add_sighting",{data:{lat:r.lat,lng:r.lng,description:desc,icon:ic,timestamp:Date.now(),project:currentProjectKey}}); map.setView([r.lat,r.lng],16); showCenterToast("✅ 成功！");}else throw new Error(r.msg||"無法解析該地址");}}}catch(e){let em=e.message||e||"解析失敗"; if(em==="timeout")em="請求處理超時！伺服器可能正忙碌中。"; showHTMLModal(`<div class="text-lg font-black text-red-600 mb-2 border-b-2 border-black pb-1">⚠️ 解析失敗</div><div class="text-sm font-bold text-gray-800 mb-3">${em}</div><p class="text-xs text-gray-600 mb-4 text-left leading-relaxed">請檢查輸入格式，或是您可以點擊下方按鈕前往 Google Maps 手動搜尋。<br>找到正確位置後，<span class="text-red-600 font-bold">長按地圖獲得紅點座標</span> 或 <span class="text-red-600 font-bold">複製分享網址</span>，再回來貼上即可！</p><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rv)}" target="_blank" class="pixel-btn block text-center py-3 bg-green-500 text-white mb-2 no-underline text-sm shadow-[2px_2px_0px_#000]">🌍 在 Google Maps 手動找</a>`); window.mapUrlResolver=null; window.addressResolver=null;}finally{b2.innerText="確定"; b2.disabled=false;}}); replaceBtn('coord-cancel-btn',()=>hide('coordinate-input-modal')); });
                         replaceBtn('pos-method-cancel-btn',()=>hide('position-method-modal'));
                     });
                 };
@@ -1165,14 +1450,14 @@
         on('sighting-icon-cancel-btn','click',()=>hide('sighting-icon-modal'));
 
         on('manage-sightings-btn','click',()=>{ renderManageSightingsList(); show('manage-sightings-modal'); }); on('close-manage-modal-btn','click',()=>hide('manage-sightings-modal'));
-        function renderManageSightingsList() { let c=$('sightings-list-container'); c.innerHTML=''; let id=Object.keys(allSightings).filter(i=>allSightings[i].project===currentProjectKey).sort((a,b)=>allSightings[b].timestamp-allSightings[a].timestamp); if(!id.length)return html('sightings-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allSightings[i], dt=new Date(d.timestamp); c.innerHTML+=`<div class="border border-white/40 p-3 bg-white mb-2"><div class="font-bold text-sm">🕒 ${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} <span class="text-xl ml-2">${d.icon||'🐾'}</span></div><div class="text-sm mb-2">${escapeHTML(d.description)}</div><div class="flex gap-2"><button class="edit-s-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 編輯</button><button class="del-s-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-s-btn').forEach(b=>b.addEventListener('click',e=>{let sid=e.target.getAttribute('data-id'), cur=allSightings[sid]; hide('manage-sightings-modal'); let cg=$('sighting-icon-grid'); cg.innerHTML=''; SIGHTING_ICONS.forEach(ic=>{let bt=document.createElement('button'); bt.className='text-3xl p-2 border-2 border-black bg-white hover:bg-yellow-200 transition-colors cursor-pointer shadow-[2px_2px_0px_#000]'; bt.innerText=ic; bt.onclick=()=>{hide('sighting-icon-modal'); showInputModal(`📝 編輯出沒點 [${ic}]`,"描述...",cur.description, nd=>{wsSend("edit_sighting",{id:sid, data:{description:nd, icon:ic}}); show('manage-sightings-modal');});}; cg.appendChild(bt);}); show('sighting-icon-modal'); replaceBtn('sighting-icon-cancel-btn',()=>{hide('sighting-icon-modal'); show('manage-sightings-modal');});})); c.querySelectorAll('.del-s-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_sighting",{id:e.target.getAttribute('data-id')})))); }
+        function renderManageSightingsList() { let c=$('sightings-list-container'); c.innerHTML=''; let id=Object.keys(allSightings).filter(i=>allSightings[i].project===currentProjectKey).sort((a,b)=>allSightings[b].timestamp-allSightings[a].timestamp); if(!id.length)return html('sightings-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allSightings[i], dt=new Date(d.timestamp); c.innerHTML+=`<div class="border-4 border-black p-3 bg-white mb-2"><div class="font-bold text-sm">🕒 ${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')} <span class="text-xl ml-2">${d.icon||'🐾'}</span></div><div class="text-sm mb-2">${escapeHTML(d.description)}</div><div class="flex gap-2"><button class="edit-s-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 編輯</button><button class="del-s-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-s-btn').forEach(b=>b.addEventListener('click',e=>{let sid=e.target.getAttribute('data-id'), cur=allSightings[sid]; hide('manage-sightings-modal'); let cg=$('sighting-icon-grid'); cg.innerHTML=''; SIGHTING_ICONS.forEach(ic=>{let bt=document.createElement('button'); bt.className='text-3xl p-2 border-2 border-black bg-white hover:bg-yellow-200 transition-colors cursor-pointer shadow-[2px_2px_0px_#000]'; bt.innerText=ic; bt.onclick=()=>{hide('sighting-icon-modal'); showInputModal(`📝 編輯出沒點 [${ic}]`,"描述...",cur.description, nd=>{wsSend("edit_sighting",{id:sid, data:{description:nd, icon:ic}}); show('manage-sightings-modal');});}; cg.appendChild(bt);}); show('sighting-icon-modal'); replaceBtn('sighting-icon-cancel-btn',()=>{hide('sighting-icon-modal'); show('manage-sightings-modal');});})); c.querySelectorAll('.del-s-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_sighting",{id:e.target.getAttribute('data-id')})))); }
         
         const updRP=()=>{if(currentRoutePolyline)map.removeLayer(currentRoutePolyline); currentRouteMarkers.forEach(m=>map.removeLayer(m)); currentRouteMarkers=[]; let c=$('route-color').value, w=parseInt($('route-weight').value); if(currentRoutePoints.length){currentRoutePolyline=L.polyline(currentRoutePoints,{color:c,weight:w,dashArray:'5,10',pane:'routesPane'}).addTo(map); currentRoutePoints.forEach(p=>currentRouteMarkers.push(L.circleMarker(p,{radius:5,color:'#000',weight:2,fillColor:c,fillOpacity:1,pane:'routesPane'}).addTo(map)));} };
         $('route-weight').addEventListener('input', e=>{text('route-weight-val',e.target.value); updRP();}); $('route-color').addEventListener('input', updRP);
         on('add-route-btn','click',()=>{ isDrawingRoute=true; currentRoutePoints=[]; $('route-name').value=''; show('route-drawing-panel'); hide('admin-panel'); showCenterToast("🗺️ 點擊地圖新增路線節點。"); updRP(); }); on('route-undo-btn','click',()=>{currentRoutePoints.pop(); updRP();}); const extR=()=>{isDrawingRoute=false; hide('route-drawing-panel'); show('admin-panel'); currentRoutePoints=[]; updRP();}; on('route-cancel-btn','click', extR); on('route-finish-btn','click',()=>{ if(currentRoutePoints.length<2)return showCenterToast("⚠️ 至少需要兩個節點！"); wsSend("add_route",{data:{name:$('route-name').value||'未命名',color:$('route-color').value,weight:parseInt($('route-weight').value),points:currentRoutePoints,timestamp:Date.now(),project:currentProjectKey}}); showCenterToast("✅ 成功！"); extR(); });
         
         on('manage-routes-btn','click',()=>{ renderManageRoutesList(); show('manage-routes-modal'); }); on('close-manage-routes-btn','click',()=>hide('manage-routes-modal'));
-        function renderManageRoutesList() { let c=$('routes-list-container'); c.innerHTML=''; let id=Object.keys(allRoutes).filter(i=>allRoutes[i].project===currentProjectKey).sort((a,b)=>allRoutes[b].timestamp-allRoutes[a].timestamp); if(!id.length)return html('routes-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allRoutes[i]; c.innerHTML+=`<div class="border border-white/40 p-3 bg-white mb-2"><div class="font-bold mb-2"><span style="display:inline-block;width:12px;height:12px;background:${d.color};"></span> ${escapeHTML(d.name)}</div><div class="flex gap-2"><button class="edit-r-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 屬性</button><button class="del-r-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-r-btn').forEach(b=>b.addEventListener('click',e=>{editingRouteId=e.target.getAttribute('data-id'); let d=allRoutes[editingRouteId]; $('edit-route-name').value=d.name; $('edit-route-color').value=d.color; $('edit-route-weight').value=d.weight; text('edit-route-weight-val',d.weight); show('edit-route-modal');})); c.querySelectorAll('.del-r-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_route",{id:e.target.getAttribute('data-id')})))); }
+        function renderManageRoutesList() { let c=$('routes-list-container'); c.innerHTML=''; let id=Object.keys(allRoutes).filter(i=>allRoutes[i].project===currentProjectKey).sort((a,b)=>allRoutes[b].timestamp-allRoutes[a].timestamp); if(!id.length)return html('routes-list-container', '<p class="text-center mt-8">無紀錄</p>'); id.forEach(i=>{ let d=allRoutes[i]; c.innerHTML+=`<div class="border-4 border-black p-3 bg-white mb-2"><div class="font-bold mb-2"><span style="display:inline-block;width:12px;height:12px;background:${d.color};"></span> ${escapeHTML(d.name)}</div><div class="flex gap-2"><button class="edit-r-btn flex-1 bg-blue-500 text-white font-bold border-2 border-black" data-id="${i}">📝 屬性</button><button class="del-r-btn flex-1 bg-red-500 text-white font-bold border-2 border-black" data-id="${i}">🗑️ 刪除</button></div></div>`; }); c.querySelectorAll('.edit-r-btn').forEach(b=>b.addEventListener('click',e=>{editingRouteId=e.target.getAttribute('data-id'); let d=allRoutes[editingRouteId]; $('edit-route-name').value=d.name; $('edit-route-color').value=d.color; $('edit-route-weight').value=d.weight; text('edit-route-weight-val',d.weight); show('edit-route-modal');})); c.querySelectorAll('.del-r-btn').forEach(b=>b.addEventListener('click',e=>showConfirm("確定刪除？",()=>wsSend("delete_route",{id:e.target.getAttribute('data-id')})))); }
         $('edit-route-weight').addEventListener('input', e=>text('edit-route-weight-val',e.target.value)); on('edit-route-cancel','click',()=>{hide('edit-route-modal'); editingRouteId=null;}); on('edit-route-save','click',()=>{ if(editingRouteId){wsSend("edit_route",{id:editingRouteId, data:{name:$('edit-route-name').value, color:$('edit-route-color').value, weight:parseInt($('edit-route-weight').value)}}); hide('edit-route-modal'); editingRouteId=null;} });
         
         // --- 新增：GPX 檔案解析與上傳邏輯 ---
@@ -1248,7 +1533,7 @@
 
         on('update-announce-btn','click',()=>showInputModal("📢 更新公告", "內容...", allAnnouncements[currentProjectKey]||PROJECTS[currentProjectKey]?.announcement||"", t=>{allAnnouncements[currentProjectKey]=t; wsSend("update_announcement",{data:t}); showCenterToast("✅ 成功！");}));
         
-        const createPrizeRow=()=>{ let d=document.createElement('div'); d.className='border border-white/40 p-3 bg-gray-100 relative mb-3'; d.innerHTML=`<button class="absolute top-1 right-1 text-red-600 font-bold rmv-r text-lg hover:scale-110 transition-transform">✖</button><input type="text" class="p-name glass-input w-full p-2 mb-2 text-sm font-bold placeholder-gray-500" placeholder="獎項名稱"><div class="flex gap-2 mb-2 items-center"><input type="text" class="p-url glass-input flex-1 p-2 text-sm placeholder-gray-500" placeholder="兌換網址 或"><button class="img-upload-btn glass-btn px-2 py-2 bg-purple-500 text-white text-xs whitespace-nowrap">🖼️ 選圖</button><input type="file" class="hidden img-file-input" accept="image/*"></div><div class="text-xs text-green-700 font-bold mb-2 hidden img-success-msg">✅ 圖片已就緒</div><div class="flex gap-2 mb-2"><label class="text-xs font-bold w-14">一般%:</label><input type="number" class="p-prob glass-input flex-1 p-1 text-sm font-mono" value="1.0" min="0.001" step="0.1"></div><div class="flex gap-2"><label class="text-xs font-bold w-14 text-red-600">首抽%:</label><input type="number" class="p-fprob glass-input flex-1 p-1 text-sm font-mono border-red-400" value="70.0" min="0.001" step="0.1"></div>`; d.querySelector('.rmv-r').onclick=()=>d.remove(); let fi=d.querySelector('.img-file-input'), ub=d.querySelector('.img-upload-btn'), ui=d.querySelector('.p-url'), sm=d.querySelector('.img-success-msg'); ub.onclick=()=>fi.click(); fi.onchange=e=>{let f=e.target.files[0]; if(!f)return; if(f.size>2097152){showCenterToast("⚠️ 圖片請小於 2MB！"); fi.value=""; return;} let r=new FileReader(); r.onload=ev=>{d.dataset.imgBase64=ev.target.result; ui.value="[已選擇本機圖片]"; ui.disabled=true; ui.classList.add("bg-gray-200","text-gray-500"); ub.innerText="重新選擇"; sm.classList.remove('hidden');}; r.readAsDataURL(f);}; return d; };
+        const createPrizeRow=()=>{ let d=document.createElement('div'); d.className='border-4 border-black p-3 bg-gray-100 relative mb-3'; d.innerHTML=`<button class="absolute top-1 right-1 text-red-600 font-bold rmv-r text-lg hover:scale-110 transition-transform">✖</button><input type="text" class="p-name pixel-input w-full p-2 mb-2 text-sm font-bold placeholder-gray-500" placeholder="獎項名稱"><div class="flex gap-2 mb-2 items-center"><input type="text" class="p-url pixel-input flex-1 p-2 text-sm placeholder-gray-500" placeholder="兌換網址 或"><button class="img-upload-btn pixel-btn px-2 py-2 bg-purple-500 text-white text-xs whitespace-nowrap">🖼️ 選圖</button><input type="file" class="hidden img-file-input" accept="image/*"></div><div class="text-xs text-green-700 font-bold mb-2 hidden img-success-msg">✅ 圖片已就緒</div><div class="flex gap-2 mb-2"><label class="text-xs font-bold w-14">一般%:</label><input type="number" class="p-prob pixel-input flex-1 p-1 text-sm font-mono" value="1.0" min="0.001" step="0.1"></div><div class="flex gap-2"><label class="text-xs font-bold w-14 text-red-600">首抽%:</label><input type="number" class="p-fprob pixel-input flex-1 p-1 text-sm font-mono border-red-400" value="70.0" min="0.001" step="0.1"></div>`; d.querySelector('.rmv-r').onclick=()=>d.remove(); let fi=d.querySelector('.img-file-input'), ub=d.querySelector('.img-upload-btn'), ui=d.querySelector('.p-url'), sm=d.querySelector('.img-success-msg'); ub.onclick=()=>fi.click(); fi.onchange=e=>{let f=e.target.files[0]; if(!f)return; if(f.size>2097152){showCenterToast("⚠️ 圖片請小於 2MB！"); fi.value=""; return;} let r=new FileReader(); r.onload=ev=>{d.dataset.imgBase64=ev.target.result; ui.value="[已選擇本機圖片]"; ui.disabled=true; ui.classList.add("bg-gray-200","text-gray-500"); ub.innerText="重新選擇"; sm.classList.remove('hidden');}; r.readAsDataURL(f);}; return d; };
         on('add-prize-btn','click',()=>{ text('add-prize-title',`🎁 新增獎池`); $('prize-rows-container').innerHTML=''; $('prize-rows-container').appendChild(createPrizeRow()); show('add-prize-modal'); }); on('add-prize-row-btn','click',()=>$('prize-rows-container').appendChild(createPrizeRow())); on('add-prize-cancel-btn','click',()=>hide('add-prize-modal'));
         on('add-prize-submit-btn','click',()=>{ let pz=[]; $('prize-rows-container').childNodes.forEach(r=>{let n=r.querySelector('.p-name').value, u=r.querySelector('.p-url').value, p=parseFloat(r.querySelector('.p-prob').value), fp=parseFloat(r.querySelector('.p-fprob').value), ib=r.dataset.imgBase64||""; if(n&&(u||ib)&&!isNaN(p)&&!isNaN(fp)) pz.push({name:n,url:ib?"":u,prob:p,first_prob:fp,image_base64:ib});}); if(!pz.length)return showCenterToast("⚠️ 填寫不完整！請確認名稱與(網址/圖片)都有填寫。"); wsSend("add_prizes",{data:pz}); hide('add-prize-modal'); showCenterToast("⏳ 指令已送出！圖片上傳可能需要幾秒鐘..."); });
         on('manage-prizes-btn','click',()=>{ html('admin-prizes-list-container','<p class="text-center mt-4">載入中...</p>'); wsSend("get_admin_prizes"); show('manage-prizes-modal'); }); on('close-manage-prizes-btn','click',()=>hide('manage-prizes-modal'));
@@ -1295,13 +1580,13 @@
         const exitClearMode=()=>{ isClearingHistory=false; map.dragging.enable(); clearHistoryCircles.forEach(c=>map.removeLayer(c.layer)); clearHistoryCircles=[]; hide('clear-history-panel'); show('admin-panel'); }; on('clear-history-cancel','click',exitClearMode);
         on('clear-history-confirm','click',()=>{ if(clearHistoryCircles.length===0)return showCenterToast("⚠️ 請至少標示一個清除範圍！"); showConfirm("確定要清除這些紅圈範圍內的所有足跡嗎？\n清除後將無法復原！",()=>{let areas=clearHistoryCircles.map(c=>({lat:c.lat,lng:c.lng,radius:c.radius})); wsSend("admin_clear_history",{areas:areas,project:currentProjectKey}); Object.values(allUsersData).forEach(u=>{if(u.history)u.history=u.history.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius));}); localHistory=localHistory.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius)); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); renderMap(); requestFogRender(); showCenterToast("✅ 軌跡清理指令已送出並於本地生效！"); exitClearMode();}); });
 
-        on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); startLocationServices(false); connectWebSocket(); });
-        let qcb=$('quick-camera-btn'); if(qcb){ qcb.addEventListener('click',function(e){if(window.innerWidth<=640&&!this.classList.contains('expanded-mode')){e.preventDefault(); this.classList.add('expanded-mode'); setTimeout(()=>this.classList.remove('expanded-mode'),3000);}}); }
+        on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)); if (isDesktop) document.getElementById('desktop-loc-hint')?.classList.remove('hidden'); startLocationServices(false); connectWebSocket(); });
+        let qcb=$('quick-camera-btn'); if(qcb){ qcb.addEventListener('click',function(e){ /* directly navigate since it's an a tag */ }); }
         
         let mapLastTapTime = 0;
         $('map-container').addEventListener('touchend', e => {
             if(!isMobileDevice) return;
-            if(e.target.closest('.glass-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
+            if(e.target.closest('.pixel-btn') || e.target.closest('.custom-div-icon') || e.target.closest('.leaflet-control') || e.target.closest('.leaflet-popup') || e.target.closest('button')) return;
             let now = Date.now();
             if(now - mapLastTapTime < 300) {
                 e.preventDefault(); 
@@ -1311,213 +1596,193 @@
         }, {passive: false});
 
         window.addEventListener('DOMContentLoaded',initSystem);
-    </script>
 
-<!-- ================= V2 UI OVERLAYS ================= -->
-<canvas id="confetti-canvas"></canvas>
+        // ========== 手機版 UI 控制邏輯 ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth > 640) return; // 僅手機版啟用
 
-<!-- Daily Steps Widget -->
-<div id="v2-steps-widget" class="steps-widget" onclick="showV2Profile()">
-    <div style="font-size: 20px;">🐾</div>
-    <div>
-        <div class="steps-count" id="v2-step-text">0 / 5000</div>
-        <div class="steps-progress-bg"><div class="steps-progress-bar" id="v2-step-bar"></div></div>
-    </div>
-</div>
-
-<!-- Radar FAB -->
-<div id="v2-radar-btn" class="fab-radar" onclick="triggerRadarScan()">
-    🔍
-</div>
-
-<!-- Bottom Navigation (Mobile Friendly) -->
-<div class="mobile-bottom-nav">
-    <a href="#" class="nav-item active" onclick="toggleMapMode('explore')">
-        <div>🗺️</div><span>探索</span>
-    </a>
-    <a href="#" class="nav-item" onclick="triggerGalleryMode()">
-        <div>📸</div><span>畫廊</span>
-    </a>
-    <a href="#" class="nav-item" onclick="document.getElementById('report-stray-btn').click(); return false;">
-        <div style="background:linear-gradient(135deg,#f43f5e,#e11d48); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">➕</div><span>通報</span>
-    </a>
-    <a href="#" class="nav-item" onclick="toggleHeatmap()">
-        <div>🔥</div><span>盲區</span>
-    </a>
-    <a href="#" class="nav-item" onclick="showV2Profile()">
-        <div>👤</div><span>成就</span>
-    </a>
-</div>
-
-<!-- V2 Profile Modal -->
-<div id="v2-profile-modal" class="hidden absolute inset-0 z-[25000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity">
-    <div class="glass-panel w-full max-w-sm text-center p-8 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-purple-600 opacity-20"></div>
-        <div class="w-20 h-20 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full mx-auto border-4 border-white shadow-lg flex items-center justify-center text-3xl mb-4 relative z-10" id="v2-profile-avatar">🕵️</div>
-        <h3 class="text-2xl font-black text-gray-800 mb-1" id="v2-profile-name">搜救員</h3>
-        <p class="text-sm font-bold text-blue-600 mb-6" id="v2-profile-title">🎖️ 新手巡邏員</p>
-        
-        <div class="grid grid-cols-2 gap-4 mb-6 relative z-10">
-            <div class="bg-white/50 p-3 rounded-2xl border border-white/40">
-                <div class="text-xs text-gray-500 font-bold">今日步數</div>
-                <div class="text-xl font-black text-orange-500" id="v2-profile-steps">0</div>
-            </div>
-            <div class="bg-white/50 p-3 rounded-2xl border border-white/40">
-                <div class="text-xs text-gray-500 font-bold">總協尋次數</div>
-                <div class="text-xl font-black text-green-500" id="v2-profile-uploads">0</div>
-            </div>
-        </div>
-        
-        <button class="glass-btn w-full py-3 text-lg" onclick="document.getElementById('v2-profile-modal').classList.add('hidden')">繼續探索</button>
-    </div>
-</div>
-<!-- ========================================================= -->
-\n
-<!-- ================= V2 JS LOGIC ================= -->
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-<script>
-// 1. Step Counter Hook
-let v2DailySteps = parseInt(localStorage.getItem('v2_daily_steps') || '0');
-let v2LastStepDate = localStorage.getItem('v2_last_step_date') || new Date().toDateString();
-if (v2LastStepDate !== new Date().toDateString()) { v2DailySteps = 0; localStorage.setItem('v2_last_step_date', new Date().toDateString()); }
-
-function updateV2StepsUI() {
-    const bar = document.getElementById('v2-step-bar');
-    const txt = document.getElementById('v2-step-text');
-    if(bar && txt) {
-        let max = 5000;
-        txt.innerText = `${v2DailySteps} / ${max}`;
-        let pct = Math.min(100, (v2DailySteps / max) * 100);
-        bar.style.width = pct + '%';
-        if (pct === 100 && !localStorage.getItem('v2_celebrated_' + new Date().toDateString())) {
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-            localStorage.setItem('v2_celebrated_' + new Date().toDateString(), 'true');
-        }
-    }
-}
-updateV2StepsUI();
-
-// Intercept existing gps processing to add float text
-if (typeof processGpsUpdate === 'function') {
-    const originalProcessGpsUpdate = processGpsUpdate;
-    window.processGpsUpdate = function(lat, lng) {
-        let oldSteps = window.allUsersData?.[myUid]?.total_steps || 0;
-        originalProcessGpsUpdate(lat, lng);
-        let newSteps = window.allUsersData?.[myUid]?.total_steps || 0;
-        let diff = newSteps - oldSteps;
-        if (diff > 0) {
-            v2DailySteps += diff;
-            localStorage.setItem('v2_daily_steps', v2DailySteps.toString());
-            updateV2StepsUI();
+            // --- 工具箱 Bottom Sheet ---
+            const toolOverlay = document.getElementById('tool-sheet-overlay');
+            const toolSheet = document.getElementById('tool-sheet');
+            function openToolSheet() {
+                toolOverlay.classList.add('show');
+                toolSheet.classList.add('show');
+            }
+            function closeToolSheet() {
+                toolSheet.classList.remove('show');
+                setTimeout(() => toolOverlay.classList.remove('show'), 300);
+            }
+            document.getElementById('mobile-tool-btn')?.addEventListener('click', openToolSheet);
+            toolOverlay?.addEventListener('click', closeToolSheet);
             
-            // Show floating text at screen center
-            let fl = document.createElement('div');
-            fl.className = 'step-float-text';
-            fl.innerText = '+' + diff;
-            fl.style.left = (window.innerWidth / 2 + (Math.random()*40-20)) + 'px';
-            fl.style.top = (window.innerHeight / 2) + 'px';
-            document.body.appendChild(fl);
-            setTimeout(() => fl.remove(), 1000);
-        }
-    };
-}
+            // 工具箱內的項目 → 觸發原始按鈕的 click
+            document.querySelectorAll('#tool-sheet .sheet-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const origBtn = document.getElementById(targetId);
+                    if (origBtn) origBtn.click();
+                    closeToolSheet();
+                });
+            });
 
-// 2. Radar Scan
-function triggerRadarScan() {
-    let btn = document.getElementById('v2-radar-btn');
-    btn.style.transform = 'scale(0.9)';
-    setTimeout(()=> btn.style.transform = '', 200);
-    
-    let wave = document.createElement('div');
-    wave.className = 'radar-wave';
-    document.body.appendChild(wave);
-    
-    setTimeout(() => {
-        wave.remove();
-        // Highlight recent markers (last 24h)
-        let now = Date.now();
-        if(window.markersLayer) {
-            window.markersLayer.eachLayer(layer => {
-                // If it's a marker, just make it pop
-                if(layer.getElement) {
-                    let el = layer.getElement();
-                    if(el) {
-                        el.style.filter = 'drop-shadow(0 0 10px #22c55e) drop-shadow(0 0 20px #22c55e)';
-                        el.style.transform += ' scale(1.5)';
-                        el.style.transition = 'all 0.5s';
-                        setTimeout(()=> {
-                            el.style.filter = '';
-                            el.style.transform = el.style.transform.replace(' scale(1.5)', '');
-                        }, 5000);
+            // --- 底部操作列按鈕 ---
+            // 定位
+            document.getElementById('mobile-locate-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('locate-btn');
+                if (origBtn) origBtn.click();
+            });
+            // 觀看模式
+            document.getElementById('mobile-spectator-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('spectator-btn');
+                if (origBtn) origBtn.click();
+                // 同步 label
+                setTimeout(() => {
+                    const label = document.getElementById('mobile-spectator-label');
+                    if (label) label.textContent = isSpectatorMode ? '退出' : '觀看';
+                }, 50);
+            });
+            // 鎖定
+            document.getElementById('mobile-lock-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('lock-project-btn');
+                if (origBtn) origBtn.click();
+                setTimeout(syncMobileLock, 50);
+            });
+            function syncMobileLock() {
+                const icon = document.getElementById('mobile-lock-icon');
+                if (icon) icon.textContent = isProjectLocked ? '🔒' : '🔓';
+            }
+
+            // --- 省電按鈕 ---
+            document.getElementById('mobile-power-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterPowerSavingMode();
+            });
+
+            // --- 頂部列：點擊專案名稱 → 觸發原生 select ---
+            document.getElementById('mobile-top-project-trigger')?.addEventListener('click', () => {
+                const sel = document.getElementById('switch-project-select');
+                if (sel) { sel.focus(); sel.click(); }
+            });
+            // 頂部列：點擊個人色塊 → 觸發個人資料編輯
+            document.getElementById('mobile-profile-trigger')?.addEventListener('click', () => {
+                const trigger = document.getElementById('profile-edit-trigger');
+                if (trigger) trigger.click();
+            });
+
+            // --- 公告面板 ---
+            document.getElementById('mobile-announce-trigger')?.addEventListener('click', () => {
+                syncMobileAnnounce();
+                document.getElementById('mobile-announce-sheet')?.classList.add('show');
+            });
+            document.getElementById('mobile-announce-close-backdrop')?.addEventListener('click', () => {
+                document.getElementById('mobile-announce-sheet')?.classList.remove('show');
+            });
+            document.getElementById('mobile-announce-close-btn')?.addEventListener('click', () => {
+                document.getElementById('mobile-announce-sheet')?.classList.remove('show');
+            });
+            // 公告面板的照片切換
+            document.getElementById('mobile-card-prev')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('card-prev-btn');
+                if (origBtn) origBtn.click();
+                setTimeout(syncMobileAnnounce, 100);
+            });
+            document.getElementById('mobile-card-next')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('card-next-btn');
+                if (origBtn) origBtn.click();
+                setTimeout(syncMobileAnnounce, 100);
+            });
+            document.getElementById('mobile-gallery-btn')?.addEventListener('click', () => {
+                const origBtn = document.querySelector('.gallery-btn-overlay');
+                if (origBtn) origBtn.click();
+                document.getElementById('mobile-announce-sheet')?.classList.remove('show');
+            });
+
+            // --- 步數面板：點擊 → 觸發原始步數面板點擊 ---
+            document.getElementById('mobile-steps-trigger')?.addEventListener('click', () => {
+                const origPanel = document.getElementById('step-panel');
+                if (origPanel) origPanel.click();
+            });
+            // 禮物：點擊 → 觸發原始禮物容器
+            document.getElementById('mobile-gift-trigger')?.addEventListener('click', () => {
+                const origGift = document.getElementById('floating-gift-container');
+                if (origGift) origGift.click();
+            });
+
+            // --- 同步函式：定時同步桌面版狀態到手機版 UI ---
+            function syncMobileUI() {
+                // 同步專案名稱
+                const projText = document.getElementById('project-display-text');
+                const mobileProjName = document.getElementById('mobile-project-name');
+                if (projText && mobileProjName) mobileProjName.textContent = projText.textContent;
+
+                // 同步連線狀態燈
+                const syncPing = document.getElementById('sync-ping');
+                const mobileDot = document.getElementById('mobile-sync-dot');
+                if (syncPing && mobileDot) mobileDot.style.background = syncPing.style.backgroundColor || '#ef4444';
+
+                // 同步個人資料色塊
+                const profileDot = document.getElementById('profile-edit-trigger');
+                const mobileProfileDot = document.getElementById('mobile-profile-trigger');
+                if (profileDot && mobileProfileDot) mobileProfileDot.style.backgroundColor = profileDot.style.backgroundColor || '#666';
+
+                // 同步步數
+                const stepsVal = document.getElementById('step-counter-value');
+                const mobileSteps = document.getElementById('mobile-step-value');
+                if (stepsVal && mobileSteps) mobileSteps.textContent = stepsVal.textContent;
+
+                // 同步禮物
+                const giftContainer = document.getElementById('floating-gift-container');
+                const mobileGift = document.getElementById('mobile-gift-trigger');
+                if (giftContainer && mobileGift) {
+                    if (giftContainer.classList.contains('hidden')) {
+                        mobileGift.classList.add('hidden');
+                    } else {
+                        mobileGift.classList.remove('hidden');
+                        const giftBadge = document.getElementById('gift-ticket-badge');
+                        const mobileGiftBadge = document.getElementById('mobile-gift-badge');
+                        if (giftBadge && mobileGiftBadge) mobileGiftBadge.textContent = giftBadge.textContent;
+                        const giftTimer = document.getElementById('gift-timer');
+                        const mobileGiftTimer = document.getElementById('mobile-gift-timer');
+                        if (giftTimer && mobileGiftTimer) mobileGiftTimer.textContent = giftTimer.textContent;
                     }
                 }
-            });
-        }
-        alert("✨ 雷達掃描完畢！附近標記點已為您高亮！");
-    }, 2000);
-}
 
-// 3. V2 Profile
-function showV2Profile() {
-    document.getElementById('v2-profile-name').innerText = window.currentUserName || '匿名搜救員';
-    document.getElementById('v2-profile-steps').innerText = v2DailySteps;
-    document.getElementById('v2-profile-uploads').innerText = window.allUsersData?.[myUid]?.uploadCount || 0;
+                // 同步鎖定
+                syncMobileLock();
+            }
+
+            function syncMobileAnnounce() {
+                const origPhoto = document.getElementById('animal-main-photo');
+                const mobilePhoto = document.getElementById('mobile-animal-photo');
+                if (origPhoto && mobilePhoto && origPhoto.src) mobilePhoto.src = origPhoto.src;
+
+                const origName = document.getElementById('animal-name-date-header');
+                const mobileName = document.getElementById('mobile-animal-name');
+                if (origName && mobileName) mobileName.innerHTML = origName.innerHTML;
+
+                const origText = document.getElementById('announcement-text');
+                const mobileText = document.getElementById('mobile-announce-text');
+                if (origText && mobileText) mobileText.innerHTML = origText.innerHTML;
+            }
+
+            // 每秒同步一次
+            setInterval(syncMobileUI, 1000);
+            // 初始同步
+            setTimeout(syncMobileUI, 500);
+            setTimeout(syncMobileUI, 2000);
+
+            // 觀看提示自動消失
+            setTimeout(() => {
+                const hint = document.getElementById('spectator-hint');
+                if (hint && !hint.classList.contains('hidden')) {
+                    hint.style.transition = 'opacity 0.5s';
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.classList.add('hidden'), 500);
+                    try { localStorage.setItem('dogMap_spectatorHintShown', 'true'); } catch(e){}
+                }
+            }, 4000);
+        });
     
-    let title = "🐾 見習生";
-    if (v2DailySteps > 10000) title = "🎖️ 尋寵大師";
-    else if (v2DailySteps > 3000) title = "🏃 街巷守護者";
-    document.getElementById('v2-profile-title').innerText = title;
-    
-    document.getElementById('v2-profile-modal').classList.remove('hidden');
-}
-
-// 4. Heatmap & Sighting Trails Toggle
-let isHeatmapV2 = false;
-let sightingTrails = [];
-function toggleHeatmap() {
-    isHeatmapV2 = !isHeatmapV2;
-    if (isHeatmapV2) {
-        alert("🔥 盲區探索任務：尋找紅色的盲區！\n\n(模擬展示：畫出歷史軌跡預測區塊)");
-        drawSightingTrails();
-    } else {
-        sightingTrails.forEach(t => map.removeLayer(t));
-        sightingTrails = [];
-    }
-}
-
-function drawSightingTrails() {
-    if(typeof map === 'undefined' || !window.PROJECTS) return;
-    let proj = window.PROJECTS[window.currentProjectKey];
-    if(proj && proj.history && proj.history.length > 1) {
-        let latlngs = proj.history.map(h => [h.lat, h.lng]);
-        let pl = L.polyline(latlngs, {color: '#f43f5e', weight: 4, dashArray: '10, 10', className: 'animate-pulse'}).addTo(map);
-        sightingTrails.push(pl);
-        
-        let last = latlngs[latlngs.length-1];
-        let circle = L.circle(last, {radius: 500, color: 'red', fillColor: '#f43f5e', fillOpacity: 0.2}).addTo(map);
-        sightingTrails.push(circle);
-    } else {
-        // Just draw a random blind zone for demo
-        if (typeof map.getCenter === 'function') {
-            let center = map.getCenter();
-            let circle = L.circle([center.lat + 0.01, center.lng + 0.01], {radius: 800, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.4}).addTo(map);
-            circle.bindPopup("🚨 盲區！這裡尚未有人探索。");
-            sightingTrails.push(circle);
-        }
-    }
-}
-
-// 5. Gallery Mode stub
-function triggerGalleryMode() {
-    alert("📸 浪浪畫廊模式\n(此功能即將推出，您將能像滑 IG/Tinder 一樣輕鬆瀏覽附近毛孩！)");
-}
-
-function toggleMapMode(mode) {
-    // Just a placeholder to highlight nav items
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-}
 </script>
-<!-- ========================================================= -->
-\n</body>
+</body>
 </html>
