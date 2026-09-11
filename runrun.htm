@@ -317,7 +317,13 @@ function startLocationServices(autoStart) {
     requestWakeLock();
     resetPowerSavingTimer();
     
-    if(new URLSearchParams(window.location.search).has('go')){setTimeout(()=>{document.getElementById('quick-camera-btn').click();const url = new URL(window.location); url.searchParams.delete('go'); window.history.replaceState({}, '', url);},500);}
+    if(new URLSearchParams(window.location.search).has('go')){
+        const url = new URL(window.location); url.searchParams.delete('go'); window.history.replaceState({}, '', url);
+        // 需要使用者實體點擊才能觸發 Safari 的 getUserMedia 權限詢問
+        showConfirm("即將開啟相機進行通報，請允許相機權限以拍攝照片。", () => {
+            document.getElementById('quick-camera-btn').click();
+        });
+    }
     
     if (!navigator.geolocation) { 
         gpsState = 'denied';
