@@ -618,6 +618,7 @@
             <div class="flex flex-col gap-3 mb-4">
                 <button id="btn-import-gpx" class="pixel-btn py-3 bg-indigo-500 text-white w-full">上傳 GPX (靜態軌跡)</button>
                 <button id="btn-import-kmz" class="pixel-btn py-3 bg-pink-500 text-white w-full">上傳 KML/KMZ (動態同步/歷史)</button>
+                <button id="btn-import-mymaps" class="pixel-btn py-3 bg-emerald-500 text-white w-full">貼上 Google My Maps 網址 (KML)</button>
                 <button id="btn-import-gmap" class="pixel-btn py-3 bg-blue-500 text-white w-full">貼上 Google Map 定位網址 (動態同步)</button>
             </div>
             <button id="track-import-cancel" class="pixel-btn w-full py-2 bg-gray-400">取消</button>
@@ -1627,6 +1628,15 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         on('track-import-cancel', 'click', () => { hide('track-import-modal'); currentImportFile = null; currentGmapUrl = null; });
         on('btn-import-gpx', 'click', () => $('track-gpx-input').click());
         on('btn-import-kmz', 'click', () => $('track-kmz-input').click());
+        on('btn-import-mymaps', 'click', () => {
+            showInputModal("貼上 Google My Maps 分享網址", "例如: https://www.google.com/maps/d/edit?mid=...", "", (val) => {
+                if (!val) return;
+                currentGmapUrl = val;
+                currentImportType = 'MYMAPS';
+                hide('track-import-modal');
+                setupTimeConfigModal();
+            });
+        });
         on('btn-import-gmap', 'click', () => {
             showInputModal("貼上 Google Map 定位分享網址", "例如: https://maps.app.goo.gl/...", "", (val) => {
                 if (!val) return;
@@ -1705,13 +1715,17 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
                     }
                 };
                 reader.readAsText(currentImportFile);
-            } else if (currentImportType === 'KMZ') {
+            } else if (currentImportType === 'KMZ' || currentImportType === 'MYMAPS') {
                 let fd = new FormData();
                 fd.append("uid", myUid);
                 fd.append("project", currentProjectKey);
                 fd.append("start_time", startTime);
                 fd.append("end_time", endTime);
-                fd.append("file", currentImportFile);
+                if (currentImportType === 'KMZ') {
+                    fd.append("file", currentImportFile);
+                } else {
+                    fd.append("url", currentGmapUrl);
+                }
                 
                 try {
                     showCenterToast("⏳ 伺服器正在解析 KMZ...");
