@@ -333,7 +333,16 @@
         }
     </style>
 
+
+    <script>
+        // 解決手機瀏覽器初次載入時 viewport 異常導致上下方 UI 跑位問題 (自動刷新一次)
+        if (window.innerWidth <= 640 && !sessionStorage.getItem('mobile_auto_reloaded')) {
+            sessionStorage.setItem('mobile_auto_reloaded', '1');
+            window.location.reload();
+        }
+    </script>
 </head>
+
 <body>
     <div id="map-container"><div id="map"></div></div>
     
@@ -618,7 +627,7 @@
             <div class="flex flex-col gap-3 mb-4">
                 <button id="btn-import-gpx" class="pixel-btn py-3 bg-indigo-500 text-white w-full">上傳 GPX (靜態軌跡)</button>
                 <button id="btn-import-kmz" class="pixel-btn py-3 bg-pink-500 text-white w-full">上傳 KML/KMZ (動態同步/歷史)</button>
-                <button id="btn-import-mymaps" class="pixel-btn py-3 bg-emerald-500 text-white w-full">貼上 Google My Maps 網址 (KML)</button>
+                <button id="btn-import-mymaps" class="pixel-btn py-3 bg-emerald-500 text-white w-full">貼上我的地圖</button>
                 <button id="btn-import-gmap" class="pixel-btn py-3 bg-blue-500 text-white w-full">貼上 Google Map 定位網址 (動態同步)</button>
             </div>
             <button id="track-import-cancel" class="pixel-btn w-full py-2 bg-gray-400">取消</button>
