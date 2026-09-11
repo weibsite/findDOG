@@ -35,7 +35,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100dvh; position: fixed; inset: 0; overflow: hidden; background-color: #2d3748; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif; touch-action: none; -webkit-text-size-adjust: none; }
+        html {
+    height: -webkit-fill-available;
+}
+body {
+    margin: 0; padding: 0; width: 100%;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow: hidden;
+    background-color: #2d3748;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
+    touch-action: none; -webkit-text-size-adjust: none;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+}
         input, textarea, select { touch-action: manipulation; font-family: inherit; }
         
         #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
@@ -739,7 +751,15 @@
         const replaceBtn = (id, cb) => { let el=$(id), clo=el.cloneNode(true); el.parentNode.replaceChild(clo, el); if(cb) clo.addEventListener('click', cb); return clo; };
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
         
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+// Fix iOS Safari permission prompt shift bug
+setInterval(() => {
+    if (window.scrollY > 0) {
+        window.scrollTo(0, 0);
+    }
+}, 500);
+
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         // --- 全域變數 ---
         let hasInitialUrlZoomed=false, NGROK_WS_URL="", ws, wsReconnectDelay=3000, isSystemReady=false;
