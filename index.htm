@@ -38,7 +38,7 @@
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #2d3748; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif; touch-action: none; -webkit-text-size-adjust: none; }
         input, textarea, select { touch-action: manipulation; font-family: inherit; }
         
-        #map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; }
+        #map-container { position: relative; width: 100vw; height: 100vh; }
         #map { width: 100%; height: 100%; background-color: #1a202c; }
         .pixel-panel { background-color: white; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; font-family: 'Courier New', Courier, monospace; }
@@ -233,14 +233,15 @@
             border: 1.5px solid rgba(255,255,255,0.3); cursor: pointer;
         }
 
-        /* --- 浮動步數與線上區域 --- */
+        /* --- 浮動元件現代化 (禮物/步數) --- */
+        
         .float-steps {
             background: rgba(26, 32, 44, 0.85); backdrop-filter: blur(8px);
             border: 1.5px solid rgba(255,255,255,0.12); border-radius: 20px;
             padding: 3px 10px; display: flex; align-items: center; gap: 4px;
-            color: white; font-size: 11px; font-weight: 800; cursor: pointer;
-            pointer-events: auto;
+            color: white; font-size: 11px; font-weight: 800; cursor: pointer; pointer-events: auto;
         }
+        /* --- 步數浮動 --- */
         .float-steps .steps-num {
             color: #60a5fa; font-size: 14px; font-weight: 900;
         }
@@ -313,23 +314,20 @@
             #project-select-wrapper, #status-toast,
             #step-panel, #power-saving-btn, #quick-camera-btn,
             .desktop-bottom-links, .leaflet-control-zoom { display: none !important; }
-            #mobile-bottom-bar, #mobile-top-bar, #unified-bottom-right, #mobile-left-controls { display: flex !important; }
-            /* 左下角的獨立地圖控制 */
-            #unified-bottom-right { bottom: 74px; right: 10px; }
-            #desktop-online-panel { display: none !important; }
-            /* 工具箱隱藏在清單 */
+            #mobile-bottom-bar, #mobile-top-bar, #mobile-float-right, #mobile-left-controls { display: flex !important; }
+            /* 底部列上方的浮動位置 */
+            #mobile-float-right { bottom: 74px; }
+            /* 工具箱內的按鈕隱藏原始位置 */
             .tool-in-sheet { display: none !important; }
-            /* 觀看模式與定位改為底部列控制 */
-            #spectator-btn, #locate-btn { display: none !important; }
-            /* 公告面板微調 */
+            /* 觀看模式和定位按鈕重新定位到底部列旁 */
+            #spectator-btn, #locate-btn, #spectator-hint { display: none !important; }
+            /* 將公告面板貼近右上角 */
             #announcement-panel { top: 48px !important; right: 4px !important; }
         }
         @media (min-width: 641px) {
             #mobile-bottom-bar, #mobile-top-bar, #tool-sheet-overlay, #tool-sheet,
             #project-sheet-overlay, #project-sheet,
-            #mobile-left-controls { display: none !important; }
-            #unified-bottom-right { bottom: 40px; right: 16px; }
-            #mobile-online-panel, #mobile-steps-trigger { display: none !important; }
+            #mobile-float-right, #mobile-left-controls { display: none !important; }
         }
     </style>
 
@@ -344,6 +342,7 @@
         <div class="text-sm text-gray-500 font-bold border-2 border-gray-800 px-6 py-3 rounded-full mt-10 shadow-[0_0_15px_rgba(255,255,255,0.1)]">👆 輕觸畫面任意處喚醒</div>
     </div>
 
+    <div id="gmap-indicator" class="hidden absolute top-[110px] left-4 z-[3000] bg-white px-2 py-1 rounded-full shadow-[2px_2px_0px_#1a202c] border-2 border-blue-500 flex items-center justify-center animate-pulse cursor-help text-[10px] font-black text-blue-700" title="定位來源：Google Maps">📍 GMap同步中</div>
     <div id="toast-center" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[20000] bg-black/80 text-white text-sm sm:text-base font-bold px-6 py-4 border-2 border-gray-600 rounded-lg pointer-events-none text-center whitespace-pre-wrap leading-relaxed shadow-[4px_4px_0px_#000] w-10/12 max-w-sm"></div>
     
     <div id="gps-warning" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-[20000] pixel-panel px-4 py-2 text-sm font-black text-red-600 border-4 border-red-600 shadow-[4px_4px_0px_#ef4444] bg-white animate-pulse pointer-events-none whitespace-nowrap">🔴 GPS斷線中 (僅限觀看)</div>
@@ -374,7 +373,7 @@
 
     <!-- Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
-    <div id="input-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="input-modal" class="hidden absolute inset-0 z-[15000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
     
@@ -416,36 +415,17 @@
     </a>
 
     <!-- 右下角 UI 容器 -->
-    <div id="unified-bottom-right" class="absolute z-[2500] flex flex-col gap-2 items-end pointer-events-none">
-        <div id="floating-gift-container" class="hidden flex-col items-center cursor-pointer pointer-events-auto transition-transform active:scale-95 hover:scale-105 mb-2">
-            <div class="relative">
-                <div style="font-size:38px;filter:drop-shadow(2px 2px 0px #1a202c);line-height:1;">🎁</div>
-                <div id="gift-ticket-badge" class="absolute -top-1 -right-2 bg-red-600 text-white text-xs font-black px-1.5 py-0.5 border-2 border-black rounded-full z-10 shadow-[2px_2px_0px_#1a202c]">0</div>
-            </div>
+    <div class="absolute bottom-10 right-4 z-[2500] flex flex-col gap-2 items-end pointer-events-none">
+        
             <div id="gift-timer" class="pixel-panel px-1 py-0.5 text-[10px] font-bold text-gray-900 mt-1 shadow-[2px_2px_0px_#1a202c] tracking-wider text-center w-14 border-2">60:00</div>
         </div>
         
         <div class="flex flex-col gap-2 items-end pointer-events-auto">
-            <!-- Mobile Online Count -->
-            <div id="mobile-online-panel" class="float-steps">
-                🟢 線上 <span class="steps-num" id="mobile-online-value" style="color: #4ade80;">0</span> 人
-            </div>
-
-
-
-            <!-- Mobile Steps -->
-            <div class="float-steps" id="mobile-steps-trigger">
-                🐾 <span class="steps-num" id="mobile-step-value">0</span>
-            </div>
-
             <button id="power-saving-btn" class="sm:hidden pixel-panel p-2 text-[10px] font-bold text-gray-900 bg-gray-800 text-white text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer flex flex-col items-center justify-center min-w-[75px] border-gray-600">
                 <div class="text-xl mb-0.5">🌙</div>
                 <div class="tracking-widest">省電</div>
             </button>
-            <div id="step-panel" class="pixel-panel p-2 text-[10px] sm:text-xs font-bold text-gray-900 bg-white/95 text-center shadow-[4px_4px_0px_#1a202c] cursor-pointer min-w-[75px]">
-                🐾 總行步數<br>
-                <span id="step-counter-value" class="text-lg sm:text-xl text-blue-700 font-black tracking-wider">0</span>
-            </div>
+            
         </div>
     </div>
 
@@ -478,30 +458,23 @@
     <div id="prize-pool-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center flex flex-col max-h-[70vh]"><h3 class="text-gray-900 font-bold mb-4 text-xl" id="prize-pool-title">🎁 我的中獎紀錄</h3><div id="prize-pool-list" class="flex-1 overflow-y-auto border-4 border-black bg-white p-3 mb-4 text-left space-y-3 shadow-[4px_4px_0px_#1a202c]"></div><button id="prize-pool-close-btn" class="pixel-btn w-full py-2 bg-gray-400">關閉</button></div></div>
 
     <!-- 管理員面板更新 -->
-    <div id="admin-panel" class="absolute top-16 left-4 right-4 md:right-[120px] md:left-auto md:w-[450px] z-[11000] pixel-panel p-3 hidden bg-white/95 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[50vh]">
-        <div class="flex flex-wrap gap-2 items-center justify-center">
-            <div class="text-red-600 border-b-2 border-black pb-1 w-full text-sm font-bold text-center">🛡️ 管理工具</div>
-            <div class="text-[10px] text-center font-bold mb-1 text-blue-700 bg-blue-100 border border-blue-300 rounded px-2 py-1 w-full" id="admin-current-proj"></div>
-            
-            <button id="clear-history-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-400 text-white">🧹 清除軌跡</button>
-            <button id="add-sighting-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-green-500 text-white">📍 標記出現</button>
-            <button id="manage-sightings-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-blue-500 text-white">📝 管理標記</button>
-            <button id="add-route-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-orange-500 text-white">🗺️ 畫新路線</button>
-            
-            <button id="upload-gpx-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-lime-600 text-white">📂 上傳 GPX</button>
-            <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
-            <button id="manage-routes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-indigo-500 text-white">📋 管理路線</button>
-            
-            <button id="update-announce-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
-            <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎項</button>
-            <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">🏆 管理獎項</button>
-            <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
-            
-            <div class="w-full flex gap-2 mt-2">
-                <button id="expand-admin-btn" class="pixel-btn flex-1 p-2 text-xs bg-blue-600 text-white border-2 border-black font-bold hidden">🔽 展開面板</button>
-                <button id="close-admin-btn" class="pixel-btn flex-1 p-2 text-xs bg-red-600 text-white border-2 border-black font-bold">🚪 登出</button>
-            </div>
-        </div>
+    <div id="admin-panel" class="absolute top-4 right-[120px] z-[11000] pixel-panel p-2 hidden bg-white/95 w-36 border-red-500 shadow-[-4px_4px_0px_rgba(239,68,68,1)] overflow-y-auto max-h-[90vh]">
+        <div class="text-red-600 mb-2 border-b-2 border-black pb-1 text-xs font-bold text-center">👑 管理員工具</div>
+        <div class="text-[10px] text-center font-bold mb-2 text-blue-700 bg-blue-100 border border-blue-300 rounded" id="admin-current-proj"></div>
+        <button id="clear-history-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-400 text-white">🧹 清理軌跡</button>
+        <button id="add-sighting-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-green-500 text-white">📍 增設出沒點</button>
+        <button id="manage-sightings-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-blue-500 text-white">📋 管理出沒點</button>
+        <button id="add-route-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-orange-500 text-white">🗺️ 繪製路線</button>
+        <!-- 新增上傳 GPX 按鈕 -->
+        <button id="upload-gpx-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-lime-600 text-white">📁 上傳 GPX</button>
+        <input type="file" id="gpx-file-input" accept=".gpx" class="hidden">
+        <button id="manage-routes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-indigo-500 text-white">🛤️ 管理路線</button>
+        
+        <button id="update-announce-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-purple-500 text-white">📢 更新公告</button>
+        <button id="add-prize-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-pink-500 text-white">🎁 增加獎品</button>
+        <button id="manage-prizes-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-teal-500 text-white">⚙️ 管理獎品</button>
+        <button id="manage-blacklist-btn" class="pixel-btn w-full p-2 mb-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+        <button id="close-admin-btn" class="pixel-btn w-full p-2 text-xs bg-red-600 text-white border-t-2 border-black">❌ 關閉面板</button>
     </div>
     
     <div id="position-method-modal" class="hidden absolute inset-0 z-[8000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="font-bold mb-4 text-xl">📍 選擇定位方式</h3><button id="pos-method-map-btn" class="pixel-btn w-full py-3 bg-green-500 text-white mb-2">🖱️ 地圖點擊</button><button id="pos-method-input-btn" class="pixel-btn w-full py-3 bg-blue-500 text-white mb-2">✍️ 輸入座標/地址</button><button id="pos-method-cancel-btn" class="pixel-btn w-full py-2 bg-gray-400">取消</button></div></div>
@@ -541,6 +514,49 @@
         </div>
     </div>
 
+
+    <button id="track-import-btn" class="hidden"></button>
+    <div id="track-import-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold mb-4 text-lg">📡 追蹤匯入</h3>
+            <p class="text-xs text-gray-500 mb-6 font-bold leading-relaxed">
+                匯入後，軌跡會直接掛載在您的頭像上，讓所有人都能看到您或您追蹤的軌跡！
+            </p>
+            <div class="flex flex-col gap-3 mb-4">
+                <button id="btn-import-gpx" class="pixel-btn py-3 bg-indigo-500 text-white w-full">上傳 GPX (靜態軌跡)</button>
+                <button id="btn-import-kmz" class="pixel-btn py-3 bg-pink-500 text-white w-full">上傳 KML/KMZ (動態同步/靜態)</button>
+                <button id="btn-import-gmap" class="pixel-btn py-3 bg-blue-500 text-white w-full">貼上 Google Map 定位網址 (動態同步)</button>
+            </div>
+            <button id="track-import-cancel" class="pixel-btn w-full py-2 bg-gray-400">取消</button>
+            <input type="file" id="track-gpx-input" accept=".gpx" class="hidden">
+            <input type="file" id="track-kmz-input" accept=".kmz,.kml" class="hidden">
+        </div>
+    </div>
+
+    <div id="time-config-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-6 w-full max-w-sm text-center">
+            <h3 class="font-bold mb-4 text-lg">🕒 設定軌跡時間</h3>
+            <p class="text-[10px] text-gray-500 mb-4 font-bold leading-relaxed text-left">
+                設定時間能讓地圖的迷霧隨時間正確變淡。如果不設定，則全部以「現在」的時間顯示。
+            </p>
+            <div class="flex flex-col gap-2 mb-6 text-sm">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-gray-700 w-12 text-left">開始:</span>
+                    <input type="datetime-local" id="time-config-start" class="pixel-input flex-1 p-1">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-gray-700 w-12 text-left">結束:</span>
+                    <input type="datetime-local" id="time-config-end" class="pixel-input flex-1 p-1">
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button id="time-config-yes" class="pixel-btn py-2 bg-blue-500 text-white w-full text-xs">是，套用設定時間並匯入</button>
+                <button id="time-config-no" class="pixel-btn py-2 bg-emerald-500 text-white w-full text-xs">否，全部以當前時間匯入</button>
+                <button id="time-config-cancel" class="pixel-btn py-2 bg-gray-400 w-full text-xs mt-2">取消</button>
+            </div>
+        </div>
+    </div>
+
     <div id="add-prize-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-md text-center max-h-[85vh] flex flex-col"><h3 class="font-bold mb-2 text-xl" id="add-prize-title">🎁 新增獎品至獎池</h3><p class="text-xs text-gray-700 font-bold mb-3 text-center">可一次新增一筆或多筆獎品</p><div id="prize-rows-container" class="flex-1 overflow-y-auto mb-4 space-y-3 pr-2 text-left"></div><button id="add-prize-row-btn" class="pixel-btn w-full py-2 mb-4 bg-green-500 text-white text-xs">➕ 新增一列</button><div class="flex gap-2"><button id="add-prize-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="add-prize-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確認送出</button></div></div></div>
     <div id="manage-prizes-modal" class="hidden absolute inset-0 z-[9500] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-4 w-full max-w-md h-[85vh] flex flex-col"><h3 class="font-bold mb-3 text-lg text-center border-b-2 border-black pb-2" id="manage-prize-title">⚙️ 管理獎品狀態</h3><div id="admin-prizes-list-container" class="flex-1 overflow-y-auto mb-4 space-y-4 pr-2 text-left"></div><div class="flex gap-2 pt-2 border-t-2 border-black"><button id="save-prizes-btn" class="pixel-btn flex-1 py-3 bg-gray-400 text-white cursor-not-allowed" disabled>💾 送出修改</button><button id="close-manage-prizes-btn" class="pixel-btn flex-1 py-3 bg-red-500 text-white">❌ 關閉</button></div></div></div>
     
@@ -554,6 +570,7 @@
             <div class="top-left" id="mobile-top-project-trigger">
                 <span class="top-project-name" id="mobile-project-name">載入中...</span>
                 <span class="top-project-arrow">▼</span>
+                <select id="mobile-switch-project-select" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none outline-none text-base"></select>
             </div>
             <div class="top-center-links">
                 <a href="runrun.htm" class="text-orange-400">浪浪地圖</a>
@@ -561,8 +578,8 @@
                 <a href="/helpme.htm" target="_blank" class="text-blue-400">免費刊登</a>
                 <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400">聯絡作者</a>
             </div>
-            <div class="top-right" style="gap: 12px; margin-right: 4px;">
-                <div class="top-status-dot" id="mobile-sync-dot" style="margin-right: 4px;"></div>
+            <div class="top-right">
+                <div class="top-status-dot" id="mobile-sync-dot"></div>
                 <div class="top-profile-dot" id="mobile-profile-trigger"></div>
             </div>
         </div>
@@ -571,9 +588,8 @@
     <!-- 手機版底部操作列 -->
     <div id="mobile-bottom-bar">
         <div class="bar-main">
-            <div class="bar-item" id="mobile-power-bar-btn">
-                <span class="bar-icon text-[22px]">🌙</span>
-                <span class="bar-label">省電</span>
+            <div class="bar-item" id="mobile-locate-btn">
+                <span class="bar-icon text-[24px]">⌖</span>
             </div>
             <div class="bar-item" id="mobile-tool-btn">
                 <span class="bar-icon">🛠️</span>
@@ -588,21 +604,8 @@
             </div>
             <div class="bar-item" id="mobile-lock-btn">
                 <span class="bar-icon" id="mobile-lock-icon">🔒</span>
-                <span class="bar-label" id="mobile-lock-label">鎖定</span>
+                <span class="bar-label">鎖定</span>
             </div>
-        </div>
-    </div>
-
-    <!-- 專案選擇 Bottom Sheet -->
-    <div id="project-sheet-overlay"></div>
-    <div id="project-sheet">
-        <div class="sheet-handle"></div>
-        <div class="flex justify-between items-center px-4 mb-2">
-            <div class="sheet-title mb-0">切換名單</div>
-            <button id="close-project-sheet-btn" class="text-gray-400 hover:text-white text-2xl leading-none font-bold">&times;</button>
-        </div>
-        <div id="mobile-project-list" class="sheet-list">
-            <!-- JS動態生成專案清單 -->
         </div>
     </div>
 
@@ -613,8 +616,8 @@
         <div class="sheet-title">工具箱</div>
         <div class="sheet-grid">
             <div class="sheet-item" data-target="toggle-sighting-track-btn">
-                <span class="sheet-icon" id="tool-sighting-icon">👁️</span>
-                <span id="tool-sighting-label">線索隱藏</span>
+                <span class="sheet-icon">👁️</span>
+                <span>線索顯示</span>
             </div>
             <div class="sheet-item" data-target="my-route-btn">
                 <span class="sheet-icon">🐍</span>
@@ -636,6 +639,11 @@
                 <span class="sheet-icon">🌫️</span>
                 <span>迷霧開關</span>
             </div>
+            <div class="sheet-item" data-target="track-import-btn">
+                <span class="sheet-icon">📡</span>
+                <span>追蹤匯入</span>
+            </div>
+
         </div>
     </div>
 
@@ -649,6 +657,13 @@
                 <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
             </svg>
         </button>
+    </div>
+
+    <!-- 手機版步數/禮物浮動區 -->
+    <div id="mobile-float-right">
+        <div class="float-steps" id="mobile-steps-trigger">
+            👣 <span class="steps-num" id="mobile-step-value">0</span>
+        </div>
     </div>
 
     <!-- 手機版公告彈出面板 (已移除，改用原始面板) -->
@@ -754,25 +769,18 @@
 
         // --- 初始化 ---
         async function initSystem() {
-            let mbIcon = $('mobile-lock-icon'), mbLabel = $('mobile-lock-label'), mbBtn = $('mobile-lock-btn');
             if (isProjectLocked) {
                 let b = $('lock-project-btn');
                 if(b) {
                     b.innerText = "🔒";
                     b.classList.replace('bg-green-600', 'bg-red-600');
                 }
-                if (mbIcon) mbIcon.innerText = "🔒";
-                if (mbLabel) mbLabel.innerText = "解鎖";
-                if (mbBtn) mbBtn.style.color = "#ef4444";
             } else {
                 let b = $('lock-project-btn');
                 if(b) {
                     b.innerText = "🔓";
                     b.classList.replace('bg-red-600', 'bg-green-600');
                 }
-                if (mbIcon) mbIcon.innerText = "🔓";
-                if (mbLabel) mbLabel.innerText = "鎖定";
-                if (mbBtn) mbBtn.style.color = "";
             }
             try { const cfg=await(await fetch('config.json?t='+Date.now())).json(); if(cfg?.ws_url) NGROK_WS_URL=cfg.ws_url; } catch(e){}
             if(!NGROK_WS_URL) NGROK_WS_URL=window.location.origin.replace('http','ws')+'/ws';
@@ -877,7 +885,17 @@
                     else if(res.type==='sync_light'){ let isMe=true; if(res.data.sightings){let sv=Object.values(res.data.sightings); if(sv.length&&sv[0].project!==currentProjectKey)isMe=false;} if(res.data.routes){let rv=Object.values(res.data.routes); if(rv.length&&rv[0].project!==currentProjectKey)isMe=false;} if(isMe){if(res.data.sightings)allSightings=res.data.sightings; if(res.data.routes)allRoutes=res.data.routes; if(res.data.announcements){Object.keys(res.data.announcements).forEach(k=>{if(res.data.announcements[k]&&res.data.announcements[k]!=="目前無最新公告。")allAnnouncements[k]=res.data.announcements[k];}); updateAnimalInfoCard(); drawAllProjects();} if(res.data.has_prize_history&&res.data.has_prize_history[currentProjectKey]!==undefined)currentProjectHasPrize=res.data.has_prize_history[currentProjectKey]; renderSightings(); renderRoutes(); updateGiftUI(); if(!$('manage-sightings-modal').classList.contains('hidden'))renderManageSightingsList(); if(!$('manage-routes-modal').classList.contains('hidden'))renderManageRoutesList();} }
                     else if(res.type==='ticket_update'&&res.project===currentProjectKey){lotteryTickets=res.tickets; updateGiftUI();}
                     else if(res.type==='user_appended'){let d=res.data, u=res.uid; if(!allUsersData[u])allUsersData[u]={userName:d.userName,color:d.color,project:res.project,history:[],total_steps:d.total_steps||0}; else{allUsersData[u].userName=d.userName; allUsersData[u].color=d.color; if(d.total_steps!==undefined)allUsersData[u].total_steps=d.total_steps;} allUsersData[u].history.push(d.point); if(u===myUid)updateStepsCounterUI(); renderMap();}
-                    else if(res.type==='user_update'){allUsersData[res.uid]=res.data; renderMap(); if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[...res.data.history]; lsSet('dogMap_localHistory',JSON.stringify(localHistory)); lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null;}}}
+                    else if(res.type==='user_update'){allUsersData[res.uid]=res.data; renderMap(); 
+                    if(res.uid === myUid) {
+                        if(res.data.is_gmap_sync) {
+                            window.isGmapSyncing = true;
+                            document.getElementById('gmap-indicator').classList.remove('hidden');
+                        } else {
+                            window.isGmapSyncing = false;
+                            document.getElementById('gmap-indicator').classList.add('hidden');
+                        }
+                    }
+if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[...res.data.history]; lsSet('dogMap_localHistory',JSON.stringify(localHistory)); lastSavedPos=localHistory.length?localHistory[localHistory.length-1]:null;}}}
                     else if(res.type==='prize_won_broadcast'){text('win-marquee-text',`🎉 恭喜 ${escapeHTML(res.data.userName)} 抽中 ${escapeHTML(res.data.prizeName)} 🎉`); show('win-marquee-container'); let t=$('win-marquee-text'); t.style.animation='none'; t.offsetHeight; t.style.animation=null; setTimeout(()=>hide('win-marquee-container'),20000);}
                     else if(res.type==='admin_login_result'){text('admin-submit-btn',"登入"); if(res.success){isAdmin=true; adminToken=res.token; sessionStorage.setItem('dogMap_isAdmin','true'); sessionStorage.setItem('dogMap_adminToken',adminToken); hide('admin-login-modal'); show('admin-panel'); updateGiftUI(); showModal("登入成功！您現在擁有伺服器管理權限。");} else showModal("密碼錯誤，請重試！");}
                     else if(res.type==='admin_action_result'){showModal(res.msg);}
@@ -977,9 +995,7 @@
             targetSteps = allUsersData?.[myUid]?.total_steps || 0; 
             if (Math.abs(targetSteps - displayedSteps) > 100) {
                 displayedSteps = targetSteps;
-                let val = Math.floor(displayedSteps).toLocaleString();
-                text('step-counter-value', val);
-                text('mobile-step-value', val);
+                text('step-counter-value', Math.floor(displayedSteps).toLocaleString());
             }
         }
         
@@ -990,9 +1006,7 @@
                 let stepInc = Math.max(0.1, diff * 0.1);
                 displayedSteps += stepInc;
                 if (displayedSteps >= targetSteps) displayedSteps = targetSteps; 
-                let val = Math.floor(displayedSteps).toLocaleString();
-                text('step-counter-value', val);
-                text('mobile-step-value', val);
+                text('step-counter-value', Math.floor(displayedSteps).toLocaleString());
             }
         }, 40);
 
@@ -1039,7 +1053,6 @@
                         s.dispatchEvent(new Event('change'));
                         document.getElementById('project-sheet-overlay').classList.remove('show');
                         document.getElementById('project-sheet').classList.remove('show');
-                        if (PROJECTS[currentProjectKey]) document.getElementById('announcement-panel')?.classList.remove('hidden');
                         updateProjectDropdown(); // re-render to update active class
                     };
                     mobileList.appendChild(div);
@@ -1190,8 +1203,7 @@
                 }
             });
 
-            text('toast-text', `線上人數: ${uc} 人`); 
-            text('mobile-online-value', uc);
+            text('toast-text', `線上探索: ${uc} 人`); 
             requestFogRender();
         }
 
@@ -1212,23 +1224,30 @@
                 L.marker([d.lat,d.lng],{icon:L.divIcon({className:'custom-div-icon',html:`<div class="user-label-container" style="bottom:12px;"><div class="user-name-tag pixel-panel" style="background-color:${bg};color:${c};animation:${ani};">⚠️ ${st}${pt}</div><div style="font-size:28px;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;">${ic}</div></div>`}),zIndexOffset:Math.floor(d.timestamp/1000)}).addTo(sightingsLayer).bindPopup(`<div class="p-2 w-48 font-bold text-white"><div class="text-sm mb-4 whitespace-pre-wrap">${escapeHTML(d.description)}</div><a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" target="_blank" class="pixel-btn block text-center py-2 text-xs bg-blue-500 text-white no-underline" style="color:white !important;">🚀 開啟導航</a></div>`,{className:'pixel-popup-dark',offset:[0,-30]}); if(!d.description.includes('疑似')&&!['❓','❌'].includes(ic)){let m=d.description.match(tReg); if(m){tPts.push({lat:d.lat,lng:d.lng,score:parseInt(m[1])*1000000+parseInt(m[2])*10000+parseInt(m[3])*100+parseInt(m[4]),desc:d.description});}} });
             if(tPts.length>=2){ show('toggle-sighting-track-btn'); if(isSightingTrackVisible){ tPts.sort((a,b)=>a.score-b.score); let lls=tPts.map(p=>[p.lat,p.lng]), tc=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4']; for(let i=0;i<lls.length-1;i++){let p1=lls[i], p2=lls[i+1], sc=tc[i%tc.length]; L.polyline([p1,p2],{color:sc,weight:4,dashArray:'10, 10',opacity:0.8,pane:'trackPane'}).addTo(sightingTrackLayer); let a=Math.atan2(map.project(p2,16).y-map.project(p1,16).y,map.project(p2,16).x-map.project(p1,16).x)*180/Math.PI; L.marker([(p1[0]+p2[0])/2,(p1[1]+p2[1])/2],{icon:L.divIcon({className:'custom-div-icon',html:`<div style="transform:rotate(${a}deg);font-size:20px;color:${sc};text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;line-height:1;">➤</div>`,iconSize:[20,20],iconAnchor:[10,10]}),interactive:false,pane:'trackPane',zIndexOffset:-100}).addTo(sightingTrackLayer);} } }else hide('toggle-sighting-track-btn');
         }
+        
         on('toggle-sighting-track-btn','click',()=>{ 
             isSightingTrackVisible=!isSightingTrackVisible; 
             let b=$('toggle-sighting-track-btn'); 
-            let tIcon=$('tool-sighting-icon'), tLabel=$('tool-sighting-label');
+            let sheetItem = document.querySelector('.sheet-item[data-target="toggle-sighting-track-btn"]');
+            
             if(isSightingTrackVisible){
-                b.innerText="👁️ 隱藏線索"; 
+                b.innerText="👁️隱藏線索"; 
                 b.style.cssText="background-color:#f59e0b;color:#1a202c;";
-                if (tIcon) tIcon.innerText = "👁️";
-                if (tLabel) tLabel.innerText = "線索隱藏";
-            }else{
-                b.innerText="🙈 顯示線索"; 
+                if(sheetItem) {
+                    sheetItem.querySelector('.sheet-icon').innerText = '👁️';
+                    sheetItem.querySelectorAll('span')[1].innerText = '線索隱藏';
+                }
+            } else {
+                b.innerText="🙈顯示線索"; 
                 b.style.cssText="background-color:#ef4444;color:white;";
-                if (tIcon) tIcon.innerText = "🙈";
-                if (tLabel) tLabel.innerText = "線索顯示";
+                if(sheetItem) {
+                    sheetItem.querySelector('.sheet-icon').innerText = '🙈';
+                    sheetItem.querySelectorAll('span')[1].innerText = '線索顯示';
+                }
             } 
             renderSightings(); 
         });
+
 
         function renderRoutes() { 
             if(!routesLayer)return; 
@@ -1376,22 +1395,13 @@
             lsSet('dogMap_isProjectLocked', isProjectLocked);
             cachedMaxDist = null;
             let b = $('lock-project-btn');
-            
-            let mbIcon = $('mobile-lock-icon'), mbLabel = $('mobile-lock-label'), mbBtn = $('mobile-lock-btn');
-            
             if (isProjectLocked) {
                 b.innerText = "🔒";
                 b.classList.replace('bg-green-600', 'bg-red-600');
-                if (mbIcon) mbIcon.innerText = "🔒";
-                if (mbLabel) mbLabel.innerText = "解鎖";
-                if (mbBtn) mbBtn.style.color = "#ef4444";
                 showCenterToast("🔒 已鎖定專案！\n減少足跡顯示範圍增加效能。");
             } else {
                 b.innerText = "🔓";
                 b.classList.replace('bg-red-600', 'bg-green-600');
-                if (mbIcon) mbIcon.innerText = "🔓";
-                if (mbLabel) mbLabel.innerText = "鎖定";
-                if (mbBtn) mbBtn.style.color = "";
                 showCenterToast("🔓 解除鎖定！\n已恢復顯示全區所有專案與足跡。");
             }
             drawAllProjects();
@@ -1490,18 +1500,7 @@
         $('viewer-next-btn').addEventListener('click',()=>{if(currentViewerIndex<viewerPhotos.length-1){currentViewerIndex++;updatePhotoViewer();}else{switchToAdjacentProjectPhotos(1);}});
         let vc=$('photo-viewer-container'); vc.addEventListener('touchstart',e=>touchStartX=e.changedTouches[0].screenX); vc.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX; if(touchEndX<touchStartX-50){ $('viewer-next-btn').click(); }else if(touchEndX>touchStartX+50){ $('viewer-prev-btn').click(); } });
         
-        const zoomToProject=(key)=>{ 
-            let p=PROJECTS[key]; if(!p)return; 
-            let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2;
-            let bounds = L.latLngBounds([[cLat-300/111000, cLng-300/(111000*Math.cos(cLat*Math.PI/180))], [cLat+300/111000, cLng+300/(111000*Math.cos(cLat*Math.PI/180))]]);
-            if (lastSavedPos) {
-                bounds.extend([lastSavedPos.lat, lastSavedPos.lng]);
-            }
-            map.flyToBounds(bounds, {animate:true, duration:1.5}); 
-            isMapInteracting=true; 
-            if(mapInteractionTimer)clearTimeout(mapInteractionTimer); 
-            mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); 
-        };
+        const zoomToProject=(key)=>{ let p=PROJECTS[key]; if(!p)return; let cLat=(p.bounds[0][0]+p.bounds[1][0])/2, cLng=(p.bounds[0][1]+p.bounds[1][1])/2, rLat=300/111000, rLng=300/(111000*Math.cos(cLat*Math.PI/180)); map.flyToBounds([[cLat-rLat,cLng-rLng],[cLat+rLat,cLng+rLng]],{animate:true,duration:1.5}); isMapInteracting=true; if(mapInteractionTimer)clearTimeout(mapInteractionTimer); mapInteractionTimer=setTimeout(()=>isMapInteracting=false,30000); };
 
         // --- 管理與設定操作 ---
         on('sync-ping','click',e=>{ 
@@ -1523,7 +1522,6 @@
         on('admin-cancel-btn','click',()=>hide('admin-login-modal'));
         on('admin-submit-btn','click',()=>{ text('admin-submit-btn',"驗證中..."); wsSend("admin_login",{data:{password:$('admin-pwd-input').value.trim()}}); });
         on('close-admin-btn','click',()=>{ hide('admin-panel'); isAdmin=false; adminToken=""; sessionStorage.removeItem('dogMap_isAdmin'); sessionStorage.removeItem('dogMap_adminToken'); updateGiftUI(); showCenterToast("已退出管理員模式。"); });
-        on('expand-admin-btn', 'click', () => { $('admin-panel').classList.remove('admin-collapsed'); });
         on('au-close-btn','click',()=>hide('admin-user-info-modal')); on('au-restrict-btn','click',e=>{ wsSend("admin_toggle_restriction",{uid:e.target.getAttribute('data-uid')}); e.target.innerText="⏳"; });
         on('manage-blacklist-btn','click',()=>{ html('blacklist-container','<p class="text-center mt-4">載入中...</p>'); wsSend("admin_get_blacklist"); show('manage-blacklist-modal'); }); on('close-blacklist-btn','click',()=>hide('manage-blacklist-modal')); on('save-restrict-prob-btn','click',()=>{ wsSend("admin_update_restrict_prob",{prob:$('restrict-prob-input').value}); text('save-restrict-prob-btn',"⏳"); setTimeout(()=>text('save-restrict-prob-btn',"儲存"),1000); });
         
@@ -1629,6 +1627,176 @@
             tempGpxPoints = [];
         });
 
+        let currentImportFile = null;
+        let currentImportType = null;
+        let currentGmapUrl = null;
+        
+        on('track-import-btn', 'click', () => show('track-import-modal'));
+        on('track-import-cancel', 'click', () => { hide('track-import-modal'); currentImportFile = null; currentGmapUrl = null; });
+        on('btn-import-gpx', 'click', () => $('track-gpx-input').click());
+        on('btn-import-kmz', 'click', () => $('track-kmz-input').click());
+        on('btn-import-gmap', 'click', () => {
+            showInputModal("貼上 Google Map 定位分享網址", "例如: https://maps.app.goo.gl/...", "", (val) => {
+                if (!val) return;
+                currentGmapUrl = val;
+                currentImportType = 'GMAP';
+                hide('track-import-modal');
+                processTrackImport(false); // Google maps sync doesn't need time config (it's strictly real-time)
+            });
+        });
+        
+        $('track-gpx-input').addEventListener('change', e => {
+            if (!e.target.files[0]) return;
+            currentImportFile = e.target.files[0];
+            currentImportType = 'GPX';
+            hide('track-import-modal');
+            setupTimeConfigModal();
+            e.target.value = '';
+        });
+        
+        $('track-kmz-input').addEventListener('change', e => {
+            if (!e.target.files[0]) return;
+            currentImportFile = e.target.files[0];
+            currentImportType = 'KMZ';
+            hide('track-import-modal');
+            setupTimeConfigModal();
+            e.target.value = '';
+        });
+        
+        function setupTimeConfigModal() {
+            let now = new Date();
+            let start = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
+            
+            const formatForInput = (d) => {
+                let y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+                let h = String(d.getHours()).padStart(2,'0'), min = String(d.getMinutes()).padStart(2,'0');
+                return `${y}-${m}-${day}T${h}:${min}`;
+            };
+            
+            $('time-config-start').value = formatForInput(start);
+            $('time-config-end').value = formatForInput(now);
+            show('time-config-modal');
+        }
+        
+        on('time-config-cancel', 'click', () => { hide('time-config-modal'); currentImportFile = null; });
+        
+        on('time-config-no', 'click', () => processTrackImport(false));
+        on('time-config-yes', 'click', () => processTrackImport(true));
+        
+        async function processTrackImport(useTime) {
+            hide('time-config-modal');
+            showCenterToast("⏳ 軌跡處理中...");
+            
+            let startTime = "", endTime = "";
+            if (useTime) {
+                startTime = time-config-start.value;
+                endTime = time-config-end.value;
+            }
+            
+            
+            let baseUrl = window.location.origin;
+            if (NGROK_WS_URL) {
+                baseUrl = NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').split('/ws')[0];
+            }
+            
+            if (currentImportType === 'KMZ') {
+                let fd = new FormData();
+                fd.append("uid", myUid);
+                fd.append("project", currentProjectKey);
+                fd.append("start_time", startTime);
+                fd.append("end_time", endTime);
+                fd.append("file", currentImportFile);
+                
+                try {
+                    let res = await fetch(baseUrl + '/api/upload_kml_sync', { method: 'POST', body: fd });
+
+                    let data = await res.json();
+                    if (data.success) {
+                        showCenterToast(data.msg + (data.is_sync ? "\n(已啟動背景即時同步)" : ""));
+                    } else {
+                        showCenterToast("❌ 匯入失敗: " + data.msg);
+                    }
+                } catch (err) {
+                    showCenterToast("❌ 伺服器連線失敗");
+                }
+            } else if (currentImportType === 'GMAP') {
+                let fd = new FormData();
+                fd.append("uid", myUid);
+                fd.append("project", currentProjectKey);
+                fd.append("url", currentGmapUrl);
+                try {
+                    let res = await fetch(baseUrl + '/api/upload_gmap_sync', { method: 'POST', body: fd });
+                    let data = await res.json();
+                    if (data.success) {
+                        showCenterToast(data.msg);
+                    } else {
+                        showCenterToast("❌ 匯入失敗: " + data.msg);
+                    }
+                } catch (err) {
+                    showCenterToast("❌ 伺服器連線失敗");
+                }
+            } else if (currentImportType === 'GPX') {
+                let reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        let parser = new DOMParser();
+                        let xmlDoc = parser.parseFromString(ev.target.result, "text/xml");
+                        let trkpts = xmlDoc.getElementsByTagName("trkpt");
+                        let pts = [];
+                        for (let i = 0; i < trkpts.length; i++) {
+                            pts.push({
+                                lat: parseFloat(trkpts[i].getAttribute("lat")),
+                                lng: parseFloat(trkpts[i].getAttribute("lon"))
+                            });
+                        }
+                        if (pts.length === 0) return showCenterToast("❌ GPX 中找不到點位");
+                        
+                        let nowTs = Date.now();
+                        let startTs = nowTs, endTs = nowTs;
+                        
+                        if (useTime) {
+                            startTs = new Date(startTime).getTime();
+                            endTs = new Date(endTime).getTime();
+                        }
+                        
+                        let historyToAdd = [];
+                        if (startTs === endTs) {
+                            pts.forEach(p => historyToAdd.push({lat: p.lat, lng: p.lng, timestamp: nowTs}));
+                        } else {
+                            let duration = endTs - startTs;
+                            let step = pts.length > 1 ? duration / (pts.length - 1) : 0;
+                            pts.forEach((p, idx) => {
+                                let ts = startTs + idx * step;
+                                if (ts <= nowTs) historyToAdd.push({lat: p.lat, lng: p.lng, timestamp: ts});
+                            });
+                        }
+                        
+                        localHistory = localHistory.concat(historyToAdd);
+                        localHistory = optimizeHistory(localHistory);
+                        lsSet('dogMap_localHistory', JSON.stringify(localHistory));
+                        
+                        // Send update
+                        wsSend("update_location", {
+                            data: {
+                                userName: currentUserName,
+                                color: dbUserColor,
+                                history: localHistory,
+                                lastUpdate: nowTs
+                            }
+                        });
+                        
+                        showCenterToast("✅ GPX 軌跡已匯入至您的足跡中！");
+                    } catch (e) {
+                        showCenterToast("❌ 解析 GPX 失敗");
+                    }
+                };
+                reader.readAsText(currentImportFile);
+            }
+            currentImportFile = null;
+            currentGmapUrl = null;
+        }
+
+
         on('update-announce-btn','click',()=>showInputModal("📢 更新公告", "內容...", allAnnouncements[currentProjectKey]||PROJECTS[currentProjectKey]?.announcement||"", t=>{allAnnouncements[currentProjectKey]=t; wsSend("update_announcement",{data:t}); showCenterToast("✅ 成功！");}));
         
         const createPrizeRow=()=>{ let d=document.createElement('div'); d.className='border-4 border-black p-3 bg-gray-100 relative mb-3'; d.innerHTML=`<button class="absolute top-1 right-1 text-red-600 font-bold rmv-r text-lg hover:scale-110 transition-transform">✖</button><input type="text" class="p-name pixel-input w-full p-2 mb-2 text-sm font-bold placeholder-gray-500" placeholder="獎項名稱"><div class="flex gap-2 mb-2 items-center"><input type="text" class="p-url pixel-input flex-1 p-2 text-sm placeholder-gray-500" placeholder="兌換網址 或"><button class="img-upload-btn pixel-btn px-2 py-2 bg-purple-500 text-white text-xs whitespace-nowrap">🖼️ 選圖</button><input type="file" class="hidden img-file-input" accept="image/*"></div><div class="text-xs text-green-700 font-bold mb-2 hidden img-success-msg">✅ 圖片已就緒</div><div class="flex gap-2 mb-2"><label class="text-xs font-bold w-14">一般%:</label><input type="number" class="p-prob pixel-input flex-1 p-1 text-sm font-mono" value="1.0" min="0.001" step="0.1"></div><div class="flex gap-2"><label class="text-xs font-bold w-14 text-red-600">首抽%:</label><input type="number" class="p-fprob pixel-input flex-1 p-1 text-sm font-mono border-red-400" value="70.0" min="0.001" step="0.1"></div>`; d.querySelector('.rmv-r').onclick=()=>d.remove(); let fi=d.querySelector('.img-file-input'), ub=d.querySelector('.img-upload-btn'), ui=d.querySelector('.p-url'), sm=d.querySelector('.img-success-msg'); ub.onclick=()=>fi.click(); fi.onchange=e=>{let f=e.target.files[0]; if(!f)return; if(f.size>2097152){showCenterToast("⚠️ 圖片請小於 2MB！"); fi.value=""; return;} let r=new FileReader(); r.onload=ev=>{d.dataset.imgBase64=ev.target.result; ui.value="[已選擇本機圖片]"; ui.disabled=true; ui.classList.add("bg-gray-200","text-gray-500"); ub.innerText="重新選擇"; sm.classList.remove('hidden');}; r.readAsDataURL(f);}; return d; };
@@ -1662,7 +1830,6 @@
                         return;
                     }
                     
-                    if (e.isTrusted === false) return; // Allow synthetic clicks from tool sheet to pass through without two-tap logic
                     if(btn.classList.contains('two-tap')&&!btn.classList.contains('show-desc')){
                         document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.remove('collapsed'); if(b!==btn)b.classList.remove('show-desc');}); 
                         btn.classList.add('show-desc'); 
@@ -1696,7 +1863,7 @@
         // 自動隱藏管理面板
         $('admin-panel').addEventListener('click', e => {
             const btn = e.target.closest('button');
-            if (btn && btn.id !== 'close-admin-btn' && btn.id !== 'expand-admin-btn') {
+            if (btn && btn.id !== 'close-admin-btn') {
                 $('admin-panel').classList.add('admin-collapsed');
             }
         });
@@ -1738,28 +1905,16 @@
                 e.stopPropagation();
                 enterPowerSavingMode();
             });
-            // --- 手機版獨立地圖控制 (左下方) ---
-            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
+            // --- 左下地圖控制組 (縮放、定位) ---
+            document.getElementById('mobile-zoom-in-btn')?.addEventListener('click', () => {
                 if (map) map.zoomIn();
             });
-            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
+            document.getElementById('mobile-zoom-out-btn')?.addEventListener('click', () => {
                 if (map) map.zoomOut();
             });
-            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', (e) => {
-                e.preventDefault(); e.stopPropagation();
-                if (isSpectatorMode) {
-                    showCenterToast("觀看模式下無法定位！");
-                    return;
-                }
-                if (lastSavedPos) {
-                    map.setView([lastSavedPos.lat, lastSavedPos.lng], 17, {animate: true});
-                    isMapInteracting = false;
-                } else {
-                    showCenterToast("正在取得位置...");
-                    map.locate({setView: true, maxZoom: 17});
-                }
+            document.getElementById('mobile-locate-float-btn')?.addEventListener('click', () => {
+                const origBtn = document.getElementById('locate-btn');
+                if (origBtn) origBtn.click();
             });
 
             // 觀看模式
@@ -1772,10 +1927,16 @@
                     if (label) label.textContent = isSpectatorMode ? '退出' : '觀看';
                 }, 50);
             });
+            // 鎖定
             document.getElementById('mobile-lock-btn')?.addEventListener('click', () => {
                 const origBtn = document.getElementById('lock-project-btn');
                 if (origBtn) origBtn.click();
+                setTimeout(syncMobileLock, 50);
             });
+            function syncMobileLock() {
+                const icon = document.getElementById('mobile-lock-icon');
+                if (icon) icon.textContent = isProjectLocked ? '🔒' : '🔓';
+            }
 
             // --- 頂部列：專案切換 Bottom Sheet ---
             const projectOverlay = document.getElementById('project-sheet-overlay');
@@ -1783,19 +1944,11 @@
             document.getElementById('mobile-top-project-trigger')?.addEventListener('click', () => {
                 projectOverlay?.classList.add('show');
                 projectSheet?.classList.add('show');
-                document.getElementById('announcement-panel')?.classList.add('hidden');
             });
-            const closeProjectSheet = () => {
+            projectOverlay?.addEventListener('click', () => {
                 projectSheet?.classList.remove('show');
-                setTimeout(() => {
-                    projectOverlay?.classList.remove('show');
-                    if (PROJECTS[currentProjectKey]) {
-                        document.getElementById('announcement-panel')?.classList.remove('hidden');
-                    }
-                }, 300);
-            };
-            projectOverlay?.addEventListener('click', closeProjectSheet);
-            document.getElementById('close-project-sheet-btn')?.addEventListener('click', closeProjectSheet);
+                setTimeout(() => projectOverlay?.classList.remove('show'), 300);
+            });
             
             // 頂部列：點擊狀態燈 → 觸發原生登入/連線面板
             document.getElementById('mobile-sync-dot')?.addEventListener('click', () => {
@@ -1843,6 +1996,13 @@
             }
 
             // 每秒同步一次
+            
+        setInterval(() => {
+            if(window.isGmapSyncing && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: "gmap_sync_keepalive", uid: myUid}));
+            }
+        }, 10000);
+
             setInterval(syncMobileUI, 1000);
             // 初始同步
             setTimeout(syncMobileUI, 500);
