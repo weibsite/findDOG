@@ -1985,7 +1985,16 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)); if (isDesktop) document.getElementById('desktop-loc-hint')?.classList.remove('hidden'); startLocationServices(false); connectWebSocket(); });
         
         // Native Camera Capture Flow
-        const crossCam = document.getElementById('cross-page-camera');
+        let crossCam = document.getElementById('cross-page-camera');
+        if (!crossCam) {
+            crossCam = document.createElement('input');
+            crossCam.type = 'file';
+            crossCam.id = 'cross-page-camera';
+            crossCam.accept = 'image/*';
+            crossCam.capture = 'environment';
+            crossCam.className = 'hidden';
+            document.body.appendChild(crossCam);
+        }
         if (crossCam) {
             crossCam.addEventListener('change', function(e) {
                 if (this.files && this.files[0]) {
@@ -2194,7 +2203,5 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         });
     
 </script>
-
-<input type="file" id="cross-page-camera" accept="image/*" capture="environment" class="hidden">
 </body>
 </html>
