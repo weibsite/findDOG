@@ -1998,12 +1998,40 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         if (crossCam) {
             crossCam.addEventListener('change', function(e) {
                 if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        sessionStorage.setItem('stray_draft_photo', evt.target.result);
-                        window.location.href = 'runrun.htm?draft=1';
+                    const file = this.files[0];
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    
+                    // Show a quick visual loading state on the button while processing
+                    const qcb = document.getElementById('quick-camera-btn');
+                    if (qcb) qcb.style.opacity = '0.5';
+                    
+                    img.onload = () => {
+                        URL.revokeObjectURL(url);
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1200;
+                        const MAX_HEIGHT = 1200;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height = Math.round(height * MAX_WIDTH / width); width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width = Math.round(width * MAX_HEIGHT / height); height = MAX_HEIGHT; }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                        try {
+                            sessionStorage.setItem('stray_draft_photo', dataUrl);
+                            window.location.href = 'runrun.htm?draft=1';
+                        } catch(err) {
+                            alert("手機暫存空間不足，請先清除瀏覽器快取再試！");
+                        }
                     };
-                    reader.readAsDataURL(this.files[0]);
+                    img.src = url;
                 }
             });
         }
