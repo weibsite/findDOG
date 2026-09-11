@@ -625,14 +625,26 @@
                 匯入後的軌跡會直接載在地圖上，讓所有人都能看到這個追蹤的軌跡。
             </p>
             <div class="flex flex-col gap-3 mb-4">
-                <button id="btn-import-gpx" class="pixel-btn py-3 bg-indigo-500 text-white w-full">上傳 GPX (靜態軌跡)</button>
-                <button id="btn-import-kmz" class="pixel-btn py-3 bg-pink-500 text-white w-full">上傳 KML/KMZ (動態同步/歷史)</button>
-                <button id="btn-import-mymaps" class="pixel-btn py-3 bg-emerald-500 text-white w-full">貼上我的地圖</button>
-                <button id="btn-import-gmap" class="pixel-btn py-3 bg-blue-500 text-white w-full">貼上 Google Map 定位網址 (動態同步)</button>
+                <button id="btn-import-gpx" class="pixel-btn py-3 bg-indigo-500 text-white w-full">上傳 GPX</button>
+                <div class="flex gap-2">
+                    <button id="btn-import-mymaps" class="pixel-btn py-3 bg-emerald-500 text-white flex-1">貼上我的地圖</button>
+                    <button id="btn-manage-mymaps" class="pixel-btn py-3 bg-gray-600 text-white w-20">管理</button>
+                </div>
             </div>
             <button id="track-import-cancel" class="pixel-btn w-full py-2 bg-gray-400">取消</button>
             <input type="file" id="track-gpx-input" accept=".gpx" class="hidden">
-            <input type="file" id="track-kmz-input" accept=".kmz,.kml" class="hidden">
+        </div>
+    </div>
+
+    <!-- Manage MyMaps Modal -->
+    <div id="manage-mymaps-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4">
+        <div class="pixel-panel p-4 w-full max-w-sm flex flex-col h-[60vh]">
+            <h3 class="font-bold mb-2 text-lg text-center">管理上傳紀錄</h3>
+            <div id="mymaps-list" class="flex-1 overflow-y-auto mb-4 border-2 border-gray-300 p-2 space-y-2 bg-gray-100">
+                <!-- Records injected here -->
+            </div>
+            <button id="btn-remove-all-mymaps" class="hidden pixel-btn w-full py-2 bg-red-600 text-white mb-2 text-xs">移除全部</button>
+            <button id="manage-mymaps-cancel" class="pixel-btn w-full py-2 bg-gray-400">關閉</button>
         </div>
     </div>
 
@@ -956,7 +968,14 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
                     else if(res.type==='my_prizes_data'){text('prize-pool-title','🎁 我的中獎紀錄'); let c=$('prize-pool-list'); c.innerHTML=''; if(res.data?.length)res.data.forEach(i=>{let u=i.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; c.innerHTML+=`<div class="border-b-2 border-dashed border-gray-400 pb-2 text-sm font-bold text-gray-800 flex justify-between items-center"><span>🎁 ${escapeHTML(i.name)}</span><a href="${u}" target="_blank" class="bg-blue-500 text-white px-3 py-1 text-xs border-2 border-black no-underline shadow-[2px_2px_0px_#1a202c]">${m?'🖼️ 查看圖片':'🔗 前往領取'}</a></div>`;}); else c.innerHTML='<div class="text-gray-500 font-bold text-center mt-4">目前還沒有中獎紀錄喔！<br>趕快去探索抽獎吧。</div>'; show('prize-pool-modal');}
                     else if(res.type==='draw_result'){setTimeout(()=>{clearInterval(slotTimer); slotSpinning=false; if(res.success&&res.prize){let s=Math.random()>.5?'🐶':'🐱'; text('reel-1',s); text('reel-2',s); text('reel-3',s);}else{text('reel-1','🐶'); text('reel-2','🐱'); text('reel-3','🐶');} setTimeout(()=>{$('slot-draw-btn').innerText="🚀 開始抽獎！"; $('slot-draw-btn').disabled=false; if(res.success&&res.prize){let u=res.prize.url, m=u.startsWith('/images/'); if(m)u=getBaseHttpUrl()+u; showHTMLModal(`<div class="text-3xl mb-3 font-black text-red-600 tracking-widest">🎉中獎啦🎉</div><div class="text-xl font-bold text-gray-900 mb-4 bg-yellow-200 p-2 border-2 border-black">${res.prize.name}</div><div class="text-xs text-red-600 font-bold mb-4 leading-relaxed">⚠️ 請立即截圖此畫面！<br>或點擊下方按鈕查看/領取獎品。</div><a href="${u}" target="_blank" class="block w-full py-3 bg-blue-500 text-white font-bold border-4 border-black shadow-[4px_4px_0px_#1a202c] no-underline text-center">${m?'🖼️ 點擊查看並儲存圖片':'🔗 點擊領取兌換連結'}</a>`);}else showModal(res.msg||"💨 銘謝惠顧，下次再來！");},800);},1500);}
                     else if(res.type==='parse_map_url_result'){if(window.mapUrlResolver){window.mapUrlResolver(res); window.mapUrlResolver=null;}}
-                    else if(res.type==='search_address_result'){if(window.addressResolver){window.addressResolver(res); window.addressResolver=null;}}
+                    else if(res.type === 'user_delete') {
+                          if (allUsersData[res.uid]) {
+                              delete allUsersData[res.uid];
+                              drawAllProjects();
+                              renderMap();
+                          }
+                      }
+                      else if(res.type==='search_address_result'){if(window.addressResolver){window.addressResolver(res); window.addressResolver=null;}}
                 };
                 ws.onclose=()=>{isSystemReady=false; $('sync-ping').style.backgroundColor='#ef4444'; text('toast-text',"重連中..."); setTimeout(connectWebSocket,wsReconnectDelay); wsReconnectDelay=Math.min(wsReconnectDelay*2,60000);};
             } catch(err) { console.error("WS 初始化失敗:", err); }
@@ -1637,6 +1656,22 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         on('track-import-cancel', 'click', () => { hide('track-import-modal'); currentImportFile = null; currentGmapUrl = null; });
         on('btn-import-gpx', 'click', () => $('track-gpx-input').click());
         on('btn-import-kmz', 'click', () => $('track-kmz-input').click());
+        
+        on('btn-manage-mymaps', 'click', () => {
+            hide('track-import-modal');
+            wsSend('get_track_records');
+            show('manage-mymaps-modal');
+        });
+        
+        on('manage-mymaps-cancel', 'click', () => hide('manage-mymaps-modal'));
+        
+        on('btn-remove-all-mymaps', 'click', () => {
+            if(confirm("確定要移除所有上傳的地圖紀錄嗎？")) {
+                wsSend('delete_all_track_records');
+                hide('manage-mymaps-modal');
+            }
+        });
+
         on('btn-import-mymaps', 'click', () => {
             showInputModal("貼上 Google My Maps 分享網址", "例如: https://www.google.com/maps/d/edit?mid=...", "", (val) => {
                 if (!val) return;
