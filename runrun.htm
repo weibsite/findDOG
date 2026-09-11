@@ -318,6 +318,32 @@ function startLocationServices(autoStart) {
     resetPowerSavingTimer();
     
     if(new URLSearchParams(window.location.search).has('go')){window._isFromIndex=true;setTimeout(()=>{document.getElementById('quick-camera-btn').click();const url = new URL(window.location); url.searchParams.delete('go'); window.history.replaceState({}, '', url);},500);}
+if (new URLSearchParams(window.location.search).has('draft')) {
+    window._isFromIndex = true;
+    const draftBase64 = sessionStorage.getItem('stray_draft_photo');
+    if (draftBase64) {
+        setTimeout(async () => {
+            const url = new URL(window.location); url.searchParams.delete('draft'); window.history.replaceState({}, '', url);
+            sessionStorage.removeItem('stray_draft_photo');
+            try {
+                const res = await fetch(draftBase64);
+                const blob = await res.blob();
+                const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                
+                const originalOpenCamera = openCamera;
+                openCamera = async function(target) {
+                    openCamera = originalOpenCamera; // restore
+                    handleSelectedFile(file); // jump to crop
+                };
+                
+                document.getElementById('quick-camera-btn').click();
+            } catch(e) {
+                console.error(e);
+            }
+        }, 500);
+    }
+}
+
     
     if (!navigator.geolocation) { 
         gpsState = 'denied';
