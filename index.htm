@@ -384,7 +384,8 @@
 
     <!-- Modals -->
     <div id="custom-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="custom-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed whitespace-pre-wrap"></p><button id="custom-modal-btn" class="pixel-btn w-full py-2 bg-blue-500 text-white">確定</button></div></div>
-    <div id="input-modal" class="hidden absolute inset-0 z-[15000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
+    <div id="input-modal" class="hidden absolute inset-0 z-[15000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 id="input-modal-title" class="text-gray-900 font-bold mb-4"></h3><button id="input-paste-btn" class="pixel-btn w-full py-2 bg-yellow-400 text-black text-sm mb-4 font-bold shadow-[3px_3px_0px_#1a202c]">📋 貼上剪貼簿</button>
+<textarea id="input-modal-text" class="pixel-input w-full p-2 mb-4 h-32" placeholder="請輸入內容..."></textarea><div class="flex gap-2"><button id="input-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="input-submit-btn" class="pixel-btn flex-1 py-2 bg-blue-500 text-white">確定</button></div></div></div>
     <div id="confirm-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><p id="confirm-modal-text" class="text-gray-900 font-bold mb-6 text-sm leading-relaxed"></p><div class="flex gap-2"><button id="confirm-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="confirm-ok-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">確定</button></div></div></div>
     <div id="admin-login-modal" class="hidden absolute inset-0 z-[10000] bg-black/80 flex items-center justify-center p-4"><div class="pixel-panel p-6 w-full max-w-sm text-center"><h3 class="text-gray-900 font-bold mb-4 text-xl">👑 管理員登入</h3><input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 mb-4 text-center font-sans" placeholder="請輸入密碼"><div class="flex gap-2"><button id="admin-cancel-btn" class="pixel-btn flex-1 py-2 bg-gray-400">取消</button><button id="admin-submit-btn" class="pixel-btn flex-1 py-2 bg-red-500 text-white">登入</button></div></div></div>
     
@@ -818,8 +819,46 @@
         const isCoordinateInTaiwan=(lat,lng)=>lat>=20.0&&lat<=27.0&&lng>=118.0&&lng<=123.0;
         let centerToastTimer=null; const showCenterToast=(msg,dur=4000)=>{text('toast-center',msg); show('toast-center'); if(centerToastTimer)clearTimeout(centerToastTimer); centerToastTimer=setTimeout(()=>hide('toast-center'),dur);};
         const showModal=msg=>{text('custom-modal-text',msg); show('custom-modal');}; const showHTMLModal=html=>{html('custom-modal-text',html); show('custom-modal');}; on('custom-modal-btn','click',()=>hide('custom-modal'));
-        const showInputModal=(title,ph,def,cb)=>{text('input-modal-title',title); $('input-modal-text').placeholder=ph; $('input-modal-text').value=def; show('input-modal'); replaceBtn('input-submit-btn',()=>{let v=$('input-modal-text').value.trim(); if(v){hide('input-modal'); cb(v);} else showModal("內容不能空白！");}); replaceBtn('input-cancel-btn',()=>hide('input-modal'));};
-        const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
+        const showInputModal = async (title, ph, def, cb) => {
+    text('input-modal-title', title);
+    $('input-modal-text').placeholder = ph;
+    $('input-modal-text').value = def || '';
+    show('input-modal');
+    
+    // Automatically attempt to read clipboard
+    try {
+        const clipText = await navigator.clipboard.readText();
+        // 如果是分享網址才自動貼上 (避免使用者複製其他東西被覆蓋)
+        if (clipText && clipText.startsWith('http')) {
+            $('input-modal-text').value = clipText;
+        }
+    } catch (err) {
+        // Ignored, user might not have granted permission yet
+    }
+    
+    // Manual paste button handler
+    replaceBtn('input-paste-btn', async () => {
+        try {
+            const clipText = await navigator.clipboard.readText();
+            $('input-modal-text').value = clipText;
+            showCenterToast("✅ 已貼上剪貼簿內容");
+        } catch (err) {
+            showCenterToast("❌ 無法讀取剪貼簿，請手動長按貼上");
+        }
+    });
+
+    replaceBtn('input-submit-btn', () => {
+        let v = $('input-modal-text').value.trim();
+        if (v) { 
+            hide('input-modal'); 
+            cb(v); 
+        } else {
+            showModal("內容不能空白");
+        }
+    });
+    replaceBtn('input-cancel-btn', () => hide('input-modal'));
+};
+const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal'); replaceBtn('confirm-ok-btn',()=>{hide('confirm-modal'); cb();}); replaceBtn('confirm-cancel-btn',()=>hide('confirm-modal'));};
         const getDistance=(lat1,lon1,lat2,lon2)=>{const p=Math.PI/180, a=0.5-Math.cos((lat2-lat1)*p)/2+Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2; return 12742e3*Math.asin(Math.sqrt(a));};
         const optimizeHistory=hist=>{if(hist.length<=10)return hist; let c=[hist[0]], lPt=hist[0], bT=hist.length>2000?30:10; for(let i=1;i<hist.length-1;i++){let pt=hist[i], d=getDistance(lPt.lat,lPt.lng,pt.lat,pt.lng), tT=(Date.now()-pt.timestamp>10800000)?50:bT; if(d>tT){pt.lat=parseFloat(pt.lat.toFixed(5)); pt.lng=parseFloat(pt.lng.toFixed(5)); c.push(pt); lPt=pt;}} c.push(hist[hist.length-1]); return c.slice(-10000);};
         const wsSend=(type,payload={})=>{if(isSystemReady) ws.send(JSON.stringify({type, uid:myUid, project:currentProjectKey, token:adminToken, ...payload}));};
