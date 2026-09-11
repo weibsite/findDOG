@@ -1983,7 +1983,37 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         on('clear-history-confirm','click',()=>{ if(clearHistoryCircles.length===0)return showCenterToast("⚠️ 請至少標示一個清除範圍！"); showConfirm("確定要清除這些紅圈範圍內的所有足跡嗎？\n清除後將無法復原！",()=>{let areas=clearHistoryCircles.map(c=>({lat:c.lat,lng:c.lng,radius:c.radius})); wsSend("admin_clear_history",{areas:areas,project:currentProjectKey}); Object.values(allUsersData).forEach(u=>{if(u.history)u.history=u.history.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius));}); localHistory=localHistory.filter(pt=>!areas.some(a=>getDistance(pt.lat,pt.lng,a.lat,a.lng)<=a.radius)); lsSet('dogMap_localHistory',JSON.stringify(localHistory)); renderMap(); requestFogRender(); showCenterToast("✅ 軌跡清理指令已送出並於本地生效！"); exitClearMode();}); });
 
         on('master-start-btn','click',e=>{ e.preventDefault(); hide('error-msg'); text('master-start-btn',"連線中..."); currentUserName=$('user-name-input').value.trim()||`P${Math.floor(100+Math.random()*900)}`; dbUserColor=generateRandomColor(); lsSet('dogMap_userName',currentUserName); lsSet('dogMap_userColor',dbUserColor); if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); const isDesktop = !(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)); if (isDesktop) document.getElementById('desktop-loc-hint')?.classList.remove('hidden'); startLocationServices(false); connectWebSocket(); });
-        let qcb=$('quick-camera-btn'); if(qcb){ qcb.addEventListener('click',function(e){ /* directly navigate since it's an a tag */ }); }
+        
+        // Native Camera Capture Flow
+        const crossCam = document.getElementById('cross-page-camera');
+        if (crossCam) {
+            crossCam.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        sessionStorage.setItem('stray_draft_photo', evt.target.result);
+                        window.location.href = 'runrun.htm?draft=1';
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+        }
+        const handleNativeCamera = (e) => {
+            e.preventDefault();
+            if (crossCam) crossCam.click();
+        };
+        const mcb = document.getElementById('mobile-camera-btn');
+        if (mcb) {
+            mcb.onclick = handleNativeCamera;
+            mcb.addEventListener('click', handleNativeCamera);
+        }
+        let qcb = document.getElementById('quick-camera-btn'); 
+        if (qcb) { 
+            // We override existing listeners by resetting onclick and adding event listener
+            qcb.onclick = handleNativeCamera;
+            qcb.addEventListener('click', handleNativeCamera); 
+        }
+
         
         let mapLastTapTime = 0;
         $('map-container').addEventListener('touchend', e => {
@@ -2164,5 +2194,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         });
     
 </script>
+
+<input type="file" id="cross-page-camera" accept="image/*" capture="environment" class="hidden">
 </body>
 </html>
