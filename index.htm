@@ -890,6 +890,8 @@ const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal
             fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(r=>r.json()).then(d=>{ d.features.forEach(f=>{ (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).forEach(p=>{ let ml=90,xl=-90,mg=180,xg=-180; p[0].forEach(c=>{if(c[1]<ml)ml=c[1];if(c[1]>xl)xl=c[1];if(c[0]<mg)mg=c[0];if(c[0]>xg)xg=c[0];}); taiwanPolygons.push({coordinates:p,bounds:L.latLngBounds([ml,mg],[xl,xg])}); }); }); requestFogRender(); }).catch(()=>{});
             
             map=L.map('map',{zoomControl:false}).setView([23.5,121],8);
+            if(typeof ResizeObserver!=='undefined'){new ResizeObserver(()=>map.invalidateSize()).observe(document.getElementById('map-container'));}
+            window.addEventListener('resize', ()=>setTimeout(()=>map.invalidateSize(), 200));
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map); L.control.zoom({position:'bottomright'}).addTo(map);
             markersLayer=L.layerGroup().addTo(map); sightingsLayer=L.layerGroup().addTo(map); routesLayer=L.layerGroup().addTo(map);
             
