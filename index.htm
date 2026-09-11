@@ -1996,42 +1996,39 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             document.body.appendChild(crossCam);
         }
         if (crossCam) {
-            crossCam.addEventListener('change', function(e) {
+            crossCam.addEventListener('change', async function(e) {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
-                    const img = new Image();
-                    const url = URL.createObjectURL(file);
-                    
-                    // Show a quick visual loading state on the button while processing
                     const qcb = document.getElementById('quick-camera-btn');
-                    if (qcb) qcb.style.opacity = '0.5';
+                    const mcb = document.getElementById('mobile-camera-btn');
+                    if (qcb) { qcb.style.pointerEvents = 'none'; qcb.style.opacity = '0.5'; }
+                    if (mcb) { mcb.style.pointerEvents = 'none'; mcb.style.opacity = '0.5'; }
                     
-                    img.onload = () => {
-                        URL.revokeObjectURL(url);
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 1200;
-                        const MAX_HEIGHT = 1200;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > height) {
-                            if (width > MAX_WIDTH) { height = Math.round(height * MAX_WIDTH / width); width = MAX_WIDTH; }
-                        } else {
-                            if (height > MAX_HEIGHT) { width = Math.round(width * MAX_HEIGHT / height); height = MAX_HEIGHT; }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
+                    // Add a tiny loading overlay to notify user
+                    let toast = document.createElement('div');
+                    toast.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-6 py-4 rounded-lg font-bold z-[9999] text-center shadow-lg';
+                    toast.innerHTML = '<div class="text-3xl mb-2 animate-spin">⏳</div>處理高畫質照片中...<br><span class="text-xs text-gray-300">請稍候，即將進入裁切畫面</span>';
+                    document.body.appendChild(toast);
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('files', file);
+                        const baseUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') ? 'http://127.0.0.1:8000' : 'https://finddog.online';
+                        const res = await fetch(`${baseUrl}/api/upload_media`, { method: 'POST', body: formData });
+                        const data = await res.json();
                         
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                        try {
-                            sessionStorage.setItem('stray_draft_photo', dataUrl);
-                            window.location.href = 'runrun.htm?draft=1';
-                        } catch(err) {
-                            alert("手機暫存空間不足，請先清除瀏覽器快取再試！");
+                        if (data.success && data.urls && data.urls.length > 0) {
+                            window.location.href = 'runrun.htm?draft_url=' + encodeURIComponent(data.urls[0]);
+                        } else {
+                            throw new Error("伺服器回傳失敗");
                         }
-                    };
-                    img.src = url;
+                    } catch(err) {
+                        console.error(err);
+                        alert("照片上傳失敗，請檢查網路連線。");
+                        if (qcb) { qcb.style.pointerEvents = 'auto'; qcb.style.opacity = '1'; }
+                        if (mcb) { mcb.style.pointerEvents = 'auto'; mcb.style.opacity = '1'; }
+                        toast.remove();
+                    }
                 }
             });
         }
