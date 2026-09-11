@@ -343,6 +343,46 @@ if (new URLSearchParams(window.location.search).has('draft')) {
         }, 500);
     }
 }
+if (new URLSearchParams(window.location.search).has('draft_url')) {
+    window._isFromIndex = true;
+    const urlParam = new URLSearchParams(window.location.search).get('draft_url');
+    if (urlParam) {
+        setTimeout(async () => {
+            const currentUrl = new URL(window.location); currentUrl.searchParams.delete('draft_url'); window.history.replaceState({}, '', currentUrl);
+            
+            // Add a visual loading screen while downloading
+            let toast = document.createElement('div');
+            toast.className = 'fixed inset-0 bg-black text-white flex flex-col items-center justify-center font-bold z-[9999]';
+            toast.innerHTML = '<div class="text-4xl mb-4 animate-bounce">🐾</div>載入高畫質原圖中...<br><span class="text-sm mt-2 text-gray-400">系統即將開啟裁切畫面</span>';
+            document.body.appendChild(toast);
+            
+            try {
+                // Ensure correct absolute URL if relative
+                const fetchUrl = urlParam.startsWith('http') ? urlParam : (window.location.origin.includes('localhost') ? 'http://127.0.0.1:8000'+urlParam : 'https://finddog.online'+urlParam);
+                const res = await fetch(fetchUrl);
+                const blob = await res.blob();
+                const file = new File([blob], `photo_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+                
+                // Override openCamera temporarily to jump into crop
+                const originalOpenCamera = window.openCamera || openCamera;
+                window.openCamera = async function(target) {
+                    window.openCamera = originalOpenCamera;
+                    openCamera = originalOpenCamera;
+                    toast.remove();
+                    handleSelectedFile(file);
+                };
+                openCamera = window.openCamera;
+                
+                document.getElementById('quick-camera-btn').click();
+            } catch(e) {
+                console.error(e);
+                toast.remove();
+                alert("下載照片失敗，請檢查網路。");
+            }
+        }, 300);
+    }
+}
+
 
     
     if (!navigator.geolocation) { 
