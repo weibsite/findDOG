@@ -35,9 +35,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #1a202c; }
+        html { margin: 0; padding: 0; width: 100vw; height: calc(var(--vh, 1vh) * 100); overflow: hidden; background-color: #1a202c; }
 body {
-    margin: 0; padding: 0; width: 100vw; height: 100vh;
+    margin: 0; padding: 0; width: 100vw; height: calc(var(--vh, 1vh) * 100);
     overflow: hidden;
     background-color: #1a202c;
     display: flex; flex-direction: column;
@@ -345,6 +345,19 @@ body {
 
 
     <script>
+        // === iOS Chrome 100vh Fix ===
+        // Chrome iOS: 100vh includes the URL bar area, causing overflow.
+        // We use a CSS custom property --vh set to actual innerHeight.
+        function setVH() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', vh + 'px');
+        }
+        setVH();
+        window.addEventListener('resize', setVH);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', setVH);
+        }
+
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
         window.logDebug = function(action) {
