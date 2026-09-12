@@ -63,7 +63,7 @@ body {
         /* Modal 內保持 4px 粗邊框以維持 Pixel 感 */
         .pixel-panel-modal { background-color: white; border: 4px solid #1a202c; box-shadow: 6px 6px 0px #1a202c; border-radius: 0px !important; }
         .custom-div-icon { background: transparent !important; border: none !important; overflow: visible !important; }
-        .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; margin-top: 50px; height: calc(100vh - 50px); align-items: center; pointer-events: none; }
+        .user-label-container { position: absolute; bottom: 4px; left: -60px; width: 120px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .user-avatar-pixel { width: 16px; height: 16px; border: 3px solid #1a202c; box-sizing: border-box; }
         .user-name-tag { background: white; padding: 2px 6px; border: 2px solid #1a202c; font-size: 12px; font-weight: 900; white-space: nowrap; margin-bottom: 6px; pointer-events: auto; cursor: pointer; }
         .pixel-popup .leaflet-popup-content-wrapper { background-color: white; border: 4px solid #1a202c; border-radius: 0; box-shadow: 4px 4px 0px #1a202c; padding: 0; }
@@ -133,7 +133,7 @@ body {
         }
         #mobile-bottom-bar .bar-link-row a:hover { opacity: 1; }
         #mobile-bottom-bar .bar-item {
-            display: flex; flex-direction: column; margin-top: 50px; height: calc(100vh - 50px); align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: 2px; color: rgba(255,255,255,0.75); font-size: 10px; font-weight: 800;
             cursor: pointer; padding: 4px 10px; transition: color 0.2s;
             -webkit-tap-highlight-color: transparent;
@@ -186,7 +186,7 @@ body {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
         }
         #tool-sheet .sheet-item {
-            display: flex; flex-direction: column; margin-top: 50px; height: calc(100vh - 50px); align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: 4px; padding: 14px 6px; border-radius: 10px;
             background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
             font-size: 10px; font-weight: 700; cursor: pointer;
@@ -298,11 +298,11 @@ body {
             padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
             transform: translateY(100%);
             transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-            max-height: 80vh; display: flex; flex-direction: column; margin-top: 50px; height: calc(100vh - 50px);
+            max-height: 80vh; display: flex; flex-direction: column;
         }
         #project-sheet.show { transform: translateY(0); }
         #project-sheet .sheet-list {
-            overflow-y: auto; display: flex; flex-direction: column; margin-top: 50px; height: calc(100vh - 50px); gap: 8px; margin-top: 8px;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
         }
         .project-sheet-item {
             padding: 14px 16px; border-radius: 12px;
@@ -343,50 +343,6 @@ body {
 
 
     <script>
-        // ULTIMATE WELDING SCRIPT
-        function lockViewportHeight() {
-            // override to do nothing, our interval handles it
-        }
-        function forceResetViewport() {
-            window.scrollTo(0, 0);
-        }
-        
-        /* setInterval(() => {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-            
-            let topBar = document.getElementById('mobile-top-bar');
-            let bottomBar = document.getElementById('mobile-bottom-bar');
-            let mapContainer = document.getElementById('map-container');
-            
-            if (topBar && bottomBar && mapContainer) {
-                let vv = window.visualViewport;
-                let vTop = vv ? vv.offsetTop : 0;
-                let vHeight = vv ? vv.height : window.innerHeight;
-                
-                // Force properties
-                // topBar.style.position = 'fixed';
-                topBar.style.left = '0px';
-                topBar.style.width = '100%';
-                topBar.style.top = vTop + 'px';
-                
-                let topH = topBar.offsetHeight || 40;
-                let botH = bottomBar.offsetHeight || 60;
-                
-                // bottomBar.style.position = 'fixed';
-                bottomBar.style.left = '0px';
-                bottomBar.style.width = '100%';
-                bottomBar.style.top = (vTop + vHeight - botH) + 'px';
-                
-                // mapContainer.style.position = 'fixed';
-                mapContainer.style.left = '0px';
-                mapContainer.style.width = '100%';
-                mapContainer.style.top = (vTop + topH) + 'px';
-                mapContainer.style.height = (vHeight - topH - botH) + 'px';
-            }
-        }, 50); // EVERY 50 MILLISECONDS! */
-
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
         window.logDebug = function(action) {
@@ -469,7 +425,7 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport_OLD() {
+        function forceResetViewport() {
             // 1. 強制重置所有可能的捲動/偏移
             window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
@@ -489,7 +445,7 @@ body {
             window.visualViewport.addEventListener('resize', forceResetViewport);
         }
         
-        function lockViewportHeight_OLD() {
+        function lockViewportHeight() {
             logDebug("before_lockViewportHeight");
             logDebug("before_lockViewportHeight");
             // 先修正偏移
@@ -985,7 +941,7 @@ body {
         
         
 // Fix iOS Safari permission prompt shift bug
-/* setInterval(() => {
+setInterval(() => {
     if (window.scrollY > 0) {
         window.scrollTo(0, 0);
     }
@@ -2111,7 +2067,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             currentGmapUrl = null;
         }
 
-        /* setInterval(() => {
+        setInterval(() => {
             if(window.isGmapSyncing && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({type: "gmap_sync_keepalive", uid: myUid}));
             }
@@ -2483,5 +2439,17 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         });
     
 </script>
+
+<script>
+// OVERRIDE DANGEROUS FUNCTIONS FOR TEST 4
+window.lockViewportHeight = function() {
+    window.scrollTo(0,0);
+    if (typeof map !== 'undefined' && map) map.invalidateSize();
+};
+window.forceResetViewport = function() {
+    window.scrollTo(0,0);
+};
+</script>
 </body>
+
 </html>
