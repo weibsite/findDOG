@@ -425,16 +425,7 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport() {
-            // 1. 強制重置所有可能的捲動/偏移
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            
-            // 2. Chrome iOS 的 Visual Viewport 偏移修正
-            if (window.visualViewport && window.visualViewport.offsetTop > 0) {
-                window.scrollBy(0, -window.visualViewport.offsetTop);
-            }
+        function forceResetViewport() { /* disabled to prevent iOS Chrome layout thrashing */ }
         }
         
         window.addEventListener('scroll', forceResetViewport, { passive: true });
@@ -477,7 +468,7 @@ body {
         window.addEventListener('resize', lockViewportHeight);
         window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
         document.addEventListener('DOMContentLoaded', lockViewportHeight);
-        setInterval(lockViewportHeight, 1000);
+        // setInterval(lockViewportHeight, 1000); removed
 
 
         
@@ -940,12 +931,7 @@ body {
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
         
         
-// Fix iOS Safari permission prompt shift bug
-setInterval(() => {
-    if (window.scrollY > 0) {
-        window.scrollTo(0, 0);
-    }
-}, 500);
+/* Removed rogue setInterval scrolling */
 
 const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
