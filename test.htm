@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <!-- 1. 瀏覽器標籤頁的標題 -->
     <title>尋寵地圖 | 找回毛小孩的路</title>
@@ -35,9 +35,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { margin: 0; padding: 0; width: 100vw; height: calc(var(--vh, 1vh) * 100); overflow: hidden; background-color: #1a202c; }
+        html { 
+            margin: 0; padding: 0; width: 100%; 
+            height: 100vh; height: 100svh; height: -webkit-fill-available;
+            overflow: hidden; background-color: #1a202c; 
+        }
 body {
-    margin: 0; padding: 0; width: 100vw; height: calc(var(--vh, 1vh) * 100);
+    margin: 0; padding: 0; width: 100%;
+    height: 100vh; height: 100svh; height: -webkit-fill-available;
     overflow: hidden;
     background-color: #1a202c;
     display: flex; flex-direction: column;
@@ -203,7 +208,7 @@ body {
             flex: 0 0 auto;
             flex-direction: column; justify-content: center;
             height: 40px; padding: 0 8px;
-            padding-top: env(safe-area-inset-top, 0px);
+            /* padding-top: env removed, not using viewport-fit=cover */
             background: rgba(26, 32, 44, 0.75);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -345,18 +350,7 @@ body {
 
 
     <script>
-        // === iOS Chrome 100vh Fix ===
-        // Chrome iOS: 100vh includes the URL bar area, causing overflow.
-        // We use a CSS custom property --vh set to actual innerHeight.
-        function setVH() {
-            let vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', vh + 'px');
-        }
-        setVH();
-        window.addEventListener('resize', setVH);
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', setVH);
-        }
+        // === iOS Chrome: using 100svh instead of JS --vh hack ===
 
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
@@ -440,52 +434,32 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport() {
-            // 1. 強制重置所有可能的捲動/偏移
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            
-            // 2. Chrome iOS 的 Visual Viewport 偏移修正
-            if (window.visualViewport && window.visualViewport.offsetTop > 0) {
-                window.scrollBy(0, -window.visualViewport.offsetTop);
-            }
+        function forceResetViewport() { /* DISABLED: was causing Chrome URL bar feedback loop */ }
         }
         
-        window.addEventListener('scroll', forceResetViewport, { passive: true });
+        // scroll listener disabled
         
         // 監聽 Visual Viewport 的偏移（Chrome iOS 專用）
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('scroll', forceResetViewport);
-            window.visualViewport.addEventListener('resize', forceResetViewport);
+            // vv scroll listener disabled
+            // vv resize listener disabled
         }
         
         function lockViewportHeight() {
             logDebug("before_lockViewportHeight");
-            // 先修正偏移
-            forceResetViewport();
-            
-            let h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            // document.documentElement.style.height removed to trust CSS 100dvh
-            // document.body.style.height removed to trust CSS 100dvh
-            
-            let topBar = document.getElementById('mobile-top-bar');
-            let bottomBar = document.getElementById('mobile-bottom-bar');
+            // Pure CSS flexbox handles layout — just invalidate map
             let mapContainer = document.getElementById('map-container');
-            
             if (mapContainer) {
-                  // Flexbox layout: map-container uses flex:1 to auto-fill
-                  // No manual height/top calculation needed
-                  mapContainer.style.top = '';
-                  mapContainer.style.height = '';
-              }
-              if (typeof map !== 'undefined' && map) map.invalidateSize();
+                mapContainer.style.top = '';
+                mapContainer.style.height = '';
+            }
+            if (typeof map !== 'undefined' && map) map.invalidateSize();
             logDebug("after_lockViewportHeight");
         }
         window.addEventListener('resize', lockViewportHeight);
         window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
         document.addEventListener('DOMContentLoaded', lockViewportHeight);
-        setInterval(lockViewportHeight, 1000);
+        // setInterval disabled: was causing layout thrashing on Chrome iOS
 
 
         
@@ -1290,14 +1264,8 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
 請使用Safari 或 Chrome 瀏覽此網頁",8000); lsSet('dogMap_firstTimeTipShown','true');} 
                 
                 requestWakeLock(); resetPowerSavingTimer(); 
-                forceResetViewport();
-                lockViewportHeight();
                 logDebug("finishUIReveal_middle");
-                setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 50);
-                setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 150);
-                setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 300);
-                setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 600);
-                setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 1000);
+                if (typeof map !== 'undefined' && map) map.invalidateSize();
             }, 600);
         }
         function handleValidPosition(lat,lng,ts) {
