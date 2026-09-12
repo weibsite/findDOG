@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FindDOG - TEST 5</title>
+    <title>FindDOG - TEST 6</title>
     <style>
         * { box-sizing: border-box; }
         html, body {
             margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            position: fixed; inset: 0; overflow: hidden;
+            width: 100%; height: 100dvh; /* Use 100dvh so it respects the URL bar */
+            overflow-x: hidden;
+            overflow-y: auto; /* ALLOW SCROLLING to prevent compositor desync */
             background-color: #1a202c;
             color: white; font-family: sans-serif;
+            /* DO NOT USE POSITION FIXED HERE */
         }
         
         #mobile-top-bar {
@@ -81,7 +83,7 @@
             setTimeout(() => {
                 document.getElementById('startup-overlay').style.display = 'none';
                 
-                // 強制重置一次視窗，預防萬一
+                // 動畫結束後，強制把任何殘留的滾動拉回頂部
                 window.scrollTo(0,0);
             }, 600);
         });
