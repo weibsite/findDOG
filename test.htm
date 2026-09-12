@@ -2432,5 +2432,21 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         });
     
 </script>
+
+    <button id="floating-debug-btn" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 99999; padding: 20px; font-size: 20px; background: red; color: white; border: 2px solid white; border-radius: 10px;">下載 Debug 日誌</button>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('floating-debug-btn').addEventListener('click', () => {
+                let logs = JSON.parse(localStorage.getItem('debug_logs') || '[]');
+                if(logs.length === 0) { alert("沒有日誌"); return; }
+                let blob = new Blob([JSON.stringify(logs, null, 2)], {type: "application/json"});
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement("a");
+                a.href = url; a.download = "chrome_debug_logs.json";
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            });
+        });
+    </script>
+
 </body>
 </html>
