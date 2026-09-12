@@ -35,10 +35,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100dvh; width: 100vw; overflow-x: hidden; overflow-y: auto; background-color: #1a202c; }
+        html { height: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
 body {
-    margin: 0; padding: 0; width: 100vw; height: 100dvh;
-    overflow-x: hidden; overflow-y: auto;
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
     background-color: #1a202c; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
     touch-action: none; -webkit-text-size-adjust: none;
@@ -1263,16 +1264,20 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
         }
         function finishUIReveal() {
-            if(document.activeElement) { document.activeElement.blur(); }
+            // 延遲執行隱藏歡迎畫面，等待 iOS 鍵盤完全收合
+            if(document.activeElement) document.activeElement.blur();
             let nameInput = document.getElementById('user-name-input');
-            if(nameInput) { nameInput.blur(); }
-            let startBtn = document.getElementById('master-start-btn');
-            if(startBtn) { startBtn.innerText = "載入中..."; }
-
+            if(nameInput) nameInput.blur();
+            
             setTimeout(() => {
-                $('startup-overlay').style.display='none';
-                window.scrollTo(0, 0);
-                 handled by timeout */ isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
+                let overlay = document.getElementById('startup-overlay');
+                if (overlay) overlay.style.display = 'none';
+                forceResetViewport();
+            }, 600);
+
+            logDebug("finishUIReveal_start");
+            logDebug("finishUIReveal_start"); 
+            /* $('startup-overlay').style.display='none'; handled by timeout */ isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
             if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
             
             if(window.innerWidth<=640) {
@@ -1293,9 +1298,6 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 1000);
         }
         
-        
-            }, 600);
-        }
         function handleValidPosition(lat,lng,ts) {
             hide('gps-warning'); let isFirstLock=!localHistory.length; if(isSpectatorMode)return;
             if(isFirstLock){map.setView([lat,lng],17); lastSetViewTime1=ts;}
