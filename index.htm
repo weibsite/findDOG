@@ -35,14 +35,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body {
-    margin: 0; padding: 0; width: 100%; height: 100dvh;
-    overflow: hidden;
-    background-color: #1a202c; /* 改為與地圖同色，避免露出藍邊 */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
-    touch-action: none; -webkit-text-size-adjust: none;
+        html {
+    height: 100%;
+    
 }
 body {
+    margin: 0; padding: 0; width: 100%;
+    height: 100%;
+    
+    
+    overflow: hidden;
+    background-color: #1a202c; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
+    touch-action: none; -webkit-text-size-adjust: none;
     display: flex;
     flex-direction: column;
 }
@@ -350,7 +355,21 @@ body {
             sessionStorage.setItem('mobile_auto_reloaded', '1');
             window.location.reload();
         }
-    </script>
+    
+        // 強制鎖定高度，徹底解決 iOS Safari 權限彈窗導致的版面偏移 Bug
+        function lockViewportHeight() {
+            document.documentElement.style.height = window.innerHeight + 'px';
+            document.body.style.height = window.innerHeight + 'px';
+            if (typeof map !== 'undefined' && map) {
+                map.invalidateSize();
+            }
+        }
+        window.addEventListener('resize', lockViewportHeight);
+        window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
+        document.addEventListener('DOMContentLoaded', lockViewportHeight);
+        setInterval(lockViewportHeight, 1000); // 終極保險：每秒校正一次
+
+</script>
 </head>
 
 <body>
@@ -1083,6 +1102,8 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
                 }, 1000);
             }
             requestWakeLock(); resetPowerSavingTimer(); 
+            setTimeout(()=>{ if(map) map.invalidateSize(); }, 100);
+            setTimeout(()=>{ if(map) map.invalidateSize(); }, 500);
         }
         
         function handleValidPosition(lat,lng,ts) {
