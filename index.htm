@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <!-- 1. 瀏覽器標籤頁的標題 -->
     <title>尋寵地圖 | 找回毛小孩的路</title>
@@ -35,10 +35,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
+        html { height: 100dvh; width: 100vw; position: fixed; inset: 0; overflow: hidden; background-color: #1a202c; }
 body {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    margin: 0; padding: 0; width: 100vw; height: 100dvh;
+    position: fixed; inset: 0;
     overflow: hidden;
     background-color: #1a202c; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
@@ -446,14 +446,10 @@ body {
         }
         
         function lockViewportHeight() {
-            logDebug("before_lockViewportHeight");
-            logDebug("before_lockViewportHeight");
-            // 先修正偏移
             forceResetViewport();
             
+            // 讓 CSS 100dvh 處理 body，JS 專注於裁切地圖
             let h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            document.documentElement.style.height = h + 'px';
-            document.body.style.height = h + 'px';
             
             let topBar = document.getElementById('mobile-top-bar');
             let bottomBar = document.getElementById('mobile-bottom-bar');
