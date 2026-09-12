@@ -118,7 +118,7 @@ body {
 
         /* --- 底部操作列 --- */
         #mobile-bottom-bar {
-            position: relative; z-index: 2000; flex-shrink: 0; order: 3;
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 2000;
             display: none; /* JS show on mobile */
             flex-direction: column;
             background: rgba(26, 32, 44, 0.88);
@@ -204,7 +204,7 @@ body {
 
         /* --- 頂部薄條 --- */
         #mobile-top-bar {
-            position: relative; z-index: 2000; flex-shrink: 0; order: 1;
+            position: absolute; top: 0; left: 0; right: 0; z-index: 2000;
             display: none; /* JS show on mobile */
             flex-direction: column; justify-content: center;
             height: 40px; padding: 0 8px;
@@ -356,13 +356,28 @@ body {
             window.location.reload();
         }
     
-        // 強制鎖定高度，徹底解決 iOS Safari 權限彈窗導致的版面偏移 Bug
+        // 強制鎖定高度與絕對定位，徹底解決 iOS Safari 任何排版 Bug
         function lockViewportHeight() {
-            document.documentElement.style.height = window.innerHeight + 'px';
-            document.body.style.height = window.innerHeight + 'px';
-            if (typeof map !== 'undefined' && map) {
-                map.invalidateSize();
+            let h = window.innerHeight;
+            document.documentElement.style.height = h + 'px';
+            document.body.style.height = h + 'px';
+            
+            let topBar = document.getElementById('mobile-top-bar');
+            let bottomBar = document.getElementById('mobile-bottom-bar');
+            let mapContainer = document.getElementById('map-container');
+            
+            if (mapContainer) {
+                if (window.innerWidth <= 640 && topBar && bottomBar && window.getComputedStyle(topBar).display !== 'none') {
+                    let topH = topBar.offsetHeight || 40;
+                    let botH = bottomBar.offsetHeight || 60;
+                    mapContainer.style.top = topH + 'px';
+                    mapContainer.style.height = (h - topH - botH) + 'px';
+                } else {
+                    mapContainer.style.top = '0px';
+                    mapContainer.style.height = h + 'px';
+                }
             }
+            if (typeof map !== 'undefined' && map) map.invalidateSize();
         }
         window.addEventListener('resize', lockViewportHeight);
         window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
