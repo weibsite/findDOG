@@ -528,7 +528,7 @@ body {
     </div>
 
     <div id="desktop-loc-hint" class="hidden fixed top-8 left-1/2 transform -translate-x-1/2 z-[50001] bg-yellow-400 text-black font-black px-8 py-4 border-4 border-black shadow-[6px_6px_0px_#1a202c] animate-bounce pointer-events-none text-xl text-center whitespace-nowrap">⬆️ 請點選上方「允許」以存取位置資訊 ⬆️</div>
-    <div id="startup-overlay" class="absolute inset-0 z-[50000] bg-black/80 flex items-center justify-center transition-opacity duration-300 overflow-hidden">
+    <div id="startup-overlay" class="hidden" style="display:none !important;">
         <div class="pixel-panel p-6 w-11/12 max-w-md text-center transform transition-transform relative z-10 shadow-[8px_8px_0px_rgba(0,0,0,0.6)]">
             <h2 class="text-2xl font-bold text-gray-900 mb-2">尋寵地圖</h2>
             <p class="text-gray-700 mb-4 text-sm font-bold">▶ 縮放地圖可觀看所有動物的搜尋狀況 ◀<br><br>請輸入稱呼並允許定位，您的移動將以像素方塊驅散周圍迷霧！<br><br><span class="text-red-500 text-xs">⚠️ 建議使用 Safari / Chrome 瀏覽器開啟，<br>以免從 LINE 開啟會造成紀錄遺失！</span></p>
@@ -1122,7 +1122,18 @@ const showConfirm=(msg,cb)=>{text('confirm-modal-text',msg); show('confirm-modal
             });
             
             if(isAdmin){show('admin-panel');} 
-            if(lsGet('dogMap_userName')){currentUserName=escapeHTML(lsGet('dogMap_userName')); dbUserColor=lsGet('dogMap_userColor')||generateRandomColor(); if(!lsGet('dogMap_userColor'))lsSet('dogMap_userColor',dbUserColor); if(localHistory.length){allUsersData[myUid]={userName:currentUserName,color:dbUserColor,history:[...localHistory],project:currentProjectKey,total_steps:Math.floor(myTotalSteps)}; renderMap(); updateStepsCounterUI();} if($('profile-edit-trigger'))$('profile-edit-trigger').style.backgroundColor=dbUserColor; loadLotteryState(); connectWebSocket(); finishUIReveal(); text('toast-text',"自動定位..."); startLocationServices(true);} else show('startup-overlay');
+            // 【測試版修改】完全移除歡迎畫面，直接強制進入地圖
+              currentUserName = "測試員";
+              dbUserColor = "#ff0000";
+              lsSet('dogMap_userName', currentUserName);
+              lsSet('dogMap_userColor', dbUserColor);
+              if($('profile-edit-trigger')) $('profile-edit-trigger').style.backgroundColor = dbUserColor;
+              loadLotteryState(); 
+              connectWebSocket(); 
+              finishUIReveal(); 
+              text('toast-text', "定位中..."); 
+              startLocationServices(true);
+              
             
             let mapLastTapTime = 0;
             $('map-container').addEventListener('touchend', e => {
