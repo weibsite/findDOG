@@ -423,7 +423,10 @@ body {
         logDebug('page_load');
 
         // 解決手機瀏覽器初次載入時 viewport 異常導致上下方 UI 跑位問題 (自動刷新一次)
-        
+        if (window.innerWidth <= 640 && !sessionStorage.getItem('mobile_auto_reloaded')) {
+            sessionStorage.setItem('mobile_auto_reloaded', '1');
+            window.location.reload();
+        }
     
         
         // === Chrome iOS Visual Viewport 偏移修正 ===
@@ -919,7 +922,12 @@ body {
         const generateRandomColor = () => { const c = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4']; return c[Math.floor(Math.random() * c.length)]; };
         
         
-/* Removed rogue setInterval scrolling */
+// Fix iOS Safari permission prompt shift bug
+setInterval(() => {
+    if (window.scrollY > 0) {
+        window.scrollTo(0, 0);
+    }
+}, 500);
 
 const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -1245,8 +1253,8 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             if(startBtn) { startBtn.innerText = "載入中..."; }
 
             setTimeout(() => {
-                $('startup-overlay').style.opacity = '0'; $('startup-overlay').style.pointerEvents = 'none'; 
-                // window.scrollTo removed
+                $('startup-overlay').style.display='none'; 
+                window.scrollTo(0,0);
                 isTrackingStarted=true; 
                 ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); 
                 updateGiftUI(); 
