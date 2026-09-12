@@ -480,19 +480,29 @@ body {
         setInterval(lockViewportHeight, 1000);
 
 
+        
         document.addEventListener('DOMContentLoaded', () => {
+            function downloadLogs(e) {
+                e.preventDefault();
+                let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window._debugLogs, null, 2));
+                let dlAnchorElem = document.createElement('a');
+                dlAnchorElem.setAttribute("href", dataStr);
+                dlAnchorElem.setAttribute("download", "chrome_debug_logs.json");
+                dlAnchorElem.click();
+                alert("日誌已下載，請傳送給開發人員");
+            }
+            
             if(document.getElementById('download-debug-log-btn')) {
-                document.getElementById('download-debug-log-btn').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window._debugLogs, null, 2));
-                    let dlAnchorElem = document.createElement('a');
-                    dlAnchorElem.setAttribute("href", dataStr);
-                    dlAnchorElem.setAttribute("download", "chrome_debug_logs.json");
-                    dlAnchorElem.click();
-                    alert("日誌已下載，請傳送給開發人員");
-                });
+                document.getElementById('download-debug-log-btn').addEventListener('click', downloadLogs);
+            }
+            if(document.getElementById('mobile-online-panel')) {
+                document.getElementById('mobile-online-panel').addEventListener('click', downloadLogs);
+            }
+            if(document.getElementById('desktop-online-panel')) {
+                document.getElementById('desktop-online-panel').addEventListener('click', downloadLogs);
             }
         });
+
 </script>
 </head>
 
