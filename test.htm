@@ -343,15 +343,49 @@ body {
 
 
     <script>
+        // ULTIMATE WELDING SCRIPT
+        function lockViewportHeight() {
+            // override to do nothing, our interval handles it
+        }
         function forceResetViewport() {
             window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
         }
-        function lockViewportHeight() {
+        
+        setInterval(() => {
             window.scrollTo(0, 0);
-            if (typeof map !== 'undefined' && map) map.invalidateSize();
-        }
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+            
+            let topBar = document.getElementById('mobile-top-bar');
+            let bottomBar = document.getElementById('mobile-bottom-bar');
+            let mapContainer = document.getElementById('map-container');
+            
+            if (topBar && bottomBar && mapContainer) {
+                let vv = window.visualViewport;
+                let vTop = vv ? vv.offsetTop : 0;
+                let vHeight = vv ? vv.height : window.innerHeight;
+                
+                // Force properties
+                topBar.style.position = 'fixed';
+                topBar.style.left = '0px';
+                topBar.style.width = '100%';
+                topBar.style.top = vTop + 'px';
+                
+                let topH = topBar.offsetHeight || 40;
+                let botH = bottomBar.offsetHeight || 60;
+                
+                bottomBar.style.position = 'fixed';
+                bottomBar.style.left = '0px';
+                bottomBar.style.width = '100%';
+                bottomBar.style.top = (vTop + vHeight - botH) + 'px';
+                
+                mapContainer.style.position = 'fixed';
+                mapContainer.style.left = '0px';
+                mapContainer.style.width = '100%';
+                mapContainer.style.top = (vTop + topH) + 'px';
+                mapContainer.style.height = (vHeight - topH - botH) + 'px';
+            }
+        }, 50); // EVERY 50 MILLISECONDS!
 
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
