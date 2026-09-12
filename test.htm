@@ -35,17 +35,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100%; width: 100%; overflow-x: hidden; overflow-y: auto; background-color: #1a202c; }
+        html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #1a202c; }
 body {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    overflow-x: hidden; overflow-y: auto;
-    background-color: #1a202c; 
+    margin: 0; padding: 0; width: 100vw; height: 100vh;
+    overflow: hidden;
+    background-color: #1a202c;
+    display: flex; flex-direction: column;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
     touch-action: none; -webkit-text-size-adjust: none;
 }
         input, textarea, select { touch-action: manipulation; font-family: inherit; }
         
-        #map-container { position: fixed; left: 0; right: 0; overflow: hidden; z-index: 1000; }
+        #map-container { position: relative; flex: 1 1 auto; order: 2; overflow: hidden; left: 0; right: 0; overflow: hidden; z-index: 1000; }
         #map { width: 100%; height: 100%; background-color: #1a202c; }
         .pixel-panel { background-color: white; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; }
         .pixel-btn { background-color: #f59e0b; color: #1a202c; border: 2px solid #1a202c; box-shadow: 3px 3px 0px #1a202c; border-radius: 0px !important; transition: all 0.1s; text-transform: uppercase; font-weight: 900; cursor: pointer; font-family: 'Courier New', Courier, monospace; }
@@ -110,8 +111,9 @@ body {
 
         /* --- 底部操作列 --- */
         #mobile-bottom-bar {
-            position: fixed; bottom: 0; left: 0; right: 0; z-index: 2000;
+            position: relative; z-index: 2000; order: 3;
             display: none; /* JS show on mobile */
+            flex: 0 0 auto;
             flex-direction: column;
             background: rgba(26, 32, 44, 0.88);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -196,8 +198,9 @@ body {
 
         /* --- 頂部薄條 --- */
         #mobile-top-bar {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            position: relative; z-index: 2000; order: 1;
             display: none; /* JS show on mobile */
+            flex: 0 0 auto;
             flex-direction: column; justify-content: center;
             height: 40px; padding: 0 8px;
             padding-top: env(safe-area-inset-top, 0px);
@@ -446,7 +449,6 @@ body {
         
         function lockViewportHeight() {
             logDebug("before_lockViewportHeight");
-            logDebug("before_lockViewportHeight");
             // 先修正偏移
             forceResetViewport();
             
@@ -459,18 +461,12 @@ body {
             let mapContainer = document.getElementById('map-container');
             
             if (mapContainer) {
-                if (window.innerWidth <= 640 && topBar && bottomBar 
-                    && window.getComputedStyle(topBar).display !== 'none') {
-                    let topH = topBar.offsetHeight || 40;
-                    let botH = bottomBar.offsetHeight || 60;
-                    mapContainer.style.top = topH + 'px';
-                    mapContainer.style.height = (h - topH - botH) + 'px';
-                } else {
-                    mapContainer.style.top = '0px';
-                    mapContainer.style.height = h + 'px';
-                }
-            }
-            if (typeof map !== 'undefined' && map) map.invalidateSize();
+                  // Flexbox layout: map-container uses flex:1 to auto-fill
+                  // No manual height/top calculation needed
+                  mapContainer.style.top = '';
+                  mapContainer.style.height = '';
+              }
+              if (typeof map !== 'undefined' && map) map.invalidateSize();
             logDebug("after_lockViewportHeight");
         }
         window.addEventListener('resize', lockViewportHeight);
