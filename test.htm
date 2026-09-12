@@ -35,10 +35,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100dvh; width: 100vw; overflow: hidden; background-color: #1a202c; }
+        html { height: 100dvh; width: 100vw; overflow-x: hidden; overflow-y: auto; background-color: #1a202c; }
 body {
     margin: 0; padding: 0; width: 100vw; height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden; overflow-y: auto;
     background-color: #1a202c; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
     touch-action: none; -webkit-text-size-adjust: none;
@@ -424,16 +424,7 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport() {
-            // 1. 強制重置所有可能的捲動/偏移
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            
-            // 2. Chrome iOS 的 Visual Viewport 偏移修正
-            if (window.visualViewport && window.visualViewport.offsetTop > 0) {
-                window.scrollBy(0, -window.visualViewport.offsetTop);
-            }
+        function forceResetViewport() { /* disabled */ }
         }
         
         window.addEventListener('scroll', forceResetViewport, { passive: true });
@@ -444,24 +435,15 @@ body {
             window.visualViewport.addEventListener('resize', forceResetViewport);
         }
         
-        function lockViewportHeight() {
-            forceResetViewport();
-            
-            // 讓 CSS 100dvh 處理 body，JS 專注於裁切地圖
-            let h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            
-            let topBar = document.getElementById('mobile-top-bar');
-            let bottomBar = document.getElementById('mobile-bottom-bar');
-            let mapContainer = document.getElementById('map-container');
-            
-            if (mapContainer) {
-                if (window.innerWidth <= 640 && topBar && bottomBar 
-                    && window.getComputedStyle(topBar).display !== 'none') {
-                    let topH = topBar.offsetHeight || 40;
-                    let botH = bottomBar.offsetHeight || 60;
-                    mapContainer.style.top = topH + 'px';
-                    mapContainer.style.height = (h - topH - botH) + 'px';
-                } else {
+        function lockViewportHeight() { 
+    // disabled 
+    let topBar = document.getElementById('mobile-top-bar');
+    let mapContainer = document.getElementById('map-container');
+    if (mapContainer && topBar) {
+        mapContainer.style.top = topBar.offsetHeight + 'px';
+        mapContainer.style.height = 'calc(100dvh - ' + topBar.offsetHeight + 'px - 60px)';
+    }
+} else {
                     mapContainer.style.top = '0px';
                     mapContainer.style.height = h + 'px';
                 }
