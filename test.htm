@@ -343,6 +343,10 @@ body {
 
 
     <script>
+// SAFE FUNCTIONS
+window.lockViewportHeight = function() { window.scrollTo(0,0); if (typeof map !== 'undefined' && map) map.invalidateSize(); };
+window.forceResetViewport = function() { window.scrollTo(0,0); };
+
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
         window.logDebug = function(action) {
@@ -425,7 +429,7 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport() {
+        function BAD_forceResetViewport() {
             // 1. 強制重置所有可能的捲動/偏移
             window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
@@ -445,7 +449,7 @@ body {
             window.visualViewport.addEventListener('resize', forceResetViewport);
         }
         
-        function lockViewportHeight() {
+        function BAD_lockViewportHeight() {
             logDebug("before_lockViewportHeight");
             logDebug("before_lockViewportHeight");
             // 先修正偏移
