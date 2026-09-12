@@ -35,10 +35,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100dvh; width: 100vw; position: fixed; inset: 0; overflow: hidden; background-color: #1a202c; }
+        html { height: 100dvh; width: 100vw; overflow: hidden; background-color: #1a202c; }
 body {
     margin: 0; padding: 0; width: 100vw; height: 100dvh;
-    position: fixed; inset: 0;
     overflow: hidden;
     background-color: #1a202c; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Hiragino Sans", sans-serif;
@@ -1260,6 +1259,10 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
         }
         function finishUIReveal() {
+            if(document.activeElement) { document.activeElement.blur(); }
+            let nameInput = document.getElementById('user-name-input');
+            if(nameInput) { nameInput.blur(); }
+
             logDebug("finishUIReveal_start");
             logDebug("finishUIReveal_start"); 
             $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
