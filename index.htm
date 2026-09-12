@@ -343,6 +343,76 @@ body {
 
 
     <script>
+        // === 螢幕與排版除錯日誌系統 ===
+        window._debugLogs = [];
+        window.logDebug = function(action) {
+            try {
+                let topBar = document.getElementById('mobile-top-bar');
+                let botBar = document.getElementById('mobile-bottom-bar');
+                let mapC = document.getElementById('map-container');
+                let vv = window.visualViewport;
+                
+                let logEntry = {
+                    time: new Date().toISOString(),
+                    action: action,
+                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
+                    document: { 
+                        bodyScroll: document.body.scrollTop, 
+                        docScroll: document.documentElement.scrollTop,
+                        bodyH: document.body.offsetHeight,
+                        docH: document.documentElement.offsetHeight
+                    },
+                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
+                    elements: {
+                        topBar: topBar ? topBar.getBoundingClientRect() : null,
+                        botBar: botBar ? botBar.getBoundingClientRect() : null,
+                        map: mapC ? mapC.getBoundingClientRect() : null,
+                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
+                    }
+                };
+                window._debugLogs.push(logEntry);
+            } catch(e) {
+                console.error("Log error", e);
+            }
+        };
+        logDebug('page_load');
+
+        // === 螢幕與排版除錯日誌系統 ===
+        window._debugLogs = [];
+        window.logDebug = function(action) {
+            try {
+                let topBar = document.getElementById('mobile-top-bar');
+                let botBar = document.getElementById('mobile-bottom-bar');
+                let mapC = document.getElementById('map-container');
+                let vv = window.visualViewport;
+                
+                let logEntry = {
+                    time: new Date().toISOString(),
+                    action: action,
+                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
+                    document: { 
+                        bodyScroll: document.body.scrollTop, 
+                        docScroll: document.documentElement.scrollTop,
+                        bodyH: document.body.offsetHeight,
+                        docH: document.documentElement.offsetHeight
+                    },
+                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
+                    elements: {
+                        topBar: topBar ? topBar.getBoundingClientRect() : null,
+                        botBar: botBar ? botBar.getBoundingClientRect() : null,
+                        map: mapC ? mapC.getBoundingClientRect() : null,
+                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
+                    }
+                };
+                window._debugLogs.push(logEntry);
+            } catch(e) {
+                console.error("Log error", e);
+            }
+        };
+        
+        // 初始記錄
+        logDebug('page_load');
+
         // 解決手機瀏覽器初次載入時 viewport 異常導致上下方 UI 跑位問題 (自動刷新一次)
         if (window.innerWidth <= 640 && !sessionStorage.getItem('mobile_auto_reloaded')) {
             sessionStorage.setItem('mobile_auto_reloaded', '1');
@@ -376,6 +446,8 @@ body {
         }
         
         function lockViewportHeight() {
+            logDebug("before_lockViewportHeight");
+            logDebug("before_lockViewportHeight");
             // 先修正偏移
             forceResetViewport();
             
@@ -400,12 +472,27 @@ body {
                 }
             }
             if (typeof map !== 'undefined' && map) map.invalidateSize();
+            logDebug("after_lockViewportHeight");
         }
         window.addEventListener('resize', lockViewportHeight);
         window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
         document.addEventListener('DOMContentLoaded', lockViewportHeight);
         setInterval(lockViewportHeight, 1000);
 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if(document.getElementById('download-debug-log-btn')) {
+                document.getElementById('download-debug-log-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window._debugLogs, null, 2));
+                    let dlAnchorElem = document.createElement('a');
+                    dlAnchorElem.setAttribute("href", dataStr);
+                    dlAnchorElem.setAttribute("download", "chrome_debug_logs.json");
+                    dlAnchorElem.click();
+                    alert("日誌已下載，請傳送給開發人員");
+                });
+            }
+        });
 </script>
 </head>
 
@@ -574,6 +661,7 @@ body {
             <button id="add-prize-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-pink-500 text-white">🎁 新增獎項</button>
             <button id="manage-prizes-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-teal-500 text-white">🏆 管理獎項</button>
             <button id="manage-blacklist-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-red-800 text-white">🚫 管理黑名單</button>
+              <button id="download-debug-log-btn" class="pixel-btn flex-1 min-w-[105px] p-2 text-xs bg-gray-700 text-white shadow-[3px_3px_0px_#000]">🐛 下載除錯日誌</button>
             
             <div class="w-full flex gap-2 mt-2">
                 <button id="expand-admin-btn" class="pixel-btn flex-1 p-2 text-xs bg-blue-600 text-white border-2 border-black font-bold hidden">🔽 展開面板</button>
@@ -795,6 +883,42 @@ body {
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // === 螢幕與排版除錯日誌系統 ===
+        window._debugLogs = [];
+        window.logDebug = function(action) {
+            try {
+                let topBar = document.getElementById('mobile-top-bar');
+                let botBar = document.getElementById('mobile-bottom-bar');
+                let mapC = document.getElementById('map-container');
+                let vv = window.visualViewport;
+                
+                let logEntry = {
+                    time: new Date().toISOString(),
+                    action: action,
+                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
+                    document: { 
+                        bodyScroll: document.body.scrollTop, 
+                        docScroll: document.documentElement.scrollTop,
+                        bodyH: document.body.offsetHeight,
+                        docH: document.documentElement.offsetHeight
+                    },
+                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
+                    elements: {
+                        topBar: topBar ? topBar.getBoundingClientRect() : null,
+                        botBar: botBar ? botBar.getBoundingClientRect() : null,
+                        map: mapC ? mapC.getBoundingClientRect() : null,
+                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
+                    }
+                };
+                window._debugLogs.push(logEntry);
+            } catch(e) {
+                console.error("Log error", e);
+            }
+        };
+        
+        // 初始記錄
+        logDebug('page_load');
+
         // --- 核心優化：DOM 與共用方法輔助 ---
         const $ = id => document.getElementById(id), show = id => $(id)?.classList.remove('hidden'), hide = id => $(id)?.classList.add('hidden');
         const text = (id, str) => { if($(id)) $(id).innerText = str; }, html = (id, str) => { if($(id)) $(id).innerHTML = str; };
@@ -1129,7 +1253,9 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
 
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
         }
-        function finishUIReveal() { 
+        function finishUIReveal() {
+            logDebug("finishUIReveal_start");
+            logDebug("finishUIReveal_start"); 
             $('startup-overlay').style.display='none'; isTrackingStarted=true; ['status-toast','project-select-wrapper','locate-btn','spectator-btn','toggle-fog-btn','nav-pin-btn','force-upload-btn','my-route-btn','eva-grid-btn'].forEach(show); updateGiftUI(); text('toast-text',"位置同步成功"); 
             if(!lsGet('dogMap_firstTimeTipShown')){showCenterToast("⚠️ 如果關閉畫面將不會記錄路徑。\n\n請使用 Safari 或 Chrome 開啟本網頁。",8000); lsSet('dogMap_firstTimeTipShown','true');} 
             
@@ -1143,6 +1269,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             // 必須在多個時間點連續強制修正，才能完全攔截
             forceResetViewport();
             lockViewportHeight();
+            logDebug("finishUIReveal_middle");
             setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 50);
             setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 150);
             setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 300);
