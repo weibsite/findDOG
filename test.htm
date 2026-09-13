@@ -437,12 +437,12 @@ body {
             }
         }
         
-        /* window.addEventListener('scroll', forceResetViewport, { passive: true }); */
+        /* window.addEventListener('scroll', forceResetViewport); */
         
         // 監聽 Visual Viewport 的偏移（Chrome iOS 專用）
         if (window.visualViewport) {
-            /* window.visualViewport.addEventListener('scroll', forceResetViewport); */
-            /* window.visualViewport.addEventListener('resize', forceResetViewport); */
+            /* vv scroll disabled */
+            /* vv resize disabled */
         }
         
         function lockViewportHeight() {
@@ -475,7 +475,7 @@ body {
             logDebug("after_lockViewportHeight");
         }
         /* window.addEventListener('resize', lockViewportHeight); */
-        /* window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200)); */
+        /* orientationchange disabled */
         document.addEventListener('DOMContentLoaded', lockViewportHeight);
         /* setInterval(lockViewportHeight, 1000); */
 
@@ -1287,7 +1287,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             forceResetViewport();
             lockViewportHeight();
             logDebug("finishUIReveal_middle");
-/* timeouts removed per user hypothesis */
+/* timeouts removed */
         }
         
         function handleValidPosition(lat,lng,ts) {
@@ -2431,5 +2431,27 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
         });
     
 </script>
+
+<!-- DEBUG CONTROL PANEL -->
+<div style="position: fixed; top: 20%; right: 10px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 10px; border: 2px solid white;">
+    <button onclick="window.scrollTo(0,0); document.body.scrollTop=0; document.documentElement.scrollTop=0;" style="padding: 15px; font-size: 16px; font-weight: bold; background: #3b82f6; color: white; border-radius: 5px; text-align: center;">1. ScrollTo(0,0)</button>
+    <button onclick="lockViewportHeight()" style="padding: 15px; font-size: 16px; font-weight: bold; background: #10b981; color: white; border-radius: 5px; text-align: center;">2. LockHeight</button>
+    <button onclick="forceResetViewport()" style="padding: 15px; font-size: 16px; font-weight: bold; background: #f59e0b; color: white; border-radius: 5px; text-align: center;">3. ForceReset</button>
+    <button onclick="window.scrollBy(0, -window.visualViewport.offsetTop)" style="padding: 15px; font-size: 16px; font-weight: bold; background: #8b5cf6; color: white; border-radius: 5px; text-align: center;">4. ScrollBy VV</button>
+    <div id="debug-info" style="color: white; font-size: 12px; font-family: monospace; white-space: pre-wrap;"></div>
+</div>
+
+<script>
+setInterval(() => {
+    let vv = window.visualViewport;
+    let info = `scrollY: ${window.scrollY}
+body.top: ${document.body.scrollTop}
+vv.top: ${vv ? vv.offsetTop : 'N/A'}
+vv.h: ${vv ? vv.height : 'N/A'}
+in.h: ${window.innerHeight}`;
+    document.getElementById('debug-info').textContent = info;
+}, 500);
+</script>
+
 </body>
 </html>
