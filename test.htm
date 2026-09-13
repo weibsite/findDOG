@@ -35,7 +35,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html { height: 100%; overflow: hidden; padding-top: env(safe-area-inset-top, 50px); }
+        html { height: 100%; }
 body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -511,6 +511,7 @@ window.forceResetViewport = function() { window.scrollTo(0,0); };
 </head>
 
 <body>
+<div id="absolute-wrapper" style="position: absolute; top: 0; left: 0; width: 100%; overflow: hidden; background: #1a202c; z-index: 9999;">
     <div id="map-container"><div id="map"></div></div>
     
     <div id="power-saving-overlay" class="hidden fixed inset-0 z-[35000] bg-black touch-none flex flex-col items-center justify-center cursor-pointer">
@@ -2450,6 +2451,42 @@ window.forceResetViewport = function() {
     window.scrollTo(0,0);
 };
 </script>
+
+<script>
+// CLASSIC ABSOLUTE TRACKING WRAPPER
+function syncWrapper() {
+    let wrapper = document.getElementById('absolute-wrapper');
+    if (!wrapper) return;
+    
+    // Exact innerHeight prevents any overflow
+    wrapper.style.height = window.innerHeight + 'px';
+    
+    // Offset by scrollY so it stays visually glued to the screen
+    // Also add visualViewport.offsetTop if it exists and is non-zero
+    let vvTop = (window.visualViewport && window.visualViewport.offsetTop) ? window.visualViewport.offsetTop : 0;
+    wrapper.style.top = (window.scrollY + vvTop) + 'px';
+    
+    // Force toolbars
+    let mapC = document.getElementById('map-container');
+    let botBar = document.getElementById('mobile-bottom-bar');
+    if (mapC && botBar) {
+        mapC.style.height = (window.innerHeight - 40 - 60) + 'px';
+    }
+}
+
+window.addEventListener('resize', syncWrapper);
+window.addEventListener('scroll', syncWrapper, {passive: true});
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncWrapper);
+    window.visualViewport.addEventListener('scroll', syncWrapper);
+}
+setInterval(syncWrapper, 50);
+
+// Override any old JS
+window.lockViewportHeight = function() { syncWrapper(); if (typeof map !== 'undefined' && map) map.invalidateSize(); };
+window.forceResetViewport = function() { syncWrapper(); };
+</script>
 </body>
+
 
 </html>
