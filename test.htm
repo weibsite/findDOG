@@ -2372,7 +2372,11 @@ window.logToScreen = function(msg) {
     let logger = document.getElementById('visual-logger');
     if (!logger) return;
     let div = document.createElement('div');
-    div.textContent = `[${t}ms] ${msg}`;
+    let sy = window.scrollY;
+    let vvt = window.visualViewport ? window.visualViewport.offsetTop : 'X';
+    let vvh = window.visualViewport ? window.visualViewport.height : 'X';
+    let ih = window.innerHeight;
+    div.textContent = `[${t}ms|sy:${sy}|vvt:${vvt}|vvh:${vvh}|ih:${ih}] ${msg}`;
     logger.appendChild(div);
     if(logger.children.length > 500) logger.removeChild(logger.firstChild);
     logger.scrollTop = logger.scrollHeight;
