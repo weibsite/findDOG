@@ -368,16 +368,16 @@ body {
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
         function forceResetViewport() {
-            // 1. 強制重置所有可能的捲動/偏移
-            if(window.scrollY>0)window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            
-            // 2. Chrome iOS 的 Visual Viewport 偏移修正
-            if (window.visualViewport && window.visualViewport.offsetTop > 0) {
-                window.scrollBy(0, -window.visualViewport.offsetTop);
-            }
-        }
+    window.logToScreen(`Exec: forceResetViewport`);
+    if (window.scrollY > 0) {
+        window.logToScreen(`Action: scrollTo(0,0) due to scrollY ${window.scrollY}`);
+        window.scrollTo(0, 0);
+    }
+    if (window.visualViewport && window.visualViewport.offsetTop > 0) {
+        window.logToScreen(`Action: scrollBy(0, -${window.visualViewport.offsetTop}) due to offsetTop`);
+        window.scrollBy(0, -window.visualViewport.offsetTop);
+    }
+}
         
         
           let viewportTimeout = null;
@@ -1214,9 +1214,8 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             requestWakeLock(); resetPowerSavingTimer(); 
             // Chrome iOS 在隱藏歡迎視窗的瞬間會偷偷偏移 Visual Viewport
             // 必須在多個時間點連續強制修正，才能完全攔截
-            forceResetViewport();
-            lockViewportHeight();
-            logDebug("finishUIReveal_middle");
+            /* Removed synchronous layout fix */
+              logDebug("finishUIReveal_middle");
             }
         
         function handleValidPosition(lat,lng,ts) {
