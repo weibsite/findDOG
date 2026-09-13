@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <script>if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
@@ -438,12 +437,12 @@ body {
             }
         }
         
-        window.addEventListener('scroll', forceResetViewport, { passive: true });
+        /* window.addEventListener('scroll', forceResetViewport, { passive: true }); */
         
         // 監聽 Visual Viewport 的偏移（Chrome iOS 專用）
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('scroll', forceResetViewport);
-            window.visualViewport.addEventListener('resize', forceResetViewport);
+            /* window.visualViewport.addEventListener('scroll', forceResetViewport); */
+            /* window.visualViewport.addEventListener('resize', forceResetViewport); */
         }
         
         function lockViewportHeight() {
@@ -475,10 +474,10 @@ body {
             if (typeof map !== 'undefined' && map) map.invalidateSize();
             logDebug("after_lockViewportHeight");
         }
-        window.addEventListener('resize', lockViewportHeight);
-        window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200));
+        /* window.addEventListener('resize', lockViewportHeight); */
+        /* window.addEventListener('orientationchange', () => setTimeout(lockViewportHeight, 200)); */
         document.addEventListener('DOMContentLoaded', lockViewportHeight);
-        setInterval(lockViewportHeight, 1000);
+        /* setInterval(lockViewportHeight, 1000); */
 
 
         
@@ -942,7 +941,7 @@ body {
         
         
 // Fix iOS Safari permission prompt shift bug
-/* rogue interval disabled */
+/* rogue 500ms removed */
 
 const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -1288,11 +1287,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             forceResetViewport();
             lockViewportHeight();
             logDebug("finishUIReveal_middle");
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 50);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 150);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 300);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 600);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 1000);
+/* timeouts removed per user hypothesis */
         }
         
         function handleValidPosition(lat,lng,ts) {
