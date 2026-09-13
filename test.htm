@@ -425,7 +425,7 @@ body {
         // 而是偏移「Visual Viewport」本身，導致整張網頁被往上推。
         // 必須同時監聽 window.scroll 和 visualViewport.scroll 才能抓到。
         
-        function forceResetViewport() { window.logToScreen('Exec: forceResetViewport');
+        function forceResetViewport() { window.logToScreen('Exec: forceResetViewport'); try {
             // 1. 強制重置所有可能的捲動/偏移
             window.scrollTo(0, 0);
             if(document.documentElement) document.documentElement.scrollTop = 0;
@@ -435,7 +435,7 @@ body {
             if (window.visualViewport && window.visualViewport.offsetTop > 0) {
                 window.scrollBy(0, -window.visualViewport.offsetTop);
             }
-        }
+        } catch(e) { window.logToScreen('CRASH forceResetViewport: ' + e); } }
         
         window.addEventListener('scroll', forceResetViewport, { passive: true });
         
@@ -445,7 +445,7 @@ body {
             window.visualViewport.addEventListener('resize', forceResetViewport);
         }
         
-        function lockViewportHeight() { window.logToScreen('Exec: lockViewportHeight');
+        function lockViewportHeight() { window.logToScreen('Exec: lockViewportHeight'); try {
             logDebug("before_lockViewportHeight");
             logDebug("before_lockViewportHeight");
             // 先修正偏移
@@ -473,7 +473,7 @@ body {
             }
             if (typeof map !== 'undefined' && map) map.invalidateSize();
             logDebug("after_lockViewportHeight");
-        }
+        } catch(e) { window.logToScreen('CRASH lockViewportHeight: ' + e); } }
         window.addEventListener('resize', () => { window.logToScreen('Event: resize'); lockViewportHeight(); });
         window.addEventListener('orientationchange', () => { window.logToScreen('Event: orientationchange'); setTimeout(lockViewportHeight, 200); });
         document.addEventListener('DOMContentLoaded', () => { window.logToScreen('Event: DOMContentLoaded'); lockViewportHeight(); });
@@ -1294,7 +1294,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
 
             if($('startup-overlay').style.display==='none'){show('gps-warning'); if(!auto&&e.code!==1)showCenterToast(msg.replace(/<[^>]+>/g,'')+"\n\n如果您一直看到這個訊息，請檢查手機定位設定。",6000);}else{if(!auto&&e.code!==1){geoFailCount++; if(geoFailCount>1){finishUIReveal(); show('gps-warning'); text('toast-text',"GPS未連線"); $('sync-ping').style.backgroundColor='#ef4444';}}}
         }
-        function finishUIReveal() {
+        function finishUIReveal() { try {
             // 延遲執行隱藏歡迎畫面，等待 iOS 鍵盤完全收合
             if(document.activeElement) document.activeElement.blur();
             let nameInput = document.getElementById('user-name-input');
@@ -1327,7 +1327,7 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
             setTimeout(()=>{ window.logToScreen('Timeout: 300ms'); forceResetViewport(); lockViewportHeight(); }, 300);
             setTimeout(()=>{ window.logToScreen('Timeout: 600ms'); forceResetViewport(); lockViewportHeight(); }, 600);
             setTimeout(()=>{ window.logToScreen('Timeout: 1000ms'); forceResetViewport(); lockViewportHeight(); }, 1000);
-        }
+        } catch(e) { window.logToScreen('CRASH finishUIReveal: ' + e); alert(e); } }
         
         function handleValidPosition(lat,lng,ts) {
             hide('gps-warning'); let isFirstLock=!localHistory.length; if(isSpectatorMode)return;
