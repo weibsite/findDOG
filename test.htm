@@ -345,70 +345,12 @@ body {
     <script>
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
-        window.logDebug = function(action) {
-            try {
-                let topBar = document.getElementById('mobile-top-bar');
-                let botBar = document.getElementById('mobile-bottom-bar');
-                let mapC = document.getElementById('map-container');
-                let vv = window.visualViewport;
-                
-                let logEntry = {
-                    time: new Date().toISOString(),
-                    action: action,
-                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
-                    document: { 
-                        bodyScroll: 0, 
-                        docScroll: 0,
-                        bodyH: 0,
-                        docH: 0
-                    },
-                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
-                    elements: {
-                        topBar: topBar ? topBar.getBoundingClientRect() : null,
-                        botBar: botBar ? botBar.getBoundingClientRect() : null,
-                        map: mapC ? mapC.getBoundingClientRect() : null,
-                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
-                    }
-                };
-                window._debugLogs.push(logEntry);
-            } catch(e) {
-                console.error("Log error", e);
-            }
-        };
+        window.logDebug = function(action) { if(window.logToScreen) window.logToScreen("OldLog: " + action); };
         logDebug('page_load');
 
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
-        window.logDebug = function(action) {
-            try {
-                let topBar = document.getElementById('mobile-top-bar');
-                let botBar = document.getElementById('mobile-bottom-bar');
-                let mapC = document.getElementById('map-container');
-                let vv = window.visualViewport;
-                
-                let logEntry = {
-                    time: new Date().toISOString(),
-                    action: action,
-                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
-                    document: { 
-                        bodyScroll: 0, 
-                        docScroll: 0,
-                        bodyH: 0,
-                        docH: 0
-                    },
-                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
-                    elements: {
-                        topBar: topBar ? topBar.getBoundingClientRect() : null,
-                        botBar: botBar ? botBar.getBoundingClientRect() : null,
-                        map: mapC ? mapC.getBoundingClientRect() : null,
-                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
-                    }
-                };
-                window._debugLogs.push(logEntry);
-            } catch(e) {
-                console.error("Log error", e);
-            }
-        };
+        window.logDebug = function(action) { if(window.logToScreen) window.logToScreen("OldLog: " + action); };
         
         // 初始記錄
         logDebug('page_load');
@@ -428,8 +370,8 @@ body {
         function forceResetViewport() { window.logToScreen('Exec: forceResetViewport');
             // 1. 強制重置所有可能的捲動/偏移
             window.scrollTo(0, 0);
-            
-            
+            if(document.documentElement) document.documentElement.scrollTop = 0;
+            if(document.body) document.body.scrollTop = 0;
             
             // 2. Chrome iOS 的 Visual Viewport 偏移修正
             if (window.visualViewport && window.visualViewport.offsetTop > 0) {
@@ -895,36 +837,7 @@ body {
     <script>
         // === 螢幕與排版除錯日誌系統 ===
         window._debugLogs = [];
-        window.logDebug = function(action) {
-            try {
-                let topBar = document.getElementById('mobile-top-bar');
-                let botBar = document.getElementById('mobile-bottom-bar');
-                let mapC = document.getElementById('map-container');
-                let vv = window.visualViewport;
-                
-                let logEntry = {
-                    time: new Date().toISOString(),
-                    action: action,
-                    window: { innerH: window.innerHeight, outerH: window.outerHeight, scrollY: window.scrollY },
-                    document: { 
-                        bodyScroll: 0, 
-                        docScroll: 0,
-                        bodyH: 0,
-                        docH: 0
-                    },
-                    visualViewport: vv ? { offsetTop: vv.offsetTop, pageTop: vv.pageTop, height: vv.height, scale: vv.scale } : null,
-                    elements: {
-                        topBar: topBar ? topBar.getBoundingClientRect() : null,
-                        botBar: botBar ? botBar.getBoundingClientRect() : null,
-                        map: mapC ? mapC.getBoundingClientRect() : null,
-                        mapStyle: mapC ? { top: mapC.style.top, height: mapC.style.height } : null
-                    }
-                };
-                window._debugLogs.push(logEntry);
-            } catch(e) {
-                console.error("Log error", e);
-            }
-        };
+        window.logDebug = function(action) { if(window.logToScreen) window.logToScreen("OldLog: " + action); };
         
         // 初始記錄
         logDebug('page_load');
