@@ -369,7 +369,7 @@ body {
         
         function forceResetViewport() {
             // 1. 強制重置所有可能的捲動/偏移
-            window.scrollTo(0, 0);
+            if(window.scrollY>0)window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
             
@@ -395,7 +395,7 @@ body {
             
             let h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
             document.documentElement.style.height = h + 'px';
-            document.body.style.height = h + 'px';
+            
             
             let topBar = document.getElementById('mobile-top-bar');
             let bottomBar = document.getElementById('mobile-bottom-bar');
@@ -856,7 +856,7 @@ body {
 // Fix iOS Safari permission prompt shift bug
 setInterval(() => {
     if (window.scrollY > 0) {
-        window.scrollTo(0, 0);
+        if(window.scrollY>0)window.scrollTo(0, 0);
     }
 }, 500);
 
@@ -1198,18 +1198,15 @@ if(res.uid===myUid){updateStepsCounterUI(); if(res.data.history){localHistory=[.
                     document.querySelectorAll('.collapsible-btn').forEach(b=>{b.classList.add('collapsed'); b.classList.remove('show-desc');});
                 }, 1000);
             }
+            setTimeout(()=>{ window.logToScreen('Timeout: 500ms (Post-Keyboard)'); forceResetViewport(); lockViewportHeight(); }, 500);
+
             requestWakeLock(); resetPowerSavingTimer(); 
             // Chrome iOS 在隱藏歡迎視窗的瞬間會偷偷偏移 Visual Viewport
             // 必須在多個時間點連續強制修正，才能完全攔截
             forceResetViewport();
             lockViewportHeight();
             logDebug("finishUIReveal_middle");
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 50);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 150);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 300);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 600);
-            setTimeout(()=>{ forceResetViewport(); lockViewportHeight(); }, 1000);
-        }
+            }
         
         function handleValidPosition(lat,lng,ts) {
             hide('gps-warning'); let isFirstLock=!localHistory.length; if(isSpectatorMode)return;
