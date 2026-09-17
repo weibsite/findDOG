@@ -32,7 +32,21 @@
     <meta name="twitter:description" content="透過眾人力量，在地圖上標記走失寵物出沒點與搜索軌跡，一起幫毛小孩回家！" />
     <meta name="twitter:image" content="https://finddog.online/image_og1.png" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+// Global fallback listener for images
+window.addEventListener('error', function(e) {
+    if (e.target.tagName && e.target.tagName.toLowerCase() === 'img') {
+        const url = e.target.src;
+        if (url.includes('weibsite.github.io/findDOG')) {
+            const localUrl = url.replace('https://weibsite.github.io/findDOG', getBaseHttpUrl());
+            if (e.target.src !== localUrl) {
+                e.target.src = localUrl;
+            }
+        }
+    }
+}, true);
+
+</script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html { height: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; }
