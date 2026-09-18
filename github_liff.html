@@ -59,7 +59,17 @@
                 }
 
                 const urlParams = new URLSearchParams(window.location.search);
-                const inviter = urlParams.get('inviter');
+                let inviter = urlParams.get('inviter');
+                
+                // 如果是外部瀏覽器，LINE 會把參數塞在 liff.state 裡面
+                if (!inviter && urlParams.has('liff.state')) {
+                    const stateStr = decodeURIComponent(urlParams.get('liff.state'));
+                    // stateStr 會像是 "?inviter=U4e..."
+                    if (stateStr.includes('inviter=')) {
+                        const stateParams = new URLSearchParams(stateStr.replace('?', ''));
+                        inviter = stateParams.get('inviter');
+                    }
+                }
 
                 if (!inviter) {
                     showStatus("這不是一個有效的邀請連結");
