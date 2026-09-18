@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>???隢葉...</title>
-    <!-- 撘 LIFF SDK -->
+    <title>處理邀請中...</title>
+    <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body {
@@ -41,20 +41,20 @@
 <body>
     <div class="container" id="processing-view">
         <div class="loader" id="loader"></div>
-        <h2 id="status">甇????函??隢?隢?????..</h2>
-        <p id="desc">隢?????/p>
+        <h2 id="status">正在處理您的邀請，請稍候片刻...</h2>
+        <p id="desc">請稍候片刻</p>
     </div>
 
     <div class="container" id="dashboard-view" style="display: none;">
-        <h2>?? ?隢葉敹?/h2>
+        <h2>📊 邀請中心</h2>
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="font-size: 16px; margin: 10px 0;">蝮賢???隢?<strong id="stat-total" style="color: #00B900; font-size: 24px;">-</strong> 鈭?/p>
-            <p style="font-size: 16px; margin: 10px 0;">?桀??臬??活?賂?<strong id="stat-avail" style="color: #ff3366; font-size: 24px;">-</strong> 甈?/p>
+            <p style="font-size: 16px; margin: 10px 0;">總共成功邀請：<strong id="stat-total" style="color: #00B900; font-size: 24px;">-</strong> 人</p>
+            <p style="font-size: 16px; margin: 10px 0;">目前可兌換次數：<strong id="stat-avail" style="color: #ff3366; font-size: 24px;">-</strong> 次</p>
         </div>
         
-        <h3>?? ?函?撠惇?隢??</h3>
-        <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="頛銝?..">
-        <button onclick="copyLink()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">銴ˊ???銝血?鈭?/button>
+        <h3>👇 您的專屬邀請連結</h3>
+        <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="載入中...">
+        <button onclick="copyLink()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製連結並分享</button>
     </div>
 
     <script>
@@ -73,7 +73,7 @@
                     ]);
                 } catch (e) {
                     if (e.message === "Timeout") {
-                        showStatus("?????∩?鈭?\n隢Ⅱ隤?LINE 敺 Endpoint URL??);
+                        showStatus("❌ 啟動卡住了！\n請確認 LINE 後台 Endpoint URL。");
                         return;
                     }
                     throw e;
@@ -98,9 +98,10 @@
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
 
-                // 憒??葆 inviter ?嚗誨銵券銝甈⊿?隢?蝔?                if (inviter) {
+                // 如果有帶 inviter 參數，代表這是一次邀請流程
+                if (inviter) {
                     if (inviter === userId) {
-                        showStatus("?⊥?雿輻?芸楛??隢????");
+                        showStatus("無法使用自己的邀請連結喔！");
                         setTimeout(() => liff.closeWindow(), 3000);
                         return;
                     }
@@ -109,16 +110,16 @@
                     if (friendship.friendFlag) {
                         await notifyBackend(inviter, userId);
                     } else {
-                        showStatus("隢??摰撣唾??箏末??");
+                        showStatus("請先加入官方帳號為好友！");
                     }
                 } else {
-                    // 瘝? inviter嚗誨銵其蝙?刻?芸楛暺?嚗＊蝷箏?銵冽
+                    // 沒有 inviter，代表使用者是自己點開，顯示儀表板
                     await showDashboard(userId);
                 }
 
             } catch (err) {
                 console.error("LIFF Initialization failed", err);
-                showStatus("?潛??航炊嚗? + err.message);
+                showStatus("發生錯誤：" + err.message);
             }
         }
 
@@ -154,7 +155,7 @@
             linkInput.select();
             linkInput.setSelectionRange(0, 99999); 
             document.execCommand("copy");
-            alert("?隢??撌脰?鋆踝?頞翰?喟策???改?");
+            alert("邀請連結已複製！趕快傳給朋友吧！");
         }
 
         async function notifyBackend(inviter, invitee) {
@@ -164,7 +165,7 @@
                 
                 const lineUrl = configData.line_url;
                 if (!lineUrl) {
-                    showStatus("?曆??唬撩????鞈?");
+                    showStatus("找不到伺服器連線資訊");
                     return;
                 }
 
@@ -178,8 +179,8 @@
                 
                 const result = await response.json();
                 
-                showStatus("?隢???????");
-                document.getElementById('desc').innerText = "?典隞仿??迨閬?銝血??啗?憭拙恕";
+                showStatus("邀請處理完成！🎉");
+                document.getElementById('desc').innerText = "您可以關閉此視窗並回到聊天室";
                 
                 setTimeout(() => {
                     liff.closeWindow();
@@ -187,7 +188,7 @@
 
             } catch (error) {
                 console.error("API error", error);
-                showStatus("隡箸??券???潛??航炊嚗? + error.message);
+                showStatus("伺服器連線發生錯誤：" + error.message);
             }
         }
 
@@ -196,10 +197,10 @@
             if(el) el.innerText = text;
         }
 
-        // ???瑁?
+        // 開始執行
         initializeLiff();
     </script>
 </body>
 </html>
 
-<!-- Force build: 2026-09-18 14:36:13 -->
+<!-- Fixed Encoding Trigger -->
