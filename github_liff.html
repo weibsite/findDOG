@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>???隢葉...</title>
-    <!-- 撘 LIFF SDK -->
+    <title>處理邀請中...</title>
+    <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body {
@@ -41,19 +41,19 @@
 <body>
     <div class="container">
         <div class="loader" id="loader"></div>
-        <h2 id="status">甇????函??隢?..</h2>
-        <p id="desc">隢?????/p>
+        <h2 id="status">正在處理您的邀請...</h2>
+        <p id="desc">請稍候片刻</p>
     </div>
 
     <script>
-        // 隢‵撖思???LIFF ID
+        // 請填寫你的 LIFF ID
         const myLiffId = "2011657436-CNxIdkSe"; 
 
         async function initializeLiff() {
             try {
-                showStatus("蝟餌絞??銝?(1/6)...");
+                showStatus("系統啟動中 (1/6)...");
                 
-                // 閮剖? 5 蝘??暹?璈
+                // 設定 5 秒的逾時機制
                 const initTimeout = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error("Timeout")), 5000)
                 );
@@ -65,19 +65,19 @@
                     ]);
                 } catch (e) {
                     if (e.message === "Timeout") {
-                        showStatus("?????∩?鈭?\n隢 LINE 敺瑼Ｘ LIFF Endpoint URL嚗????函??潦??曉蝬脣???蝬脣? (https://finddog.online/github_liff.html)嚗??賜頝唾??雯???);
+                        showStatus("❌ 啟動卡住了！\n請去 LINE 後台檢查 LIFF Endpoint URL，必須「完全等於」你現在網址列的網域 (https://finddog.online/github_liff.html)！不能用跳轉的網址。");
                         return;
                     }
                     throw e;
                 }
                 
-                showStatus("瑼Ｘ?餃???(2/6)...");
+                showStatus("檢查登入狀態 (2/6)...");
                 if (!liff.isLoggedIn()) {
                     liff.login({ redirectUri: window.location.href });
                     return;
                 }
 
-                showStatus("閫???隢???(3/6)...");
+                showStatus("解析邀請參數 (3/6)...");
                 const urlParams = new URLSearchParams(window.location.search);
                 let inviter = urlParams.get('inviter');
                 
@@ -90,45 +90,45 @@
                 }
 
                 if (!inviter) {
-                    showStatus("???臭??????隢?? (?曆???inviter)");
+                    showStatus("這不是一個有效的邀請連結 (找不到 inviter)");
                     return;
                 }
 
-                showStatus("??雿輻??閮?(4/6)...");
+                showStatus("取得使用者資訊 (4/6)...");
                 const profile = await liff.getProfile();
                 const invitee = profile.userId;
 
                 if (inviter === invitee) {
-                    showStatus("?⊥?雿輻?芸楛??隢????");
+                    showStatus("無法使用自己的邀請連結喔！");
                     setTimeout(() => liff.closeWindow(), 3000);
                     return;
                 }
 
-                showStatus("瑼Ｘ憟賢????(5/6)...");
+                showStatus("檢查好友狀態 (5/6)...");
                 const friendship = await liff.getFriendship();
                 
                 if (friendship.friendFlag) {
-                    showStatus("???隡箸??其葉 (6/6)...");
+                    showStatus("連線伺服器中 (6/6)...");
                     await notifyBackend(inviter, invitee);
                 } else {
-                    showStatus("隢??摰撣唾??箏末??");
+                    showStatus("請先加入官方帳號為好友！");
                 }
 
             } catch (err) {
                 console.error("LIFF Initialization failed", err);
-                showStatus("?潛??航炊嚗? + err.message);
+                showStatus("發生錯誤：" + err.message);
             }
         }
 
         async function notifyBackend(inviter, invitee) {
             try {
-                // ?雿?蝬? custom domain嚗?交? /config.json ?臭誑?踹? CORS
+                // 因為你有綁定 custom domain，直接抓 /config.json 可以避免 CORS
                 const configRes = await fetch('/config.json?t=' + new Date().getTime());
                 const configData = await configRes.json();
                 
                 const lineUrl = configData.line_url;
                 if (!lineUrl) {
-                    showStatus("?曆??唬撩????鞈?");
+                    showStatus("找不到伺服器連線資訊");
                     return;
                 }
 
@@ -142,8 +142,8 @@
                 
                 const result = await response.json();
                 
-                showStatus("?隢???????");
-                document.getElementById('desc').innerText = "?典隞仿??迨閬?銝血??啗?憭拙恕";
+                showStatus("邀請處理完成！🎉");
+                document.getElementById('desc').innerText = "您可以關閉此視窗並回到聊天室";
                 
                 setTimeout(() => {
                     liff.closeWindow();
@@ -151,7 +151,7 @@
 
             } catch (error) {
                 console.error("API error", error);
-                showStatus("隡箸??券???潛??航炊嚗? + error.message);
+                showStatus("伺服器連線發生錯誤：" + error.message);
             }
         }
 
@@ -159,10 +159,8 @@
             document.getElementById('status').innerText = text;
         }
 
-        // ???瑁?
+        // 開始執行
         initializeLiff();
     </script>
 </body>
 </html>
-
-<!-- Force build trigger: 2026-09-18 14:06:24 -->
