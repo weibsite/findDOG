@@ -51,9 +51,8 @@
 
         async function initializeLiff() {
             try {
-                showStatus("系統啟動中 (1/6)...");
+                showStatus("正在處理您的邀請，請稍候片刻...");
                 
-                // 設定 5 秒的逾時機制
                 const initTimeout = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error("Timeout")), 5000)
                 );
@@ -71,13 +70,11 @@
                     throw e;
                 }
                 
-                showStatus("檢查登入狀態 (2/6)...");
                 if (!liff.isLoggedIn()) {
                     liff.login({ redirectUri: window.location.href });
                     return;
                 }
 
-                showStatus("解析邀請參數 (3/6)...");
                 const urlParams = new URLSearchParams(window.location.search);
                 let inviter = urlParams.get('inviter');
                 
@@ -90,28 +87,22 @@
                 }
 
                 if (!inviter) {
-                    showStatus("這不是一個有效的邀請連結 (找不到 inviter)");
+                    showStatus("這不是一個有效的邀請連結");
                     return;
                 }
 
-                showStatus("取得使用者資訊 (4/6)...");
                 const profile = await liff.getProfile();
                 const invitee = profile.userId;
 
-                // 為了方便測試，暫時關閉自己不能邀請自己的限制
-                /*
                 if (inviter === invitee) {
                     showStatus("無法使用自己的邀請連結喔！");
                     setTimeout(() => liff.closeWindow(), 3000);
                     return;
                 }
-                */
 
-                showStatus("檢查好友狀態 (5/6)...");
                 const friendship = await liff.getFriendship();
                 
                 if (friendship.friendFlag) {
-                    showStatus("連線伺服器中 (6/6)...");
                     await notifyBackend(inviter, invitee);
                 } else {
                     showStatus("請先加入官方帳號為好友！");
