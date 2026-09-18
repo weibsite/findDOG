@@ -39,20 +39,29 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="processing-view">
         <div class="loader" id="loader"></div>
-        <h2 id="status">正在處理您的邀請...</h2>
+        <h2 id="status">正在處理您的邀請，請稍候片刻...</h2>
         <p id="desc">請稍候片刻</p>
     </div>
 
+    <div class="container" id="dashboard-view" style="display: none;">
+        <h2>📊 邀請中心</h2>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="font-size: 16px; margin: 10px 0;">總共成功邀請：<strong id="stat-total" style="color: #00B900; font-size: 24px;">-</strong> 人</p>
+            <p style="font-size: 16px; margin: 10px 0;">目前可兌換次數：<strong id="stat-avail" style="color: #ff3366; font-size: 24px;">-</strong> 次</p>
+        </div>
+        
+        <h3>👇 您的專屬邀請連結</h3>
+        <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="載入中...">
+        <button onclick="copyLink()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製連結並分享</button>
+    </div>
+
     <script>
-        // 請填寫你的 LIFF ID
         const myLiffId = "2011657436-CNxIdkSe"; 
 
         async function initializeLiff() {
             try {
-                showStatus("正在處理您的邀請，請稍候片刻...");
-                
                 const initTimeout = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error("Timeout")), 5000)
                 );
@@ -64,7 +73,7 @@
                     ]);
                 } catch (e) {
                     if (e.message === "Timeout") {
-                        showStatus("❌ 啟動卡住了！\n請去 LINE 後台檢查 LIFF Endpoint URL，必須「完全等於」你現在網址列的網域 (https://finddog.online/github_liff.html)！不能用跳轉的網址。");
+                        showStatus("❌ 啟動卡住了！\n請確認 LINE 後台 Endpoint URL。");
                         return;
                     }
                     throw e;
@@ -86,26 +95,26 @@
                     }
                 }
 
-                if (!inviter) {
-                    showStatus("這不是一個有效的邀請連結");
-                    return;
-                }
-
                 const profile = await liff.getProfile();
-                const invitee = profile.userId;
+                const userId = profile.userId;
 
-                if (inviter === invitee) {
-                    showStatus("無法使用自己的邀請連結喔！");
-                    setTimeout(() => liff.closeWindow(), 3000);
-                    return;
-                }
+                // 如果有帶 inviter 參數，代表這是一次邀請流程
+                if (inviter) {
+                    if (inviter === userId) {
+                        showStatus("無法使用自己的邀請連結喔！");
+                        setTimeout(() => liff.closeWindow(), 3000);
+                        return;
+                    }
 
-                const friendship = await liff.getFriendship();
-                
-                if (friendship.friendFlag) {
-                    await notifyBackend(inviter, invitee);
+                    const friendship = await liff.getFriendship();
+                    if (friendship.friendFlag) {
+                        await notifyBackend(inviter, userId);
+                    } else {
+                        showStatus("請先加入官方帳號為好友！");
+                    }
                 } else {
-                    showStatus("請先加入官方帳號為好友！");
+                    // 沒有 inviter，代表使用者是自己點開，顯示儀表板
+                    await showDashboard(userId);
                 }
 
             } catch (err) {
@@ -114,9 +123,43 @@
             }
         }
 
+        async function showDashboard(userId) {
+            document.getElementById('processing-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'block';
+            
+            const link = `https://liff.line.me/${myLiffId}?inviter=${userId}`;
+            document.getElementById('invite-link').value = link;
+            
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                
+                const lineUrl = configData.line_url;
+                if (!lineUrl) return;
+
+                const response = await fetch(lineUrl + `/api/dashboard?user_id=${userId}`);
+                const stats = await response.json();
+                
+                document.getElementById('stat-total').innerText = stats.total_invites;
+                document.getElementById('stat-avail').innerText = stats.available_points;
+                
+            } catch (error) {
+                console.error(error);
+                document.getElementById('stat-total').innerText = "?";
+                document.getElementById('stat-avail').innerText = "?";
+            }
+        }
+
+        function copyLink() {
+            const linkInput = document.getElementById('invite-link');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999); 
+            document.execCommand("copy");
+            alert("邀請連結已複製！趕快傳給朋友吧！");
+        }
+
         async function notifyBackend(inviter, invitee) {
             try {
-                // 因為你有綁定 custom domain，直接抓 /config.json 可以避免 CORS
                 const configRes = await fetch('/config.json?t=' + new Date().getTime());
                 const configData = await configRes.json();
                 
@@ -150,7 +193,8 @@
         }
 
         function showStatus(text) {
-            document.getElementById('status').innerText = text;
+            const el = document.getElementById('status');
+            if(el) el.innerText = text;
         }
 
         // 開始執行
