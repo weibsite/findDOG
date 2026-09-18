@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>處理邀請中....</title>
+    <title>處理邀請中...</title>
     <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
@@ -52,7 +52,24 @@
         async function initializeLiff() {
             try {
                 showStatus("系統啟動中 (1/6)...");
-                await liff.init({ liffId: myLiffId });
+                
+                // 設定 5 秒的逾時機制
+                const initTimeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Timeout")), 5000)
+                );
+                
+                try {
+                    await Promise.race([
+                        liff.init({ liffId: myLiffId }),
+                        initTimeout
+                    ]);
+                } catch (e) {
+                    if (e.message === "Timeout") {
+                        showStatus("❌ 啟動卡住了！\n請去 LINE 後台檢查 LIFF Endpoint URL，必須「完全等於」你現在網址列的網域 (https://finddog.online/github_liff.html)！不能用跳轉的網址。");
+                        return;
+                    }
+                    throw e;
+                }
                 
                 showStatus("檢查登入狀態 (2/6)...");
                 if (!liff.isLoggedIn()) {
