@@ -51,20 +51,21 @@
 
         async function initializeLiff() {
             try {
+                showStatus("系統啟動中 (1/6)...");
                 await liff.init({ liffId: myLiffId });
                 
+                showStatus("檢查登入狀態 (2/6)...");
                 if (!liff.isLoggedIn()) {
                     liff.login({ redirectUri: window.location.href });
                     return;
                 }
 
+                showStatus("解析邀請參數 (3/6)...");
                 const urlParams = new URLSearchParams(window.location.search);
                 let inviter = urlParams.get('inviter');
                 
-                // 如果是外部瀏覽器，LINE 會把參數塞在 liff.state 裡面
                 if (!inviter && urlParams.has('liff.state')) {
                     const stateStr = decodeURIComponent(urlParams.get('liff.state'));
-                    // stateStr 會像是 "?inviter=U4e..."
                     if (stateStr.includes('inviter=')) {
                         const stateParams = new URLSearchParams(stateStr.replace('?', ''));
                         inviter = stateParams.get('inviter');
@@ -72,10 +73,11 @@
                 }
 
                 if (!inviter) {
-                    showStatus("這不是一個有效的邀請連結");
+                    showStatus("這不是一個有效的邀請連結 (找不到 inviter)");
                     return;
                 }
 
+                showStatus("取得使用者資訊 (4/6)...");
                 const profile = await liff.getProfile();
                 const invitee = profile.userId;
 
@@ -85,9 +87,11 @@
                     return;
                 }
 
+                showStatus("檢查好友狀態 (5/6)...");
                 const friendship = await liff.getFriendship();
                 
                 if (friendship.friendFlag) {
+                    showStatus("連線伺服器中 (6/6)...");
                     await notifyBackend(inviter, invitee);
                 } else {
                     showStatus("請先加入官方帳號為好友！");
@@ -95,24 +99,22 @@
 
             } catch (err) {
                 console.error("LIFF Initialization failed", err);
-                showStatus("初始化失敗，請稍後再試");
+                showStatus("發生錯誤：" + err.message);
             }
         }
 
         async function notifyBackend(inviter, invitee) {
             try {
-                // 1. 取得放在 GitHub 上的 config.json
-                const configRes = await fetch('https://weibsite.github.io/findDOG/config.json?t=' + new Date().getTime());
+                // 因為你有綁定 custom domain，直接抓 /config.json 可以避免 CORS
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
                 const configData = await configRes.json();
                 
-                // 2. 拿到最新的 LINE 伺服器網址
                 const lineUrl = configData.line_url;
                 if (!lineUrl) {
                     showStatus("找不到伺服器連線資訊");
                     return;
                 }
 
-                // 3. 發送請求到伺服器
                 const response = await fetch(lineUrl + '/api/referral', {
                     method: 'POST',
                     headers: {
@@ -123,7 +125,7 @@
                 
                 const result = await response.json();
                 
-                showStatus("邀請處理完成！");
+                showStatus("邀請處理完成！🎉");
                 document.getElementById('desc').innerText = "您可以關閉此視窗並回到聊天室";
                 
                 setTimeout(() => {
@@ -132,15 +134,15 @@
 
             } catch (error) {
                 console.error("API error", error);
-                showStatus("系統連線發生錯誤");
+                showStatus("伺服器連線發生錯誤：" + error.message);
             }
         }
 
         function showStatus(text) {
             document.getElementById('status').innerText = text;
-            document.getElementById('loader').style.display = 'none';
         }
 
+        // 開始執行
         initializeLiff();
     </script>
 </body>
