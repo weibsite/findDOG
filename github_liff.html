@@ -42,6 +42,22 @@
         <button onclick="shareToLine()" style="background-color: #00B900; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 4px; cursor: pointer; width: 100%;">📲 分享給 LINE 好友</button>
     </div>
 
+    <!-- 自製提示窗 -->
+    <div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; color: #ff3366; font-size: 18px;">⚠️ 兌換注意事項</h3>
+            <ul style="text-align: left; font-size: 14px; color: #333; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;">
+                <li>每一訂單限使用一次</li>
+                <li>請等待代訂完成後再兌換</li>
+                <li style="color: #ff3366; font-weight: bold;">誤觸無法回復請注意</li>
+            </ul>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeModal()" style="flex: 1; padding: 10px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; color: #555;">取消</button>
+                <button onclick="executeRedeem()" style="flex: 1; padding: 10px; border: none; background: #ff3366; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">確定兌換</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const myLiffId = "2011657436-CNxIdkSe"; 
         let globalUserId = "";
@@ -142,8 +158,19 @@
             }
         }
         
-        async function redeemPoints() {
-            if (!confirm("確定要申請兌換嗎？（這將扣除 1 點可兌換次數）")) return;
+        function redeemPoints() {
+            // 打開自製提示窗
+            const modal = document.getElementById('custom-modal');
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            modal.style.display = 'none';
+        }
+
+        async function executeRedeem() {
+            closeModal(); // 先關閉提示窗
             
             const btn = document.getElementById('redeem-btn');
             btn.innerText = "處理中...";
@@ -161,8 +188,8 @@
                 });
                 
                 if (response.ok) {
-                    alert("兌換申請已送出！客服人員將會與您聯繫。");
-                    await showDashboard(globalUserId); // 重新載入數據
+                    alert("兌換申請已送出！");
+                    await showDashboard(globalUserId); 
                 } else {
                     const data = await response.json();
                     alert("兌換失敗：" + data.message);
@@ -170,7 +197,7 @@
             } catch (err) {
                 alert("連線錯誤，請稍後再試！");
             } finally {
-                btn.innerText = "🎁 申請兌換獎勵";
+                btn.innerText = "🎁 申請兌換";
                 btn.disabled = false;
             }
         }
@@ -254,4 +281,4 @@
 </body>
 </html>
 
-<!-- Update layout to left-right grid -->
+<!-- Add custom redeem modal -->
