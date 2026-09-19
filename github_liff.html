@@ -7,33 +7,39 @@
     <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 90%; width: 400px; }
-        h2 { color: #333; margin-top: 0; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 15px 10px; box-sizing: border-box; }
+        .container { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: left; width: 100%; max-width: 100%; box-sizing: border-box; }
+        h2 { color: #333; margin-top: 0; font-size: 16px; text-align: center; }
         p { color: #666; font-size: 14px; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #00B900; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="container" id="processing-view">
+    <div class="container" id="processing-view" style="text-align: center;">
         <div class="loader" id="loader"></div>
-        <h2 id="status"></h2>
+        <h2 id="status" style="margin-top: 15px;"></h2>
     </div>
 
     <div class="container" id="dashboard-view" style="display: none;">
-        <h2>📊 邀請中心</h2>
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="font-size: 16px; margin: 10px 0;">總共成功邀請：<strong id="stat-total" style="color: #00B900; font-size: 24px;">-</strong> 人</p>
-            <p style="font-size: 16px; margin: 10px 0;">目前可兌換次數：<strong id="stat-avail" style="color: #ff3366; font-size: 24px;">-</strong> 次</p>
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 14px; color: #333;">成功邀請：</span>
+                <span style="font-size: 16px; color: #00B900; font-weight: bold;"><span id="stat-total">-</span> 人</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 14px; color: #333;">可兌換：<strong id="stat-avail" style="color: #ff3366; font-size: 18px;">-</strong> 次</span>
+                <button id="redeem-btn" onclick="redeemPoints()" style="background-color: #ff3366; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; display: none;">🎁 申請兌換</button>
+            </div>
         </div>
         
-        <button id="redeem-btn" onclick="redeemPoints()" style="background-color: #ff3366; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 20px; display: none;">🎁 申請兌換獎勵</button>
-
-        <h3>👇 您的專屬邀請連結</h3>
-        <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="載入中...">
-        <button onclick="shareToLine()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px;">📲 直接分享給 LINE 好友</button>
-        <button onclick="copyLink()" style="background-color: #666; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製網址</button>
+        <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #333;">👇 專屬邀請連結</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+            <input type="text" id="invite-link" readonly style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; min-width: 0;" value="載入中...">
+            <button onclick="copyLink()" style="background-color: #666; color: white; border: none; padding: 8px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap;">複製</button>
+        </div>
+        
+        <button onclick="shareToLine()" style="background-color: #00B900; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 4px; cursor: pointer; width: 100%;">📲 分享給 LINE 好友</button>
     </div>
 
     <script>
@@ -248,4 +254,4 @@
 </body>
 </html>
 
-<!-- update UI and add shareTargetPicker -->
+<!-- Apply compact layout -->
