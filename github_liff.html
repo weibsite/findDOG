@@ -3,46 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>處理邀請中...</title>
+    <title>邀請中心</title>
     <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f6f7;
-        }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #00B900;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 90%; width: 400px; }
+        h2 { color: #333; margin-top: 0; }
+        p { color: #666; font-size: 14px; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #00B900; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container" id="processing-view">
         <div class="loader" id="loader"></div>
-        <h2 id="status">正在處理您的邀請，請稍候片刻...</h2>
-        <p id="desc">請稍候片刻</p>
+        <h2 id="status"></h2>
     </div>
 
     <div class="container" id="dashboard-view" style="display: none;">
@@ -56,7 +32,8 @@
 
         <h3>👇 您的專屬邀請連結</h3>
         <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="載入中...">
-        <button onclick="copyLink()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製連結並分享</button>
+        <button onclick="shareToLine()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px;">📲 直接分享給 LINE 好友</button>
+        <button onclick="copyLink()" style="background-color: #666; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製網址</button>
     </div>
 
     <script>
@@ -192,6 +169,28 @@
             }
         }
 
+        async function shareToLine() {
+            const link = document.getElementById('invite-link').value;
+            if (liff.isApiAvailable('shareTargetPicker')) {
+                try {
+                    const res = await liff.shareTargetPicker([
+                        {
+                            type: "text",
+                            text: `🎉 這是我專屬的邀請連結！\n趕快點擊下方連結加入我們，一起拿獎勵吧：\n${link}`
+                        }
+                    ]);
+                    if (res) {
+                        alert("分享成功！");
+                    }
+                } catch (error) {
+                    console.error("分享失敗", error);
+                    alert("分享失敗，請使用複製網址功能。");
+                }
+            } else {
+                alert("目前環境不支援直接分享，請使用複製網址按鈕。");
+            }
+        }
+
         function copyLink() {
             const linkInput = document.getElementById('invite-link');
             linkInput.select();
@@ -222,8 +221,6 @@
                 const result = await response.json();
                 
                 showStatus("邀請處理完成！🎉");
-                document.getElementById('desc').innerText = "您可以關閉此視窗並回到聊天室";
-                
                 setTimeout(() => {
                     liff.closeWindow();
                 }, 3000);
@@ -236,7 +233,13 @@
 
         function showStatus(text) {
             const el = document.getElementById('status');
-            if(el) el.innerText = text;
+            const loader = document.getElementById('loader');
+            if(el) {
+                el.innerText = text;
+            }
+            if(loader) {
+                loader.style.display = 'none';
+            }
         }
 
         // 開始執行
@@ -245,4 +248,4 @@
 </body>
 </html>
 
-<!-- Redeem feature update -->
+<!-- update UI and add shareTargetPicker -->
