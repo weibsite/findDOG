@@ -63,7 +63,7 @@
     <!-- 營業狀態區塊 -->
     <div class="status-section" id="status-container">
         <div class="status-title">目前營業狀態</div>
-        <div class="status-badge" id="status-text">接單中</div>
+        <div class="status-badge" id="status-text">載入中...</div>
     </div>
 
     <!-- 收餐指引區塊 -->
@@ -99,12 +99,6 @@
     </div>
 
     <script>
-        // 這裡未來可以串接 API 來動態改變狀態
-        // 範例：
-        // setStatus("open", "接單中");
-        // setStatus("preorder", "休息中(可接預約單)");
-        // setStatus("closed", "休息中(無法接單)");
-        
         function setStatus(type, text) {
             const container = document.getElementById('status-container');
             const badge = document.getElementById('status-text');
@@ -116,8 +110,23 @@
             badge.innerText = text;
         }
 
-        // 預設狀態
-        setStatus("open", "接單中");
+        async function loadStatus() {
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                const lineUrl = configData.line_url;
+                if (!lineUrl) return;
+
+                const response = await fetch(lineUrl + '/api/status');
+                const data = await response.json();
+                setStatus(data.type, data.text);
+            } catch (err) {
+                console.error("載入狀態失敗", err);
+                setStatus("open", "連線錯誤"); 
+            }
+        }
+        
+        loadStatus();
     </script>
 </body>
 </html>
