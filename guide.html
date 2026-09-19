@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收餐指引與營業狀態</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* 營業狀態區塊 (上 1/3) */
+        .status-section { 
+            flex: 0 0 30%; 
+            background: linear-gradient(135deg, #00B900 0%, #008a00 100%); 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            z-index: 10;
+        }
+        .status-title { font-size: 16px; opacity: 0.9; margin-bottom: 10px; }
+        .status-badge { 
+            background: white; 
+            color: #00B900; 
+            padding: 10px 25px; 
+            border-radius: 30px; 
+            font-size: 24px; 
+            font-weight: bold; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        /* 若要換成休息中，可以換 class 變色 */
+        .status-section.closed { background: linear-gradient(135deg, #ff3366 0%, #d81b43 100%); }
+        .status-section.closed .status-badge { color: #d81b43; }
+        
+        .status-section.preorder { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
+        .status-section.preorder .status-badge { color: #d68910; }
+
+        /* 收餐指引區塊 (下 2/3) */
+        .guide-section { 
+            flex: 1; 
+            background-color: white; 
+            padding: 25px; 
+            overflow-y: auto; 
+        }
+        .guide-title { font-size: 20px; color: #333; margin-top: 0; margin-bottom: 20px; text-align: center; font-weight: bold; }
+        
+        .step-box { background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 20px; border-left: 5px solid #00B900; }
+        .step-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .step-content { font-size: 14px; color: #555; line-height: 1.6; }
+        .step-content ul { margin: 0; padding-left: 20px; }
+        .step-content li { margin-bottom: 5px; }
+        
+        .warning-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 20px; }
+        .warning-title { color: #ff3366; font-size: 15px; font-weight: bold; margin-bottom: 5px; }
+        .warning-content { color: #d81b43; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- 營業狀態區塊 -->
+    <div class="status-section" id="status-container">
+        <div class="status-title">目前營業狀態</div>
+        <div class="status-badge" id="status-text">接單中</div>
+    </div>
+
+    <!-- 收餐指引區塊 -->
+    <div class="guide-section">
+        <div class="guide-title">🛵 收餐與外送指引</div>
+        
+        <div class="step-box">
+            <div class="step-title">Step 1. 完成支付與截圖</div>
+            <div class="step-content">
+                <ul>
+                    <li>請依 <strong>小幫手計算金額</strong> 支付</li>
+                    <li style="color: #00B900; font-weight: bold;">✅ 支付後請務必回傳截圖</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="step-box" style="border-left-color: #007aff;">
+            <div class="step-title">Step 2. 追蹤外送進度</div>
+            <div class="step-content">
+                <ul>
+                    <li style="font-weight: bold; color: #007aff;">📢 留意「即將抵達」提示</li>
+                    <li>看到此顯示代表外送員已在門口！</li>
+                    <li>請自行點擊連結追蹤，司機不一定會撥打電話。</li>
+                    <li>外送員無強制送上樓，請提前準備取餐。</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="warning-box">
+            <div class="warning-title">⚠️ 嚴格執行：超過 10 分鐘未處理</div>
+            <div class="warning-content">訂單將自動取消且無法退費</div>
+        </div>
+    </div>
+
+    <script>
+        // 這裡未來可以串接 API 來動態改變狀態
+        // 範例：
+        // setStatus("open", "接單中");
+        // setStatus("preorder", "休息中(可接預約單)");
+        // setStatus("closed", "休息中(無法接單)");
+        
+        function setStatus(type, text) {
+            const container = document.getElementById('status-container');
+            const badge = document.getElementById('status-text');
+            
+            container.className = 'status-section'; // reset
+            if(type === 'closed') container.classList.add('closed');
+            if(type === 'preorder') container.classList.add('preorder');
+            
+            badge.innerText = text;
+        }
+
+        // 預設狀態
+        setStatus("open", "接單中");
+    </script>
+</body>
+</html>
