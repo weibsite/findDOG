@@ -52,6 +52,8 @@
             <p style="font-size: 16px; margin: 10px 0;">目前可兌換次數：<strong id="stat-avail" style="color: #ff3366; font-size: 24px;">-</strong> 次</p>
         </div>
         
+        <button id="redeem-btn" onclick="redeemPoints()" style="background-color: #ff3366; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 20px; display: none;">🎁 申請兌換獎勵</button>
+
         <h3>👇 您的專屬邀請連結</h3>
         <input type="text" id="invite-link" readonly style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; text-align: center; font-size: 14px;" value="載入中...">
         <button onclick="copyLink()" style="background-color: #00B900; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%;">複製連結並分享</button>
@@ -59,6 +61,7 @@
 
     <script>
         const myLiffId = "2011657436-CNxIdkSe"; 
+        let globalUserId = "";
 
         async function initializeLiff() {
             try {
@@ -96,11 +99,11 @@
                 }
 
                 const profile = await liff.getProfile();
-                const userId = profile.userId;
+                globalUserId = profile.userId;
 
                 // 如果有帶 inviter 參數，代表這是一次邀請流程
                 if (inviter) {
-                    if (inviter === userId) {
+                    if (inviter === globalUserId) {
                         showStatus("無法使用自己的邀請連結喔！");
                         setTimeout(() => liff.closeWindow(), 3000);
                         return;
@@ -108,13 +111,13 @@
 
                     const friendship = await liff.getFriendship();
                     if (friendship.friendFlag) {
-                        await notifyBackend(inviter, userId);
+                        await notifyBackend(inviter, globalUserId);
                     } else {
                         showStatus("請先加入官方帳號為好友！");
                     }
                 } else {
                     // 沒有 inviter，代表使用者是自己點開，顯示儀表板
-                    await showDashboard(userId);
+                    await showDashboard(globalUserId);
                 }
 
             } catch (err) {
@@ -143,10 +146,49 @@
                 document.getElementById('stat-total').innerText = stats.total_invites;
                 document.getElementById('stat-avail').innerText = stats.available_points;
                 
+                if (stats.available_points > 0) {
+                    document.getElementById('redeem-btn').style.display = 'block';
+                } else {
+                    document.getElementById('redeem-btn').style.display = 'none';
+                }
+                
             } catch (error) {
                 console.error(error);
                 document.getElementById('stat-total').innerText = "?";
                 document.getElementById('stat-avail').innerText = "?";
+            }
+        }
+        
+        async function redeemPoints() {
+            if (!confirm("確定要申請兌換嗎？（這將扣除 1 點可兌換次數）")) return;
+            
+            const btn = document.getElementById('redeem-btn');
+            btn.innerText = "處理中...";
+            btn.disabled = true;
+            
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                const lineUrl = configData.line_url;
+                
+                const response = await fetch(lineUrl + '/api/redeem', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: globalUserId })
+                });
+                
+                if (response.ok) {
+                    alert("兌換申請已送出！客服人員將會與您聯繫。");
+                    await showDashboard(globalUserId); // 重新載入數據
+                } else {
+                    const data = await response.json();
+                    alert("兌換失敗：" + data.message);
+                }
+            } catch (err) {
+                alert("連線錯誤，請稍後再試！");
+            } finally {
+                btn.innerText = "🎁 申請兌換獎勵";
+                btn.disabled = false;
             }
         }
 
@@ -203,4 +245,4 @@
 </body>
 </html>
 
-<!-- Fixed Encoding Trigger -->
+<!-- Redeem feature update -->
