@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Q比直播</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <style>
+        body { text-align: center; background-color: #121212; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #f0f0f0; margin-bottom: 20px; font-size: 24px; }
+        #player-container { margin: 0 auto; max-width: 1000px; position: relative; }
+        .v-player { width: 100%; border: 2px solid #333; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); background-color: #000; }
+        
+        /* 播放按鈕覆蓋層 */
+        #start-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 40px); background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; z-index: 5; cursor: pointer; }
+        #start-overlay h2 { color: #4CAF50; margin-bottom: 10px; font-size: 28px; }
+        #start-overlay p { color: #ddd; font-size: 16px; }
+        
+        #timestamp-overlay {
+            position: absolute;
+            bottom: 60px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+            z-index: 2;
+            pointer-events: none;
+            background: rgba(0,0,0,0.4);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        /* 時間軸 UI */
+        #timeline-container { position: relative; margin: 40px auto 20px auto; max-width: 1000px; padding: 10px 0; }
+        /* 自訂時間軸與拖曳點 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: #444;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type="range"].live-mode::-webkit-slider-thumb {
+            background: #ff3333;
+            animation: live-breathe 1s infinite alternate;
+        }
+        @keyframes live-breathe {
+            0% { box-shadow: 0 0 4px rgba(255,51,51,0.4); transform: scale(1); }
+            100% { box-shadow: 0 0 15px rgba(255,51,51,1), 0 0 25px rgba(255,51,51,0.6); transform: scale(1.3); }
+        }
+        
+        .timeline-labels { display: flex; justify-content: space-between; color: #aaa; font-size: 12px; margin-top: 10px; font-weight: bold; }
+        
+        /* 預覽浮動框 */
+        #preview-tooltip {
+            position: absolute;
+            top: -400px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #preview-tooltip img { width: 640px; height: 360px; object-fit: cover; border-radius: 4px; background-color: #000; display: block; }
+        #preview-tooltip .time { font-size: 14px; font-weight: bold; color: #4CAF50; margin-top: 5px; }
+        
+        #now-playing { margin-top: 10px; font-size: 18px; color: #4CAF50; font-weight: bold; }
+        .live-badge { background-color: red; color: white; padding: 2px 6px; border-radius: 4px; font-size: 14px; vertical-align: middle; margin-left: 10px; display: none; }
+    
+        #filter-buttons { margin-bottom: 15px; }
+        #filter-buttons button { background: #333; color: #fff; border: 1px solid #555; padding: 5px 15px; border-radius: 4px; cursor: pointer; margin: 0 5px; }
+        #filter-buttons button.active { background: #4CAF50; border-color: #4CAF50; font-weight: bold; }
+</style>
+</head>
+<body>
+
+    <div id="login-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#121212;z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+        <h2 style="color:#4CAF50;margin-bottom:20px;">Q比直播 - 系統登入</h2>
+        <input type="password" id="login-pwd" placeholder="請輸入密碼" style="padding:10px;font-size:16px;border-radius:4px;border:1px solid #555;background:#222;color:#fff;margin-bottom:15px;">
+        <button onclick="doLogin()" style="padding:10px 30px;font-size:16px;background:#4CAF50;color:#fff;border:none;border-radius:4px;cursor:pointer;">登入</button>
+        <div id="login-err" style="color:red;margin-top:15px;display:none;">密碼錯誤</div>
+    </div>
+
+    <h1>Q比直播</h1>
+    
+    <div id="player-container">
+        <div id="start-overlay" onclick="startLive()">
+            <h2 id="status-text">連線中...</h2>
+            <p>點擊畫面開始觀看即時影像</p>
+        </div>
+        <video id="video-player-1" class="v-player" controls autoplay muted playsinline></video>
+        <video id="video-player-2" class="v-player" controls autoplay muted playsinline style="display:none;"></video>
+        <div id="timestamp-overlay">----/--/-- --:--:--</div>
+        <div id="now-playing">
+            <span id="playing-text">準備就緒...</span>
+            <span id="live-badge" class="live-badge">LIVE</span>
+        </div>
+    </div>
+    
+    <div id="timeline-container">
+        <div id="filter-buttons">
+            <button id="btn-filter-1h" onclick="setFilter('1h')">近 1 小時</button>
+            <button id="btn-filter-6h" onclick="setFilter('6h')" class="active">近 6 小時</button>
+            <button id="btn-filter-24h" onclick="setFilter('24h')">近 1 天</button>
+            <button id="btn-filter-all" onclick="setFilter('all')">全部</button>
+        </div>
+        <!-- 預覽框 -->
+        <div id="preview-tooltip">
+            <img id="preview-img" src="">
+            <div id="preview-time" class="time">--:--:--</div>
+        </div>
+        
+        <!-- 拖曳條 -->
+        <input type="range" id="timeline-slider" min="0" max="0" value="0" step="1" disabled>
+        
+        <!-- 時間刻度標籤 -->
+        <div class="timeline-labels">
+            <span id="time-start">歷史畫面</span>
+            <span style="color:#fff;">拖曳時間軸以回放歷史</span>
+            <span id="time-end">LIVE 即時</span>
+        </div>
+    </div>
+
+    <script>
+
+        let authToken = localStorage.getItem('auth_token') || "";
+
+        async function doLogin() {
+            const pwd = document.getElementById('login-pwd').value;
+            try {
+                // Ensure serverHttpUrl is loaded first
+                if(!serverHttpUrl) {
+                    const configRes = await fetch('config.json?t=' + Date.now());
+                    const configData = await configRes.json();
+                    serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
+                }
+                const res = await fetch(serverHttpUrl + '/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pwd})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('auth_token', authToken);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    initApp(); // start app
+                } else {
+                    document.getElementById('login-err').style.display = 'block';
+                }
+            } catch(e) {
+                alert("連線錯誤");
+            }
+        }
+        
+        function authFetch(url, options={}) {
+            if(!options.headers) options.headers = {};
+            options.headers['Authorization'] = 'Bearer ' + authToken;
+            return fetch(url, options).then(res => {
+                if(res.status === 401) {
+                    localStorage.removeItem('auth_token');
+                    window.location.reload();
+                }
+                return res;
+            });
+        }
+
+        let serverHttpUrl = "";
+        let allRecordingData = [];
+        let recordingData = [];
+        let activeFilter = '6h';
+        let currentIndex = -1; // -1 means uninitialized, max means LIVE
+        let pc = null;
+        let webrtcStream = new MediaStream();
+        let isLiveConnected = false;
+        let currentHistoryStartTime = null;
+
+        let activePlayerId = 1;
+        function getActivePlayer() { return document.getElementById('video-player-' + activePlayerId); }
+        function getNextPlayer() { return document.getElementById('video-player-' + (activePlayerId === 1 ? 2 : 1)); }
+
+        function formatTimestamp(dateObj) {
+            const yyyy = dateObj.getFullYear();
+            const MM = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            let h = dateObj.getHours();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            if (h === 0) h = 12;
+            const hh = String(h).padStart(2, '0');
+            const mm = String(dateObj.getMinutes()).padStart(2, '0');
+            const ss = String(dateObj.getSeconds()).padStart(2, '0');
+            return `${yyyy}/${MM}/${dd} ${ampm} ${hh}:${mm}:${ss}`;
+        }
+        
+        function updateClock() {
+            const slider = document.getElementById('timeline-slider');
+            if (currentIndex === parseInt(slider.max) || currentIndex === -1) {
+                // LIVE Mode
+                document.getElementById('timestamp-overlay').innerText = formatTimestamp(new Date());
+            } else {
+                // History Mode
+                if (currentHistoryStartTime) {
+                    const player = getActivePlayer();
+                    const playTime = new Date(currentHistoryStartTime.getTime() + (player.currentTime || 0) * 1000);
+                    document.getElementById('timestamp-overlay').innerText = formatTimestamp(playTime);
+                }
+            }
+        }
+        setInterval(updateClock, 250);
+
+        async function initApp() {
+            try {
+                const configRes = await fetch('config.json?t=' + Date.now());
+                const configData = await configRes.json();
+                if (configData && configData.ws_url) {
+                    serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
+                    document.getElementById('status-text').innerText = "▶ 點擊開始播放";
+                    fetchRecordings();
+                    setInterval(() => { if(authToken) fetchRecordings(); }, 60000);
+                    startLive();
+                }
+            } catch (e) {
+                document.getElementById('status-text').innerText = "讀取網域失敗";
+            }
+        }
+
+        async function fetchRecordings() {
+            try {
+                const configRes = await fetch('config.json?t=' + Date.now());
+                const configData = await configRes.json();
+                if (configData && configData.ws_url) {
+                    serverHttpUrl = configData.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws$/, '');
+                }
+                
+                const recRes = await authFetch(serverHttpUrl + '/api/recordings');
+                const recData = await recRes.json();
+                allRecordingData = recData.recordings.reverse();
+                applyFilter();
+            } catch (e) {
+                console.log("無法載入錄影清單", e);
+            }
+        }
+
+
+        function setFilter(f) {
+            activeFilter = f;
+            document.querySelectorAll('#filter-buttons button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-filter-' + f).classList.add('active');
+            applyFilter();
+        }
+
+        function parseFileDate(filename) {
+            const nameParts = filename.split('_');
+            const dStr = nameParts[1]; 
+            const tStr = nameParts[2].split('.')[0]; 
+            const year = parseInt(dStr.substring(0,4));
+            const month = parseInt(dStr.substring(4,6)) - 1;
+            const day = parseInt(dStr.substring(6,8));
+            const hour = parseInt(tStr.substring(0,2));
+            const min = parseInt(tStr.substring(2,4));
+            const sec = parseInt(tStr.substring(4,6));
+            return new Date(year, month, day, hour, min, sec);
+        }
+
+        function applyFilter() {
+            let currentRec = (currentIndex >= 0 && currentIndex < recordingData.length) ? recordingData[currentIndex] : null;
+            
+            if (activeFilter === 'all') {
+                recordingData = allRecordingData.slice();
+            } else {
+                const now = new Date();
+                let ms = 0;
+                if (activeFilter === '1h') ms = 60 * 60 * 1000;
+                else if (activeFilter === '6h') ms = 6 * 60 * 60 * 1000;
+                else if (activeFilter === '24h') ms = 24 * 60 * 60 * 1000;
+                
+                recordingData = allRecordingData.filter(rec => {
+                    const t = parseFileDate(rec.filename);
+                    return (now - t) <= ms;
+                });
+            }
+            
+            if (currentRec) {
+                let newIdx = recordingData.findIndex(r => r.filename === currentRec.filename);
+                if (newIdx !== -1) {
+                    currentIndex = newIdx;
+                } else {
+                    currentIndex = recordingData.length; // fallback
+                }
+            } else {
+                currentIndex = recordingData.length;
+            }
+            updateTimeline();
+        }
+
+        function preloadThumbnails(centerIndex) {
+            if (!recordingData || recordingData.length === 0) return;
+            const start = Math.max(0, centerIndex - 30);
+            const end = Math.min(recordingData.length - 1, centerIndex + 30);
+            for(let i = start; i <= end; i++) {
+                if(!recordingData[i].imgPreloaded) {
+                    const img = new Image();
+                    img.src = serverHttpUrl + '/recordings/' + recordingData[i].thumbnail + '?token=' + authToken;
+                    recordingData[i].imgPreloaded = true;
+                }
+            }
+        }
+
+        function formatTime(filename) {
+            const timeStr = filename.split('_')[2].replace('.mp4', '');
+            return timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+        }
+
+        function updateTimeline() {
+            const slider = document.getElementById('timeline-slider');
+            if (recordingData.length === 0) return;
+            
+            slider.disabled = false;
+            const wasAtLive = (currentIndex === parseInt(slider.max)) || currentIndex === -1;
+            slider.max = recordingData.length;
+            
+            if (wasAtLive) {
+                slider.value = slider.max;
+                currentIndex = recordingData.length;
+                slider.classList.add('live-mode');
+            } else {
+                slider.classList.remove('live-mode');
+            }
+            
+            document.getElementById('time-start').innerText = formatTime(recordingData[0].filename);
+        }
+
+        async function startLive() {
+            document.getElementById('start-overlay').style.display = 'none';
+            if (!isLiveConnected) {
+                connectWebRTC();
+            } else {
+                switchToLive();
+            }
+        }
+
+        async function connectWebRTC() {
+            document.getElementById('playing-text').innerText = "LIVE 連線中...";
+            const config = {
+                sdpSemantics: 'unified-plan',
+                iceServers: [
+                    { urls: ['stun:stun.l.google.com:19302'] },
+                    { 
+                        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ]
+            };
+
+            pc = new RTCPeerConnection(config);
+            pc.addEventListener('track', function(evt) {
+                webrtcStream.addTrack(evt.track);
+            });
+            pc.addTransceiver('video', { direction: 'recvonly' });
+            pc.addTransceiver('audio', { direction: 'recvonly' });
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            await new Promise((resolve) => {
+                if (pc.iceGatheringState === 'complete') resolve();
+                else {
+                    const checkState = () => { if (pc.iceGatheringState === 'complete') { pc.removeEventListener('icegatheringstatechange', checkState); resolve(); } };
+                    pc.addEventListener('icegatheringstatechange', checkState);
+                    setTimeout(() => { pc.removeEventListener('icegatheringstatechange', checkState); resolve(); }, 3000);
+                }
+            });
+
+            try {
+                const response = await authFetch(serverHttpUrl + '/webrtc/offer', {
+                    body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
+                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST'
+                });
+                const answer = await response.json();
+                await pc.setRemoteDescription(answer);
+                
+                isLiveConnected = true;
+                switchToLive();
+            } catch (e) {
+                document.getElementById('playing-text').innerText = "連線失敗: " + e;
+            }
+        }
+
+        function switchToLive() {
+            currentIndex = recordingData.length;
+            const slider = document.getElementById('timeline-slider');
+            slider.value = currentIndex;
+            slider.classList.add('live-mode');
+            
+            const next = getNextPlayer();
+            next.src = "";
+            next.style.display = "none";
+            next.pause();
+            
+            const active = getActivePlayer();
+            active.style.display = "block";
+            active.src = "";
+            active.srcObject = webrtcStream;
+            active.play().catch(e=>console.log(e));
+            
+            document.getElementById('playing-text').innerText = "目前正在觀看即時畫面";
+            document.getElementById('live-badge').style.display = "inline-block";
+        }
+
+        function updateHistoryStartTime(rec) {
+            const nameParts = rec.filename.split('_');
+            const dStr = nameParts[1]; 
+            const tStr = nameParts[2].split('.')[0]; 
+            const year = parseInt(dStr.substring(0,4));
+            const month = parseInt(dStr.substring(4,6)) - 1;
+            const day = parseInt(dStr.substring(6,8));
+            const hour = parseInt(tStr.substring(0,2));
+            const min = parseInt(tStr.substring(2,4));
+            const sec = parseInt(tStr.substring(4,6));
+            currentHistoryStartTime = new Date(year, month, day, hour, min, sec);
+        }
+
+        function preloadNext(index) {
+            if (index >= recordingData.length) return;
+            const nextRec = recordingData[index];
+            const nextPlayer = getNextPlayer();
+            nextPlayer.srcObject = null;
+            nextPlayer.src = serverHttpUrl + '/recordings/' + nextRec.filename + '?token=' + authToken;
+            nextPlayer.preload = "auto";
+            nextPlayer.load();
+        }
+
+        function playHistory(index) {
+            if (index < 0 || index >= recordingData.length) return;
+            currentIndex = index;
+            const rec = recordingData[index];
+            
+            updateHistoryStartTime(rec);
+            
+            const slider = document.getElementById('timeline-slider');
+            slider.value = index;
+            slider.classList.remove('live-mode');
+            
+            const active = getActivePlayer();
+            active.style.display = 'block';
+            active.srcObject = null;
+            active.src = serverHttpUrl + '/recordings/' + rec.filename + '?token=' + authToken;
+            active.play().catch(e=>console.log(e));
+            
+            document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
+            document.getElementById('live-badge').style.display = "none";
+            
+            preloadNext(index + 1);
+        }
+
+        function switchToNextVideo() {
+            // Check if we reached the end of history
+            if (currentIndex >= recordingData.length - 1) {
+                switchToLive();
+                return;
+            }
+            currentIndex++;
+            const rec = recordingData[currentIndex];
+            
+            const oldActive = getActivePlayer();
+            activePlayerId = (activePlayerId === 1) ? 2 : 1;
+            const newActive = getActivePlayer();
+            
+            oldActive.style.display = 'none';
+            oldActive.pause();
+            
+            newActive.style.display = 'block';
+            newActive.play().catch(e=>console.log(e));
+            
+            const slider = document.getElementById('timeline-slider');
+            slider.value = currentIndex;
+            updateHistoryStartTime(rec);
+            document.getElementById('playing-text').innerText = "歷史回放: " + formatTime(rec.filename);
+            
+            // Preload the next one in advance
+            preloadNext(currentIndex + 1);
+        }
+
+        function handleTimeUpdate(e) {
+            const player = e.target;
+            if (currentIndex < recordingData.length && player === getActivePlayer()) {
+                // 如果影片播放到剩餘 0.5 秒以內，強制無縫切換下一部，避免 ended 事件死機
+                if (player.duration && player.currentTime >= player.duration - 0.5) {
+                    switchToNextVideo();
+                }
+            }
+        }
+
+        document.getElementById('video-player-1').addEventListener('timeupdate', handleTimeUpdate);
+        document.getElementById('video-player-2').addEventListener('timeupdate', handleTimeUpdate);
+        
+        // 保險起見保留 ended 事件，如果 timeupdate 沒攔截到，這裡還是會觸發
+        document.getElementById('video-player-1').addEventListener('ended', () => { if (getActivePlayer().id === 'video-player-1') switchToNextVideo(); });
+        document.getElementById('video-player-2').addEventListener('ended', () => { if (getActivePlayer().id === 'video-player-2') switchToNextVideo(); });
+
+        const slider = document.getElementById('timeline-slider');
+        const tooltip = document.getElementById('preview-tooltip');
+
+        slider.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.value);
+            preloadThumbnails(idx); // 動態預載縮圖
+            tooltip.style.display = 'flex';
+            
+            const percent = (idx / slider.max) * 100 || 0;
+            tooltip.style.left = `calc(${percent}% + (${8 - percent * 0.16}px))`;
+            
+            if (idx === parseInt(slider.max)) {
+                document.getElementById('preview-img').style.display = 'none';
+                document.getElementById('preview-time').innerText = "切換回 LIVE 即時畫面";
+            } else {
+                const rec = recordingData[idx];
+                document.getElementById('preview-img').style.display = 'block';
+                document.getElementById('preview-img').src = serverHttpUrl + '/recordings/' + rec.thumbnail + '?token=' + authToken;
+                document.getElementById('preview-time').innerText = formatTime(rec.filename);
+            }
+        });
+
+        slider.addEventListener('change', (e) => {
+            tooltip.style.display = 'none';
+            const idx = parseInt(e.target.value);
+            if (idx === parseInt(slider.max)) {
+                switchToLive();
+            } else {
+                playHistory(idx);
+            }
+        });
+
+        slider.addEventListener('pointerup', () => tooltip.style.display = 'none');
+        slider.addEventListener('pointerout', () => tooltip.style.display = 'none');
+
+        window.onload = async () => {
+            if(authToken) {
+                document.getElementById('login-overlay').style.display = 'none';
+                initApp();
+            }
+        };
+    </script>
+</body>
+</html>

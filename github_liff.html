@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邀請中心</title>
+    <!-- 引入 LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 15px 10px; box-sizing: border-box; }
+        .container { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: left; width: 100%; max-width: 100%; box-sizing: border-box; }
+        h2 { color: #333; margin-top: 0; font-size: 16px; text-align: center; }
+        p { color: #666; font-size: 14px; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #00B900; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .mini-loader { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top: 2px solid #00B900; border-radius: 50%; animation: spin 1s linear infinite; }
+    </style>
+</head>
+<body>
+    
+
+    <div class="container" id="dashboard-view">
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <span style="font-size: 14px; color: #333;">成功邀請：</span>
+                <span style="font-size: 24px; color: #00B900; font-weight: bold;"><span id="stat-total"><div class="mini-loader"></div></span> <span style="font-size: 14px; font-weight: normal;">人</span></span>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+                <span style="font-size: 14px; color: #333;"><span style="color: #ff3366; font-size: 13px; font-weight: bold; margin-right: 5px;">(折抵20元費用)</span>可兌換：<strong id="stat-avail" style="color: #ff3366; font-size: 18px;"><div class="mini-loader" style="border-top-color: #ff3366;"></div></strong> 次</span>
+                <button id="redeem-btn" onclick="redeemPoints()" style="background-color: #ff3366; color: white; border: none; padding: 6px 16px; font-size: 13px; border-radius: 4px; cursor: pointer; display: none;">🎁 申請兌換</button>
+            </div>
+        </div>
+        
+        <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #333;">👇 專屬邀請連結</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+            <input type="text" id="invite-link" readonly style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; min-width: 0;" value="">
+            <button onclick="copyLink()" style="background-color: #666; color: white; border: none; padding: 8px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap;">複製</button>
+        </div>
+        
+        <button onclick="shareToLine()" style="background-color: #00B900; color: white; border: none; padding: 10px; font-size: 15px; border-radius: 4px; cursor: pointer; width: 100%;">📲 分享給 LINE 好友</button>
+    </div>
+
+    <!-- 自製提示窗 -->
+    <div id="custom-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; color: #ff3366; font-size: 18px;">⚠️ 兌換注意事項</h3>
+            <ul style="text-align: left; font-size: 14px; color: #333; padding-left: 20px; margin-bottom: 20px; line-height: 1.6;">
+                <li>每一訂單限使用一次</li>
+                <li>請等待代訂完成後再兌換</li>
+                <li style="color: #ff3366; font-weight: bold;">誤觸無法回復請注意</li>
+            </ul>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeModal()" style="flex: 1; padding: 10px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; color: #555;">取消</button>
+                <button onclick="executeRedeem()" style="flex: 1; padding: 10px; border: none; background: #ff3366; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">確定兌換</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自製提示窗 (單一確認按鈕) -->
+    <div id="alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2000;">
+        <div style="background: white; padding: 25px; border-radius: 12px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div id="alert-icon" style="font-size: 40px; margin-bottom: 10px;">✅</div>
+            <h3 id="alert-title" style="margin-top: 0; color: #333; font-size: 18px; margin-bottom: 10px;">提示</h3>
+            <p id="alert-message" style="font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.5; word-wrap: break-word;">訊息內容</p>
+            <button onclick="closeAlert()" id="alert-btn" style="width: 100%; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;">知道了</button>
+        </div>
+    </div>
+
+    <script>
+        const myLiffId = "2011657436-CNxIdkSe"; 
+        let globalUserId = "";
+        let typeInterval;
+        
+        function startTypingAnimation() {
+            const el = document.getElementById('invite-link');
+            const text = "https://liff.line.me/2011657436-CNxIdkSe?inviter=";
+            let i = 0;
+            el.value = "";
+            typeInterval = setInterval(() => {
+                if (i < text.length) {
+                    el.value = text.substring(0, i+1);
+                    i++;
+                }
+            }, 30);
+        }
+        
+        // 頁面載入就開始打字動畫
+        window.addEventListener('DOMContentLoaded', startTypingAnimation);
+
+        async function initializeLiff() {
+            try {
+                const initTimeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error("Timeout")), 5000)
+                );
+                
+                try {
+                    await Promise.race([
+                        liff.init({ liffId: myLiffId }),
+                        initTimeout
+                    ]);
+                } catch (e) {
+                    clearInterval(typeInterval);
+                    document.getElementById('invite-link').value = "連線異常";
+                    if (e.message === "Timeout") {
+                        showStatus("❌ 啟動卡住了！\n請確認 LINE 後台 Endpoint URL。");
+                        return;
+                    }
+                    throw e;
+                }
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login({ redirectUri: window.location.href });
+                    return;
+                }
+
+                const urlParams = new URLSearchParams(window.location.search);
+                let inviter = urlParams.get('inviter');
+                
+                if (!inviter && urlParams.has('liff.state')) {
+                    const stateStr = decodeURIComponent(urlParams.get('liff.state'));
+                    if (stateStr.includes('inviter=')) {
+                        const stateParams = new URLSearchParams(stateStr.replace('?', ''));
+                        inviter = stateParams.get('inviter');
+                    }
+                }
+
+                const profile = await liff.getProfile();
+                globalUserId = profile.userId;
+
+                // 如果有帶 inviter 參數，代表這是一次邀請流程
+                if (inviter) {
+                    if (inviter === globalUserId) {
+                        showStatus("無法使用自己的邀請連結喔！");
+                        setTimeout(() => liff.closeWindow(), 3000);
+                        return;
+                    }
+
+                    const friendship = await liff.getFriendship();
+                    if (friendship.friendFlag) {
+                        await notifyBackend(inviter, globalUserId);
+                    } else {
+                        showStatus("請先加入官方帳號為好友！");
+                    }
+                } else {
+                    // 沒有 inviter，代表使用者是自己點開，顯示儀表板
+                    await showDashboard(globalUserId);
+                }
+
+            } catch (err) {
+                console.error("LIFF Initialization failed", err);
+                showStatus("發生錯誤：" + err.message);
+            }
+        }
+
+        async function showDashboard(userId) {
+
+            
+            const link = `https://liff.line.me/${myLiffId}?inviter=${userId}`;
+            document.getElementById('invite-link').value = link;
+            
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                
+                const lineUrl = configData.line_url;
+                if (!lineUrl) return;
+
+                const response = await fetch(lineUrl + `/api/dashboard?user_id=${userId}`);
+                const stats = await response.json();
+                
+                document.getElementById('stat-total').innerText = stats.total_invites;
+                document.getElementById('stat-avail').innerText = stats.available_points;
+                
+                if (stats.available_points > 0) {
+                    document.getElementById('redeem-btn').style.display = 'block';
+                } else {
+                    document.getElementById('redeem-btn').style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error(error);
+                document.getElementById('stat-total').innerText = "?";
+                document.getElementById('stat-avail').innerText = "?";
+            }
+        }
+        
+        function showAlert(title, message, isSuccess = true) {
+            document.getElementById('alert-icon').innerText = isSuccess ? "✅" : "⚠️";
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-title').style.color = isSuccess ? "#00B900" : "#ff3366";
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-btn').style.background = isSuccess ? "#00B900" : "#ff3366";
+            document.getElementById('alert-modal').style.display = 'flex';
+        }
+        function closeAlert() {
+            document.getElementById('alert-modal').style.display = 'none';
+        }
+
+        function redeemPoints() {
+            // 打開自製提示窗
+            const modal = document.getElementById('custom-modal');
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            modal.style.display = 'none';
+        }
+
+        async function executeRedeem() {
+            closeModal(); // 先關閉提示窗
+            
+            const btn = document.getElementById('redeem-btn');
+            btn.innerText = "處理中...";
+            btn.disabled = true;
+            
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                const lineUrl = configData.line_url;
+                
+                const response = await fetch(lineUrl + '/api/redeem', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: globalUserId })
+                });
+                
+                if (response.ok) {
+                    showAlert("兌換成功", "兌換申請已送出！客服人員將會為您處理。", true);
+                    await showDashboard(globalUserId); 
+                } else {
+                    const data = await response.json();
+                    showAlert("兌換失敗", data.message, false);
+                }
+            } catch (err) {
+                showAlert("連線錯誤", "請檢查您的網路連線並稍後再試！", false);
+            } finally {
+                btn.innerText = "🎁 申請兌換";
+                btn.disabled = false;
+            }
+        }
+
+        async function shareToLine() {
+            const link = document.getElementById('invite-link').value;
+            if (liff.isApiAvailable('shareTargetPicker')) {
+                try {
+                    const res = await liff.shareTargetPicker([
+                        {
+                            type: "text",
+                            text: `還在傻傻付貴桑桑的外送費和服務費嗎？\n交給我們代購，幫你把錢省到極致！🤑\n\n❌ 免外送費！✨\n❌ 免服務費！✨\n✅ 結帳金額直接 5 折！(想吃什麼隨便點)\n🎁 【限時加碼】現在加入好友，首購再折 20 元！\n\n今天想吃什麼好料？把菜單傳過來，半價幫你送到家！\n👉 點擊連結立刻加入好友開吃：\n${link}`
+                        }
+                    ]);
+                    if (res) {
+                        showAlert("分享成功！", "快去看看朋友有沒有收到吧！", true);
+                    }
+                } catch (error) {
+                    console.error("分享失敗", error);
+                    showAlert("分享失敗", "發生預期外的錯誤，請改用複製網址的功能。", false);
+                }
+            } else {
+                showAlert("不支援直接分享", "您的裝置或 LINE 版本不支援此功能，請使用複製網址按鈕。", false);
+            }
+        }
+
+        function copyLink() {
+            const linkInput = document.getElementById('invite-link');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999); 
+            document.execCommand("copy");
+            showAlert("複製成功", "邀請連結已複製！趕快貼上傳給朋友吧！", true);
+        }
+
+        async function notifyBackend(inviter, invitee) {
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                
+                const lineUrl = configData.line_url;
+                if (!lineUrl) {
+                    showStatus("找不到伺服器連線資訊");
+                    return;
+                }
+
+                const response = await fetch(lineUrl + '/api/referral', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ inviter, invitee })
+                });
+                
+                const result = await response.json();
+                
+                showStatus("恭喜你得到首購獎勵。");
+                setTimeout(() => {
+                    liff.closeWindow();
+                }, 3000);
+
+            } catch (error) {
+                console.error("API error", error);
+                showStatus("伺服器連線發生錯誤：" + error.message);
+            }
+        }
+
+        function showStatus(text) {
+            showAlert("系統訊息", text, false);
+        }
+
+        // 開始執行
+        initializeLiff();
+    </script>
+</body>
+</html>

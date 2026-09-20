@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全影片播放</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #111827; }
+        .pixel-panel { border: 4px solid #1f2937; box-shadow: 6px 6px 0px #000; border-radius: 8px; }
+        .pixel-btn { border: 3px solid #1f2937; box-shadow: 4px 4px 0px #000; transition: all 0.1s; font-weight: 900; border-radius: 6px; }
+        .pixel-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
+        .pixel-input { border: 3px solid #1f2937; box-shadow: inset 3px 3px 0px rgba(0,0,0,0.5); outline: none; border-radius: 6px; background-color: #374151; color: white; }
+        .pixel-input:focus { border-color: #3b82f6; }
+        video { outline: none; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        /* 隱藏原生全螢幕按鈕，改用我們自訂的容器全螢幕，以確保浮水印不會消失 */
+        video::-webkit-media-controls-fullscreen-button { display: none !important; }
+        video::-moz-media-controls-fullscreen-button { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-white" oncontextmenu="return false;">
+    
+    <!-- 隱藏的管理員區域 (右上角) -->
+    <div id="admin-secret-area" class="fixed top-0 right-0 w-24 h-24 z-[100] cursor-default opacity-0" title="管理員專用區"></div>
+
+    <!-- 管理員修改密碼 Modal -->
+    <div id="admin-modal" class="hidden fixed inset-0 z-[300] bg-black/90 flex flex-col items-center justify-center p-4">
+        <div class="pixel-panel p-8 w-full max-w-sm bg-gray-800 text-center">
+            <h3 class="text-2xl font-black text-white mb-6 border-b-4 border-gray-600 pb-2">🛡️ 修改影片密碼</h3>
+            <div class="text-left mb-4">
+                <label class="block text-sm font-bold mb-2 text-gray-300">🔑 管理員密碼</label>
+                <input type="password" id="admin-pwd-input" class="pixel-input w-full p-3 font-bold" placeholder="請輸入管理員密碼">
+            </div>
+            <div class="text-left mb-6">
+                <label class="block text-sm font-bold mb-2 text-gray-300">🆕 新的觀看密碼</label>
+                <input type="text" id="new-video-pwd-input" class="pixel-input w-full p-3 font-bold" placeholder="請輸入新密碼 (明碼顯示)">
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button id="admin-cancel-btn" class="pixel-btn flex-1 py-3 bg-gray-500 text-white font-bold">取消</button>
+                <button id="admin-confirm-btn" class="pixel-btn flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold">確認修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 密碼輸入區塊 -->
+    <div id="auth-panel" class="pixel-panel p-8 w-full max-w-md bg-gray-800 text-center">
+        <h2 class="text-3xl font-black mb-8 border-b-4 border-gray-600 pb-4 inline-block text-gray-100">🔒 安全影片驗證</h2>
+        <div class="mb-6 text-left">
+            <label class="block text-base font-black mb-2 text-gray-300">🔑 請輸入觀看密碼</label>
+            <input type="password" id="video-password" class="pixel-input w-full p-4 text-lg font-bold" placeholder="密碼">
+        </div>
+        <button id="auth-btn" class="pixel-btn w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-xl tracking-wider">🔓 解鎖播放</button>
+        <div id="auth-status" class="mt-6 font-bold hidden whitespace-pre-wrap text-base p-3 text-red-400"></div>
+    </div>
+
+    <!-- 媒體播放區塊 -->
+    <div id="video-panel" class="w-full max-w-4xl hidden flex-col items-center relative">
+        <h2 class="text-xl font-bold mb-4 text-gray-300 w-full text-left">🎬 媒體檢視</h2>
+        <div id="video-container" class="relative w-full aspect-video rounded-lg overflow-hidden shadow-2xl bg-black">
+            <!-- 影片播放器 -->
+            <video id="secure-video" class="w-full h-full bg-black hidden object-contain" controls controlsList="nodownload" disablePictureInPicture>
+                您的瀏覽器不支援影片播放。
+            </video>
+            
+            <!-- 圖片檢視器 -->
+            <img id="secure-image" class="w-full h-full bg-black hidden object-contain pointer-events-none" />
+            
+            <!-- 浮水印疊加層 -->
+            <div id="watermark-overlay" class="absolute inset-0 pointer-events-none overflow-hidden opacity-20 flex flex-wrap justify-center items-center content-center z-10" style="mix-blend-mode: difference;">
+            </div>
+
+            <!-- 失焦保護層 -->
+            <div id="blur-overlay" class="absolute inset-0 bg-black/90 backdrop-blur-xl z-20 flex items-center justify-center hidden">
+                <span class="text-red-500 font-black text-2xl tracking-widest border-4 border-red-500 p-4 text-center leading-relaxed">⚠️ 畫面失焦，播放暫停<br><span class="text-lg">為保護影片隱私，禁止背景錄影</span></span>
+            </div>
+            
+            <!-- 自訂全螢幕按鈕 -->
+            <button id="custom-fs-btn" class="absolute bottom-16 right-4 z-30 bg-black/50 hover:bg-black/80 text-white p-2 rounded backdrop-blur border border-gray-500 font-bold text-sm transition-colors shadow-lg">
+                🔲 全螢幕
+            </button>
+        </div>
+        <p class="text-sm font-bold text-red-500 mt-4 bg-red-900/20 px-4 py-2 rounded">此影片未經授權嚴禁下載及外流</p>
+    </div>
+
+    <script>
+        let API_BASE_URL = "";
+
+        // 載入後端真實位址
+        async function loadConfig() {
+            try {
+                const res = await fetch('config.json?t=' + Date.now());
+                const data = await res.json();
+                if (data && data.ws_url) {
+                    API_BASE_URL = data.ws_url.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '');
+                }
+            } catch (e) {
+                API_BASE_URL = location.origin;
+            }
+        }
+
+        // 解析網址上的 ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoId = urlParams.get('id');
+
+        if (!videoId) {
+            document.getElementById('auth-panel').innerHTML = '<h2 class="text-2xl font-black text-red-500 mt-4">❌ 找不到影片代號</h2><p class="mt-4 text-gray-300">請確認您的連結是否完整。</p>';
+        } else {
+            loadConfig();
+
+            document.getElementById('auth-btn').addEventListener('click', async () => {
+                const pwd = document.getElementById('video-password').value;
+                const statusEl = document.getElementById('auth-status');
+                const btn = document.getElementById('auth-btn');
+
+                if (!pwd) {
+                    statusEl.innerText = '❌ 請輸入密碼！';
+                    statusEl.classList.remove('hidden');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.innerText = '⏳ 驗證中...';
+                statusEl.classList.add('hidden');
+
+                if (!API_BASE_URL) await loadConfig();
+
+                try {
+                    const res = await fetch(API_BASE_URL + '/api/auth_video', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: videoId, password: pwd })
+                    });
+                    
+                    const data = await res.json();
+                    
+                    if (data.success && data.token) {
+                        // 驗證成功，隱藏密碼區塊，顯示影片區塊
+                        document.getElementById('auth-panel').classList.add('hidden');
+                        document.getElementById('video-panel').classList.remove('hidden');
+                        document.getElementById('video-panel').classList.add('flex');
+                        
+                        // 動態設定帶有 Token 的 src
+                        const isImage = data.filename && data.filename.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i);
+                        const mediaUrl = API_BASE_URL + `/api/stream_video?id=${videoId}&token=${data.token}`;
+                        
+                        const videoEl = document.getElementById('secure-video');
+                        const imgEl = document.getElementById('secure-image');
+                        
+                        if (isImage) {
+                            imgEl.src = mediaUrl;
+                            imgEl.classList.remove('hidden');
+                        } else {
+                            videoEl.src = mediaUrl;
+                            videoEl.classList.remove('hidden');
+                            videoEl.play().catch(e => console.warn('自動播放被阻擋:', e));
+                        }
+
+                        // 建立 IP 浮水印
+                        const overlay = document.getElementById('watermark-overlay');
+                        const ipText = data.ip || 'UNKNOWN_IP';
+                        overlay.innerHTML = '';
+                        const watermarkSpans = [];
+                        for (let i = 0; i < 60; i++) {
+                            const span = document.createElement('span');
+                            span.innerText = ipText;
+                            span.className = 'text-white text-xl font-black p-4 m-2 select-none opacity-30 transition-transform duration-[2000ms] ease-in-out';
+                            // 初始隨機位置與角度
+                            const randomX = Math.floor(Math.random() * 60) - 30;
+                            const randomY = Math.floor(Math.random() * 60) - 30;
+                            span.style.transform = `translate(${randomX}px, ${randomY}px) rotate(-45deg)`;
+                            overlay.appendChild(span);
+                            watermarkSpans.push(span);
+                        }
+
+                        // 每 3 秒隨機變動所有浮水印的位置與角度，防禦修圖與 AI 去背
+                        setInterval(() => {
+                            watermarkSpans.forEach(span => {
+                                const randomX = Math.floor(Math.random() * 80) - 40;
+                                const randomY = Math.floor(Math.random() * 80) - 40;
+                                const randomRot = -45 + (Math.floor(Math.random() * 20) - 10); // -55 to -35 deg
+                                span.style.transform = `translate(${randomX}px, ${randomY}px) rotate(${randomRot}deg)`;
+                            });
+                        }, 3000);
+
+                        // 防側錄機制：失焦或切換視窗時自動暫停並模糊畫面
+                        const blurOverlay = document.getElementById('blur-overlay');
+                        function handleVisibility() {
+                            if (document.hidden || !document.hasFocus()) {
+                                videoEl.pause();
+                                blurOverlay.classList.remove('hidden');
+                            } else {
+                                blurOverlay.classList.add('hidden');
+                            }
+                        }
+                        window.addEventListener('blur', handleVisibility);
+                        window.addEventListener('focus', handleVisibility);
+                        document.addEventListener('visibilitychange', handleVisibility);
+                        
+                        // 自訂全螢幕邏輯 (確保容器包含浮水印一起放大)
+                        const fsBtn = document.getElementById('custom-fs-btn');
+                        const videoContainer = document.getElementById('video-container');
+                        fsBtn.addEventListener('click', () => {
+                            if (!document.fullscreenElement) {
+                                if (videoContainer.requestFullscreen) {
+                                    videoContainer.requestFullscreen();
+                                } else if (videoContainer.webkitRequestFullscreen) {
+                                    videoContainer.webkitRequestFullscreen();
+                                }
+                            } else {
+                                if (document.exitFullscreen) {
+                                    document.exitFullscreen();
+                                } else if (document.webkitExitFullscreen) {
+                                    document.webkitExitFullscreen();
+                                }
+                            }
+                        });
+                        
+                        // 雙擊影片也能觸發自訂全螢幕
+                        videoContainer.addEventListener('dblclick', (e) => {
+                            // 防止雙擊原生控件造成異常
+                            if (e.target !== fsBtn) {
+                                fsBtn.click();
+                            }
+                        });
+
+                        document.addEventListener('fullscreenchange', () => {
+                            if (document.fullscreenElement) {
+                                fsBtn.innerText = '❌ 退出全螢幕';
+                            } else {
+                                fsBtn.innerText = '🔲 全螢幕';
+                            }
+                        });
+                        
+                    } else {
+                        statusEl.innerText = '❌ ' + (data.message || '驗證失敗');
+                        statusEl.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    statusEl.innerText = '❌ 伺服器連線異常，請稍後再試。';
+                    statusEl.classList.remove('hidden');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = '🔓 解鎖播放';
+                }
+            });
+
+            // 防止鍵盤快捷鍵檢查元素或儲存
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'C') || 
+                    (e.ctrlKey && e.key === 'S') || 
+                    (e.ctrlKey && e.key === 'U')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    </script>
+    <div class="fixed bottom-2 right-2 z-50 p-2 text-xs sm:text-sm font-bold bg-gray-800/90 backdrop-blur border-2 border-gray-600 rounded flex gap-3 items-center shadow-[2px_2px_0px_#000]">
+        <a href="index.htm" class="text-orange-400 hover:text-orange-300 font-black">尋寵地圖</a>
+        <a href="runrun.htm" class="text-purple-400 hover:text-purple-300 font-black">浪浪地圖</a>
+        <a href="govpet.htm" class="text-blue-400 hover:text-blue-300 font-black">走失協尋</a>
+        <a href="https://line.me/ti/p/gDtots7NXX" target="_blank" class="text-green-400 hover:text-green-300 font-black">聯絡作者</a>
+    </div>
+
+    <!-- 左下角分享與複製功能 -->
+    <div class="fixed bottom-2 left-2 z-50 p-2 text-xs sm:text-sm font-bold bg-gray-800/90 backdrop-blur border-2 border-gray-600 rounded flex gap-3 items-center shadow-[2px_2px_0px_#000]">
+        <button id="btn-copy-url" class="text-gray-300 hover:text-white flex items-center gap-1 transition-colors">
+            📋 複製網址
+        </button>
+        <button id="btn-share" class="text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors">
+            📤 分享
+        </button>
+    </div>
+
+    <script>
+        // 複製網址功能
+        document.getElementById('btn-copy-url').addEventListener('click', () => {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.getElementById('btn-copy-url');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ 已複製！';
+                setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+            });
+        });
+
+        // 原生分享功能
+        document.getElementById('btn-share').addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: '安全媒體檢視',
+                    text: '這是一個受安全加密與防盜連保護的媒體。',
+                    url: window.location.href,
+                }).catch(err => console.log('分享取消或失敗', err));
+            } else {
+                alert('您的瀏覽器不支援原生分享功能，請直接複製網址即可！');
+            }
+        });
+
+        // 管理員修改密碼功能
+        const secretArea = document.getElementById('admin-secret-area');
+        const adminModal = document.getElementById('admin-modal');
+        const adminCancelBtn = document.getElementById('admin-cancel-btn');
+        const adminConfirmBtn = document.getElementById('admin-confirm-btn');
+
+        // 點擊隱藏區域 3 下觸發管理員模式，避免誤觸
+        let clickCount = 0;
+        let clickTimer;
+        secretArea.addEventListener('click', () => {
+            clickCount++;
+            clearTimeout(clickTimer);
+            if (clickCount >= 3) {
+                adminModal.classList.remove('hidden');
+                clickCount = 0;
+            } else {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+            }
+        });
+
+        adminCancelBtn.addEventListener('click', () => {
+            adminModal.classList.add('hidden');
+            document.getElementById('admin-pwd-input').value = '';
+            document.getElementById('new-video-pwd-input').value = '';
+        });
+
+        adminConfirmBtn.addEventListener('click', async () => {
+            const adminPwd = document.getElementById('admin-pwd-input').value;
+            const newPwd = document.getElementById('new-video-pwd-input').value;
+            
+            if (!adminPwd || !newPwd) {
+                alert('⚠️ 請填寫完整資訊！');
+                return;
+            }
+
+            adminConfirmBtn.disabled = true;
+            adminConfirmBtn.innerText = '⏳ 處理中...';
+
+            try {
+                if (!API_BASE_URL) await loadConfig();
+                const res = await fetch(API_BASE_URL + '/api/change_video_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: videoId,
+                        admin_password: adminPwd,
+                        new_password: newPwd
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 影片密碼修改成功！新密碼已立即生效。');
+                    adminCancelBtn.click();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 伺服器錯誤，請稍後再試。');
+            } finally {
+                adminConfirmBtn.disabled = false;
+                adminConfirmBtn.innerText = '確認修改';
+            }
+        });
+    </script>
+</body>
+</html>
