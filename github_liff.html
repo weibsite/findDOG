@@ -70,6 +70,7 @@
         const myLiffId = "2011657436-CNxIdkSe"; 
         let globalUserId = "";
         let typeInterval;
+        window.isLinkReady = false;
         
         function startTypingAnimation() {
             const el = document.getElementById('invite-link');
@@ -154,12 +155,8 @@
             }
         }
 
-        async function showDashboard(userId) {
-
-            
-            const link = `https://liff.line.me/${myLiffId}?inviter=${userId}`;
-            document.getElementById('invite-link').value = link;
-            
+        let isFirstLoad = true;
+        async function loadDashboardData(userId) {
             try {
                 const configRes = await fetch('/config.json?t=' + new Date().getTime());
                 const configData = await configRes.json();
@@ -170,6 +167,19 @@
                 const response = await fetch(lineUrl + `/api/dashboard?user_id=${userId}`);
                 const stats = await response.json();
                 
+                // 檢查是否有新朋友加入 (利用 localStorage 記錄上次查看的數量)
+                let oldInvites = localStorage.getItem(`last_seen_invites_${userId}`);
+                if (oldInvites !== null) {
+                    oldInvites = parseInt(oldInvites);
+                    if (stats.total_invites > oldInvites) {
+                        let diff = stats.total_invites - oldInvites;
+                        // 跳出自製視窗提醒
+                        showAlert("🎉 恭喜！", `自上次查看後，又有 ${diff} 位新朋友透過您的連結加入，您獲得了 ${diff} 次獎勵兌換機會！`, true);
+                    }
+                }
+                // 更新記憶數量
+                localStorage.setItem(`last_seen_invites_${userId}`, stats.total_invites);
+                
                 document.getElementById('stat-total').innerText = stats.total_invites;
                 document.getElementById('stat-avail').innerText = stats.available_points;
                 
@@ -179,11 +189,29 @@
                     document.getElementById('redeem-btn').style.display = 'none';
                 }
                 
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    clearInterval(typeInterval);
+                    const link = `https://liff.line.me/${myLiffId}?inviter=${userId}`;
+                    document.getElementById('invite-link').value = link;
+                    window.isLinkReady = true;
+                }
+                
             } catch (error) {
                 console.error(error);
-                document.getElementById('stat-total').innerText = "?";
-                document.getElementById('stat-avail').innerText = "?";
+                if (isFirstLoad) {
+                    document.getElementById('stat-total').innerText = "?";
+                    document.getElementById('stat-avail').innerText = "?";
+                    clearInterval(typeInterval);
+                    document.getElementById('invite-link').value = "連線異常，請稍後重試";
+                }
             }
+        }
+
+        async function showDashboard(userId) {
+            await loadDashboardData(userId);
+            // 每 15 秒背景更新一次，不阻擋畫面
+            setInterval(() => loadDashboardData(userId), 15000);
         }
         
         function showAlert(title, message, isSuccess = true) {
@@ -243,6 +271,10 @@
         }
 
         async function shareToLine() {
+            if (!window.isLinkReady) {
+                showAlert("請稍候", "系統正在為您產生專屬邀請碼...", false);
+                return;
+            }
             const link = document.getElementById('invite-link').value;
             if (liff.isApiAvailable('shareTargetPicker')) {
                 try {
@@ -265,6 +297,10 @@
         }
 
         function copyLink() {
+            if (!window.isLinkReady) {
+                showAlert("請稍候", "正在產生您的專屬邀請碼...", false);
+                return;
+            }
             const linkInput = document.getElementById('invite-link');
             linkInput.select();
             linkInput.setSelectionRange(0, 99999); 
