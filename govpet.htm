@@ -1308,19 +1308,39 @@ async function backgroundSyncAllProjects() {
     isBgSyncing = true;
     try {
         const baseUrl = typeof getBaseHttpUrl === 'function' ? getBaseHttpUrl() : window.location.origin;
-        const response = await fetch(`${baseUrl}/api/shelter/list`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                page: bgSyncPage,
-                size: 3000,
-                keyword: '',
-                filters: [],
-                sort: 'date_desc'
-            })
-        });
-        const res = await response.json();
-        if (res.success && res.data && res.data.length > 0) {
+        let res = null;
+        if (bgSyncPage === 0) {
+            // First page: try to load the static JSON from GitHub CDN
+            try {
+                const response = await fetch('https://weibsite.github.io/findDOG/dataset/shelter.json');
+                if (response.ok) {
+                    const allData = await response.json();
+                    res = { success: true, data: allData };
+                    // Since we loaded everything at once, we won't need to fetch next pages
+                    bgSyncPage = -1; // special flag to stop pagination
+                }
+            } catch (e) {
+                console.warn('Failed to load static JSON from GitHub, falling back to local API', e);
+            }
+        }
+        
+        if (!res && bgSyncPage >= 0) {
+            // Fallback to local API chunks
+            const response = await fetch(`${baseUrl}/api/shelter/list`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    page: bgSyncPage,
+                    size: 3000,
+                    keyword: '',
+                    filters: [],
+                    sort: 'date_desc'
+                })
+            });
+            res = await response.json();
+        }
+        
+        if (res && res.success && res.data && res.data.length > 0) {
             let hasNew = false;
             res.data.forEach(p => {
                 if (!PROJECTS[p.id]) {
@@ -1343,7 +1363,7 @@ async function backgroundSyncAllProjects() {
                     hasNew = true;
                 }
             });
-            bgSyncPage++;
+            if (bgSyncPage >= 0) bgSyncPage++;
             if (hasNew) {
                 prepareDynamicFilters();
                 updateProjectDropdown();
