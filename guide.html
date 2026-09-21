@@ -111,44 +111,13 @@
     </div>
 
     <script>
-        function setStatus(type, text) {
-            const container = document.getElementById('status-container');
-            const badge = document.getElementById('status-text');
-            
-            container.className = 'status-section'; // reset
-            if(type === 'closed') container.classList.add('closed');
-            if(type === 'preorder') container.classList.add('preorder');
-            if(type === 'busy') container.classList.add('busy');
-            
-            badge.innerText = text;
-            
-            // 如果字太多，縮小一點避免破版
-            if (text.length > 10) {
-                badge.style.fontSize = "16px";
-                badge.style.padding = "10px 15px";
-            } else {
-                badge.style.fontSize = ""; // 恢復預設
-                badge.style.padding = "";
-            }
-        }
-
-        async function loadStatus() {
-            try {
-                const configRes = await fetch('/config.json?t=' + new Date().getTime());
-                const configData = await configRes.json();
-                const lineUrl = configData.line_url;
-                if (!lineUrl) return;
-
-                const response = await fetch(lineUrl + '/api/status');
-                const data = await response.json();
-                setStatus(data.type, data.text);
-            } catch (err) {
+ catch (err) {
                 console.error("載入狀態失敗", err);
                 setStatus("open", "連線錯誤"); 
             }
         }
         
-        loadStatus();
+        
     </script>
     <!-- 試算金額提示窗 -->
     <div id="calc-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2000;">
