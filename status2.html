@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>營業狀態</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 15px 10px; box-sizing: border-box; }
+        .container { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; }
+        .status-label { font-size: 14px; color: #666; margin-bottom: 12px; }
+        .status-badge {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #00B900 0%, #008a00 100%);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        .status-badge.closed { background: linear-gradient(135deg, #ff3366 0%, #d81b43 100%); }
+        .status-badge.preorder { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
+        .status-badge.busy { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); font-size: 16px; }
+        .notice { font-size: 13px; color: #f39c12; font-weight: bold; margin-top: 12px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-label">店家目前營業狀態</div>
+        <div id="status-badge" class="status-badge">讀取中...</div>
+        <div class="notice">
+            預約單直送約等待20分鐘<br>
+            請善用預約單餐期不用等待
+        </div>
+    </div>
+
+    <script>
+        liff.init({ liffId: "2011657436-UXXVvytt" }).catch(err => console.error(err));
+
+        function setStatus(type, text) {
+            const badge = document.getElementById('status-badge');
+            badge.className = 'status-badge';
+            if (type === 'closed') badge.classList.add('closed');
+            if (type === 'preorder') badge.classList.add('preorder');
+            if (type === 'busy') badge.classList.add('busy');
+            badge.innerText = text;
+        }
+
+        async function loadStatus() {
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                const lineUrl = configData.line_url;
+                if (!lineUrl) return;
+                const response = await fetch(lineUrl + '/api/status');
+                const data = await response.json();
+                setStatus(data.type, data.text);
+            } catch (err) {
+                console.error(err);
+                setStatus("open", "營業中");
+            }
+        }
+
+        loadStatus();
+        setInterval(loadStatus, 5000);
+    </script>
+</body>
+</html>
