@@ -3,45 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>收餐指引與營業狀態</title>
+    <title>收餐指引與試算工具</title>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
         
-        /* 營業狀態區塊 (上 1/3) */
-        .status-section { 
-            flex: 0 0 auto; min-height: auto; padding: 15px 10px; box-sizing: border-box; 
-            background: linear-gradient(135deg, #00B900 0%, #008a00 100%); 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-            z-index: 10;
-        }
-        .status-title { font-size: 16px; opacity: 0.9; margin-bottom: 10px; }
-        .status-badge { 
-            background: white; 
-            color: #00B900; 
-            padding: 10px 25px; 
-            border-radius: 30px; 
-            font-size: 24px; 
-            font-weight: bold; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        
-        /* 若要換成休息中，可以換 class 變色 */
-        .status-section.closed { background: linear-gradient(135deg, #ff3366 0%, #d81b43 100%); }
-        .status-section.closed .status-badge { color: #d81b43; }
-        
-        .status-section.preorder { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
-        .status-section.preorder .status-badge { color: #d68910; }
-        
-        .status-section.busy { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
-        .status-section.busy .status-badge { color: #2980b9; font-size: 16px; padding: 10px 15px; }
-
-        /* 收餐指引區塊 (下 2/3) */
         .guide-section { 
             flex: 1; 
             background-color: white; 
@@ -63,8 +28,6 @@
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-
-
 
     <!-- 收餐指引區塊 -->
     <div class="guide-section">
@@ -96,384 +59,276 @@
         </div>
         
         <div class="warning-box">
-            <div class="warning-title">⚠️ 嚴格執行：超過 10 分鐘未處理</div>
-            <div class="warning-content">訂單將自動取消且無法退費</div>
+            <div class="warning-title">⚠️ 請務必留意訊息</div>
+            <div class="warning-content">
+                若因未留意訊息導致無人取餐<br>外送員將餐點放置門口後離開<br>我們不負賠償責任，請見諒。
+            </div>
         </div>
     </div>
 
-    <script>
- catch (err) {
-                console.error("載入狀態失敗", err);
-                setStatus("open", "連線錯誤"); 
-            }
-        }
-        
-        
-    </script>
-    <!-- 試算金額提示窗 -->
-    <div id="calc-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2000;">
+    <!-- 拆單試算提示窗 -->
+    <div id="split-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2500;">
         <div style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 350px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;">
-            <button onclick="closeCalculator()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✖</button>
-            <h3 style="margin-top: 0; color: #333; font-size: 18px; text-align: center; margin-bottom: 5px;">金額試算</h3>
-            <p style="font-size: 12px; color: #ff3366; text-align: center; margin-top: 0; margin-bottom: 15px;">(僅參考，實際金額以小幫手計算為準)</p>
+            <button onclick="closeCalculator()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 20px; color: #999; cursor: pointer;">&times;</button>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button id="tab-food" onclick="switchCalcTab('food')" style="flex: 1; padding: 8px; border: 1px solid #00B900; background: #00B900; color: white; border-radius: 4px; cursor: pointer; font-weight: bold;">🍔 美食餐點</button>
-                <button id="tab-grocery" onclick="switchCalcTab('grocery')" style="flex: 1; padding: 8px; border: 1px solid #00B900; background: white; color: #00B900; border-radius: 4px; cursor: pointer; font-weight: bold;">🛒 生鮮雜貨</button>
+            <h3 style="margin-top: 0; color: #333; font-size: 18px; margin-bottom: 5px; text-align: center;">自動拆單計算機</h3>
+            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 20px; text-align: center;">
+                設定商品單價及數量，我們將為您計算最划算的拆單方式。<br>
+                <span style="color: #ff3366;">(每單最高金額限制 $449)</span>
+            </p>
+            
+            <div id="item-list" style="margin-bottom: 15px;">
+                <!-- 商品項目將動態產生於此 -->
             </div>
             
-            <div style="margin-bottom: 15px;">
-                <label style="font-size: 14px; font-weight: bold; color: #333; display: block; margin-bottom: 5px;">配送方式</label>
-                <div style="display: flex; gap: 10px;">
-                    <button id="btn-direct" onclick="switchDelivery('direct')" style="flex: 1; padding: 8px; border: 1px solid #ccc; background: white; color: #666; border-radius: 4px; cursor: pointer; font-weight: bold;">🛵 直送</button>
-                    <button id="btn-preorder" onclick="switchDelivery('preorder')" style="flex: 1; padding: 8px; border: 1px solid #007aff; background: #007aff; color: white; border-radius: 4px; cursor: pointer; font-weight: bold;">⏱️ 預約單</button>
-                </div>
-                <p style="font-size: 12px; color: #ff3366; margin-top: 5px; margin-bottom: 0; font-weight: bold;">註：離當前3小時才有預約單折扣</p>
-            </div>
+            <button onclick="addItem()" style="width: 100%; padding: 10px; border: 1px dashed #00B900; background: #f0fbf4; color: #00B900; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 15px; font-weight: bold;">+ 新增不同價位的商品</button>
             
-            <div style="margin-bottom: 15px;">
-                <label style="font-size: 14px; font-weight: bold; color: #333; display: block; margin-bottom: 5px;">原始總金額</label>
-                <input type="number" id="calc-input" placeholder="請輸入總金額" oninput="calculatePrice()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px;">
-                <p id="calc-warning" style="font-size: 12px; color: #ff3366; margin-top: 5px; margin-bottom: 0; display: none;">請輸入大於 449 的數字才有折扣哦</p>
-            </div>
+            <button onclick="calculateSplit()" style="width: 100%; padding: 12px; border: none; background: #333; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">開始計算</button>
             
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                <label style="font-size: 14px; font-weight: bold; color: #333; display: block; margin-bottom: 5px;">計算結果</label>
-                <div id="calc-result" style="font-size: 14px; color: #555; line-height: 1.5; min-height: 40px;">請輸入金額以查看試算</div>
-                <p id="calc-note" style="font-size: 12px; color: #999; margin-top: 10px; margin-bottom: 0; display: none;">*如果運費超過50可能產生額外運費</p>
+            <div id="split-result" style="font-size: 14px; color: #333; line-height: 1.5; background: #f8f9fa; padding: 15px; border-radius: 8px; display: none;">
+                <!-- 計算結果將顯示於此 -->
             </div>
-            
-            <button onclick="closeCalculator()" style="width: 100%; padding: 12px; border: none; background: #333; color: white; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 15px;">關閉試算</button>
         </div>
     </div>
+
     <script>
-        let calcTab = 'food';
-        let calcDelivery = 'preorder';
+        let liffInitPromise = null;
+        window.splitResultText = "";
 
+        window.addEventListener('DOMContentLoaded', () => {
+            liffInitPromise = liff.init({ liffId: "2011657436-UXXVvytt" }).catch(err => {
+                console.error('LIFF init failed', err);
+            });
+        });
+
+        // 試算工具邏輯
+        let itemCount = 0;
+        
         function openCalculator() {
-            document.getElementById('calc-modal').style.display = 'flex';
-            switchDelivery('preorder'); // 每次打開強制預設為預約單
-        }
-
-        function closeCalculator() {
-            document.getElementById('calc-modal').style.display = 'none';
-        }
-
-        function switchCalcTab(tab) {
-            calcTab = tab;
-            const tabFood = document.getElementById('tab-food');
-            const tabGrocery = document.getElementById('tab-grocery');
-            if (tab === 'food') {
-                tabFood.style.background = '#00B900'; tabFood.style.color = 'white';
-                tabGrocery.style.background = 'white'; tabGrocery.style.color = '#00B900';
-            } else {
-                tabGrocery.style.background = '#00B900'; tabGrocery.style.color = 'white';
-                tabFood.style.background = 'white'; tabFood.style.color = '#00B900';
-            }
-            calculatePrice();
-        }
-
-        function switchDelivery(type) {
-            calcDelivery = type;
-            const btnDirect = document.getElementById('btn-direct');
-            const btnPreorder = document.getElementById('btn-preorder');
-            if (type === 'direct') {
-                btnDirect.style.background = '#007aff'; btnDirect.style.color = 'white'; btnDirect.style.borderColor = '#007aff';
-                btnPreorder.style.background = 'white'; btnPreorder.style.color = '#666'; btnPreorder.style.borderColor = '#ccc';
-            } else {
-                btnPreorder.style.background = '#007aff'; btnPreorder.style.color = 'white'; btnPreorder.style.borderColor = '#007aff';
-                btnDirect.style.background = 'white'; btnDirect.style.color = '#666'; btnDirect.style.borderColor = '#ccc';
-            }
-            calculatePrice();
-        }
-
-        function calculatePrice() {
-            const input = document.getElementById('calc-input').value;
-            const resEl = document.getElementById('calc-result');
-            const warnEl = document.getElementById('calc-warning');
-            const noteEl = document.getElementById('calc-note');
-            
-            if (!input || input <= 0) {
-                resEl.innerHTML = "請輸入金額以查看試算";
-                warnEl.style.display = 'none';
-                noteEl.style.display = 'none';
-                return;
-            }
-            
-            const amt = parseFloat(input);
-            
-            if (calcTab === 'food') {
-                warnEl.style.display = 'none';
-                noteEl.style.display = 'block';
-                
-                let discountStr = (calcDelivery === 'preorder') ? " <span style='color:#00B900; font-weight:bold;'>- 10(預約單優惠)</span>" : "";
-                let fee = 50;
-                let actualFee = (calcDelivery === 'preorder') ? 40 : 50;
-                
-                let diffStr = "";
-                let diff = 0;
-                let halfBase = amt;
-                
-                if (amt > 285) {
-                    diff = amt - 285;
-                    diffStr = `差額(${amt}-285=${diff}) + `;
-                    halfBase = 285;
-                }
-                
-                let halfStr = `(${halfBase}/2=` + (halfBase/2) + `)`;
-                const total = diff + (halfBase/2) + actualFee;
-                
-                let savings = amt - total;
-                if (savings < 25) {
-                    warnEl.style.display = 'block';
-                    resEl.innerHTML = "<span style='color:#ff3366; font-size: 16px; font-weight: bold;'>金額過低不建議代訂</span>";
-                    return;
-                }
-                
-                let splitBtn = "";
-                if (amt > 300) {
-                    splitBtn = `<button onclick="openSplitModal()" style="margin-top: 10px; background-color: #ff9800; color: white; border: none; padding: 6px 10px; font-size: 13px; border-radius: 4px; cursor: pointer; display: block; width: 100%;">💡 想知道拆單結果？</button>`;
-                }
-                resEl.innerHTML = diffStr + halfStr + ` + 代訂費(${fee})${discountStr}<span style="color:#007aff;font-weight:bold;"> + 服務費(0) + 外送費(0)</span><br><strong style="font-size:22px;color:#ff3366;">= ` + total + ` 元</strong>` + splitBtn;
-            }
-            else if (calcTab === 'grocery') {
-                noteEl.style.display = 'none';
-                if (amt < 449) {
-                    warnEl.style.display = 'block';
-                    resEl.innerHTML = "<span style='color:#ff3366;'>金額過低，無折扣</span>";
-                    return;
-                } else {
-                    warnEl.style.display = 'none';
-                }
-                
-                let diffVal = (calcDelivery === 'direct') ? 180 : 200;
-                let discountStr = (calcDelivery === 'preorder') ? " <span style='color:#00B900; font-weight:bold;'>- 15(預約單優惠)</span>" : "";
-                let fee = 60;
-                let actualFee = (calcDelivery === 'preorder') ? 45 : 60;
-                
-                let diff = amt - diffVal;
-                let minTotal = diff + actualFee + 30;
-                let maxTotal = diff + actualFee + 50;
-                
-                resEl.innerHTML = `(${amt}-${diffVal}=${diff}) + 代訂費(${fee})${discountStr} + 外送服務費(約30~50)<span style="color:#007aff;font-weight:bold;"> + 外送費(0)</span><br>因服務費有差異，所以總金額會是在<br><strong style="font-size:22px;color:#ff3366;">${minTotal} ~ ${maxTotal} 元</strong> 之間`;
-            }
-        }
-    
-        // --- 拆單邏輯 ---
-        function openSplitModal() {
             document.getElementById('split-modal').style.display = 'flex';
-            const container = document.getElementById('split-items-container');
-            container.innerHTML = '';
-            for(let i=0; i<5; i++) {
-                addSplitRow();
+            if (itemCount === 0) {
+                addItem();
             }
-            document.getElementById('split-result').style.display = 'none';
         }
-
-        function closeSplitModal() {
+        
+        function closeCalculator() {
             document.getElementById('split-modal').style.display = 'none';
         }
 
-        function addSplitRow() {
-            const container = document.getElementById('split-items-container');
-            const rowCount = container.children.length;
-            const defaultName = String.fromCharCode(65 + (rowCount % 26));
+        function createStepper(inputId) {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.border = '1px solid #ccc';
+            container.style.borderRadius = '6px';
+            container.style.overflow = 'hidden';
+            container.style.width = '100px';
+
+            const btnMinus = document.createElement('button');
+            btnMinus.innerText = '-';
+            btnMinus.style.width = '32px';
+            btnMinus.style.height = '32px';
+            btnMinus.style.border = 'none';
+            btnMinus.style.background = '#f0f0f0';
+            btnMinus.style.fontSize = '16px';
+            btnMinus.style.cursor = 'pointer';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.id = inputId;
+            input.value = 1;
+            input.min = 1;
+            input.style.width = '36px';
+            input.style.height = '32px';
+            input.style.border = 'none';
+            input.style.textAlign = 'center';
+            input.style.fontSize = '14px';
+            input.style.boxSizing = 'border-box';
+            input.style.outline = 'none';
+            input.style.appearance = 'textfield';
+
+            const btnPlus = document.createElement('button');
+            btnPlus.innerText = '+';
+            btnPlus.style.width = '32px';
+            btnPlus.style.height = '32px';
+            btnPlus.style.border = 'none';
+            btnPlus.style.background = '#f0f0f0';
+            btnPlus.style.fontSize = '16px';
+            btnPlus.style.cursor = 'pointer';
+
+            btnMinus.onclick = () => {
+                let val = parseInt(input.value) || 1;
+                if(val > 1) input.value = val - 1;
+            };
+            btnPlus.onclick = () => {
+                let val = parseInt(input.value) || 1;
+                input.value = val + 1;
+            };
+
+            container.appendChild(btnMinus);
+            container.appendChild(input);
+            container.appendChild(btnPlus);
+            
+            return container;
+        }
+
+        function addItem() {
+            itemCount++;
+            const list = document.getElementById('item-list');
+            const itemName = String.fromCharCode(64 + itemCount); // A, B, C...
+            
             const row = document.createElement('div');
+            row.id = `item-row-${itemCount}`;
             row.style.display = 'flex';
-            row.style.gap = '6px';
+            row.style.gap = '10px';
             row.style.marginBottom = '10px';
             row.style.alignItems = 'center';
-            row.innerHTML = `
-                <input type="text" class="split-name" value="${defaultName}" placeholder="品名" style="flex: 0.8; padding: 10px 5px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; min-width: 0; text-align: center;">
-                <input type="number" class="split-price" placeholder="單價" style="flex: 1.2; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; min-width: 0;">
-                
-                <div style="display: flex; flex: 1.2; align-items: center; border: 1px solid #ccc; border-radius: 6px; overflow: hidden; background: #fff; min-width: 0;">
-                    <button onclick="let inp = this.nextElementSibling; inp.value = Math.max(1, parseInt(inp.value || 1) - 1);" style="padding: 10px 5px; border: none; background: #f8f9fa; color: #333; cursor: pointer; font-size: 16px; flex: 1; border-right: 1px solid #eee;">-</button>
-                    <input type="number" class="split-qty" value="1" style="width: 100%; text-align: center; border: none; padding: 10px 0; outline: none; font-size: 16px; min-width: 0;">
-                    <button onclick="let inp = this.previousElementSibling; inp.value = parseInt(inp.value || 1) + 1;" style="padding: 10px 5px; border: none; background: #f8f9fa; color: #333; cursor: pointer; font-size: 16px; flex: 1; border-left: 1px solid #eee;">+</button>
-                </div>
-
-                <button onclick="this.parentElement.remove()" style="flex: 0 0 25px; background: none; border: none; color: #ff3366; cursor: pointer; font-size: 20px; padding: 0;">✖</button>
-            `;
-            container.appendChild(row);
+            row.style.background = '#fafafa';
+            row.style.padding = '10px';
+            row.style.borderRadius = '8px';
+            
+            const label = document.createElement('div');
+            label.innerText = itemName;
+            label.style.fontWeight = 'bold';
+            label.style.color = '#555';
+            label.style.width = '20px';
+            
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.id = `price-${itemCount}`;
+            priceInput.placeholder = '單價';
+            priceInput.style.flex = '1';
+            priceInput.style.padding = '8px';
+            priceInput.style.border = '1px solid #ccc';
+            priceInput.style.borderRadius = '6px';
+            priceInput.style.fontSize = '14px';
+            priceInput.style.minWidth = '0';
+            
+            const stepper = createStepper(`qty-${itemCount}`);
+            
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = '&times;';
+            delBtn.style.background = '#ffcccc';
+            delBtn.style.color = '#ff3366';
+            delBtn.style.border = 'none';
+            delBtn.style.borderRadius = '50%';
+            delBtn.style.width = '24px';
+            delBtn.style.height = '24px';
+            delBtn.style.display = 'flex';
+            delBtn.style.alignItems = 'center';
+            delBtn.style.justifyContent = 'center';
+            delBtn.style.cursor = 'pointer';
+            delBtn.onclick = () => {
+                list.removeChild(row);
+            };
+            
+            row.appendChild(label);
+            row.appendChild(priceInput);
+            row.appendChild(stepper);
+            row.appendChild(delBtn);
+            list.appendChild(row);
         }
 
         function calculateSplit() {
-            const names = document.getElementsByClassName('split-name');
-            const prices = document.getElementsByClassName('split-price');
-            const qtys = document.getElementsByClassName('split-qty');
+            const list = document.getElementById('item-list');
+            const rows = list.children;
             let items = [];
-            let totalAmt = 0;
             
-            for(let i=0; i<prices.length; i++) {
-                const n = names[i].value.trim() || String.fromCharCode(65 + i);
-                const p = parseFloat(prices[i].value);
-                const q = parseInt(qtys[i].value);
-                if(p > 0 && q > 0) {
-                    for(let j=0; j<q; j++) {
-                        items.push({name: n, price: p});
-                        totalAmt += p;
+            for (let i = 0; i < rows.length; i++) {
+                const rowId = rows[i].id.split('-')[2];
+                const price = parseInt(document.getElementById(`price-${rowId}`).value);
+                const qty = parseInt(document.getElementById(`qty-${rowId}`).value);
+                const label = rows[i].children[0].innerText;
+                
+                if (price && qty && price > 0 && qty > 0) {
+                    for (let j = 0; j < qty; j++) {
+                        items.push({ name: label, price: price });
                     }
                 }
-            }
-            
-            if(items.length === 0) {
-                alert("請輸入有效的餐點單價與數量！");
-                return;
-            }
-            
-            const originalAmt = parseFloat(document.getElementById('calc-input').value);
-            if(totalAmt !== originalAmt) {
-                alert(`金額與原本輸入不符！最新計算總金額為 ${totalAmt} 元`);
-            }
-            
-            // 基礎參數
-            const fee = (calcDelivery === 'direct') ? 50 : 40;
-            const extraFee = 20; // 超過50運費的情境額外費用
-            
-            // 計算單筆訂單的成本
-            function getOrderCost(amt, additionalFee = 0) {
-                if (amt === 0) return 0;
-                let diff = 0;
-                let halfBase = amt;
-                if (amt > 285) {
-                    diff = amt - 285;
-                    halfBase = 285;
-                }
-                return diff + (halfBase / 2) + fee + additionalFee;
-            }
-            
-            // 尋找最佳分單 (Multi-start Local Search for optimal packing)
-            const maxBins = Math.min(4, items.length);
-            
-            function getAssignmentCost(assignment, additionalFee) {
-                let sums = new Array(maxBins).fill(0);
-                for(let i=0; i<items.length; i++) {
-                    sums[assignment[i]] += items[i].price;
-                }
-                let total = 0;
-                for(let s of sums) {
-                    total += getOrderCost(s, additionalFee);
-                }
-                return total;
-            }
-            
-            function runLocalSearch(additionalFee) {
-                let bestGlobalCost = Infinity;
-                let bestGlobalAssignment = null;
-                
-                // 執行 150 次隨機起點搜尋，確保找到全局最佳解
-                for(let iter=0; iter<150; iter++) {
-                    let current = new Array(items.length);
-                    for(let i=0; i<items.length; i++) current[i] = Math.floor(Math.random() * maxBins);
-                    let currentCost = getAssignmentCost(current, additionalFee);
-                    
-                    while(true) {
-                        let improved = false;
-                        for(let i=0; i<items.length; i++) {
-                            let originalBin = current[i];
-                            for(let newBin=0; newBin<maxBins; newBin++) {
-                                if(newBin !== originalBin) {
-                                    current[i] = newBin;
-                                    let newCost = getAssignmentCost(current, additionalFee);
-                                    if(newCost < currentCost) {
-                                        currentCost = newCost;
-                                        improved = true;
-                                        break; 
-                                    } else {
-                                        current[i] = originalBin;
-                                    }
-                                }
-                            }
-                            if(improved) break;
-                        }
-                        if(!improved) break;
-                    }
-                    if(currentCost < bestGlobalCost) {
-                        bestGlobalCost = currentCost;
-                        bestGlobalAssignment = [...current];
-                    }
-                }
-                
-                let finalOrders = Array.from({length: maxBins}, () => []);
-                for(let i=0; i<items.length; i++) {
-                    finalOrders[bestGlobalAssignment[i]].push(items[i]);
-                }
-                return {
-                    cost: bestGlobalCost,
-                    orders: finalOrders.filter(arr => arr.length > 0)
-                };
-            }
-            
-            let bestNormalResult = { cost: getOrderCost(totalAmt, 0), orders: [[...items]] };
-            let bestExtraResult = { cost: getOrderCost(totalAmt, extraFee), orders: [[...items]] };
-            
-            if (items.length > 1) {
-                let lsNormal = runLocalSearch(0);
-                if(lsNormal.cost < bestNormalResult.cost) bestNormalResult = lsNormal;
-                
-                let lsExtra = runLocalSearch(extraFee);
-                if(lsExtra.cost < bestExtraResult.cost) bestExtraResult = lsExtra;
             }
             
             const resEl = document.getElementById('split-result');
             resEl.style.display = 'block';
             
-            let html = `<h4 style="margin-top:0; color:#00B900;">⭐ 最佳組合 (運費未超標)</h4>`;
-            html += `<p style="font-size:14px; margin-bottom:5px;">總計：<strong style="color:#ff3366; font-size:18px;">${bestNormalResult.cost} 元</strong> (拆成 ${bestNormalResult.orders.length} 單)</p>`;
-            if (bestNormalResult.orders.length < 2) {
-                html += `<p style="font-size:13px; color:#666;">不建議拆單，一單到底最划算！</p>`;
-            } else {
-                let saveAmt = getOrderCost(totalAmt, 0) - bestNormalResult.cost;
-                html += `<p style="font-size:13px; color:#ff3366;">比不拆單省下了 ${saveAmt} 元！</p>`;
-                html += `<ul style="font-size:13px; color:#555; padding-left:20px;">`;
-                bestNormalResult.orders.forEach((o, i) => {
-                    let sum = o.reduce((a,b)=>a+b.price,0);
-                    let counts = {};
-                    o.forEach(item => {
-                        let key = `${item.name}(${item.price}元)`;
-                        counts[key] = (counts[key] || 0) + 1;
-                    });
-                    let itemStrs = Object.keys(counts).map(key => `${key}*${counts[key]}`);
-                    html += `<li>第 ${i+1} 單：總額 ${sum} 元<br><span style="color:#888; font-size:12px;">(包含: ${itemStrs.join(', ')})</span></li>`;
-                });
-                html += `</ul>`;
+            if (items.length === 0) {
+                resEl.innerHTML = '<span style="color:#ff3366;">請輸入至少一項有效的商品金額與數量！</span>';
+                return;
+            }
+
+            for (let item of items) {
+                if (item.price > 449) {
+                    resEl.innerHTML = '<span style="color:#ff3366;">錯誤：單一商品金額不可超過 $449！</span>';
+                    return;
+                }
             }
             
-            html += `<hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">`;
-            html += `<h4 style="margin-top:0; color:#ff9800;">⚠️ 保守估計 (假設運費超標+20)</h4>`;
-            html += `<p style="font-size:14px; margin-bottom:5px;">總計：<strong style="color:#ff3366; font-size:18px;">${bestExtraResult.cost} 元</strong> (拆成 ${bestExtraResult.orders.length} 單)</p>`;
-            if (bestExtraResult.orders.length < 2) {
-                html += `<p style="font-size:13px; color:#666;">加上額外運費後不建議拆單！</p>`;
-            } else {
-                let saveAmt = getOrderCost(totalAmt, extraFee) - bestExtraResult.cost;
-                html += `<ul style="font-size:13px; color:#555; padding-left:20px;">`;
-                bestExtraResult.orders.forEach((o, i) => {
-                    let sum = o.reduce((a,b)=>a+b.price,0);
-                    let counts = {};
-                    o.forEach(item => {
-                        let key = `${item.name}(${item.price}元)`;
-                        counts[key] = (counts[key] || 0) + 1;
-                    });
-                    let itemStrs = Object.keys(counts).map(key => `${key}*${counts[key]}`);
-                    html += `<li>第 ${i+1} 單：總額 ${sum} 元<br><span style="color:#888; font-size:12px;">(包含: ${itemStrs.join(', ')})</span></li>`;
-                });
-                html += `</ul>`;
+            items.sort((a, b) => b.price - a.price);
+
+            let bestBins = null;
+            let bestCost = Infinity;
+
+            for (let attempt = 0; attempt < 150; attempt++) {
+                let bins = [];
+                
+                let currentItems = [...items];
+                if (attempt > 0) {
+                    for (let i = currentItems.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [currentItems[i], currentItems[j]] = [currentItems[j], currentItems[i]];
+                    }
+                }
+
+                for (let item of currentItems) {
+                    let placed = false;
+                    for (let bin of bins) {
+                        if (bin.sum + item.price <= 449) {
+                            bin.items.push(item);
+                            bin.sum += item.price;
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (!placed) {
+                        bins.push({ items: [item], sum: item.price });
+                    }
+                }
+
+                let currentCost = 0;
+                for (let bin of bins) {
+                    currentCost += bin.sum + 60; 
+                }
+
+                if (currentCost < bestCost) {
+                    bestCost = currentCost;
+                    bestBins = bins;
+                }
             }
+
+            let html = `<div style="font-weight:bold; margin-bottom:10px; color:#00B900; text-align:center; font-size:16px;">✨ 最佳拆單方案 (共 ${bestBins.length} 單)</div>`;
             
-            // 建立傳送文字
-            let chatText = "";
-            if (bestNormalResult.orders.length >= 2) {
-                chatText = `【最佳拆單建議】\n總計金額：${bestNormalResult.cost} 元\n`;
-                bestNormalResult.orders.forEach((o, i) => {
-                    let sum = o.reduce((a,b)=>a+b.price,0);
+            if (bestBins.length === 1) {
+                html += `<div style="text-align:center; color:#555;">總金額未超過限制，無需拆單。</div>`;
+                window.splitResultText = "";
+            } else {
+                let chatText = "【自動拆單結果】\n";
+                
+                bestBins.forEach((bin, i) => {
+                    let itemStrs = [];
                     let counts = {};
-                    o.forEach(item => {
+                    for (let item of bin.items) {
                         let key = `${item.name}(${item.price}元)`;
                         counts[key] = (counts[key] || 0) + 1;
-                    });
-                    let itemStrs = Object.keys(counts).map(key => `${key}*${counts[key]}`);
-                    chatText += `第 ${i+1} 單：${sum} 元 (${itemStrs.join(', ')})\n`;
+                    }
+                    for (let key in counts) {
+                        itemStrs.push(`${key}*${counts[key]}`);
+                    }
+
+                    html += `<div style="background: white; border: 1px solid #eee; padding: 10px; border-radius: 6px; margin-bottom: 8px;">`;
+                    html += `<div style="font-weight:bold; color:#007aff; margin-bottom:4px;">📦 第 ${i+1} 單：<span style="color:#ff3366;">$${bin.sum}</span></div>`;
+                    html += `<div style="font-size:13px; color:#666;">包含：${itemStrs.join(', ')}</div>`;
+                    html += `</div>`;
+                    
+                    chatText += `第 ${i+1} 單：${bin.sum} 元 (${itemStrs.join(', ')})\n`;
                 });
                 
                 window.splitResultText = chatText.trim();
@@ -483,15 +338,6 @@
 
             resEl.innerHTML = html;
         }
-        
-        let liffInitPromise = null;
-        
-        // 網頁載入時初始化 LIFF
-        window.addEventListener('DOMContentLoaded', () => {
-            liffInitPromise = liff.init({ liffId: "2011657436-UXXVvytt" }).catch(err => {
-                console.error('LIFF init failed', err);
-            });
-        });
 
         function copySplitResult() {
             if (!window.splitResultText) return;
@@ -514,29 +360,7 @@
             
             document.body.removeChild(tempTextArea);
         }
-
     </script>
-
-    <!-- 拆單試算提示窗 -->
-    <div id="split-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 2500;">
-        <div style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 350px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;">
-            <button onclick="closeSplitModal()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✖</button>
-            <h3 style="margin-top: 0; color: #333; font-size: 18px; text-align: center; margin-bottom: 5px;">最佳拆單試算</h3>
-            <p style="font-size: 12px; color: #555; text-align: center; margin-top: 0; margin-bottom: 15px;">請輸入各項餐點的單價與數量</p>
-            
-            <div id="split-items-container">
-                <!-- 預設 5 列 -->
-            </div>
-            
-            <button onclick="addSplitRow()" style="width: 100%; padding: 8px; border: 1px dashed #00B900; background: white; color: #00B900; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 15px;">➕ 新增品項</button>
-            
-            <button onclick="calculateSplit()" style="width: 100%; padding: 12px; border: none; background: #007aff; color: white; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-bottom: 15px;">開始計算最佳拆單</button>
-            
-            <div id="split-result" style="background: #f8f9fa; padding: 15px; border-radius: 8px; display: none;">
-                <!-- 結果顯示區 -->
-            </div>
-        </div>
-    </div>
 
 </body>
 </html>
