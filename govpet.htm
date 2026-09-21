@@ -139,7 +139,7 @@ window.addEventListener('error', function(e) {
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
 let hasConnectedWs = false;
 function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
-function getMediaUrl(u, useThumb = false) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { if (useThumb) p = p.replace(/\.(jpg|jpeg|png)$/i, '_thumb.webp'); if (p.match(/\.webp$/i)) return 'https://weibsite.github.io/findDOG' + p; return getBaseHttpUrl() + p; } return u; }
+function getMediaUrl(u, useThumb = false, useMap = false) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { if (useMap) p = p.replace(/\.(jpg|jpeg|png)$/i, '_map.webp'); else if (useThumb) p = p.replace(/\.(jpg|jpeg|png)$/i, '_thumb.webp'); if (p.match(/\.webp$/i)) return 'https://weibsite.github.io/findDOG' + p; return getBaseHttpUrl() + p; } return u; }
 function setPersistentData(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function getPersistentData(k) { try { return localStorage.getItem(k); } catch (e) {} return null; }
 let myUid = getPersistentData('dogMap_UID'); if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
@@ -888,9 +888,9 @@ function updateAnimalInfoCard() {
     let originalMainUrl = getMediaUrl(proj.mainPhoto, false); 
     let mainUrl = originalMainUrl;
     if (mainUrl && mainUrl.includes('pet.gov.tw')) {
-        mainUrl = getBaseHttpUrl() + `/dataset/images/${proj.id}_0_thumb.webp`;
+        mainUrl = `https://weibsite.github.io/findDOG/dataset/images/${proj.id}_0_thumb.webp`;
     } else {
-        mainUrl = getMediaUrl(proj.mainPhoto, true);
+        mainUrl = getMediaUrl(proj.mainPhoto, true, false);
     }
     
     const imgEl = document.getElementById('animal-main-photo');
@@ -1222,9 +1222,9 @@ function drawAllProjects(reset = false) {
         let thumbUrl = photoUrl;
         if (thumbUrl) {
             if (thumbUrl.includes('pet.gov.tw')) {
-                thumbUrl = getBaseHttpUrl() + `/dataset/images/${proj.id || key}_0_thumb.webp`;
+                thumbUrl = `https://weibsite.github.io/findDOG/dataset/images/${proj.id || key}_0_map.webp`;
             } else if (typeof getMediaUrl === 'function') {
-                thumbUrl = getMediaUrl(thumbUrl, true);
+                thumbUrl = getMediaUrl(thumbUrl, false, true);
             }
         }
         const dateText = formatLostDate(proj.lostDate);
@@ -1652,9 +1652,9 @@ function renderListView(reset = false) {
             // If it's a government URL, use our local dataset thumbnail first
             if (urlStr.includes('pet.gov.tw')) {
                 // p.id is usually the filename prefix in dataset/images/
-                urlStr = getBaseHttpUrl() + `/dataset/images/${p.id}_0_thumb.webp`;
+                urlStr = `https://weibsite.github.io/findDOG/dataset/images/${p.id}_0_thumb.webp`;
             } else {
-                urlStr = getMediaUrl(urlStr, true);
+                urlStr = getMediaUrl(urlStr, true, false);
             }
             
             imgDiv.innerHTML = `
