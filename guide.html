@@ -518,10 +518,7 @@
                 
                 window.splitResultText = chatText.trim();
                 
-                html += `<div style="display: flex; gap: 10px; margin-top: 15px;">`;
-                html += `<button onclick="copySplitResult()" style="flex: 1; padding: 12px; border: 2px solid #00B900; background: white; color: #00B900; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;">📋 複製明細</button>`;
-                html += `<button onclick="shareSplitResult()" style="flex: 1; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;">📤 分享傳送</button>`;
-                html += `</div>`;
+                html += `<button onclick="copySplitResult()" style="margin-top: 15px; width: 100%; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;">📋 複製明細並回聊天室</button>`;
             }
 
             resEl.innerHTML = html;
@@ -539,7 +536,6 @@
         function copySplitResult() {
             if (!window.splitResultText) return;
             
-            // 建立暫時的 textarea 來執行複製
             const tempTextArea = document.createElement("textarea");
             tempTextArea.value = window.splitResultText;
             document.body.appendChild(tempTextArea);
@@ -548,44 +544,15 @@
             
             try {
                 document.execCommand("copy");
-                alert("✅ 複製成功！您可以直接貼上到對話框中。");
+                alert("✅ 複製成功！將為您自動關閉畫面，請直接在聊天室「貼上」即可。");
+                if (liff.isInClient()) {
+                    liff.closeWindow();
+                }
             } catch (err) {
                 alert("複製失敗，請手動框選文字複製。");
             }
             
             document.body.removeChild(tempTextArea);
-        }
-
-        async function shareSplitResult() {
-            if (!window.splitResultText) return;
-            
-            try {
-                if (liffInitPromise) {
-                    await liffInitPromise;
-                }
-                
-                if (!liff.isLoggedIn()) {
-                    liff.login({ redirectUri: window.location.href });
-                    return;
-                }
-                
-                if (liff.isApiAvailable('shareTargetPicker')) {
-                    const res = await liff.shareTargetPicker([
-                        {
-                            type: 'text',
-                            text: window.splitResultText
-                        }
-                    ]);
-                    if (res) {
-                        alert("✅ 分享成功！");
-                        liff.closeWindow();
-                    }
-                } else {
-                    alert("⚠️ 您的裝置或 LINE 版本不支援直接分享，請使用「複製明細」按鈕。");
-                }
-            } catch (err) {
-                alert("分享失敗：" + (err.message || err));
-            }
         }
 
     </script>
