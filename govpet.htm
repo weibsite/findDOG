@@ -1312,7 +1312,10 @@ async function backgroundSyncAllProjects() {
         if (bgSyncPage === 0) {
             // First page: try to load the static JSON from GitHub CDN
             try {
-                const response = await fetch('https://weibsite.github.io/findDOG/dataset/shelter.json');
+                let response = await fetch('https://weibsite.github.io/findDOG/dataset/shelter.json');
+                if (!response.ok) {
+                    response = await fetch('https://weibsite.github.io/findDOG/shelter.json');
+                }
                 if (response.ok) {
                     const allData = await response.json();
                     res = { success: true, data: allData };
