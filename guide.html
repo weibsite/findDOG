@@ -37,6 +37,9 @@
         
         .status-section.preorder { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
         .status-section.preorder .status-badge { color: #d68910; }
+        
+        .status-section.busy { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
+        .status-section.busy .status-badge { color: #2980b9; font-size: 16px; padding: 10px 15px; }
 
         /* 收餐指引區塊 (下 2/3) */
         .guide-section { 
@@ -115,8 +118,18 @@
             container.className = 'status-section'; // reset
             if(type === 'closed') container.classList.add('closed');
             if(type === 'preorder') container.classList.add('preorder');
+            if(type === 'busy') container.classList.add('busy');
             
             badge.innerText = text;
+            
+            // 如果字太多，縮小一點避免破版
+            if (text.length > 10) {
+                badge.style.fontSize = "16px";
+                badge.style.padding = "10px 15px";
+            } else {
+                badge.style.fontSize = ""; // 恢復預設
+                badge.style.padding = "";
+            }
         }
 
         async function loadStatus() {
