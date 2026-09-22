@@ -351,11 +351,20 @@
             row.style.padding = '10px';
             row.style.borderRadius = '8px';
             
-            const label = document.createElement('div');
-            label.innerText = itemName;
+            const label = document.createElement('input');
+            label.type = 'text';
+            label.id = `name-${itemCount}`;
+            label.value = itemName;
             label.style.fontWeight = 'bold';
-            label.style.color = '#555';
-            label.style.width = '20px';
+            label.style.color = '#007aff';
+            label.style.width = '55px';
+            label.style.padding = '8px 4px';
+            label.style.border = '1px dashed #007aff';
+            label.style.borderRadius = '6px';
+            label.style.textAlign = 'center';
+            label.style.fontSize = '14px';
+            label.style.boxSizing = 'border-box';
+            label.onfocus = () => { if (label.value === itemName) label.select(); };
             
             const priceInput = document.createElement('input');
             priceInput.type = 'number';
@@ -398,13 +407,19 @@
             const rows = list.children;
             let items = [];
             
+            let hasUnchangedNames = false;
             for (let i = 0; i < rows.length; i++) {
                 const rowId = rows[i].id.split('-')[2];
                 const price = parseInt(document.getElementById(`price-${rowId}`).value);
                 const qty = parseInt(document.getElementById(`qty-${rowId}`).value);
-                const label = rows[i].children[0].innerText;
+                const labelInput = document.getElementById(`name-${rowId}`);
+                let label = labelInput ? labelInput.value.trim() : "商品";
+                if (!label) label = "商品";
                 
                 if (price && qty && price > 0 && qty > 0) {
+                    if (/^[A-Z]$/.test(label)) {
+                        hasUnchangedNames = true;
+                    }
                     for (let j = 0; j < qty; j++) {
                         items.push({ name: label, price: price });
                     }
@@ -417,6 +432,14 @@
             if (items.length === 0) {
                 resEl.innerHTML = '<span style="color:#ff3366;">請輸入至少一項有效的商品金額與數量！</span>';
                 return;
+            }
+            
+            if (hasUnchangedNames) {
+                const proceed = confirm("您尚未修改預設的商品名稱 (A, B, C...)，這樣代訂可能會不知道這代表什麼商品哦！確定要直接計算並送出嗎？");
+                if (!proceed) {
+                    resEl.style.display = 'none';
+                    return;
+                }
             }
 
             for (let item of items) {
