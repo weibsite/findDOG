@@ -40,7 +40,7 @@
                 },
                 {
                     "type": "text",
-                    "text": "美食預約單 (限 $449)",
+                    "text": "美食預約單 ($285內半價)",
                     "weight": "bold",
                     "size": "xl",
                     "margin": "md"
@@ -447,22 +447,14 @@
                     return;
                 }
             }
-            for (let item of items) {
-                if (item.price > 449) {
-                    resEl.innerHTML = '<span style="color:#ff3366;">錯誤：單一商品金額不可超過 $449！</span>';
-                    return;
-                }
-            }
-            
             items.sort((a, b) => b.price - a.price);
 
             window.bestBins = null;
             let bestBins = null;
             let bestCost = Infinity;
 
-            for (let attempt = 0; attempt < 150; attempt++) {
+            for (let attempt = 0; attempt < 1000; attempt++) {
                 let bins = [];
-                
                 let currentItems = [...items];
                 if (attempt > 0) {
                     for (let i = currentItems.length - 1; i > 0; i--) {
@@ -471,24 +463,48 @@
                     }
                 }
 
-                for (let item of currentItems) {
-                    let placed = false;
-                    for (let bin of bins) {
-                        if (bin.sum + item.price <= 449) {
-                            bin.items.push(item);
-                            bin.sum += item.price;
-                            placed = true;
-                            break;
+                if (attempt === 0) {
+                    for (let item of currentItems) {
+                        let placed = false;
+                        for (let bin of bins) {
+                            if (bin.sum + item.price <= 285) {
+                                bin.items.push(item);
+                                bin.sum += item.price;
+                                placed = true;
+                                break;
+                            }
+                        }
+                        if (!placed) {
+                            bins.push({ items: [item], sum: item.price });
                         }
                     }
-                    if (!placed) {
-                        bins.push({ items: [item], sum: item.price });
+                } else if (attempt === 1) {
+                    let sum = 0;
+                    for (let item of currentItems) sum += item.price;
+                    bins.push({ items: currentItems, sum: sum });
+                } else {
+                    for (let item of currentItems) {
+                        if (bins.length === 0) {
+                            bins.push({ items: [item], sum: item.price });
+                        } else {
+                            if (Math.random() < 0.3) {
+                                bins.push({ items: [item], sum: item.price });
+                            } else {
+                                let idx = Math.floor(Math.random() * bins.length);
+                                bins[idx].items.push(item);
+                                bins[idx].sum += item.price;
+                            }
+                        }
                     }
                 }
 
                 let currentCost = 0;
+                let numBins = bins.length;
+                let feePerBin = numBins >= 2 ? 30 : 40; 
+                
                 for (let bin of bins) {
-                    currentCost += bin.sum + 60; 
+                    let foodCost = Math.ceil(Math.min(bin.sum, 285) / 2) + Math.max(0, bin.sum - 285);
+                    currentCost += foodCost + feePerBin;
                 }
 
                 if (currentCost < bestCost) {
@@ -552,7 +568,7 @@
                 },
                 {
                     "type": "text",
-                    "text": "美食預約單 (限 $449)",
+                    "text": "美食預約單 ($285內半價)",
                     "weight": "bold",
                     "size": "xl",
                     "margin": "md"
