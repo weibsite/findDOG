@@ -1,70 +1,69 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>收款資訊</title>
+    <title>營業狀態</title>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f5f7; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 15px 10px; box-sizing: border-box; }
-        .container { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 100%; box-sizing: border-box; }
-        h2 { color: #333; margin-top: 0; font-size: 16px; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .payment-box { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
-        .title { font-size: 14px; color: #333; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .info-label { font-size: 13px; color: #666; }
-        .info-value { font-size: 16px; color: #000; font-weight: bold; }
-        .action-btn { background-color: #df2c2d; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .copy-btn { background-color: #666; color: white; border: none; padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; margin-left: 10px; }
+        .container { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 100%; box-sizing: border-box; text-align: center; }
+        .status-label { font-size: 14px; color: #666; margin-bottom: 12px; }
+        .status-badge {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #00B900 0%, #008a00 100%);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        .status-badge.closed { background: linear-gradient(135deg, #ff3366 0%, #d81b43 100%); }
+        .status-badge.preorder { background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); }
+        .status-badge.busy { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); font-size: 16px; }
+        .notice { font-size: 13px; color: #f39c12; font-weight: bold; margin-top: 12px; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>💰 收款資訊</h2>
-        
-        <div class="payment-box">
-            <div class="title">🔴 街口支付</div>
-            <div class="info-row">
-                <span class="info-label">街口帳號：</span>
-                <div style="display: flex; align-items: center;">
-                    <span class="info-value">900791475</span>
-                    <button class="copy-btn" onclick="copyText('900791475')">複製</button>
-                </div>
-            </div>
-            <div style="margin-top: 10px; text-align: right;">
-                <a href="https://service.jkopay.com/r/transfer?j=Transfer:900791475" class="action-btn" target="_blank">開啟 APP</a>
-            </div>
-        </div>
-
-        <div class="payment-box" style="margin-bottom: 0;">
-            <div class="title">🏦 銀行匯款 (街口銀行)</div>
-            <div class="info-row">
-                <span class="info-label">銀行代碼：</span>
-                <span class="info-value">396</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">匯款帳號：</span>
-                <div style="display: flex; align-items: center;">
-                    <span class="info-value">900791475</span>
-                    <button class="copy-btn" onclick="copyText('900791475')">複製</button>
-                </div>
-            </div>
+        <div class="status-label">店家目前營業狀態</div>
+        <div id="status-badge" class="status-badge">讀取中...</div>
+        <div class="notice">
+            預約單直送約等待20分鐘<br>
+            請善用預約單餐期不用等待
         </div>
     </div>
 
     <script>
-        // LIFF 初始化確保瀏覽器功能正常
-        liff.init({ liffId: "YOUR_NEW_LIFF_ID" }).catch(err => console.error(err));
+        liff.init({ liffId: "2011657436-UXXVvytt" }).catch(err => console.error(err));
 
-        function copyText(text) {
-            const tempInput = document.createElement("input");
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("已複製帳號：" + text);
+        function setStatus(type, text) {
+            const badge = document.getElementById('status-badge');
+            badge.className = 'status-badge';
+            if (type === 'closed') badge.classList.add('closed');
+            if (type === 'preorder') badge.classList.add('preorder');
+            if (type === 'busy') badge.classList.add('busy');
+            badge.innerText = text;
         }
+
+        async function loadStatus() {
+            try {
+                const configRes = await fetch('/config.json?t=' + new Date().getTime());
+                const configData = await configRes.json();
+                const lineUrl = configData.line_url;
+                if (!lineUrl) return;
+                const response = await fetch(lineUrl + '/api/status');
+                const data = await response.json();
+                setStatus(data.type, data.text);
+            } catch (err) {
+                console.error(err);
+                setStatus("open", "營業中");
+            }
+        }
+
+        loadStatus();
+        setInterval(loadStatus, 5000);
     </script>
 </body>
 </html>
