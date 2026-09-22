@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>本機 UberEats 搜尋系統</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
+  .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
+  
+  .app-header { position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; text-align: center; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
+  h1 { display: none; }
+  
+  .section { padding: 15px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
+  .section-title { font-size: 14px; font-weight: bold; color: #666; margin-bottom: 10px; }
+  
+  .input-row { display: flex; gap: 8px; }
+  .input-row input { flex: 1; padding: 14px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; box-sizing: border-box; }
+  .input-row button { padding: 14px 16px; font-size: 15px; background: #111; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+  .input-row button.secondary { background: #e0e0e0; color: #111; }
+
+  .addr-results { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .addr-item { padding: 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff; font-size: 14px; }
+  
+  /* Mobile list layout for cards */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+  .card { border: 1px solid #eee; border-radius: 12px; overflow: hidden; cursor: pointer; padding-bottom: 12px; background: #fff; }
+  .card-img { width: 100%; height: 180px; background: #eee center/cover no-repeat; }
+  .card-body { padding: 12px 12px 0 12px; }
+  .card-name { font-size: 18px; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: 14px; color: #666; }
+  
+  .status { margin-top: 10px; font-size: 15px; color: #666; text-align: center; margin-bottom: 20px;}
+  .error { color: #d32f2f; }
+  
+  /* 餐廳菜單頁面 */
+  #storeView { display: none; }
+  .store-nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; position: sticky; top: 0; background: #fff; z-index: 90; margin-left: -15px; margin-right: -15px; padding-left: 15px; padding-right: 15px;}
+  .back-btn { background: none; border: none; font-size: 16px; font-weight: bold; cursor: pointer; padding: 0; color: #333; text-decoration: underline; }
+  .store-header { text-align: center; margin-bottom: 20px; }
+  .store-header img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 1px solid #eee;}
+  
+  .menu-category { margin-top: 25px; margin-bottom: 15px; font-size: 22px; font-weight: bold; padding-bottom: 10px; }
+  .menu-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+  .menu-item { border: 1px solid #ddd; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; background: #fff; cursor: pointer;}
+  .menu-item-info { flex: 1; }
+  .menu-item-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+  .menu-item-desc { font-size: 13px; color: #666; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .menu-item-price { font-weight: bold; font-size: 15px; color: #111; }
+  .menu-item-img { width: 90px; height: 90px; background: #eee center/cover no-repeat; border-radius: 8px; flex-shrink: 0; }
+
+  /* Bottom sheet style modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: flex-end; justify-content: center; }
+  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: slideUp 0.3s ease-out; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-img { width: 100%; height: 200px; background: #eee center/cover no-repeat; }
+  .modal-body { padding: 20px; overflow-y: auto; padding-bottom: 30px; }
+  .modal-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+  .modal-desc { font-size: 14px; color: #666; margin-bottom: 20px; }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section h4 { margin: 0 0 10px 0; font-size: 16px; }
+  .modal-textarea { width: 100%; height: 80px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; resize: none; font-family: inherit; box-sizing: border-box;}
+  .modal-footer { padding: 15px 20px 25px 20px; border-top: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 15px; background: #fff;}
+  
+  .qty-controls { display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 18px;}
+  .qty-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: #f0f0f0; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+  .add-btn { flex: 1; padding: 14px; background: #111; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+  .close-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9); border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10;}
+
+  /* Floating Cart Button */
+  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="app-header">本機 UberEats 搜尋系統</div>
+
+  <!-- 首頁 -->
+  <div id="homeView">
+    <div class="section">
+      <div class="section-title">1. 外送地址設定</div>
+      <div class="input-row">
+        <input type="text" id="addrInput" placeholder="輸入地址 (例如: 高雄車站)" onkeydown="if(event.key==='Enter') searchAddress()" />
+        <button class="secondary" onclick="searchAddress()">尋找地址</button>
+      </div>
+      <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></div>
+      <div id="addrResults" class="addr-results"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">2. 選擇安排時間 (預約時段)</div>
+      <div id="schedulePickerArea">
+        <div id="dateButtons" style="display:flex; overflow-x:auto; gap:10px; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch;">
+          <!-- JS 動態生成日期按鈕 -->
+        </div>
+        <div class="input-row">
+          <select id="scheduleTime" style="flex:1; padding:14px; border:1px solid #ccc; border-radius:8px; font-size:15px; outline:none;">
+            <!-- JS 動態生成時間選項 -->
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">3. 尋找想吃的餐點</div>
+      <div class="input-row">
+        <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" onkeydown="if(event.key==='Enter') searchStores()" />
+        <button onclick="searchStores()">搜尋餐廳</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 搜尋結果清單頁面 -->
+  <div id="listView" style="display:none;">
+    <div class="store-nav">
+      <button class="back-btn" onclick="goHome()">← 回到首頁</button>
+    </div>
+    <div id="status" class="status">載入中...</div>
+    <div id="results" class="grid"></div>
+  </div>
+
+  <!-- 餐廳菜單頁面 -->
+  <div id="storeView">
+    <div class="store-nav">
+      <button class="back-btn" onclick="goBack()">← 返回搜尋結果</button>
+    </div>
+    <div id="storeContent"></div>
+  </div>
+  
+  <!-- 全局懸浮購物車按鈕 -->
+  <button id="floatingCartBtn" class="floating-cart" onclick="viewCart()">🛒 檢視購物車 (0)</button>
+
+</div>
+
+<!-- 點餐彈出視窗 -->
+<div class="modal-overlay" id="itemModal" onclick="if(event.target===this) closeItemModal()">
+  <div class="modal" style="position: relative;">
+    <button class="close-btn" onclick="closeItemModal()">✕</button>
+    <div class="modal-img" id="modalImg"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="modalTitle">餐點名稱</div>
+      <div class="modal-desc" id="modalDesc">餐點描述</div>
+      
+      <!-- 動態客製化選項區塊 -->
+      <div id="customizationsArea"></div>
+
+      <div class="modal-section" style="margin-top: 15px;">
+        <h4>特殊指示</h4>
+        <textarea id="modalNote" class="modal-textarea" placeholder="例如：不要加蔥、醬料分開裝"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(-1)">-</button>
+        <span id="modalQty">1</span>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+      <button class="add-btn" onclick="confirmAddToCart()">加入購物車 • $<span id="modalTotal">0</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let API_BASE_URL = '';
+  let WS_URL = '';
+  
+  // 動態取得預設的連線位置
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname || '127.0.0.1';
+  WS_URL = `${protocol}//${host}:8000/ws`;
+  
+  let isAddressSet = false;
+  let scheduleMode = 'SCHEDULE';
+  let selectedDateIndex = 0;
+  const datesData = [];
+
+  // 初始化 UI 與設定
+  document.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const configRes = await fetch('config.json?t=' + Date.now());
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.api_url) API_BASE_URL = configData.api_url.replace(/\/$/, '');
+        if (configData.ws_url) WS_URL = configData.ws_url;
+      }
+    } catch (e) {
+      console.log('未找到 config.json，將使用相對路徑與本機位址。');
+    }
+    initSchedulePicker();
+  });
+
+  function initSchedulePicker() {
+    const today = new Date();
+    const daysStr = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+    const dateBtns = document.getElementById('dateButtons');
+    dateBtns.innerHTML = '';
+
+    for (let i = 0; i < 7; i++) {
+      let d = new Date(today);
+      d.setDate(today.getDate() + i);
+      
+      let label = `${d.getMonth()+1}月${d.getDate()}日`;
+      let dayName = daysStr[d.getDay()];
+      if (i === 0) dayName = '今天';
+      if (i === 1) dayName = '明天';
+
+      datesData.push(d);
+      
+      const btn = document.createElement('button');
+      btn.innerHTML = `<div style="font-size:12px; color:#666;">${dayName}</div><div style="font-size:14px; font-weight:bold;">${label}</div>`;
+      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${i === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
+      btn.onclick = () => selectDate(i);
+      btn.id = `dateBtn_${i}`;
+      dateBtns.appendChild(btn);
+    }
+    generateTimeSlots();
+  }
+
+  function selectDate(idx) {
+    selectedDateIndex = idx;
+    for (let i = 0; i < 7; i++) {
+      const btn = document.getElementById(`dateBtn_${i}`);
+      if (i === idx) {
+        btn.style.borderColor = '#000';
+      } else {
+        btn.style.borderColor = '#eee';
+      }
+    }
+    generateTimeSlots();
+  }
+
+  function generateTimeSlots() {
+    const timeSelect = document.getElementById('scheduleTime');
+    timeSelect.innerHTML = '';
+    
+    const targetDate = datesData[selectedDateIndex];
+    const now = new Date();
+    
+    let startHour = 0;
+    let startMin = 0;
+    
+    // 如果是今天，從現在的下一個小時開始
+    if (selectedDateIndex === 0) {
+      startHour = now.getHours() + 1;
+      startMin = Math.ceil(now.getMinutes() / 15) * 15;
+      if (startMin >= 60) {
+        startHour++;
+        startMin = 0;
+      }
+    }
+
+    for (let h = startHour; h < 24; h++) {
+      for (let m = (h === startHour ? startMin : 0); m < 60; m += 15) {
+        // 建立 30 分鐘的區間
+        let endH = h;
+        let endM = m + 30;
+        if (endM >= 60) { endH++; endM -= 60; }
+        if (endH >= 24) continue;
+        
+        const formatTime = (hour, min) => {
+          const ampm = hour >= 12 ? '下午' : '上午';
+          const h12 = hour % 12 || 12;
+          const mm = min.toString().padStart(2, '0');
+          return `${ampm} ${h12}:${mm}`;
+        };
+
+        const tStart = formatTime(h, m);
+        const tEnd = formatTime(endH, endM);
+
+        const valDate = new Date(targetDate);
+        valDate.setHours(h, m, 0, 0);
+        
+        // 為了模擬時區不偏差，使用本地時間組裝字串或保留 ISO 格式
+        const tzo = -valDate.getTimezoneOffset() / 60;
+        const sign = tzo >= 0 ? '+' : '-';
+        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+        const isoLocal = valDate.getFullYear() + '-' + pad(valDate.getMonth()+1) + '-' + pad(valDate.getDate()) + 'T' + pad(valDate.getHours()) + ':' + pad(valDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
+
+        const opt = document.createElement('option');
+        opt.value = isoLocal; // 用完整的時間字串
+        opt.innerText = `${tStart} – ${tEnd}`;
+        timeSelect.appendChild(opt);
+      }
+    }
+    
+    if (timeSelect.options.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = "";
+      opt.innerText = "今日已無可用時段";
+      timeSelect.appendChild(opt);
+    }
+  }
+
+  function setScheduleMode(mode) {
+    scheduleMode = mode;
+    const btnAsap = document.getElementById('btnAsap');
+    const btnSchedule = document.getElementById('btnSchedule');
+    const pickerArea = document.getElementById('schedulePickerArea');
+    
+    if (mode === 'ASAP') {
+      btnAsap.style.background = '#000'; btnAsap.style.color = '#fff'; btnAsap.style.borderColor = '#000';
+      btnSchedule.style.background = '#fff'; btnSchedule.style.color = '#333'; btnSchedule.style.borderColor = '#ccc';
+      pickerArea.style.display = 'none';
+    } else {
+      btnSchedule.style.background = '#000'; btnSchedule.style.color = '#fff'; btnSchedule.style.borderColor = '#000';
+      btnAsap.style.background = '#fff'; btnAsap.style.color = '#333'; btnAsap.style.borderColor = '#ccc';
+      pickerArea.style.display = 'block';
+    }
+  }
+
+  // 初始化 UI
+  document.addEventListener("DOMContentLoaded", () => {
+    initSchedulePicker();
+  });
+
+  async function searchAddress() {
+    const q = document.getElementById('addrInput').value.trim();
+    if (!q) return;
+    const statusEl = document.getElementById('addrStatus');
+    const resultsEl = document.getElementById('addrResults');
+    statusEl.innerText = '尋找地址中 (透過高級伺服器解析)...'; 
+    resultsEl.innerHTML = '';
+    
+    try {
+      // 動態判定目前的網域與協定 (支援上架後的手機端或外網存取)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname;
+      // 假設尋寵專案的伺服器與此 Node.js 伺服器跑在同一台機器上，但 port 為 8000
+      const wsUrl = `${protocol}//${host}:8000/ws`;
+      
+      const ws = new WebSocket(wsUrl);
+      let isTimeout = false;
+      const timeoutId = setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          isTimeout = true;
+          ws.close();
+          statusEl.innerText = '❌ 尋找地址逾時，伺服器可能正在忙碌中。';
+        }
+      }, 15000);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'search_address', address: q }));
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'search_address_result') {
+          clearTimeout(timeoutId);
+          if (data.success && data.lat && data.lng) {
+            statusEl.innerText = '✅ 找到精準座標，請點擊下方確認：';
+            resultsEl.innerHTML = `
+              <div class="addr-item" onclick="setAddress(${data.lat}, ${data.lng}, '${escapeHTML(q)}')">
+                📍 ${escapeHTML(q)} <span style="font-size:12px; color:#999; margin-left:8px;">(點擊設定)</span>
+              </div>
+            `;
+          } else {
+            statusEl.innerText = '❌ 找不到該地址，請嘗試其他關鍵字';
+          }
+          ws.close();
+        }
+      };
+
+      ws.onerror = (e) => {
+        if (!isTimeout) {
+            statusEl.innerText = `❌ 連線至地址伺服器失敗，請確認該伺服器已啟動 (${wsUrl})`;
+        }
+      };
+    } catch (e) { 
+        statusEl.innerText = '❌ 尋找地址失敗: ' + e.message; 
+    }
+  }
+
+  async function setAddress(lat, lng, title) {
+    const statusEl = document.getElementById('addrStatus');
+    statusEl.innerText = '正在設定地址...'; document.getElementById('addrResults').innerHTML = '';
+    document.getElementById('addrInput').value = title.split(',')[0];
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/set-address`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng, title })
+      });
+        const json = await res.json();
+        if (json.status === 'success') {
+            statusEl.innerText = '✅ 地址已更新，現在您可以搜尋附近餐廳了！';
+            isAddressSet = true;
+        } else {
+            statusEl.innerText = '❌ 設定失敗: ' + json.message;
+        }
+      } catch (e) { statusEl.innerText = '連線至伺服器失敗: ' + e.message; }
+  }
+
+  async function searchStores() {
+    if (!isAddressSet) {
+        showModal('請先設定外送地址', '在尋找餐廳之前，請務必先輸入並點擊「尋找地址」，以便系統準確計算外送範圍與營業時間！');
+        return;
+    }
+    const q = document.getElementById('query').value.trim();
+    if (!q) return;
+    
+    // 切換到 ListView
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('storeView').style.display = 'none';
+    document.getElementById('listView').style.display = 'block';
+
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    statusEl.innerHTML = '搜尋中，請稍候...'; statusEl.className = 'status'; resultsEl.innerHTML = '';
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/search`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const json = await res.json();
+      if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
+      
+      const stores = (json.data.feedItems || []).filter(i => i.type === 'REGULAR_STORE' && i.store).map(i => i.store);
+      if (stores.length === 0) { statusEl.innerHTML = '找不到相關餐廳。'; return; }
+      
+      const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
+
+      statusEl.innerHTML = `為您找到 ${stores.length} 家餐廳：`;
+      resultsEl.innerHTML = stores.map(s => {
+        const imgUrl = s.image && s.image.items && s.image.items.length > 0 ? s.image.items[0].url : '';
+        const rating = s.rating ? s.rating.text : '無評價';
+        const name = s.title ? s.title.text : '未知餐廳';
+        
+        const isBad = unSchedulableStores.includes(s.storeUuid);
+        const style = isBad ? 'filter: grayscale(100%); opacity: 0.6;' : '';
+        
+        return `
+          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}')">
+            <div class="card-img" style="background-image: url('${imgUrl}')"></div>
+            <div class="card-body">
+              <div class="card-name">${escapeHTML(name)}</div>
+              <div class="card-meta">⭐ ${escapeHTML(rating)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
+  }
+
+  // ==== 購物車與餐廳菜單功能 ====
+  let cart = [];
+  
+  function updateCartBadge() {
+    const btn = document.getElementById('floatingCartBtn');
+    if (btn) {
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      btn.innerText = `🛒 檢視購物車 (${totalQty})`;
+      if (totalQty > 0) {
+        btn.style.display = 'block';
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+  }
+
+  function viewCart() {
+    if (cart.length === 0) {
+      showModal('購物車是空的', '您還沒有加入任何餐點喔！', false);
+      return;
+    }
+    let total = 0;
+    let msg = '【您的購物清單】\n\n';
+    cart.forEach((item, i) => {
+      const lineTotal = item.price * item.qty;
+      total += lineTotal;
+      msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
+      if (item.note) msg += `   備註: ${item.note}\n`;
+    });
+    msg += `\n總計: $${total}\n\n(註：此為本機模擬購物車，尚未與 Uber Eats 真實帳號綁定)`;
+    showModal('購物車', msg, false);
+  }
+
+  // 彈出視窗狀態
+  let currentItem = null;
+  let currentQty = 1;
+  let currentCustomizations = [];
+
+  async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
+    currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [] };
+    currentQty = 1;
+    currentCustomizations = [];
+    
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalDesc').innerText = desc;
+    document.getElementById('modalImg').style.display = imgUrl ? 'block' : 'none';
+    if (imgUrl) document.getElementById('modalImg').style.backgroundImage = `url('${imgUrl}')`;
+    document.getElementById('modalNote').value = '';
+    document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#666;">載入選項中...</div>';
+    
+    updateModalPrice();
+    document.getElementById('itemModal').style.display = 'flex';
+
+    // 呼叫 API 取得真實客製化選項
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/item`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
+      });
+      const json = await res.json();
+      if (json.status === 'success' && json.data) {
+        currentCustomizations = json.data.customizationsList || [];
+        renderCustomizations();
+      } else {
+        document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '未知錯誤') + ')</div>';
+      }
+    } catch (e) {
+      document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
+    }
+  }
+
+  function renderCustomizations() {
+    const area = document.getElementById('customizationsArea');
+    if (!currentCustomizations || currentCustomizations.length === 0) {
+      area.innerHTML = '';
+      return;
+    }
+    
+    let html = '';
+    currentCustomizations.forEach((group, gIdx) => {
+      const gTitle = parseText(group.title);
+      const isRadio = group.maxPermitted === 1;
+      let reqText = group.minPermitted > 0 ? `必填 • 選擇 ${group.minPermitted} 項` : '選填';
+      if (group.maxPermitted > 1) reqText += ` (最多 ${group.maxPermitted} 項)`;
+      
+      html += `
+        <div class="modal-section" style="background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+            <h4 style="margin:0;">${escapeHTML(gTitle)}</h4>
+            <span style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:4px;">${reqText}</span>
+          </div>
+      `;
+      
+      group.options.forEach((opt, oIdx) => {
+        const oTitle = parseText(opt.title);
+        const oPrice = opt.price > 0 ? `+$${opt.price / 100}` : '';
+        const inputType = isRadio ? 'radio' : 'checkbox';
+        const inputName = `grp_${gIdx}`;
+        
+        html += `
+          <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaeaea; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="${inputType}" name="${inputName}" data-gidx="${gIdx}" data-oidx="${oIdx}" onchange="recalcCustomizations()" style="width:18px;height:18px;">
+              <span>${escapeHTML(oTitle)}</span>
+            </div>
+            <span style="color:#666; font-size:14px;">${oPrice}</span>
+          </label>
+        `;
+      });
+      html += `</div>`;
+    });
+    area.innerHTML = html;
+  }
+
+  function recalcCustomizations() {
+    let extraPrice = 0;
+    currentItem.selectedOptions = [];
+    
+    currentCustomizations.forEach((group, gIdx) => {
+      group.options.forEach((opt, oIdx) => {
+        const cb = document.querySelector(`input[data-gidx="${gIdx}"][data-oidx="${oIdx}"]`);
+        if (cb && cb.checked) {
+          extraPrice += (opt.price || 0) / 100;
+          currentItem.selectedOptions.push(parseText(opt.title));
+        }
+      });
+    });
+    
+    currentItem.totalPrice = currentItem.basePrice + extraPrice;
+    updateModalPrice();
+  }
+
+  function closeItemModal() {
+    document.getElementById('itemModal').style.display = 'none';
+  }
+
+  function changeQty(delta) {
+    currentQty += delta;
+    if (currentQty < 1) currentQty = 1;
+    updateModalPrice();
+  }
+
+  function updateModalPrice() {
+    document.getElementById('modalQty').innerText = currentQty;
+    const price = currentItem.totalPrice !== undefined ? currentItem.totalPrice : currentItem.basePrice;
+    document.getElementById('modalTotal').innerText = (price * currentQty).toLocaleString();
+  }
+
+  function confirmAddToCart() {
+    const note = document.getElementById('modalNote').value.trim();
+    const finalPrice = currentItem.totalPrice !== undefined ? currentItem.totalPrice : currentItem.basePrice;
+    
+    // 把選取的客製化選項文字加進備註裡，以便在購物車顯示
+    let fullNote = note;
+    if (currentItem.selectedOptions && currentItem.selectedOptions.length > 0) {
+      const optStr = "選項：" + currentItem.selectedOptions.join(", ");
+      fullNote = fullNote ? optStr + " | 備註：" + fullNote : optStr;
+    }
+    
+    cart.push({
+      title: currentItem.title,
+      price: finalPrice,
+      qty: currentQty,
+      note: fullNote
+    });
+    closeItemModal();
+    updateCartBadge();
+    
+    const badge = document.getElementById('cartBadge');
+    badge.innerText = '✅ 已加入';
+    badge.style.background = '#000';
+    setTimeout(() => {
+      badge.style.background = '#06c167';
+      updateCartBadge();
+    }, 1500);
+  }
+
+  function goHome() {
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('storeView').style.display = 'none';
+    document.getElementById('homeView').style.display = 'block';
+  }
+
+  function goBack() {
+    document.getElementById('storeView').style.display = 'none';
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('listView').style.display = 'block';
+  }
+
+  // 解析文字
+  function parseText(obj) {
+    if (!obj) return '';
+    if (typeof obj === 'string') return obj;
+    if (obj.text) return obj.text;
+    return '';
+  }
+
+  async function openStore(uuid) {
+    const resultsDiv = document.getElementById('results');
+    const oldHtml = resultsDiv.innerHTML;
+    resultsDiv.innerHTML = '<div class="status" style="padding: 20px;">驗證排程與載入菜單中...</div>';
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/store`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeUuid: uuid })
+      });
+      const json = await res.json();
+      
+      if (json.status === 'failure') {
+        resultsDiv.innerHTML = oldHtml;
+        throw new Error(json.data ? json.data.message : '取得菜單失敗');
+      }
+      
+      const d = json.data;
+      const logoUrl = d.heroImageUrls && d.heroImageUrls.length > 0 ? d.heroImageUrls[0].url : '';
+      const storeUuid = d.uuid;
+      
+      // 先驗證排程，失敗則直接彈出，不切換畫面
+      let scheduleHtml = '';
+      if (scheduleMode === 'SCHEDULE') {
+        const selectedSchedule = document.getElementById('scheduleTime');
+        const selectedScheduleValue = selectedSchedule ? selectedSchedule.value : '';
+        const selectedScheduleText = selectedSchedule && selectedSchedule.selectedIndex >= 0 ? selectedSchedule.options[selectedSchedule.selectedIndex].text : '';
+
+        if (!selectedScheduleValue) {
+            showModal('無法預約', '您尚未選擇有效的預約時段，請重新選擇。');
+            resultsDiv.innerHTML = oldHtml;
+            return;
+        }
+
+        // 檢查餐廳是否支援預約
+        if (d.scheduledOrderInfo && d.scheduledOrderInfo.isSchedulable && d.timeWindowPicker && d.timeWindowPicker.dates) {
+            const selectedTime = new Date(selectedScheduleValue).getTime() / 1000;
+            let timeFound = false;
+            
+            d.timeWindowPicker.dates.forEach(dateObj => {
+                if (dateObj.listItems) {
+                    dateObj.listItems.forEach(item => {
+                        if (item.timeWindowViewModel && item.timeWindowViewModel.timeWindow) {
+                            const tw = item.timeWindowViewModel.timeWindow;
+                            if (selectedTime >= tw.startTimeSeconds && selectedTime <= tw.startTimeSeconds + 1800) {
+                                timeFound = true;
+                            }
+                        }
+                    });
+                }
+            });
+
+            if (!timeFound) {
+                showModal('無法預約', `此餐廳在您選擇的時段 ( ${selectedScheduleText} ) 未營業或無法接單。請選擇其他時段或餐廳。`);
+                resultsDiv.innerHTML = oldHtml;
+                return; // 直接中止，不切換畫面 (Bounce back)
+            } else {
+                scheduleHtml = `
+                  <div style="margin-top:10px; display:inline-block;">
+                    <span style="background: #000; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold;">
+                       🕒 安排時間：${selectedScheduleText}
+                    </span>
+                  </div>
+                `;
+            }
+        } else {
+            // 這是本質上不支援排程的店 (例如 S66)，我們要記憶下來
+            const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
+            if (!unSchedulableStores.includes(storeUuid)) {
+                unSchedulableStores.push(storeUuid);
+                localStorage.setItem('unSchedulableStores', JSON.stringify(unSchedulableStores));
+            }
+
+            showModal('無法預約', `此餐廳不支援預約點餐。請選擇其他餐廳。`);
+            
+            // 還原畫面，並立刻將該店加上灰色樣式
+            resultsDiv.innerHTML = oldHtml;
+            const cardEl = document.getElementById('card_' + storeUuid);
+            if (cardEl) {
+                cardEl.style.filter = 'grayscale(100%)';
+                cardEl.style.opacity = '0.6';
+            }
+            return; // 直接中止
+        }
+      }
+
+      // 驗證通過，還原搜尋結果並切換畫面
+      resultsDiv.innerHTML = oldHtml;
+      document.getElementById('listView').style.display = 'none';
+      document.getElementById('storeView').style.display = 'block';
+      
+      const sc = document.getElementById('storeContent');
+      let html = `
+        <div class="store-header">
+          ${logoUrl ? `<img src="${logoUrl}">` : ''}
+          <h2>${escapeHTML(parseText(d.title))}</h2>
+          ${scheduleHtml}
+        </div>
+      `;
+      
+      if (d.catalogSectionsMap) {
+        Object.keys(d.catalogSectionsMap).forEach(key => {
+          const sectionArr = d.catalogSectionsMap[key];
+          sectionArr.forEach(section => {
+            const sectionUuid = key;
+            const subsectionUuid = section.catalogSectionUUID || '';
+            if (section.payload && section.payload.standardItemsPayload) {
+              const catalogTitle = parseText(section.payload.standardItemsPayload.title) || '菜單';
+              const items = section.payload.standardItemsPayload.catalogItems || [];
+              
+              if (items.length > 0) {
+                html += `<div class="menu-category">${escapeHTML(catalogTitle)}</div><div class="menu-grid">`;
+                items.forEach(item => {
+                  const itemTitle = parseText(item.title);
+                  const itemDesc = parseText(item.itemDescription);
+                  const priceVal = item.price > 0 ? (item.price / 100) : 0; 
+                  const priceStr = priceVal > 0 ? '$' + priceVal : ''; 
+                  const imgUrl = item.imageUrl || '';
+                  const menuItemUuid = item.uuid;
+                  
+                  // 點擊時傳入 storeUuid, sectionUuid, subsectionUuid, menuItemUuid
+                  html += `
+                    <div class="menu-item" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\\'")}', ${priceVal}, '${imgUrl}')">
+                      ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                      <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
+                      <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                      <div class="menu-item-price">${priceStr}</div>
+                    </div>
+                  `;
+                });
+                html += `</div>`;
+              }
+            }
+          });
+        });
+      } else {
+        html += '<div class="status">這家餐廳目前沒有提供菜單資料。</div>';
+      }
+      
+      sc.innerHTML = html;
+      updateCartBadge();
+      window.scrollTo(0, 0);
+    } catch (e) {
+      sc.innerHTML = `<div class="status error">錯誤: ${e.message}</div>`;
+    }
+  }
+  
+  function escapeHTML(str) {
+    return String(str).replace(/[&<>'"]/g, 
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+  }
+
+  function showModal(title, text, isError = true) {
+    document.getElementById('errorModalIcon').innerText = isError ? '⚠️' : '🛒';
+    document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
+    document.getElementById('errorModalTitle').innerText = title;
+    document.getElementById('errorModalText').innerText = text;
+    document.getElementById('errorModalOverlay').style.display = 'flex';
+  }
+</script>
+
+  <!-- 自訂提示框 -->
+  <div id="errorModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:80%; max-width:400px; border-radius:16px; padding:25px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+      <div id="errorModalIcon" style="font-size:48px; margin-bottom:15px;">⚠️</div>
+      <div id="errorModalTitle" style="font-size:20px; font-weight:bold; margin-bottom:12px; color:#111;">無法預約</div>
+      <div id="errorModalText" style="font-size:15px; color:#555; margin-bottom:25px; line-height:1.6; white-space: pre-wrap; text-align:left;">內容</div>
+      <button onclick="document.getElementById('errorModalOverlay').style.display='none'" style="background:#111; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;">我知道了</button>
+    </div>
+  </div>
+
+</body>
+</html>
