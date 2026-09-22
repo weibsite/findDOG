@@ -33,7 +33,7 @@ window.addEventListener('error', function(e) {
     if (e.target.tagName && e.target.tagName.toLowerCase() === 'img') {
         const url = e.target.src;
         if (url.includes('weibsite.github.io/findDOG')) {
-            const localUrl = url.replace('https://weibsite.github.io/findDOG', getBaseHttpUrl());
+            const localUrl = url.replace('https://finddog.online', getBaseHttpUrl());
             if (e.target.src !== localUrl) {
                 e.target.src = localUrl;
             }
@@ -134,8 +134,8 @@ window.addEventListener('error', function(e) {
 <script>
 let ws, NGROK_WS_URL = window.location.origin.replace('http', 'ws') + '/ws';
 function getBaseHttpUrl() { return NGROK_WS_URL ? NGROK_WS_URL.replace('wss://', 'https://').replace('ws://', 'http://').replace(/\/ws\/?$/, '') : ""; }
-function getMediaUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { if (p.match(/\.webp$/i)) return 'https://weibsite.github.io/findDOG' + p; return getBaseHttpUrl() + p; } return u; }
-function getThumbUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { p = p.replace(/\.(jpg|jpeg|png)$/i, '_map.webp'); return 'https://weibsite.github.io/findDOG' + p; } return u; }
+function getMediaUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { if (p.match(/\.webp$/i)) return 'https://finddog.online' + p; return getBaseHttpUrl() + p; } return u; }
+function getThumbUrl(u) { if (!u) return ""; let p = u; try { if (u.startsWith('http')) { const o = new URL(u); if (o.pathname.startsWith('/images/') || o.pathname.startsWith('/dataset/images/') || o.pathname.startsWith('/downloads/')) p = o.pathname; } } catch (e) {} if (p.startsWith('/images/') || p.startsWith('/dataset/images/') || p.startsWith('/downloads/')) { p = p.replace(/\.(jpg|jpeg|png)$/i, '_map.webp'); return 'https://finddog.online' + p; } return u; }
 function setPersistentData(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function getPersistentData(k) { try { return localStorage.getItem(k); } catch (e) {} return null; }
 let myUid = getPersistentData('dogMap_UID'); if (!myUid) { myUid = 'usr_' + Math.random().toString(36).substr(2, 9); setPersistentData('dogMap_UID', myUid); }
