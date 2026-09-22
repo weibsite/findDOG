@@ -435,9 +435,33 @@
             }
             
             if (hasUnchangedNames) {
-                const proceed = confirm("您尚未修改預設的商品名稱 (A, B, C...)，這樣代訂可能會不知道這代表什麼商品哦！確定要直接計算並送出嗎？");
+                const proceed = confirm("您尚未修改預設的商品名稱 (A, B, C...)，這樣代訂可能會不知道這代表什麼商品哦！
+
+按「確定」保持原樣送出
+按「取消」快速輸入商品名稱");
                 if (!proceed) {
-                    resEl.style.display = 'none';
+                    let updatedAny = false;
+                    for (let i = 0; i < rows.length; i++) {
+                        const rowId = rows[i].id.split('-')[2];
+                        const labelInput = document.getElementById(`name-${rowId}`);
+                        const price = parseInt(document.getElementById(`price-${rowId}`).value);
+                        
+                        // 只提示有填金額且名稱還是A-Z的商品
+                        if (price > 0 && labelInput && /^[A-Z]$/.test(labelInput.value.trim())) {
+                            let oldName = labelInput.value.trim();
+                            let newName = prompt(`請輸入【商品 ${oldName}】的實際名稱：\n(例如：大麥克、滷肉飯等)`, "");
+                            if (newName !== null && newName.trim() !== "") {
+                                labelInput.value = newName.trim();
+                                updatedAny = true;
+                            }
+                        }
+                    }
+                    
+                    if (updatedAny) {
+                        setTimeout(calculateSplit, 50);
+                    } else {
+                        resEl.style.display = 'none';
+                    }
                     return;
                 }
             }
