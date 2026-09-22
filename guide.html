@@ -26,37 +26,151 @@
         .warning-content { color: #d81b43; font-size: 14px; font-weight: bold; }
     </style>
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js">
-        function testShareTargetPicker() {
-            if (!window.splitResultText) return;
-            if (!liff.isLoggedIn()) {
-                alert("請先登入 LINE");
-                return;
-            }
-            if (!liff.isApiAvailable('shareTargetPicker')) {
-                alert("此裝置不支援 shareTargetPicker");
-                return;
-            }
-            liff.shareTargetPicker([{
-                type: "text",
-                text: window.splitResultText
-            }]).then(function(res) {
-                if (res) {
-                    alert("分享成功！");
-                    liff.closeWindow();
-                } else {
-                    alert("已取消分享");
+        
+        function buildFlexMessage() {
+            if (!window.bestBins) return null;
+            
+            let contents = [
+                {
+                    "type": "text",
+                    "text": "自動拆單試算結果",
+                    "weight": "bold",
+                    "color": "#1DB446",
+                    "size": "sm"
+                },
+                {
+                    "type": "text",
+                    "text": "美食預約單 (限 $449)",
+                    "weight": "bold",
+                    "size": "xl",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "xxl"
                 }
-            }).catch(function(error) {
-                alert("分享失敗：" + error);
+            ];
+
+            let totalCost = 0;
+
+            window.bestBins.forEach((bin, index) => {
+                let itemsList = [];
+                let counts = {};
+                for (let item of bin.items) {
+                    let key = `${item.name} ($${item.price})`;
+                    counts[key] = (counts[key] || 0) + 1;
+                }
+                for (let key in counts) {
+                    itemsList.push({
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": `${key} x${counts[key]}`,
+                                "size": "sm",
+                                "color": "#555555",
+                                "flex": 0
+                            }
+                        ]
+                    });
+                }
+
+                contents.push({
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "xxl",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": `📦 第 ${index + 1} 單`,
+                                    "size": "sm",
+                                    "color": "#555555",
+                                    "flex": 0
+                                },
+                                {
+                                    "type": "text",
+                                    "text": `$${bin.sum}`,
+                                    "size": "sm",
+                                    "color": "#111111",
+                                    "align": "end"
+                                }
+                            ]
+                        },
+                        ...itemsList,
+                        {
+                            "type": "separator",
+                            "margin": "xxl"
+                        }
+                    ]
+                });
+                totalCost += bin.sum;
             });
+
+            return {
+                "type": "flex",
+                "altText": "自動拆單試算結果出爐囉！",
+                "contents": {
+                    "type": "bubble",
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": contents
+                    }
+                }
+            };
         }
 
-        function testSendMessages() {
-            if (!window.splitResultText) return;
+        function sendFlexMessage(action) {
+            const flexMsg = buildFlexMessage();
+            if (!flexMsg) {
+                alert("請先完成試算");
+                return;
+            }
+
             if (!liff.isLoggedIn()) {
                 alert("請先登入 LINE");
                 return;
             }
+
+            const messages = [flexMsg];
+
+            if (action === 'share') {
+                if (!liff.isApiAvailable('shareTargetPicker')) {
+                    alert("此裝置不支援 shareTargetPicker");
+                    return;
+                }
+                liff.shareTargetPicker(messages)
+                    .then(function(res) {
+                        if (res) {
+                            alert("分享成功！");
+                            liff.closeWindow();
+                        }
+                    })
+                    .catch(function(error) {
+                        alert("分享失敗：" + error);
+                    });
+            } else if (action === 'send') {
+                if (!liff.isInClient()) {
+                    alert("只能在 LINE APP 內的聊天室使用此按鈕");
+                    return;
+                }
+                liff.sendMessages(messages)
+                    .then(function() {
+                        alert("已成功傳送至聊天室！");
+                        liff.closeWindow();
+                    })
+                    .catch(function(error) {
+                        alert("送出失敗：" + error);
+                    });
+            }
+        }
+
             if (!liff.isInClient()) {
                 alert("只能在 LINE APP 內的聊天室使用此按鈕");
                 return;
@@ -314,6 +428,7 @@
             
             items.sort((a, b) => b.price - a.price);
 
+            window.bestBins = null;
             let bestBins = null;
             let bestCost = Infinity;
 
@@ -351,6 +466,7 @@
                 if (currentCost < bestCost) {
                     bestCost = currentCost;
                     bestBins = bins;
+                    window.bestBins = bins;
                 }
             }
 
@@ -383,31 +499,17 @@
                 
                 window.splitResultText = chatText.trim();
                 
-                html += `<button onclick="copySplitResult()" style="margin-top: 15px; width: 100%; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;">📋 複製明細並回聊天室</button>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="testShareTargetPicker()" style="flex: 1; padding: 10px; border: none; background: #3498db; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">測試按鈕1 (分享)</button>
-                        <button onclick="testSendMessages()" style="flex: 1; padding: 10px; border: none; background: #9b59b6; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">測試按鈕2 (貼上)</button>
+<div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="sendFlexMessage('share')" style="flex: 1; padding: 12px 5px; border: none; background: #3498db; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">📤 分享至群組/好友</button>
+                        <button onclick="sendFlexMessage('send')" style="flex: 1; padding: 12px 5px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">💬 傳送至當前聊天室</button>
+                    </div>
                     </div>`;
             }
 
             resEl.innerHTML = html;
         }
 
-        function copySplitResult() {
-            if (!window.splitResultText) return;
-            
-            const tempTextArea = document.createElement("textarea");
-            tempTextArea.value = window.splitResultText;
-            document.body.appendChild(tempTextArea);
-            tempTextArea.select();
-            tempTextArea.setSelectionRange(0, 99999);
-            
-            try {
-                document.execCommand("copy");
-                alert("✅ 複製成功！將為您自動關閉畫面，請直接在聊天室「貼上」即可。");
-                if (liff.isInClient()) {
-                    liff.closeWindow();
-                }
+        
             } catch (err) {
                 alert("複製失敗，請手動框選文字複製。");
             }
@@ -415,37 +517,151 @@
             document.body.removeChild(tempTextArea);
         }
     
-        function testShareTargetPicker() {
-            if (!window.splitResultText) return;
-            if (!liff.isLoggedIn()) {
-                alert("請先登入 LINE");
-                return;
-            }
-            if (!liff.isApiAvailable('shareTargetPicker')) {
-                alert("此裝置不支援 shareTargetPicker");
-                return;
-            }
-            liff.shareTargetPicker([{
-                type: "text",
-                text: window.splitResultText
-            }]).then(function(res) {
-                if (res) {
-                    alert("分享成功！");
-                    liff.closeWindow();
-                } else {
-                    alert("已取消分享");
+        
+        function buildFlexMessage() {
+            if (!window.bestBins) return null;
+            
+            let contents = [
+                {
+                    "type": "text",
+                    "text": "自動拆單試算結果",
+                    "weight": "bold",
+                    "color": "#1DB446",
+                    "size": "sm"
+                },
+                {
+                    "type": "text",
+                    "text": "美食預約單 (限 $449)",
+                    "weight": "bold",
+                    "size": "xl",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "xxl"
                 }
-            }).catch(function(error) {
-                alert("分享失敗：" + error);
+            ];
+
+            let totalCost = 0;
+
+            window.bestBins.forEach((bin, index) => {
+                let itemsList = [];
+                let counts = {};
+                for (let item of bin.items) {
+                    let key = `${item.name} ($${item.price})`;
+                    counts[key] = (counts[key] || 0) + 1;
+                }
+                for (let key in counts) {
+                    itemsList.push({
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": `${key} x${counts[key]}`,
+                                "size": "sm",
+                                "color": "#555555",
+                                "flex": 0
+                            }
+                        ]
+                    });
+                }
+
+                contents.push({
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "xxl",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": `📦 第 ${index + 1} 單`,
+                                    "size": "sm",
+                                    "color": "#555555",
+                                    "flex": 0
+                                },
+                                {
+                                    "type": "text",
+                                    "text": `$${bin.sum}`,
+                                    "size": "sm",
+                                    "color": "#111111",
+                                    "align": "end"
+                                }
+                            ]
+                        },
+                        ...itemsList,
+                        {
+                            "type": "separator",
+                            "margin": "xxl"
+                        }
+                    ]
+                });
+                totalCost += bin.sum;
             });
+
+            return {
+                "type": "flex",
+                "altText": "自動拆單試算結果出爐囉！",
+                "contents": {
+                    "type": "bubble",
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": contents
+                    }
+                }
+            };
         }
 
-        function testSendMessages() {
-            if (!window.splitResultText) return;
+        function sendFlexMessage(action) {
+            const flexMsg = buildFlexMessage();
+            if (!flexMsg) {
+                alert("請先完成試算");
+                return;
+            }
+
             if (!liff.isLoggedIn()) {
                 alert("請先登入 LINE");
                 return;
             }
+
+            const messages = [flexMsg];
+
+            if (action === 'share') {
+                if (!liff.isApiAvailable('shareTargetPicker')) {
+                    alert("此裝置不支援 shareTargetPicker");
+                    return;
+                }
+                liff.shareTargetPicker(messages)
+                    .then(function(res) {
+                        if (res) {
+                            alert("分享成功！");
+                            liff.closeWindow();
+                        }
+                    })
+                    .catch(function(error) {
+                        alert("分享失敗：" + error);
+                    });
+            } else if (action === 'send') {
+                if (!liff.isInClient()) {
+                    alert("只能在 LINE APP 內的聊天室使用此按鈕");
+                    return;
+                }
+                liff.sendMessages(messages)
+                    .then(function() {
+                        alert("已成功傳送至聊天室！");
+                        liff.closeWindow();
+                    })
+                    .catch(function(error) {
+                        alert("送出失敗：" + error);
+                    });
+            }
+        }
+
             if (!liff.isInClient()) {
                 alert("只能在 LINE APP 內的聊天室使用此按鈕");
                 return;
