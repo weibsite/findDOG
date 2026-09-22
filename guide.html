@@ -433,12 +433,8 @@
                 resEl.innerHTML = '<span style="color:#ff3366;">請輸入至少一項有效的商品金額與數量！</span>';
                 return;
             }
-            
             if (hasUnchangedNames) {
-                const proceed = confirm("您尚未修改預設的商品名稱 (A, B, C...)，這樣代訂可能會不知道這代表什麼商品哦！
-
-按「確定」保持原樣送出
-按「取消」快速輸入商品名稱");
+                const proceed = confirm("您尚未修改預設的商品名稱 (A, B, C...)，這樣代訂可能會不知道這代表什麼商品哦！\n\n按「確定」保持原樣送出\n按「取消」快速輸入商品名稱");
                 if (!proceed) {
                     let updatedAny = false;
                     for (let i = 0; i < rows.length; i++) {
@@ -446,7 +442,6 @@
                         const labelInput = document.getElementById(`name-${rowId}`);
                         const price = parseInt(document.getElementById(`price-${rowId}`).value);
                         
-                        // 只提示有填金額且名稱還是A-Z的商品
                         if (price > 0 && labelInput && /^[A-Z]$/.test(labelInput.value.trim())) {
                             let oldName = labelInput.value.trim();
                             let newName = prompt(`請輸入【商品 ${oldName}】的實際名稱：\n(例如：大麥克、滷肉飯等)`, "");
@@ -465,7 +460,6 @@
                     return;
                 }
             }
-
             for (let item of items) {
                 if (item.price > 449) {
                     resEl.innerHTML = '<span style="color:#ff3366;">錯誤：單一商品金額不可超過 $449！</span>';
