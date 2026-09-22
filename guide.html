@@ -25,7 +25,54 @@
         .warning-title { color: #ff3366; font-size: 15px; font-weight: bold; margin-bottom: 5px; }
         .warning-content { color: #d81b43; font-size: 14px; font-weight: bold; }
     </style>
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js">
+        function testShareTargetPicker() {
+            if (!window.splitResultText) return;
+            if (!liff.isLoggedIn()) {
+                alert("請先登入 LINE");
+                return;
+            }
+            if (!liff.isApiAvailable('shareTargetPicker')) {
+                alert("此裝置不支援 shareTargetPicker");
+                return;
+            }
+            liff.shareTargetPicker([{
+                type: "text",
+                text: window.splitResultText
+            }]).then(function(res) {
+                if (res) {
+                    alert("分享成功！");
+                    liff.closeWindow();
+                } else {
+                    alert("已取消分享");
+                }
+            }).catch(function(error) {
+                alert("分享失敗：" + error);
+            });
+        }
+
+        function testSendMessages() {
+            if (!window.splitResultText) return;
+            if (!liff.isLoggedIn()) {
+                alert("請先登入 LINE");
+                return;
+            }
+            if (!liff.isInClient()) {
+                alert("只能在 LINE APP 內的聊天室使用此按鈕");
+                return;
+            }
+            liff.sendMessages([{
+                type: "text",
+                text: window.splitResultText
+            }]).then(function() {
+                alert("已自動送出至當前聊天室！");
+                liff.closeWindow();
+            }).catch(function(error) {
+                alert("送出失敗：" + error);
+            });
+        }
+
+    </script>
 </head>
 <body>
 
@@ -74,7 +121,7 @@
             <h3 style="margin-top: 0; color: #333; font-size: 18px; margin-bottom: 5px; text-align: center;">自動拆單計算機</h3>
             <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 20px; text-align: center;">
                 設定商品單價及數量，我們將為您計算最划算的拆單方式。<br>
-                <span style="color: #ff3366;">(每單最高金額限制 $449)</span>
+                
             </p>
             
             <div id="item-list" style="margin-bottom: 15px;">
@@ -96,7 +143,7 @@
         window.splitResultText = "";
 
         window.addEventListener('DOMContentLoaded', () => {
-            liffInitPromise = liff.init({ liffId: "2011657436-UXXVvytt" }).catch(err => {
+            liffInitPromise = liff.init({ liffId: "2011657436-SNFTv9uP" }).catch(err => {
                 console.error('LIFF init failed', err);
             });
         });
@@ -107,6 +154,9 @@
         function openCalculator() {
             document.getElementById('split-modal').style.display = 'flex';
             if (itemCount === 0) {
+                addItem();
+                addItem();
+                addItem();
                 addItem();
             }
         }
@@ -333,7 +383,11 @@
                 
                 window.splitResultText = chatText.trim();
                 
-                html += `<button onclick="copySplitResult()" style="margin-top: 15px; width: 100%; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;">📋 複製明細並回聊天室</button>`;
+                html += `<button onclick="copySplitResult()" style="margin-top: 15px; width: 100%; padding: 12px; border: none; background: #00B900; color: white; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;">📋 複製明細並回聊天室</button>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button onclick="testShareTargetPicker()" style="flex: 1; padding: 10px; border: none; background: #3498db; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">測試按鈕1 (分享)</button>
+                        <button onclick="testSendMessages()" style="flex: 1; padding: 10px; border: none; background: #9b59b6; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">測試按鈕2 (貼上)</button>
+                    </div>`;
             }
 
             resEl.innerHTML = html;
@@ -360,6 +414,53 @@
             
             document.body.removeChild(tempTextArea);
         }
+    
+        function testShareTargetPicker() {
+            if (!window.splitResultText) return;
+            if (!liff.isLoggedIn()) {
+                alert("請先登入 LINE");
+                return;
+            }
+            if (!liff.isApiAvailable('shareTargetPicker')) {
+                alert("此裝置不支援 shareTargetPicker");
+                return;
+            }
+            liff.shareTargetPicker([{
+                type: "text",
+                text: window.splitResultText
+            }]).then(function(res) {
+                if (res) {
+                    alert("分享成功！");
+                    liff.closeWindow();
+                } else {
+                    alert("已取消分享");
+                }
+            }).catch(function(error) {
+                alert("分享失敗：" + error);
+            });
+        }
+
+        function testSendMessages() {
+            if (!window.splitResultText) return;
+            if (!liff.isLoggedIn()) {
+                alert("請先登入 LINE");
+                return;
+            }
+            if (!liff.isInClient()) {
+                alert("只能在 LINE APP 內的聊天室使用此按鈕");
+                return;
+            }
+            liff.sendMessages([{
+                type: "text",
+                text: window.splitResultText
+            }]).then(function() {
+                alert("已自動送出至當前聊天室！");
+                liff.closeWindow();
+            }).catch(function(error) {
+                alert("送出失敗：" + error);
+            });
+        }
+
     </script>
 
 </body>
