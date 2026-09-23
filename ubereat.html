@@ -1692,9 +1692,11 @@ const note = document.getElementById('modalNote').value.trim();
                           str = `${dayStr} ${sAmpm} ${sH12}:${sMM}-${eH12}:${eMM}`;
                         } else {
                           str = `${dayStr} ${formatT(sd)} - ${formatT(ed)}`;
-                        }
-                        
-                        btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
+            }
+            if (sd.getTime() - Date.now() >= 2.5 * 3600000) {
+                str += ' <span style="color:#06c167; font-weight:bold;">-$10優惠</span>';
+            }
+            btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
                     });
                 } else {
                     text += `\n\n這間餐廳目前沒有提供任何可預約的時段。`;
