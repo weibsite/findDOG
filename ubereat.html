@@ -94,7 +94,7 @@
     <div class="section">
       <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <input type="text" id="addrInput" placeholder="輸入地址 (例如: 高鐵車站)" list="addr-list" onkeydown="if(event.key==='Enter') searchAddress()" />
+        <span style="font-size:18px; margin-right:4px;">📍</span><input type="text" id="addrInput" placeholder="輸入地址 (例如: 高鐵車站)" list="addr-list" onkeydown="if(event.key==='Enter') searchAddress()" />
         <datalist id="addr-list"></datalist>
         <button class="secondary" onclick="searchAddress()">尋找地址</button>
       </div>
@@ -228,7 +228,7 @@
     
     if (addressHistory.length > 0 && !isAddressSet) {
       const lastAddr = addressHistory[0];
-      document.getElementById('addrInput').value = '📍 ' + lastAddr.title;
+      document.getElementById('addrInput').value = lastAddr.title;
       setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
     }
   }
@@ -370,7 +370,17 @@
 
         const opt = document.createElement('option');
         opt.value = isoLocal; // 用完整的時間字串
-        opt.innerText = `${tStart} – ${tEnd}`;
+              const startAmpm = h >= 12 ? '下午' : '上午';
+              const endAmpm = endH >= 12 ? '下午' : '上午';
+              const startH12 = h % 12 || 12;
+              const endH12 = endH % 12 || 12;
+              const startMM = m.toString().padStart(2, '0');
+              const endMM = endM.toString().padStart(2, '0');
+              if (startAmpm === endAmpm) {
+                opt.innerText = `${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
+              } else {
+                opt.innerText = `${startAmpm} ${startH12}:${startMM} – ${endAmpm} ${endH12}:${endMM}`;
+              }
         timeSelect.appendChild(opt);
       }
     }
@@ -440,7 +450,7 @@
           statusEl.innerText = '請選擇正確的地址：';
           resultsEl.innerHTML = data.slice(0, 5).map(item => `
             <div class="addr-item" onclick="setAddress(${item.lat}, ${item.lon}, '${escapeHTML(item.display_name)}')">
-              📍 ${escapeHTML(item.display_name)}
+              ${escapeHTML(item.display_name)}
             </div>
           `).join('');
         }
@@ -499,7 +509,7 @@
     document.getElementById('addrResults').innerHTML = '';
     let displayTitle = title.split(',')[0];
     if (displayTitle.startsWith('📍 ')) displayTitle = displayTitle.substring(3).trim();
-    document.getElementById('addrInput').value = '📍 ' + displayTitle;
+    document.getElementById('addrInput').value = displayTitle;
     try {
       const res = await fetch(`${API_BASE_URL}/api/set-address`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -729,12 +739,14 @@
         return;
       }
       localStorage.setItem('userPhone', phoneVal);
-      // 自動在外送備註加上「到了請打XXX電話」，若使用者備註已有該號碼則不重複加
+      // 自動在外送備註加上電話提示
       if (!finalOrderMessage.includes(phoneVal)) {
+        const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalOrderMessage);
+        const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
         if (finalOrderMessage.includes('外送備註:')) {
-          finalOrderMessage = finalOrderMessage.replace('外送備註: ', '外送備註: 到了請打 ' + phoneVal + ' 電話，');
+          finalOrderMessage = finalOrderMessage.replace('外送備註: ', '外送備註: ' + phoneNote + '，');
         } else {
-          finalOrderMessage = finalOrderMessage.replace('\n\n總計:', '\n外送備註: 到了請打 ' + phoneVal + ' 電話\n\n總計:');
+          finalOrderMessage = finalOrderMessage.replace('\n\n總計:', '\n外送備註: ' + phoneNote + '\n\n總計:');
         }
       }
     }
@@ -1069,7 +1081,18 @@
                         };
                         
                         const dayStr = (sd.getDate() === new Date().getDate()) ? '今天' : `${sd.getMonth()+1}/${sd.getDate()}`;
-                        const str = `${dayStr} ${formatT(sd)} - ${formatT(ed)}`;
+                        const sAmpm = sd.getHours() >= 12 ? '下午' : '上午';
+                        const eAmpm = ed.getHours() >= 12 ? '下午' : '上午';
+                        let str;
+                        if (sAmpm === eAmpm) {
+                          const sH12 = sd.getHours() % 12 || 12;
+                          const eH12 = ed.getHours() % 12 || 12;
+                          const sMM = String(sd.getMinutes()).padStart(2, '0');
+                          const eMM = String(ed.getMinutes()).padStart(2, '0');
+                          str = `${dayStr} ${sAmpm} ${sH12}:${sMM}-${eH12}:${eMM}`;
+                        } else {
+                          str = `${dayStr} ${formatT(sd)} - ${formatT(ed)}`;
+                        }
                         
                         btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
                     });
