@@ -96,7 +96,8 @@
   <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s;">
       <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <span style="font-size:18px; margin-right:4px;"></span><input type="text" id="addrInput" placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
+        <button class="secondary" onclick="getCurrentLocation()" style="padding: 0 14px; font-size: 20px;" title="取得目前定位">🎯</button>
+        <input type="text" id="addrInput"  placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
         <datalist id="addr-list"></datalist>
         <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
       </div>
@@ -231,6 +232,9 @@
   WS_URL = `${protocol}//${host}:8000/ws`;
   
   let isAddressSet = false;
+  let currentLat = null;
+  let currentLng = null;
+  let currentAddrTitle = '';
   let scheduleMode = 'SCHEDULE';
   let selectedDateIndex = 0;
   const datesData = [];
@@ -468,6 +472,50 @@
   window.addrDebounceTimer = null;
   window.lastSearchedAddr = "";
 
+
+  async function getCurrentLocation() {
+      const statusEl = document.getElementById('addrStatus');
+      statusEl.innerText = '定位中...';
+      if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (position) => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              statusEl.innerText = '正在轉換地址...';
+              
+              try {
+                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=zh-TW`);
+                  if (res.ok) {
+                      const data = await res.json();
+                      const title = data.display_name;
+                      setAddress(lat, lng, title);
+                      statusEl.innerText = '定位成功！';
+                  } else {
+                      statusEl.innerText = '轉換地址失敗，請稍後再試。';
+                  }
+              } catch (e) {
+                  statusEl.innerText = '轉換地址時發生錯誤。';
+              }
+          }, (error) => {
+              switch(error.code) {
+                  case error.PERMISSION_DENIED:
+                      statusEl.innerText = '使用者拒絕提供定位權限。';
+                      break;
+                  case error.POSITION_UNAVAILABLE:
+                      statusEl.innerText = '定位資訊無法取得。';
+                      break;
+                  case error.TIMEOUT:
+                      statusEl.innerText = '定位請求超時。';
+                      break;
+                  default:
+                      statusEl.innerText = '定位發生未知錯誤。';
+                      break;
+              }
+          });
+      } else {
+          statusEl.innerText = '您的瀏覽器不支援定位功能。';
+      }
+  }
+
   function handleAddrInput() {
     isAddressSet = false;
     updateAddrTitleState('default');
@@ -581,6 +629,9 @@
     let displayTitle = title.split(',')[0];
     if (displayTitle.startsWith('📍 ')) displayTitle = displayTitle.substring(3).trim();
     document.getElementById('addrInput').value = displayTitle;
+    currentLat = lat;
+    currentLng = lng;
+    currentAddrTitle = displayTitle;
     try {
       const res = await fetch(`${API_BASE_URL}/api/set-address`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1083,6 +1134,21 @@ async function sendOrderToLine(forceSubmit = false) {
 
   let msgText = '';
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+  let coordsText = '';
+  if (addr) {
+      if (typeof currentAddrTitle !== 'undefined' && addr === currentAddrTitle && typeof currentLat !== 'undefined' && currentLat !== null && typeof currentLng !== 'undefined' && currentLng !== null) {
+          coordsText = ` (${currentLat}, ${currentLng})`;
+      } else if (typeof addressHistory !== 'undefined') {
+          const matchedHistory = addressHistory.find(item => {
+              let disp = item.title.split(',')[0];
+              if (disp.startsWith('台灣 ')) disp = disp.substring(3).trim();
+              return disp === addr || item.title === addr;
+          });
+          if (matchedHistory) {
+              coordsText = ` (${matchedHistory.lat}, ${matchedHistory.lng})`;
+          }
+      }
+  }
   let timeText = '盡快送達';
   let isPreOrder = false;
   
@@ -1100,7 +1166,7 @@ async function sendOrderToLine(forceSubmit = false) {
   if (forceSubmit === 'split' && costRes.bins) {
     msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)
 `;
-    if (addr) msgText += `📍 地址: ${addr}
+    if (addr) msgText += `📍 地址: ${addr}${coordsText}
 `;
     msgText += `🕒 時間: ${timeText}
 
@@ -1172,7 +1238,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
     msgText = `🛵 UberEats 揪團訂單
 `;
-    if (addr) msgText += `📍 地址: ${addr}
+    if (addr) msgText += `📍 地址: ${addr}${coordsText}
 `;
     msgText += `🕒 時間: ${timeText}
 
