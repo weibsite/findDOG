@@ -587,9 +587,12 @@
 
   let currentOrderMessage = "";
 
-  function sendOrderToLine() {
+  async function sendOrderToLine() {
+    if (liffInitPromise) await liffInitPromise;
+
     if (!liff.isLoggedIn()) {
-      alert("請先登入 LINE");
+      // 嘗試自動登入
+      liff.login({ redirectUri: window.location.href });
       return;
     }
     if (!liff.isInClient()) {
@@ -770,6 +773,33 @@
   }
 
   function confirmAddToCart() {
+    // 檢查是否有遺漏必選項目
+    let isValid = true;
+    let errorMsg = '';
+    
+    currentCustomizations.forEach((group, gIdx) => {
+      let selectedCount = 0;
+      group.options.forEach((opt, oIdx) => {
+        const cb = document.querySelector(`input[data-gidx="${gIdx}"][data-oidx="${oIdx}"]`);
+        if (cb && cb.checked) selectedCount++;
+      });
+      
+      const gTitle = parseText(group.title);
+      if (group.minPermitted > 0 && selectedCount < group.minPermitted) {
+        isValid = false;
+        errorMsg += `• 請在「${gTitle}」選擇至少 ${group.minPermitted} 項\n`;
+      }
+      if (group.maxPermitted > 0 && selectedCount > group.maxPermitted) {
+        isValid = false;
+        errorMsg += `• 「${gTitle}」最多只能選擇 ${group.maxPermitted} 項\n`;
+      }
+    });
+    
+    if (!isValid) {
+      showModal('未完成必選項目', errorMsg);
+      return;
+    }
+
     const note = document.getElementById('modalNote').value.trim();
     const finalPrice = currentItem.totalPrice !== undefined ? currentItem.totalPrice : currentItem.basePrice;
     
