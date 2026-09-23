@@ -75,7 +75,7 @@
 
 <div class="container">
   
-  <div class="app-header">測試 UberEats <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+  <div class="app-header">外送<a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂餐系統</a></div>
 
   <!-- 首頁 -->
   <div id="homeView">
@@ -326,13 +326,7 @@
     resultsEl.innerHTML = '';
     
     try {
-      // 動態判定目前的網域與協定 (支援上架後的手機端或外網存取)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname;
-      // 假設尋寵專案的伺服器與此 Node.js 伺服器跑在同一台機器上，但 port 為 8000
-      const wsUrl = `${protocol}//${host}:8000/ws`;
-      
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(WS_URL);
       let isTimeout = false;
       const timeoutId = setTimeout(() => {
         if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
@@ -366,7 +360,7 @@
 
       ws.onerror = (e) => {
         if (!isTimeout) {
-            statusEl.innerText = `❌ 連線至地址伺服器失敗，請確認該伺服器已啟動 (${wsUrl})`;
+            statusEl.innerText = `❌ 連線至地址伺服器失敗，請確認該伺服器已啟動 (${WS_URL})`;
         }
       };
     } catch (e) { 
