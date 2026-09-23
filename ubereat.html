@@ -893,11 +893,11 @@ function openCheckoutSummary() {
   cart.forEach(item => total += item.price * item.qty);
   
   const savedPhone = localStorage.getItem('userPhone') || '';
-  
   const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
-
+  const oldFoodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
+  
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
-  if (addr.startsWith('📍 ')) addr = addr.substring(3).trim(); // Just in case
+  if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
   
   let timeText = '盡快送達';
   if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
@@ -908,26 +908,31 @@ function openCheckoutSummary() {
   }
   
   let html = `
-    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">聯絡電話 (必填)</div>
-      <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
-    </div>
-    
+    <!-- 1. 外送地址 -->
     <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送地址</div>
       <div style="font-size:16px; font-weight:bold;">${escapeHTML(addr) || '未設定'}</div>
     </div>
     
-    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送時間</div>
-      <div style="font-size:16px; font-weight:bold;">${escapeHTML(timeText)}</div>
-    </div>
-    
+    <!-- 2. 外送員備註 -->
     <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送員備註</div>
       <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如: 放門口、外送桌..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
     </div>
     
+    <!-- 3. 聯絡電話 -->
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">聯絡電話 (必填)</div>
+      <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+    </div>
+    
+    <!-- 4. 外送時間 -->
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送時間</div>
+      <div style="font-size:16px; font-weight:bold;">${escapeHTML(timeText)}</div>
+    </div>
+    
+    <!-- 5. 訂單摘要 & 6. 訂單備註 & 7. 小計 -->
     <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="font-weight:bold; margin-bottom:15px; font-size:16px;">訂單摘要</div>
   `;
@@ -954,16 +959,21 @@ function openCheckoutSummary() {
   });
   
   html += `
-    <div style="text-align:right; font-weight:bold; font-size:20px; margin-top:15px; padding-top:15px; border-top:2px solid #eee;">
-      小計: $${total}
-    </div>
-  </div>`;
+      <!-- 訂單備註 -->
+      <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+        <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">訂單備註</div>
+        <input type="text" id="checkoutFoodNotes" value="${escapeHTML(oldFoodNotes)}" placeholder="例如: 全部不要加蔥..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+      </div>
   
-  // Smart Split suggestion
-  const costRes = calcOrderCost(cart);
-  if (costRes.canSplit && costRes.savings > 0) {
-    html += buildSplitSuggestionHtml(costRes);
-  }
+      <!-- 小計 -->
+      <div style="text-align:right; font-weight:bold; font-size:20px; margin-top:15px; padding-top:15px; border-top:2px solid #eee;">
+        小計: $${total}
+      </div>
+    </div>
+  `;
+  
+  // Note: We removed the automatic split suggestion injection here,
+  // because the user wants it to INTERCEPT when they click 'Submit Order'.
   
   document.getElementById('checkoutContent').innerHTML = html;
   
@@ -971,7 +981,6 @@ function openCheckoutSummary() {
   document.getElementById('checkoutView').style.display = 'block';
   window.scrollTo(0, 0);
 }
-
 function toggleSummaryItem(idx) {
   const detail = document.getElementById('summary-detail-' + idx);
   const arrow = document.getElementById('summary-arrow-' + idx);
@@ -984,7 +993,7 @@ function toggleSummaryItem(idx) {
   }
 }
 
-async function sendOrderToLine() {
+async function sendOrderToLine(forceSubmit = false) {
   const phoneInput = document.getElementById('checkoutPhone');
   if (phoneInput) {
     const phoneVal = phoneInput.value.trim();
@@ -997,6 +1006,23 @@ async function sendOrderToLine() {
     localStorage.setItem('userPhone', phoneVal);
   }
 
+  // ==== 拆單攔截邏輯 ====
+  if (!forceSubmit) {
+    const costRes = calcOrderCost(cart);
+    if (costRes.canSplit && costRes.savings > 0) {
+      const suggestHtml = buildSplitSuggestionHtml(costRes);
+      const interceptHtml = suggestHtml + `
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button onclick="document.getElementById('errorModalOverlay').style.display='none'; document.getElementById('checkoutView').style.display='none'; document.getElementById('cartView').style.display='block';" style="flex:1; padding:12px; background:#f5f5f5; border:none; border-radius:8px; font-weight:bold; font-size:16px;">返回修改</button>
+          <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine(true);" style="flex:1; padding:12px; background:#111; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">確認送出(不拆單)</button>
+        </div>
+      `;
+      // We assume showModal(title, text, isError, htmlContent, hideBtn) exists.
+      showModal('💡 偵測到可以拆單', '若按照以下方式拆分訂單，可省下額外的運費！建議您回到購物車修改。', false, interceptHtml, true);
+      return;
+    }
+  }
+
   let total = 0;
   const storeGroups = {};
   cart.forEach(item => {
@@ -1005,9 +1031,11 @@ async function sendOrderToLine() {
     storeGroups[sName].push(item);
   });
 
-  let msgText = `🛵 UberEats 揪團訂單\n`;
+  let msgText = `🛵 UberEats 揪團訂單
+`;
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
-  if (addr) msgText += `📍 地址: ${addr}\n`;
+  if (addr) msgText += `📍 地址: ${addr}
+`;
 
   let timeText = '盡快送達';
   if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
@@ -1016,16 +1044,20 @@ async function sendOrderToLine() {
       timeText = timeSelect.options[timeSelect.selectedIndex].text;
     }
   }
-  msgText += `🕒 時間: ${timeText}\n\n`;
+  msgText += `🕒 時間: ${timeText}
+
+`;
 
   Object.keys(storeGroups).forEach(sName => {
-    msgText += `🏪 ${sName}\n`;
+    msgText += `🏪 ${sName}
+`;
     storeGroups[sName].forEach((item, i) => {
       const lineTotal = item.price * item.qty;
       total += lineTotal;
-      msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
+      msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}
+`;
       if (item.note) {
-        msgText += `     - 說明: ${item.note.replace(/\\n/g, ' ')}
+        msgText += `     - 說明: ${item.note.replace(/\n/g, ' ')}
 `;
       }
     });
@@ -1034,9 +1066,15 @@ async function sendOrderToLine() {
   msgText += `
 💰 總計小計: $${total}`;
 
-  const costRes = calcOrderCost(cart);
-  if (costRes.canSplit && costRes.savings > 0) {
-    msgText += buildSplitMsgText(costRes);
+  // 雖然使用者選擇不拆單，但如果有之前計算的拆單結果（例如使用者選擇拆單並送出？不會，這邊已經是 forceSubmit 了）
+  // Wait, if forceSubmit is true, we should NOT append the split suggestion to the LINE message! 
+  // Because they actively chose "不拆單".
+
+  const foodNotes = document.getElementById('checkoutFoodNotes') ? document.getElementById('checkoutFoodNotes').value.trim() : '';
+  if (foodNotes) {
+    msgText += `
+
+🍽️ 訂單備註: ${foodNotes}`;
   }
 
   const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
@@ -1770,21 +1808,20 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
   <!-- 錯誤提示框 -->
   <!-- 購物車全頁視圖 -->
 <div id="cartView" style="display:none; padding-bottom:100px; min-height:100vh; background:#fff;">
-  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center;">
-    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0 15px 0 0;">←</button>
-    <h1 style="margin:0; font-size:20px;">購物車</h1>
+  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; margin-left:-15px; margin-right:-15px;">
+    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">購物車</span></button>
+    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:14px;">新增商品</button>
   </div>
-  <div id="cartContent" style="padding: 15px;"></div>
+  <div id="cartContent" style="padding: 15px 0;"></div>
   
-  <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; display:flex; justify-content: space-between; align-items:center; z-index:100;">
-    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:14px 20px; border-radius:8px; font-weight:bold; font-size:16px;">新增商品</button>
-    <button onclick="openCheckoutSummary()" style="background:#111; color:#fff; border:none; padding:14px 20px; border-radius:8px; font-weight:bold; font-size:16px; flex:1; margin-left:10px;">確認訂單</button>
+  <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
+    <button onclick="openCheckoutSummary()" style="background:#111; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; width:100%;">確認訂單</button>
   </div>
 </div>
 
 <!-- 訂單摘要與送出視圖 -->
 <div id="checkoutView" style="display:none; padding-bottom:120px; min-height:100vh; background:#f9f9f9;">
-  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center;">
+  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center; margin-left:-15px; margin-right:-15px;">
     <button onclick="backToCart()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0 15px 0 0;">←</button>
     <h1 style="margin:0; font-size:20px;">確認訂單</h1>
   </div>
