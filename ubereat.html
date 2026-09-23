@@ -146,7 +146,7 @@
         <button class="secondary" onclick="searchStores()">不知道</button>
         <button onclick="searchStores()">搜尋餐廳</button>
       </div>
-    </div
+    </div>
     <div class="section">
       <div class="section-title">6. 手機號碼</div>
       <div class="input-row">
@@ -483,10 +483,10 @@
               statusEl.innerText = '正在轉換地址...';
               
               try {
-                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=zh-TW`);
+                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=zh-TW&addressdetails=1`);
                   if (res.ok) {
                       const data = await res.json();
-                      const title = data.display_name;
+                      const title = formatNominatimAddress(data);
                       setAddress(lat, lng, title);
                       statusEl.innerText = '定位成功！';
                   } else {
@@ -534,6 +534,21 @@
     }
   }
 
+
+  function formatNominatimAddress(item) {
+      if (item.address) {
+          const ad = item.address;
+          const city = ad.city || ad.county || ad.state || '';
+          const district = ad.city_district || ad.town || ad.village || ad.suburb || ad.district || ad.borough || '';
+          const road = ad.road || ad.pedestrian || ad.street || '';
+          const house = ad.house_number || '';
+          if (city || district || road) {
+              return `${city}${district}${road}${house}`;
+          }
+      }
+      return item.display_name.split(',')[0];
+  }
+
   async function searchAddress(force = false) {
     let q = document.getElementById('addrInput').value.trim();
     if (!force && q === window.lastSearchedAddr) return;
@@ -555,27 +570,28 @@
     resultsEl.innerHTML = '';
 
     const fallbackSearch = async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=tw&q=${encodeURIComponent(q)}`);
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=tw&q=${encodeURIComponent(q)}&accept-language=zh-TW&addressdetails=1`);
         const data = await res.json();
-        if (data.length === 0) { 
-          statusEl.innerText = '找不到該地址，請嘗試其他關鍵字。'; 
-          return; 
+        if (data.length === 0) {
+            statusEl.innerText = '找不到地址';
+            return;
         }
         if (data.length === 1) {
-          setAddress(data[0].lat, data[0].lon, data[0].display_name);
+            setAddress(data[0].lat, data[0].lon, formatNominatimAddress(data[0]));
         } else {
-          statusEl.innerText = '請選擇正確的地址：';
-          resultsEl.innerHTML = data.slice(0, 5).map(item => `
-            <div class="addr-item" onclick="setAddress(${item.lat}, ${item.lon}, '${escapeHTML(item.display_name)}')">
-              ${escapeHTML(item.display_name)}
-            </div>
-          `).join('');
+            statusEl.innerText = '請選擇精確地址：';
+            resultsEl.innerHTML = data.slice(0, 5).map(item => {
+                const formatted = formatNominatimAddress(item);
+                return `<div class="addr-item" onclick="setAddress(${item.lat}, ${item.lon}, '${escapeHTML(formatted)}')">
+                    ${escapeHTML(formatted)}
+                </div>`;
+            }).join('');
         }
-      } catch (e) { 
-        statusEl.innerText = '尋找地址失敗: ' + e.message;
-      updateAddrTitleState('error'); 
-      }
+    } catch (e) {
+        statusEl.innerText = '搜尋地址錯誤: ' + e.message;
+        updateAddrTitleState('error');
+    }
     if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
     };
     
