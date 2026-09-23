@@ -180,7 +180,11 @@
       const configRes = await fetch('config.json?t=' + Date.now());
       if (configRes.ok) {
         const configData = await configRes.json();
-        if (configData.api_url) API_BASE_URL = configData.api_url.replace(/\/$/, '');
+        if (configData.api_url) {
+          API_BASE_URL = configData.api_url.replace(/\/$/, '');
+        } else if (configData.line_url) {
+          API_BASE_URL = configData.line_url.replace(/\/$/, '');
+        }
         if (configData.ws_url) WS_URL = configData.ws_url;
       }
     } catch (e) {
