@@ -94,7 +94,7 @@
   <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s;">
       <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <span style="font-size:18px; margin-right:4px;">📍</span><input type="text" id="addrInput" placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
+        <span style="font-size:18px; margin-right:4px;"></span><input type="text" id="addrInput" placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
         <datalist id="addr-list"></datalist>
         <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
       </div>
@@ -652,6 +652,113 @@
     }
   };
 
+
+  // ========== 快速加入購物車邏輯 ==========
+  window.noOptionsItems = new Set();
+
+  function updateMenuActions() {
+    // 計算購物車中各品項的數量
+    const qtyMap = {};
+    cart.forEach(item => {
+      if (item.menuItemUuid) {
+        qtyMap[item.menuItemUuid] = (qtyMap[item.menuItemUuid] || 0) + item.qty;
+      }
+    });
+
+    // 更新所有 item-action-area
+    const areas = document.querySelectorAll('.item-action-area');
+    areas.forEach(area => {
+      const uuid = area.id.replace('action-', '');
+      const qty = qtyMap[uuid] || 0;
+      
+      // 只有確認為「無選項」的商品，才會顯示 stepper。否則永遠顯示 +
+      if (window.noOptionsItems.has(uuid) && qty > 0) {
+        area.innerHTML = `
+          <div onclick="handleQuickTrash(event, '${uuid}')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px;">🗑️</div>
+          <div style="padding: 0 4px; font-size: 15px; font-weight: bold; min-width: 16px; text-align: center;">${qty}</div>
+          <div onclick="handleQuickPlus(event, '${uuid}')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer;">＋</div>
+        `;
+      } else {
+        // 從 DOM 取回原本 onclick 需要的參數。最簡單的方法是從父層的 onclick 字串中提取，但有點複雜
+        // 為了簡單，如果它已經是 + 號就不動它
+        if (!area.innerHTML.includes('handleQuickAdd')) {
+          // 因為沒有保留原本參數，直接觸發父層的 click 讓它打開 modal 就好
+          area.innerHTML = `<div onclick="this.parentElement.parentElement.click(); event.stopPropagation();" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>`;
+        }
+      }
+    });
+  }
+
+  async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#111;"></div>';
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/item`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
+      });
+      const json = await res.json();
+      btn.innerHTML = originalHtml;
+
+      if (json.status === 'success' && json.data) {
+        const cust = json.data.customizationsList || [];
+        if (cust.length > 0) {
+          // 有選項 -> 打開 modal
+          openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl);
+        } else {
+          // 無選項 -> 直接加入購物車
+          window.noOptionsItems.add(menuItemUuid);
+          cart.push({
+            title: title,
+            price: basePrice,
+            qty: 1,
+            note: '',
+            options: [],
+            storeName: currentStoreName,
+            menuItemUuid: menuItemUuid
+          });
+          updateCartBadge();
+          updateMenuActions();
+        }
+      }
+    } catch (e) {
+      btn.innerHTML = originalHtml;
+      alert("網路錯誤");
+    }
+  }
+
+  function handleQuickPlus(event, uuid) {
+    event.stopPropagation();
+    // 找到購物車中該品項並數量 + 1
+    for (let i = 0; i < cart.length; i++) {
+      if (cart[i].menuItemUuid === uuid) {
+        cart[i].qty += 1;
+        break;
+      }
+    }
+    updateCartBadge();
+    updateMenuActions();
+  }
+
+  function handleQuickTrash(event, uuid) {
+    event.stopPropagation();
+    // 數量 - 1，如果為 0 則移除
+    for (let i = 0; i < cart.length; i++) {
+      if (cart[i].menuItemUuid === uuid) {
+        cart[i].qty -= 1;
+        if (cart[i].qty <= 0) {
+          cart.splice(i, 1);
+        }
+        break;
+      }
+    }
+    updateCartBadge();
+    updateMenuActions();
+  }
+
   function updateCartBadge() {
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const btn = document.getElementById('floatingCartBtn');
@@ -827,7 +934,7 @@
   }
 
   async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
-    currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [] };
+    currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [], menuItemUuid: menuItemUuid };
     currentQty = 1;
     currentCustomizations = [];
     
@@ -996,7 +1103,8 @@
     
     cart.push({
       storeName: currentStoreName,
-      title: currentItem.title,
+      menuItemUuid: currentItem.menuItemUuid,
+        title: currentItem.title,
       price: finalPrice,
       qty: currentQty,
       note: fullNote
@@ -1237,23 +1345,31 @@
                   if (isPromo) {
                       promoItemsHtml += `
                         <div class="menu-item" style="opacity: 0.6; cursor: not-allowed;">
-                          ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
-                          ${promoBadgeHtml}
-                          <div class="menu-item-title" style="text-decoration: line-through;">${escapeHTML(itemTitle)}</div>
-                          <div style="color: #d32f2f; font-size: 12px; font-weight: bold; margin-bottom: 4px;">優惠商品無法訂購</div>
-                          <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
-                          <div class="menu-item-price">${priceHtml}</div>
-                        </div>
+                    <div class="menu-item-info">
+                      ${promoBadgeHtml}
+                      <div class="menu-item-title" style="text-decoration: line-through;">${escapeHTML(itemTitle)}</div>
+                      <div style="color: #d32f2f; font-size: 12px; font-weight: bold; margin-bottom: 4px;">優惠商品無法訂購</div>
+                      <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                      <div class="menu-item-price">${priceHtml}</div>
+                    </div>
+                    ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                  </div>
                       `;
                   } else {
                       hasRegular = true;
                       sectionHtml += `
-                        <div class="menu-item" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\\'")}', ${priceVal}, '${imgUrl}')">
-                          ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
-                          <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
-                          <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
-                          <div class="menu-item-price">${priceHtml}</div>
-                        </div>
+                        <div class="menu-item" style="position: relative;" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\'")}', ${priceVal}, '${imgUrl}')">
+                    <div class="menu-item-info">
+                      <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
+                      <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                      <div class="menu-item-price">${priceHtml}</div>
+                    </div>
+                    ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                    
+                    <div class="item-action-area" id="action-${menuItemUuid}" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">
+                      <div class="quick-add-btn" onclick="handleQuickAdd(event, '${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\'")}', ${priceVal}, '${imgUrl}')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>
+                    </div>
+                  </div>
                       `;
                   }
                 });
