@@ -1063,7 +1063,7 @@ async function sendOrderToLine(forceSubmit = false) {
           <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
         </div>
       `;
-      showModal('💡 偵測到可以拆單', '按照以下建議拆單，可以為您省下運費！', false, interceptHtml, true);
+      showModal('💡 偵測到可以拆單', '按照以下建議拆單，得到最優惠價格!', false, interceptHtml, true);
       return;
     }
   }
@@ -1239,31 +1239,22 @@ if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPro
   }
 
   try {
-    if (liff.isApiAvailable('shareTargetPicker')) {
-      const res = await liff.shareTargetPicker([
-        {
-          type: "text",
-          text: msgText
-        }
-      ]);
-      if (res) {
-        cart = [];
-        updateCartBadge();
-        goBackToStore();
-      }
-    } else {
-      await liff.sendMessages([
-        {
-          type: "text",
-          text: msgText
-        }
-      ]);
-      cart = [];
-      updateCartBadge();
-      liff.closeWindow();
+    if (!liff.isInClient()) {
+      alert("請在 LINE APP 中使用此功能以發送訂單");
+      return;
     }
+    await liff.sendMessages([
+      {
+        type: "text",
+        text: msgText
+      }
+    ]);
+    alert("訂單已送出");
+    cart = [];
+    updateCartBadge();
+    liff.closeWindow();
   } catch (err) {
-    alert('傳送失敗: ' + err.message);
+    alert('發生錯誤: ' + err.message);
   }
 }
 async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
