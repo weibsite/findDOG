@@ -753,6 +753,7 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
             note: '',
             options: [],
             storeName: currentStoreName,
+            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
             menuItemUuid: menuItemUuid
           });
           updateCartBadge();
@@ -812,6 +813,7 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
   let currentStoreUuid = '';
   let currentStoreName = '';
+  let currentStoreUrl = '';
   let currentStoreDeliveryFee = '';
   let currentItem = null;
   let currentQty = 1;
@@ -1105,7 +1107,7 @@ async function sendOrderToLine(forceSubmit = false) {
         if (!binStores[it.storeName]) binStores[it.storeName] = {};
         const key = it.name + '|||' + (it.note || '');
         if (!binStores[it.storeName][key]) {
-          binStores[it.storeName][key] = { title: it.name, note: it.note, price: it.price, qty: 0 };
+          binStores[it.storeName][key] = { title: it.name, note: it.note, price: it.price, qty: 0, storeUrl: it.storeUrl };
         }
         binStores[it.storeName][key].qty += 1;
       });
@@ -1549,6 +1551,7 @@ const note = document.getElementById('modalNote').value.trim();
     
     cart.push({
       storeName: currentStoreName,
+      storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
       menuItemUuid: currentItem.menuItemUuid,
         title: currentItem.title,
       price: finalPrice,
@@ -1604,8 +1607,9 @@ const note = document.getElementById('modalNote').value.trim();
     return '';
   }
 
-  async function openStore(uuid, storeName) {
+  async function openStore(uuid, storeName, actionUrl = '') {
       if(storeName) currentStoreName = storeName;
+    if(actionUrl) currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=DELIVERY';
       currentStoreUuid = uuid;
     const resultsDiv = document.getElementById('results');
     const sc = document.getElementById('storeContent');
