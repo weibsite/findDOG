@@ -562,7 +562,7 @@
         const style = isBad ? 'filter: grayscale(100%); opacity: 0.6;' : '';
         
         return `
-          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}', '${escapeHTML(name).replace(\'\'\', \'\\\'\')}')">
+          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick=\"openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name)}'))\">
             <div class="card-img" style="background-image: url('${imgUrl}')"></div>
             <div class="card-body">
               <div class="card-name">${escapeHTML(name)}</div>
@@ -575,7 +575,7 @@
   }
 
   // ==== 購物車與餐廳菜單功能 ====
-    let cart = [];
+  let cart = [];
   try {
     const saved = localStorage.getItem('uberCart');
     if (saved) cart = JSON.parse(saved);
@@ -728,75 +728,6 @@
         alert("傳送失敗: " + error);
       });
   }
-);
-      return;
-    }
-    if (!liff.isInClient()) {
-      alert("這項功能只能在 LINE APP 的聊天室內使用喔！");
-      return;
-    }
-    
-    const messages = [{
-      type: "text",
-      text: currentOrderMessage
-    }];
-
-    liff.sendMessages(messages)
-      .then(() => {
-        alert("已成功傳送至聊天室！");
-        liff.closeWindow();
-      })
-      .catch((error) => {
-        alert("送出失敗: " + error);
-      });
-  }
-
-  function viewCart() {
-    if (cart.length === 0) {
-      showModal('購物車是空的', '目前沒有加入任何餐點喔！', false);
-      return;
-    }
-    
-    let total = 0;
-    let msg = '【UberEats 點餐確認】\n';
-    
-    let addr = document.getElementById('addrInput').value.trim();
-    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
-    if (addr) msg += `📍 外送地址: ${addr}\n`;
-    
-    const scheduleSelect = document.getElementById('scheduleTime');
-    if (scheduleSelect && scheduleSelect.selectedIndex >= 0) {
-      msg += `⏰ 預約時間: ${scheduleSelect.options[scheduleSelect.selectedIndex].text}\n`;
-    }
-    
-    msg += '\n【餐點明細】\n';
-    cart.forEach((item, i) => {
-      const lineTotal = item.price * item.qty;
-      total += lineTotal;
-      msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
-      if (item.note) msg += `   - 備註: ${item.note}\n`;
-    });
-    
-    const foodNotes = document.getElementById('foodNotes').value.trim();
-    const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
-    
-    if (foodNotes) msg += `\n整體餐點備註: ${foodNotes}`;
-    if (deliveryNotes) msg += `\n外送備註: ${deliveryNotes}`;
-    
-    msg += `\n\n總計: $${total}`;
-    
-    // 儲存全域變數供 LIFF 發送使用
-    currentOrderMessage = msg;
-    
-    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;">送出訂單至聊天室</button>`;
-    
-    showModal('購物車', msg, false, sendBtnHtml);
-  }
-
-  // 彈出視窗狀態
-  let currentItem = null;
-  let currentQty = 1;
-  let currentCustomizations = [];
 
   async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
     currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [] };
