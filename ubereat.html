@@ -254,7 +254,7 @@
     liffInitPromise = liff.init({ liffId: "2011657436-SNFTv9uP" }).catch(err => {
         console.error('LIFF init failed', err);
     });
-    loadHistory();
+    
     try {
       const configRes = await fetch('config.json?t=' + Date.now());
       if (configRes.ok) {
@@ -267,8 +267,11 @@
         if (configData.ws_url) WS_URL = configData.ws_url;
       }
     } catch (e) {
-      console.log('未找到 config.json，將使用相對路徑與本機位址。');
+      console.log('找不到 config.json，將使用預設路徑。');
     }
+    
+    // Config 讀取完成後，再讀取歷史紀錄 (這樣 auto-setAddress 才會用到正確的 API_BASE_URL)
+    loadHistory();
     initSchedulePicker();
   });
 
