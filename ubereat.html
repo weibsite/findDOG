@@ -91,12 +91,12 @@
 
   <!-- 首頁 -->
   <div id="homeView">
-    <div class="section">
-      <div class="section-title" id="addrSectionTitle" style="padding: 6px 12px; border-radius: 6px; background-color: #f5f5f5; display: inline-block; transition: 0.3s; margin-bottom: 15px; color: #666;">1. 外送地址設定</div>
+  <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s;">
+      <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <span style="font-size:18px; margin-right:4px;">📍</span><input type="text" id="addrInput" placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') searchAddress()" oninput="isAddressSet=false; updateAddrTitleState('default');" />
+        <span style="font-size:18px; margin-right:4px;">📍</span><input type="text" id="addrInput" placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
         <datalist id="addr-list"></datalist>
-        <button class="secondary" onclick="searchAddress()">尋找地址</button>
+        <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
       </div>
       <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></div>
       <div id="addrResults" class="addr-results"></div>
@@ -421,22 +421,46 @@
 
   
   function updateAddrTitleState(state) {
-    const title = document.getElementById('addrSectionTitle');
-    if (!title) return;
+    const section = document.getElementById('addrSection');
+    if (!section) return;
     if (state === 'ok') {
-      title.style.backgroundColor = '#e8f5e9';
-      title.style.color = '#2e7d32';
+      section.style.backgroundColor = '#e8f5e9'; // 淡綠色背景
+      section.style.borderColor = '#a5d6a7';
     } else if (state === 'error') {
-      title.style.backgroundColor = '#ffebee';
-      title.style.color = '#c62828';
+      section.style.backgroundColor = '#ffebee'; // 淡紅色背景
+      section.style.borderColor = '#ef9a9a';
     } else {
-      title.style.backgroundColor = '#f5f5f5';
-      title.style.color = '#666';
+      section.style.backgroundColor = '#fafafa'; // 恢復預設淺灰色
+      section.style.borderColor = '#eee';
     }
   }
 
-  async function searchAddress() {
+  window.addrDebounceTimer = null;
+  window.lastSearchedAddr = "";
+
+  function handleAddrInput() {
+    isAddressSet = false;
+    updateAddrTitleState('default');
+    
+    clearTimeout(window.addrDebounceTimer);
+    window.addrDebounceTimer = setTimeout(() => {
+      handleAddrBlur();
+    }, 2000);
+  }
+
+  function handleAddrBlur() {
+    clearTimeout(window.addrDebounceTimer);
+    const q = document.getElementById('addrInput').value.trim();
+    if (q) {
+      searchAddress(false);
+    }
+  }
+
+  async function searchAddress(force = false) {
     let q = document.getElementById('addrInput').value.trim();
+    if (!force && q === window.lastSearchedAddr) return;
+    window.lastSearchedAddr = q;
+
     if (q.startsWith('📍 ')) q = q.substring(3).trim();
     if (!q) { updateAddrTitleState('default'); return; }
     
