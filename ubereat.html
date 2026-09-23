@@ -79,9 +79,6 @@
 
   /* Floating Cart Button */
   .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
-
-  #addrInput { text-align: right; }
-  #addrInput:focus { text-align: left; }
 </style>
 </head>
 <body>
@@ -266,6 +263,7 @@
     if (addressHistory.length > 0 && !isAddressSet) {
       const lastAddr = addressHistory[0];
       document.getElementById('addrInput').value = lastAddr.title;
+      scrollAddrToEnd();
       setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
     }
   }
@@ -520,6 +518,16 @@
   }
 
   
+
+  function scrollAddrToEnd() {
+      setTimeout(() => {
+          const el = document.getElementById('addrInput');
+          if (el) {
+              el.scrollLeft = el.scrollWidth;
+          }
+      }, 50);
+  }
+
   function handleAddrInput() {
     isAddressSet = false;
     updateAddrTitleState('default');
@@ -531,6 +539,7 @@
   }
 
   function handleAddrBlur() {
+    scrollAddrToEnd();
     clearTimeout(window.addrDebounceTimer);
     const q = document.getElementById('addrInput').value.trim();
     if (q) {
@@ -649,6 +658,7 @@
     let displayTitle = title.split(',')[0];
     if (displayTitle.startsWith('📍 ')) displayTitle = displayTitle.substring(3).trim();
     document.getElementById('addrInput').value = displayTitle;
+    scrollAddrToEnd();
     currentLat = lat;
     currentLng = lng;
     currentAddrTitle = displayTitle;
