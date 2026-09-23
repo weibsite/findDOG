@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>訂餐系統</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
@@ -104,7 +104,21 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">3. 尋找想吃的餐點</div>
+      <div class="section-title">3. 餐點備註</div>
+      <div class="input-row">
+        <input type="text" id="foodNotes" placeholder="不要蔥、加辣..." />
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">4. 外送備註</div>
+      <div class="input-row">
+        <input type="text" id="deliveryNotes" placeholder="例如：放在管理室、到了打電話..." />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">5. 尋找想吃的餐點</div>
       <div class="input-row">
         <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" onkeydown="if(event.key==='Enter') searchStores()" />
         <button onclick="searchStores()">搜尋餐廳</button>
@@ -487,18 +501,25 @@
 
   function viewCart() {
     if (cart.length === 0) {
-      showModal('購物車是空的', '您還沒有加入任何餐點喔！', false);
+      showModal('購物車是空的', '目前沒有加入任何餐點喔！', false);
       return;
     }
     let total = 0;
-    let msg = '【您的購物清單】\n\n';
+    let msg = '【您的購物車】\n\n';
     cart.forEach((item, i) => {
       const lineTotal = item.price * item.qty;
       total += lineTotal;
       msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
-      if (item.note) msg += `   備註: ${item.note}\n`;
+      if (item.note) msg += `   餐點內備註: ${item.note}\n`;
     });
-    msg += `\n總計: $${total}\n\n(註：此為本機模擬購物車，尚未與 Uber Eats 真實帳號綁定)`;
+    
+    const foodNotes = document.getElementById('foodNotes').value.trim();
+    const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
+    
+    if (foodNotes) msg += `\n整體餐點備註: ${foodNotes}`;
+    if (deliveryNotes) msg += `\n外送備註: ${deliveryNotes}`;
+    
+    msg += `\n\n總計: $${total}\n\n(註：此為測試模擬購物車，尚未與 Uber Eats 真實帳號綁定)`;
     showModal('購物車', msg, false);
   }
 
