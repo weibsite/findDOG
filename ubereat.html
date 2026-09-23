@@ -972,8 +972,13 @@
                 items.forEach(item => {
                   const itemTitle = parseText(item.title);
                   const itemDesc = parseText(item.itemDescription);
-                  const priceVal = item.price > 0 ? (item.price / 100) : 0; 
-                  const priceStr = priceVal > 0 ? '$' + priceVal : ''; 
+                  const priceVal = item.price > 0 ? Math.round(item.price / 100) : 0; 
+                  
+                  let priceHtml = priceVal > 0 ? '$' + priceVal : ''; 
+                  if (item.priceTagline && item.priceTagline.textFormat) {
+                    priceHtml = item.priceTagline.textFormat;
+                  }
+                  
                   const imgUrl = item.imageUrl || '';
                   const menuItemUuid = item.uuid;
                   
@@ -983,7 +988,7 @@
                       ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
                       <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
                       <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
-                      <div class="menu-item-price">${priceStr}</div>
+                      <div class="menu-item-price">${priceHtml}</div>
                     </div>
                   `;
                 });
