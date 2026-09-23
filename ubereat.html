@@ -20,6 +20,7 @@
   
   .input-row { display: flex; gap: 8px; }
   .input-row input { flex: 1; padding: 14px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; box-sizing: border-box; }
+  .input-row input::-webkit-calendar-picker-indicator { opacity: 1; color: #999; cursor: pointer; }
   .input-row button { padding: 14px 16px; font-size: 15px; background: #111; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
   .input-row button.secondary { background: #e0e0e0; color: #111; }
 
@@ -84,21 +85,22 @@
     <div class="section">
       <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <input type="text" id="addrInput" placeholder="輸入地址 (例如: 高雄車站)" onkeydown="if(event.key==='Enter') searchAddress()" />
+        <input type="text" id="addrInput" placeholder="輸入地址 (例如: 高鐵車站)" list="addr-list" onkeydown="if(event.key==='Enter') searchAddress()" />
+        <datalist id="addr-list"></datalist>
         <button class="secondary" onclick="searchAddress()">尋找地址</button>
       </div>
       <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></div>
       <div id="addrResults" class="addr-results"></div>
     </div>
     <div class="section">
-      <div class="section-title">2. 選擇安排時間 (預約時段)</div>
+      <div class="section-title">2. 訂餐時間選擇 (排程時段)</div>
       <div id="schedulePickerArea">
         <div id="dateButtons" style="display:flex; overflow-x:auto; gap:10px; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch;">
-          <!-- JS 動態生成日期按鈕 -->
+          <!-- JS 自動產生按鈕 -->
         </div>
         <div class="input-row">
           <select id="scheduleTime" style="flex:1; padding:14px; border:1px solid #ccc; border-radius:8px; font-size:15px; outline:none;">
-            <!-- JS 動態生成時間選項 -->
+            <!-- JS 自動產生選項 -->
           </select>
         </div>
       </div>
@@ -106,21 +108,24 @@
     <div class="section">
       <div class="section-title">3. 餐點備註</div>
       <div class="input-row">
-        <input type="text" id="foodNotes" placeholder="不要蔥、加辣..." />
+        <input type="text" id="foodNotes" placeholder="不要蔥、加辣..." list="food-notes-list" onchange="saveSimpleHistory('foodNotes')" />
+        <datalist id="food-notes-list"></datalist>
       </div>
     </div>
     
     <div class="section">
       <div class="section-title">4. 外送備註</div>
       <div class="input-row">
-        <input type="text" id="deliveryNotes" placeholder="例如：放在管理室、到了打電話..." />
+        <input type="text" id="deliveryNotes" placeholder="例如：放在管理室、到了打電話..." list="delivery-notes-list" onchange="saveSimpleHistory('deliveryNotes')" />
+        <datalist id="delivery-notes-list"></datalist>
       </div>
     </div>
 
     <div class="section">
       <div class="section-title">5. 尋找想吃的餐點</div>
       <div class="input-row">
-        <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" onkeydown="if(event.key==='Enter') searchStores()" />
+        <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
+        <datalist id="query-list"></datalist>
         <button onclick="searchStores()">搜尋餐廳</button>
       </div>
     </div>
@@ -189,9 +194,59 @@
   let scheduleMode = 'SCHEDULE';
   let selectedDateIndex = 0;
   const datesData = [];
+  
+  // ====== History Logic ======
+  let addressHistory = [];
+  
+  function loadHistory() {
+    ['foodNotes', 'deliveryNotes', 'query'].forEach(field => {
+      const history = JSON.parse(localStorage.getItem('finddog_history_' + field)) || [];
+      const datalist = document.getElementById(field === 'query' ? 'query-list' : (field === 'foodNotes' ? 'food-notes-list' : 'delivery-notes-list'));
+      if (datalist) {
+        datalist.innerHTML = history.map(val => `<option value="${escapeHTML(val)}"></option>`).join('');
+      }
+      if (history.length > 0 && field !== 'query') {
+        document.getElementById(field).value = history[0];
+      }
+    });
+    
+    addressHistory = JSON.parse(localStorage.getItem('finddog_history_address')) || [];
+    const addrDatalist = document.getElementById('addr-list');
+    if (addrDatalist) {
+      addrDatalist.innerHTML = addressHistory.map(item => `<option value="${escapeHTML(item.title)}"></option>`).join('');
+    }
+    
+    if (addressHistory.length > 0 && !isAddressSet) {
+      const lastAddr = addressHistory[0];
+      document.getElementById('addrInput').value = lastAddr.title;
+      setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
+    }
+  }
+
+  function saveSimpleHistory(field) {
+    const val = document.getElementById(field).value.trim();
+    if (!val) return;
+    let history = JSON.parse(localStorage.getItem('finddog_history_' + field)) || [];
+    history = history.filter(item => item !== val);
+    history.unshift(val);
+    if (history.length > 5) history = history.slice(0, 5);
+    localStorage.setItem('finddog_history_' + field, JSON.stringify(history));
+    loadHistory();
+  }
+
+  function saveAddressHistory(lat, lng, title) {
+    let history = JSON.parse(localStorage.getItem('finddog_history_address')) || [];
+    history = history.filter(item => item.title !== title);
+    history.unshift({ lat, lng, title });
+    if (history.length > 5) history = history.slice(0, 5);
+    localStorage.setItem('finddog_history_address', JSON.stringify(history));
+    addressHistory = history;
+    loadHistory();
+  }
 
   // 初始化 UI 與設定
   document.addEventListener("DOMContentLoaded", async () => {
+    loadHistory();
     try {
       const configRes = await fetch('config.json?t=' + Date.now());
       if (configRes.ok) {
@@ -336,6 +391,14 @@
   async function searchAddress() {
     const q = document.getElementById('addrInput').value.trim();
     if (!q) return;
+    
+    // Check if it's already in history to skip server searching
+    const matchedHistory = addressHistory.find(item => item.title === q);
+    if (matchedHistory) {
+      setAddress(matchedHistory.lat, matchedHistory.lng, matchedHistory.title);
+      return;
+    }
+    
     const statusEl = document.getElementById('addrStatus');
     const resultsEl = document.getElementById('addrResults');
     statusEl.innerText = ''; 
@@ -421,6 +484,7 @@
       if (json.status === 'success') {
           // 不顯示成功訊息，讓使用者感覺無縫銜接
           isAddressSet = true;
+          saveAddressHistory(lat, lng, title);
       } else {
           statusEl.innerText = '❌ 設定失敗: ' + json.message;
       }
@@ -436,6 +500,8 @@
     }
     const q = document.getElementById('query').value.trim();
     if (!q) return;
+    
+    saveSimpleHistory('query');
     
     // 切換到 ListView
     currentView = 'list';
