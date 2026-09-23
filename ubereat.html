@@ -9,8 +9,12 @@
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
   .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
   
-  .app-header { display: flex; align-items: center; justify-content: center; position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
-  .app-header button { position: absolute; left: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; }
+  .app-header { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px; border-bottom: 1px solid #eee; margin-bottom: 15px; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
+  .back-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: left; }
+  .header-title { flex: 1; text-align: center; }
+  .cart-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: right; position: relative; }
+  .cart-badge { position: absolute; top: -5px; right: -8px; background: #d32f2f; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 10px; display: none; font-weight: bold; }
+  
   h1 { display: none; }
   
   .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #06c167; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
@@ -525,7 +529,7 @@
     
     // 切換到 ListView
     currentView = 'list';
-    document.getElementById('mainBackBtn').style.display = 'block';
+    document.getElementById('mainBackBtn').style.visibility = 'visible';
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('listView').style.display = 'block';
@@ -557,7 +561,7 @@
         const style = isBad ? 'filter: grayscale(100%); opacity: 0.6;' : '';
         
         return `
-          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}')">
+          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}', '${escapeHTML(name).replace(\'\'\', \'\\\'\')}')">
             <div class="card-img" style="background-image: url('${imgUrl}')"></div>
             <div class="card-body">
               <div class="card-name">${escapeHTML(name)}</div>
@@ -571,18 +575,121 @@
 
   // ==== 購物車與餐廳菜單功能 ====
   let cart = [];
+  try {
+    const saved = localStorage.getItem('uberCart');
+    if (saved) cart = JSON.parse(saved);
+  } catch(e) {}
   
+  function saveCart() {
+    localStorage.setItem('uberCart', JSON.stringify(cart));
+  }
+  
+  window.removeCartItem = function(idx) {
+    cart.splice(idx, 1);
+    updateCartBadge();
+    saveCart();
+    if (cart.length === 0) {
+      document.getElementById('errorModalOverlay').style.display = 'none';
+      alert('購物車已清空');
+    } else {
+      viewCart();
+    }
+  };
+
   function updateCartBadge() {
+    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const btn = document.getElementById('floatingCartBtn');
     if (btn) {
-      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-      btn.innerText = `🛒 檢視購物車 (${totalQty})`;
-      if (totalQty > 0) {
-        btn.style.display = 'block';
-      } else {
-        btn.style.display = 'none';
-      }
+      btn.innerText = `🛒 檢視購物車(${totalQty})`;
+      btn.style.display = (totalQty > 0) ? 'block' : 'none';
     }
+    const headerBadge = document.getElementById('headerCartBadge');
+    if (headerBadge) {
+      headerBadge.innerText = totalQty;
+      headerBadge.style.display = totalQty > 0 ? 'inline-block' : 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', updateCartBadge);
+
+  let currentStoreUuid = '';
+  let currentStoreName = '';
+  let currentStoreDeliveryFee = '';
+  let currentItem = {};
+  let currentQty = 1;
+  let currentCustomizations = [];
+
+  function viewCart() {
+    if (cart.length === 0) {
+      alert('購物車是空的喔！');
+      return;
+    }
+    
+    let total = 0;
+    const storeGroups = {};
+    cart.forEach(item => {
+      const sName = item.storeName || '未分類餐廳';
+      if (!storeGroups[sName]) storeGroups[sName] = [];
+      storeGroups[sName].push(item);
+    });
+    
+    let htmlContent = `<div style="text-align: left; max-height: 50vh; overflow-y: auto;">`;
+    
+    let msgText = '【UberEats 點餐確認】\n';
+    const currentAddress = (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '') || '未設定地址';
+    msgText += `📍外送地址: ${currentAddress}\n`;
+    
+    if (scheduleMode === 'ASAP') {
+      msgText += `⏰希望送達時間: 盡快送達\n`;
+    } else {
+      const timeSelect = document.getElementById('scheduleTime');
+      const timeText = (timeSelect && timeSelect.options[timeSelect.selectedIndex]) ? timeSelect.options[timeSelect.selectedIndex].text : '';
+      msgText += `⏰希望送達時間: ${timeText}\n`;
+    }
+    
+    msgText += '\n【餐點明細】\n';
+
+    Object.keys(storeGroups).forEach(sName => {
+      htmlContent += `<div style="font-size:16px; font-weight:bold; margin-top:15px; border-bottom:2px solid #000; padding-bottom:5px;">🏬 ${sName}</div>`;
+      msgText += `🏬 ${sName}\n`;
+      
+      const sFee = storeGroups[sName][0].storeFee || '';
+      if (sFee) {
+          msgText += `   🛵 外送費: ${sFee}\n`;
+          htmlContent += `<div style="font-size:13px; color:#666; margin-bottom:8px;">🛵 外送費: ${sFee}</div>`;
+      }
+      
+      storeGroups[sName].forEach((item, i) => {
+        const lineTotal = item.price * item.qty;
+        total += lineTotal;
+        const cartIdx = cart.indexOf(item);
+        
+        msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
+        if (item.note) msgText += `     - 備註: ${item.note}\n`;
+
+        htmlContent += `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 0; border-bottom:1px solid #eee;">
+            <div style="flex:1; margin-right:10px;">
+              <div style="font-weight:bold;">${item.title} x ${item.qty}</div>
+              ${item.note ? `<div style="font-size:12px; color:#666; margin-top:2px;">備註: ${item.note}</div>` : ''}
+              <div style="font-weight:bold; color:#06c167; margin-top:4px;">$${lineTotal}</div>
+            </div>
+            <button onclick="removeCartItem(${cartIdx})" style="background:#d32f2f; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px; white-space:nowrap;">刪除</button>
+          </div>
+        `;
+      });
+    });
+    
+    htmlContent += `</div>`;
+    htmlContent += `<div style="font-weight:bold; font-size:20px; text-align:right; margin-top:15px;">總計: $${total}</div>`;
+    msgText += `\n💰總計金額: $${total}`;
+    
+    currentOrderMessage = msgText;
+
+    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:20px;">送出訂單至聊天室</button>`;
+    htmlContent += sendBtnHtml;
+    
+    showModal('購物車', '', false, htmlContent);
   }
 
   let currentOrderMessage = "";
@@ -591,7 +698,6 @@
     if (liffInitPromise) await liffInitPromise;
 
     if (!liff.isLoggedIn()) {
-      // 嘗試自動登入
       liff.login({ redirectUri: window.location.href });
       return;
     }
@@ -611,56 +717,10 @@
         liff.closeWindow();
       })
       .catch((error) => {
-        alert("送出失敗: " + error);
+        alert("傳送失敗: " + error);
       });
   }
 
-  function viewCart() {
-    if (cart.length === 0) {
-      showModal('購物車是空的', '目前沒有加入任何餐點喔！', false);
-      return;
-    }
-    
-    let total = 0;
-    let msg = '【UberEats 點餐確認】\n';
-    
-    let addr = document.getElementById('addrInput').value.trim();
-    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
-    if (addr) msg += `📍 外送地址: ${addr}\n`;
-    
-    const scheduleSelect = document.getElementById('scheduleTime');
-    if (scheduleSelect && scheduleSelect.selectedIndex >= 0) {
-      msg += `⏰ 預約時間: ${scheduleSelect.options[scheduleSelect.selectedIndex].text}\n`;
-    }
-    
-    msg += '\n【餐點明細】\n';
-    cart.forEach((item, i) => {
-      const lineTotal = item.price * item.qty;
-      total += lineTotal;
-      msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
-      if (item.note) msg += `   - 備註: ${item.note}\n`;
-    });
-    
-    const foodNotes = document.getElementById('foodNotes').value.trim();
-    const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
-    
-    if (foodNotes) msg += `\n整體餐點備註: ${foodNotes}`;
-    if (deliveryNotes) msg += `\n外送備註: ${deliveryNotes}`;
-    
-    msg += `\n\n總計: $${total}`;
-    
-    // 儲存全域變數供 LIFF 發送使用
-    currentOrderMessage = msg;
-    
-    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;">送出訂單至聊天室</button>`;
-    
-    showModal('購物車', msg, false, sendBtnHtml);
-  }
-
-  // 彈出視窗狀態
-  let currentItem = null;
-  let currentQty = 1;
-  let currentCustomizations = [];
 
   async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
     currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [] };
@@ -836,7 +896,7 @@
 
   function goHome() {
     currentView = 'home';
-    document.getElementById('mainBackBtn').style.display = 'none';
+    document.getElementById('mainBackBtn').style.visibility = 'hidden';
     document.getElementById('listView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('homeView').style.display = 'block';
@@ -844,7 +904,7 @@
 
   function goBack() {
     currentView = 'list';
-    document.getElementById('mainBackBtn').style.display = 'block';
+    document.getElementById('mainBackBtn').style.visibility = 'visible';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('listView').style.display = 'block';
@@ -858,7 +918,9 @@
     return '';
   }
 
-  async function openStore(uuid) {
+  async function openStore(uuid, storeName) {
+      if(storeName) currentStoreName = storeName;
+      currentStoreUuid = uuid;
     const resultsDiv = document.getElementById('results');
     const oldHtml = resultsDiv.innerHTML;
     resultsDiv.innerHTML = '<div class="status" style="padding: 40px 20px;"><div class="spinner"></div></div>';
@@ -974,7 +1036,7 @@
       // 驗證通過，正式切換畫面並渲染
       resultsDiv.innerHTML = oldHtml;
       currentView = 'store';
-      document.getElementById('mainBackBtn').style.display = 'block';
+      document.getElementById('mainBackBtn').style.visibility = 'visible';
       document.getElementById('listView').style.display = 'none';
       document.getElementById('storeView').style.display = 'block';
       
@@ -1152,5 +1214,6 @@
     </div>
   </div>
 
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"eb47e8ca98824653830d44fcfc27d2fa","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
