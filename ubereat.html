@@ -84,8 +84,9 @@
 <div class="container">
   
   <div class="app-header">
-    <button id="mainBackBtn" onclick="handleMainBack()" style="display: none;">←</button>
-    <div style="flex: 1; text-align: center;">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+    <button id="mainBackBtn" class="back-btn" onclick="handleMainBack()" style="visibility: hidden;">←</button>
+      <div class="header-title">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+      <button class="cart-btn" onclick="viewCart()">🛒<span id="headerCartBadge" class="cart-badge">0</span></button>
   </div>
 
   <!-- 首頁 -->
@@ -574,7 +575,7 @@
   }
 
   // ==== 購物車與餐廳菜單功能 ====
-  let cart = [];
+    let cart = [];
   try {
     const saved = localStorage.getItem('uberCart');
     if (saved) cart = JSON.parse(saved);
@@ -615,7 +616,7 @@
   let currentStoreUuid = '';
   let currentStoreName = '';
   let currentStoreDeliveryFee = '';
-  let currentItem = {};
+  let currentItem = null;
   let currentQty = 1;
   let currentCustomizations = [];
 
@@ -636,15 +637,16 @@
     let htmlContent = `<div style="text-align: left; max-height: 50vh; overflow-y: auto;">`;
     
     let msgText = '【UberEats 點餐確認】\n';
-    const currentAddress = (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '') || '未設定地址';
-    msgText += `📍外送地址: ${currentAddress}\n`;
+    let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
+    msgText += `📍外送地址: ${addr || '未設定地址'}\n`;
     
-    if (scheduleMode === 'ASAP') {
+    if (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP') {
       msgText += `⏰希望送達時間: 盡快送達\n`;
     } else {
       const timeSelect = document.getElementById('scheduleTime');
       const timeText = (timeSelect && timeSelect.options[timeSelect.selectedIndex]) ? timeSelect.options[timeSelect.selectedIndex].text : '';
-      msgText += `⏰希望送達時間: ${timeText}\n`;
+      if (timeText) msgText += `⏰希望送達時間: ${timeText}\n`;
     }
     
     msgText += '\n【餐點明細】\n';
@@ -680,9 +682,15 @@
       });
     });
     
+    // Add foodNotes and deliveryNotes from backup
+    const foodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
+    const deliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
+    if (foodNotes) msgText += `\n🍔餐點備註: ${foodNotes}`;
+    if (deliveryNotes) msgText += `\n🏍外送備註: ${deliveryNotes}`;
+    
     htmlContent += `</div>`;
     htmlContent += `<div style="font-weight:bold; font-size:20px; text-align:right; margin-top:15px;">總計: $${total}</div>`;
-    msgText += `\n💰總計金額: $${total}`;
+    msgText += `\n\n💰總計金額: $${total}`;
     
     currentOrderMessage = msgText;
 
@@ -695,13 +703,13 @@
   let currentOrderMessage = "";
 
   async function sendOrderToLine() {
-    if (liffInitPromise) await liffInitPromise;
+    if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
 
-    if (!liff.isLoggedIn()) {
+    if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
       liff.login({ redirectUri: window.location.href });
       return;
     }
-    if (!liff.isInClient()) {
+    if (typeof liff !== 'undefined' && !liff.isInClient()) {
       alert("這項功能只能在 LINE APP 的聊天室內使用喔！");
       return;
     }
@@ -720,7 +728,75 @@
         alert("傳送失敗: " + error);
       });
   }
+);
+      return;
+    }
+    if (!liff.isInClient()) {
+      alert("這項功能只能在 LINE APP 的聊天室內使用喔！");
+      return;
+    }
+    
+    const messages = [{
+      type: "text",
+      text: currentOrderMessage
+    }];
 
+    liff.sendMessages(messages)
+      .then(() => {
+        alert("已成功傳送至聊天室！");
+        liff.closeWindow();
+      })
+      .catch((error) => {
+        alert("送出失敗: " + error);
+      });
+  }
+
+  function viewCart() {
+    if (cart.length === 0) {
+      showModal('購物車是空的', '目前沒有加入任何餐點喔！', false);
+      return;
+    }
+    
+    let total = 0;
+    let msg = '【UberEats 點餐確認】\n';
+    
+    let addr = document.getElementById('addrInput').value.trim();
+    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
+    if (addr) msg += `📍 外送地址: ${addr}\n`;
+    
+    const scheduleSelect = document.getElementById('scheduleTime');
+    if (scheduleSelect && scheduleSelect.selectedIndex >= 0) {
+      msg += `⏰ 預約時間: ${scheduleSelect.options[scheduleSelect.selectedIndex].text}\n`;
+    }
+    
+    msg += '\n【餐點明細】\n';
+    cart.forEach((item, i) => {
+      const lineTotal = item.price * item.qty;
+      total += lineTotal;
+      msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
+      if (item.note) msg += `   - 備註: ${item.note}\n`;
+    });
+    
+    const foodNotes = document.getElementById('foodNotes').value.trim();
+    const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
+    
+    if (foodNotes) msg += `\n整體餐點備註: ${foodNotes}`;
+    if (deliveryNotes) msg += `\n外送備註: ${deliveryNotes}`;
+    
+    msg += `\n\n總計: $${total}`;
+    
+    // 儲存全域變數供 LIFF 發送使用
+    currentOrderMessage = msg;
+    
+    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;">送出訂單至聊天室</button>`;
+    
+    showModal('購物車', msg, false, sendBtnHtml);
+  }
+
+  // 彈出視窗狀態
+  let currentItem = null;
+  let currentQty = 1;
+  let currentCustomizations = [];
 
   async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
     currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [] };
@@ -1041,11 +1117,42 @@
       document.getElementById('storeView').style.display = 'block';
       
       const sc = document.getElementById('storeContent');
-      let html = `
+      
+        let originalFee = '';
+        let currentFee = '';
+        let feeHtml = '';
+        
+        if (d.modalityInfo && d.modalityInfo.modalityOptions) {
+          const deliveryOpt = d.modalityInfo.modalityOptions.find(o => o.diningMode === 'DELIVERY');
+          if (deliveryOpt && deliveryOpt.priceTitleRichText && deliveryOpt.priceTitleRichText.richTextElements) {
+             deliveryOpt.priceTitleRichText.richTextElements.forEach(el => {
+                if (el.type === 'text' && el.text && el.text.text) {
+                   const txt = el.text.text;
+                   const decos = el.text.predefinedDecorations || [];
+                   const isStrike = JSON.stringify(decos).includes('STRIKETHROUGH') || JSON.stringify(decos).includes('LINE_THROUGH');
+                   if (isStrike) {
+                      originalFee += txt.trim();
+                   } else {
+                      currentFee += txt.trim();
+                   }
+                }
+             });
+          }
+        }
+        
+        currentStoreDeliveryFee = (originalFee ? originalFee.trim() : currentFee.trim());
+        
+        if (originalFee) {
+           feeHtml = `<div style="font-size:14px; color:#666; margin-bottom:15px; padding:10px; background:#f9f9f9; border-radius:8px;">🛵 <b>外送費:</b> <span style="text-decoration:line-through; margin-right:6px;">${escapeHTML(originalFee)}</span> <span style="color:#06c167; font-weight:bold;">${escapeHTML(currentFee)}</span> <br><span style="font-size:12px; color:#999;">(提醒：為避免折價爭議，系統紀錄原始費用 ${escapeHTML(originalFee)})</span></div>`;
+        } else if (currentFee) {
+           feeHtml = `<div style="font-size:14px; color:#666; margin-bottom:15px; padding:10px; background:#f9f9f9; border-radius:8px;">🛵 <b>外送費:</b> ${escapeHTML(currentFee)}</div>`;
+        }
+let html = `
         <div class="store-header">
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
           <h2>${escapeHTML(parseText(d.title))}</h2>
           ${scheduleHtml}
+        ${feeHtml}
         </div>
       `;
       
@@ -1214,6 +1321,5 @@
     </div>
   </div>
 
-<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"eb47e8ca98824653830d44fcfc27d2fa","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
