@@ -699,6 +699,13 @@
     `;
     htmlContent += phoneHtml;
 
+    // 拆單試算
+    const cartItems = cart.map(item => ({ title: item.title, price: item.price, qty: item.qty }));
+    const splitResult = calcOrderCost(cartItems);
+    const splitHtml = buildSplitSuggestionHtml(splitResult);
+    if (splitHtml) htmlContent += splitHtml;
+    window._lastSplitResult = splitResult;
+
     const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:20px;">送出訂單至聊天室</button>`;
     htmlContent += sendBtnHtml;
     
@@ -743,6 +750,11 @@
       return;
     }
     
+    // 附加拆單建議到訊息
+    if (window._lastSplitResult && window._lastSplitResult.shouldSplit) {
+      finalOrderMessage += buildSplitMsgText(window._lastSplitResult);
+    }
+
     const messages = [{
       type: "text",
       text: finalOrderMessage
@@ -1257,6 +1269,141 @@
     return String(str).replace(/[&<>'"]/g, 
       tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
+  }
+
+
+  // ========== 拆單試算引擎 ==========
+  function calcOrderCost(items) {
+    // 不拆單的成本
+    let totalSum = 0;
+    items.forEach(it => totalSum += it.price * it.qty);
+    let noBinCost = Math.ceil(Math.min(totalSum, 285) / 2) + Math.max(0, totalSum - 285) + 40;
+
+    // 展開所有品項
+    let expanded = [];
+    items.forEach(it => {
+      for (let j = 0; j < it.qty; j++) {
+        expanded.push({ name: it.title, price: it.price });
+      }
+    });
+
+    if (expanded.length <= 1) return { shouldSplit: false, noBinCost, bestCost: noBinCost, bins: null };
+
+    expanded.sort((a, b) => b.price - a.price);
+
+    let bestBins = null;
+    let bestCost = Infinity;
+
+    for (let attempt = 0; attempt < 1000; attempt++) {
+      let bins = [];
+      let cur = [...expanded];
+      if (attempt > 0) {
+        for (let i = cur.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [cur[i], cur[j]] = [cur[j], cur[i]];
+        }
+      }
+
+      if (attempt === 0) {
+        for (let item of cur) {
+          let placed = false;
+          for (let bin of bins) {
+            if (bin.sum + item.price <= 285) {
+              bin.items.push(item);
+              bin.sum += item.price;
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) bins.push({ items: [item], sum: item.price });
+        }
+      } else if (attempt === 1) {
+        let sum = 0;
+        for (let item of cur) sum += item.price;
+        bins.push({ items: cur, sum: sum });
+      } else {
+        for (let item of cur) {
+          if (bins.length === 0) {
+            bins.push({ items: [item], sum: item.price });
+          } else {
+            if (Math.random() < 0.3) {
+              bins.push({ items: [item], sum: item.price });
+            } else {
+              let idx = Math.floor(Math.random() * bins.length);
+              bins[idx].items.push(item);
+              bins[idx].sum += item.price;
+            }
+          }
+        }
+      }
+
+      let cost = 0;
+      let feePerBin = bins.length >= 2 ? 30 : 40;
+      for (let bin of bins) {
+        let foodCost = Math.ceil(Math.min(bin.sum, 285) / 2) + Math.max(0, bin.sum - 285);
+        cost += foodCost + feePerBin;
+      }
+
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestBins = bins;
+      }
+    }
+
+    return {
+      shouldSplit: bestBins && bestBins.length > 1 && bestCost < noBinCost,
+      noBinCost,
+      bestCost,
+      bins: bestBins,
+      savings: noBinCost - bestCost
+    };
+  }
+
+  function buildSplitSuggestionHtml(result) {
+    if (!result.shouldSplit) return '';
+    let html = `<div style="background:#f0fbf4; border:2px solid #06c167; border-radius:12px; padding:15px; margin-top:15px;">`;
+    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 拆單建議（拆成 ${result.bins.length} 單）</div>`;
+    html += `<div style="text-align:center; margin-bottom:12px;">`;
+    html += `<span style="text-decoration:line-through; color:#999;">不拆: $${result.noBinCost}</span>`;
+    html += ` → <span style="color:#06c167; font-weight:bold;">拆單: $${result.bestCost}</span>`;
+    html += ` <span style="color:#d32f2f; font-weight:bold;">省 $${result.savings}！</span>`;
+    html += `</div>`;
+
+    result.bins.forEach((bin, i) => {
+      let counts = {};
+      for (let item of bin.items) {
+        let key = item.name;
+        counts[key] = (counts[key] || 0) + 1;
+      }
+      let itemStrs = [];
+      for (let key in counts) {
+        itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+      }
+      html += `<div style="background:white; border:1px solid #eee; padding:10px; border-radius:8px; margin-bottom:6px;">`;
+      html += `<div style="font-weight:bold; color:#333;">第 ${i+1} 單 <span style="color:#d32f2f;">$${bin.sum}</span></div>`;
+      html += `<div style="font-size:13px; color:#666; margin-top:4px;">${itemStrs.join('、')}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function buildSplitMsgText(result) {
+    if (!result.shouldSplit || !result.bins) return '';
+    let text = '\n\n💡 拆單建議（省 $' + result.savings + '）：';
+    result.bins.forEach((bin, i) => {
+      let counts = {};
+      for (let item of bin.items) {
+        let key = item.name;
+        counts[key] = (counts[key] || 0) + 1;
+      }
+      let itemStrs = [];
+      for (let key in counts) {
+        itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+      }
+      text += `\n第 ${i+1} 單 $${bin.sum}：${itemStrs.join('、')}`;
+    });
+    return text;
   }
 
   function showModal(title, text, isError = true, htmlContent = '', hideBtn = false) {
