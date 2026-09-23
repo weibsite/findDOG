@@ -8,8 +8,12 @@
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
   .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
   
-  .app-header { position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; text-align: center; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
+  .app-header { display: flex; align-items: center; justify-content: center; position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
+  .app-header button { position: absolute; left: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; }
   h1 { display: none; }
+  
+  .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #06c167; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   
   .section { padding: 15px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
   .section-title { font-size: 14px; font-weight: bold; color: #666; margin-bottom: 10px; }
@@ -33,10 +37,8 @@
   .status { margin-top: 10px; font-size: 15px; color: #666; text-align: center; margin-bottom: 20px;}
   .error { color: #d32f2f; }
   
-  /* 餐廳菜單頁面 */
-  #storeView { display: none; }
-  .store-nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #eee; margin-bottom: 15px; position: sticky; top: 0; background: #fff; z-index: 90; margin-left: -15px; margin-right: -15px; padding-left: 15px; padding-right: 15px;}
-  .back-btn { background: none; border: none; font-size: 16px; font-weight: bold; cursor: pointer; padding: 0; color: #333; text-decoration: underline; }
+  /* Navigation */
+  .store-nav { display: none; } /* Removed old store-nav */
   .store-header { text-align: center; margin-bottom: 20px; }
   .store-header img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 1px solid #eee;}
   
@@ -322,7 +324,7 @@
     if (!q) return;
     const statusEl = document.getElementById('addrStatus');
     const resultsEl = document.getElementById('addrResults');
-    statusEl.innerText = '尋找中...'; 
+    statusEl.innerText = ''; 
     resultsEl.innerHTML = '';
 
     const fallbackSearch = async () => {
@@ -393,21 +395,24 @@
 
   async function setAddress(lat, lng, title) {
     const statusEl = document.getElementById('addrStatus');
-    statusEl.innerText = '正在設定地址...'; document.getElementById('addrResults').innerHTML = '';
+    statusEl.innerText = ''; 
+    document.getElementById('addrResults').innerHTML = '';
     document.getElementById('addrInput').value = title.split(',')[0];
     try {
       const res = await fetch(`${API_BASE_URL}/api/set-address`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lng, title })
       });
-        const json = await res.json();
-        if (json.status === 'success') {
-            statusEl.innerText = '✅ 地址已更新，現在您可以搜尋附近餐廳了！';
-            isAddressSet = true;
-        } else {
-            statusEl.innerText = '❌ 設定失敗: ' + json.message;
-        }
-      } catch (e) { statusEl.innerText = '連線至伺服器失敗: ' + e.message; }
+      const json = await res.json();
+      if (json.status === 'success') {
+          // 不顯示成功訊息，讓使用者感覺無縫銜接
+          isAddressSet = true;
+      } else {
+          statusEl.innerText = '❌ 設定失敗: ' + json.message;
+      }
+    } catch (e) { 
+        statusEl.innerText = '❌ 連線伺服器失敗: ' + e.message; 
+    }
   }
 
   async function searchStores() {
@@ -419,6 +424,8 @@
     if (!q) return;
     
     // 切換到 ListView
+    currentView = 'list';
+    document.getElementById('mainBackBtn').style.display = 'block';
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('listView').style.display = 'block';
@@ -639,13 +646,23 @@
     }, 1500);
   }
 
+  let currentView = 'home';
+  function handleMainBack() {
+    if (currentView === 'store') goBack();
+    else if (currentView === 'list') goHome();
+  }
+
   function goHome() {
+    currentView = 'home';
+    document.getElementById('mainBackBtn').style.display = 'none';
     document.getElementById('listView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('homeView').style.display = 'block';
   }
 
   function goBack() {
+    currentView = 'list';
+    document.getElementById('mainBackBtn').style.display = 'block';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('listView').style.display = 'block';
@@ -662,7 +679,7 @@
   async function openStore(uuid) {
     const resultsDiv = document.getElementById('results');
     const oldHtml = resultsDiv.innerHTML;
-    resultsDiv.innerHTML = '<div class="status" style="padding: 20px;">驗證排程與載入菜單中...</div>';
+    resultsDiv.innerHTML = '<div class="status" style="padding: 40px 20px;"><div class="spinner"></div></div>';
     
     try {
       const res = await fetch(`${API_BASE_URL}/api/store`, {
@@ -698,11 +715,13 @@
             const selectedTime = new Date(selectedScheduleValue).getTime() / 1000;
             let timeFound = false;
             
+            let availableWindows = [];
             d.timeWindowPicker.dates.forEach(dateObj => {
                 if (dateObj.listItems) {
                     dateObj.listItems.forEach(item => {
                         if (item.timeWindowViewModel && item.timeWindowViewModel.timeWindow) {
                             const tw = item.timeWindowViewModel.timeWindow;
+                            availableWindows.push(tw);
                             if (selectedTime >= tw.startTimeSeconds && selectedTime <= tw.startTimeSeconds + 1800) {
                                 timeFound = true;
                             }
@@ -712,9 +731,34 @@
             });
 
             if (!timeFound) {
-                showModal('無法預約', `此餐廳在您選擇的時段 ( ${selectedScheduleText} ) 未營業或無法接單。請選擇其他時段或餐廳。`);
+                let text = `此餐廳在您選擇的時段 ( ${selectedScheduleText} ) 未營業或無法接單。`;
+                let btnsHtml = '';
+                if (availableWindows.length > 0) {
+                    text += `<br><br><b style="color:#111;">💡 餐廳可接單時段 (點擊直接修改)：</b>`;
+                    const top5 = availableWindows.slice(0, 5);
+                    top5.forEach(tw => {
+                        const sd = new Date(tw.startTimeSeconds * 1000);
+                        const ed = new Date((tw.startTimeSeconds + 1800) * 1000);
+                        const formatT = (dt) => {
+                            const h = dt.getHours();
+                            const m = String(dt.getMinutes()).padStart(2, '0');
+                            const ampm = h >= 12 ? '下午' : '上午';
+                            const h12 = h % 12 || 12;
+                            return `${ampm} ${h12}:${m}`;
+                        };
+                        
+                        const dayStr = (sd.getDate() === new Date().getDate()) ? '今天' : `${sd.getMonth()+1}/${sd.getDate()}`;
+                        const str = `${dayStr} ${formatT(sd)} - ${formatT(ed)}`;
+                        
+                        btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
+                    });
+                } else {
+                    text += `<br><br>這間餐廳目前沒有提供任何可預約的時段。`;
+                }
+
+                showModal('無法預約', text, true, btnsHtml);
                 resultsDiv.innerHTML = oldHtml;
-                return; // 直接中止，不切換畫面 (Bounce back)
+                return; // 直接中止，彈回舊畫面 (Bounce back)
             } else {
                 scheduleHtml = `
                   <div style="margin-top:10px; display:inline-block;">
@@ -745,8 +789,10 @@
         }
       }
 
-      // 驗證通過，還原搜尋結果並切換畫面
+      // 驗證通過，正式切換畫面並渲染
       resultsDiv.innerHTML = oldHtml;
+      currentView = 'store';
+      document.getElementById('mainBackBtn').style.display = 'block';
       document.getElementById('listView').style.display = 'none';
       document.getElementById('storeView').style.display = 'block';
       
@@ -806,27 +852,79 @@
     }
   }
   
+  function quickSetSchedule(startTimeSeconds, storeUuid) {
+    document.getElementById('errorModalOverlay').style.display='none';
+    
+    // Switch to SCHEDULE mode
+    setScheduleMode('SCHEDULE'); 
+    const targetDate = new Date(startTimeSeconds * 1000);
+    
+    // Update selectedDateIndex
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const targetDay = new Date(targetDate);
+    targetDay.setHours(0,0,0,0);
+    const diffDays = Math.round((targetDay - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays >= 0 && diffDays < 7) {
+        selectDate(diffDays); 
+    }
+    
+    const timeSelect = document.getElementById('scheduleTime');
+    let found = false;
+    for (let i = 0; i < timeSelect.options.length; i++) {
+        const optDate = new Date(timeSelect.options[i].value);
+        if (Math.abs(optDate.getTime() - targetDate.getTime()) < 60000) {
+            timeSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found) {
+        const opt = document.createElement('option');
+        const tzo = -targetDate.getTimezoneOffset() / 60;
+        const sign = tzo >= 0 ? '+' : '-';
+        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+        const isoLocal = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate()) + 'T' + pad(targetDate.getHours()) + ':' + pad(targetDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
+        opt.value = isoLocal;
+        const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
+        const h12 = targetDate.getHours() % 12 || 12;
+        const mm = String(targetDate.getMinutes()).padStart(2, '0');
+        opt.text = `自訂: ${ampm} ${h12}:${mm}`;
+        timeSelect.appendChild(opt);
+        timeSelect.selectedIndex = timeSelect.options.length - 1;
+    }
+    
+    // Re-attempt opening store
+    openStore(storeUuid);
+  }
+
   function escapeHTML(str) {
     return String(str).replace(/[&<>'"]/g, 
       tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
   }
 
-  function showModal(title, text, isError = true) {
-    document.getElementById('errorModalIcon').innerText = isError ? '⚠️' : '🛒';
+  function showModal(title, text, isError = true, htmlContent = '') {
+    document.getElementById('errorModalIcon').innerText = isError ? '❌' : '✅';
     document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
     document.getElementById('errorModalTitle').innerText = title;
-    document.getElementById('errorModalText').innerText = text;
+    document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
+    document.getElementById('errorModalExtra').innerHTML = htmlContent;
     document.getElementById('errorModalOverlay').style.display = 'flex';
   }
 </script>
 
-  <!-- 自訂提示框 -->
+  <!-- 錯誤提示框 -->
   <div id="errorModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:#fff; width:80%; max-width:400px; border-radius:16px; padding:25px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
-      <div id="errorModalIcon" style="font-size:48px; margin-bottom:15px;">⚠️</div>
+    <div style="background:#fff; width:80%; max-width:400px; border-radius:16px; padding:25px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15); max-height:80vh; display:flex; flex-direction:column;">
+      <div id="errorModalIcon" style="font-size:48px; margin-bottom:15px;">❌</div>
       <div id="errorModalTitle" style="font-size:20px; font-weight:bold; margin-bottom:12px; color:#111;">無法預約</div>
-      <div id="errorModalText" style="font-size:15px; color:#555; margin-bottom:25px; line-height:1.6; white-space: pre-wrap; text-align:left;">內容</div>
+      <div style="overflow-y:auto; margin-bottom:20px;">
+        <div id="errorModalText" style="font-size:15px; color:#555; line-height:1.6; text-align:left;">內容</div>
+        <div id="errorModalExtra" style="margin-top:15px; text-align:left;"></div>
+      </div>
       <button onclick="document.getElementById('errorModalOverlay').style.display='none'" style="background:#111; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;">我知道了</button>
     </div>
   </div>
