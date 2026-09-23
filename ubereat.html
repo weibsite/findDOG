@@ -186,7 +186,7 @@
         <span id="modalQty">1</span>
         <button class="qty-btn" onclick="changeQty(1)">+</button>
       </div>
-      <button class="add-btn" onclick="confirmAddToCart()">加入購物車 • $<span id="modalTotal">0</span></button>
+      <button id="addToCartBtn" class="add-btn" onclick="confirmAddToCart()">加入購物車 • $<span id="modalTotal">0</span></button>
     </div>
   </div>
 </div>
@@ -447,6 +447,7 @@
       } catch (e) { 
         statusEl.innerText = '尋找地址失敗: ' + e.message; 
       }
+    if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
     };
     
     try {
@@ -691,7 +692,7 @@
     const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:20px;">送出訂單至聊天室</button>`;
     htmlContent += sendBtnHtml;
     
-    showModal('購物車', '', false, htmlContent);
+    showModal('購物車', '', false, htmlContent, true);
   }
 
   let currentOrderMessage = "";
@@ -737,6 +738,8 @@
     
     updateModalPrice();
     document.getElementById('itemModal').style.display = 'flex';
+    const btn = document.getElementById('addToCartBtn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
 
     // 呼叫 API 取得真實客製化選項
     try {
@@ -754,6 +757,8 @@
     } catch (e) {
       document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
     }
+    const btn2 = document.getElementById('addToCartBtn');
+    if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
   }
 
   function renderCustomizations() {
@@ -765,21 +770,21 @@
     
     let html = '';
     currentCustomizations.forEach((group, gIdx) => {
-      const gTitle = parseText(group.title);
+      const gTitle = filterTrailingEnglish(parseText(group.title));
       const isRadio = group.maxPermitted === 1;
       let reqText = group.minPermitted > 0 ? `必填 • 選擇 ${group.minPermitted} 項` : '選填';
       if (group.maxPermitted > 1) reqText += ` (最多 ${group.maxPermitted} 項)`;
       
       html += `
-        <div class="modal-section" style="background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee;">
+        <div id="group_${gIdx}" class="modal-section" style="background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee; transition: border 0.3s;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
             <h4 style="margin:0;">${escapeHTML(gTitle)}</h4>
-            <span style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:4px;">${reqText}</span>
+            <span id="req_${gIdx}" style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:4px; transition: all 0.3s;">${reqText}</span>
           </div>
       `;
       
       group.options.forEach((opt, oIdx) => {
-        const oTitle = parseText(opt.title);
+        const oTitle = filterTrailingEnglish(parseText(opt.title));
         const oPrice = opt.price > 0 ? `+$${opt.price / 100}` : '';
         const inputType = isRadio ? 'radio' : 'checkbox';
         const inputName = `grp_${gIdx}`;
@@ -833,9 +838,9 @@
     document.getElementById('modalTotal').innerText = (price * currentQty).toLocaleString();
   }
 
-  function confirmAddToCart() {
-    // 檢查是否有遺漏必選項目
+    function confirmAddToCart() {
     let isValid = true;
+    let firstInvalidGIdx = -1;
     let errorMsg = '';
     
     currentCustomizations.forEach((group, gIdx) => {
@@ -845,19 +850,35 @@
         if (cb && cb.checked) selectedCount++;
       });
       
-      const gTitle = parseText(group.title);
+      const gTitle = filterTrailingEnglish(parseText(group.title));
       if (group.minPermitted > 0 && selectedCount < group.minPermitted) {
+        if (isValid) firstInvalidGIdx = gIdx;
         isValid = false;
-        errorMsg += `• 請在「${gTitle}」選擇至少 ${group.minPermitted} 項\n`;
+        const reqBadge = document.getElementById(`req_${gIdx}`);
+        if (reqBadge) {
+           reqBadge.style.backgroundColor = '#ffebee';
+           reqBadge.style.color = '#d32f2f';
+           setTimeout(() => {
+              reqBadge.style.backgroundColor = '#e0e0e0';
+              reqBadge.style.color = '#666';
+           }, 2000);
+        }
       }
       if (group.maxPermitted > 0 && selectedCount > group.maxPermitted) {
+        if (isValid) firstInvalidGIdx = gIdx;
         isValid = false;
-        errorMsg += `• 「${gTitle}」最多只能選擇 ${group.maxPermitted} 項\n`;
       }
     });
-    
+
     if (!isValid) {
-      showModal('未完成必選項目', errorMsg);
+      if (firstInvalidGIdx !== -1) {
+         const firstInvalidEl = document.getElementById(`group_${firstInvalidGIdx}`);
+         if (firstInvalidEl) {
+             firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             firstInvalidEl.style.border = '2px solid #d32f2f';
+             setTimeout(() => { firstInvalidEl.style.border = '1px solid #eee'; }, 2000);
+         }
+      }
       return;
     }
 
@@ -913,6 +934,13 @@
   }
 
   // 解析文字
+    function filterTrailingEnglish(str) {
+    if (!str) return str;
+    if (/[\u4e00-\u9fa5]/.test(str)) {
+        return str.replace(/\s*[a-zA-Z\s\-.,&()]+$/, '');
+    }
+    return str;
+  }
   function parseText(obj) {
     if (!obj) return '';
     if (typeof obj === 'string') return obj;
@@ -1068,8 +1096,8 @@
                 let hasRegular = false;
                 
                 items.forEach(item => {
-                  const itemTitle = parseText(item.title);
-                  const itemDesc = parseText(item.itemDescription);
+                  const itemTitle = filterTrailingEnglish(parseText(item.title));
+                  const itemDesc = filterTrailingEnglish(parseText(item.itemDescription));
                   const priceVal = item.price > 0 ? Math.round(item.price / 100) : 0; 
                   
                   let priceHtml = priceVal > 0 ? '$' + priceVal : ''; 
@@ -1197,26 +1225,28 @@
     );
   }
 
-  function showModal(title, text, isError = true, htmlContent = '') {
+  function showModal(title, text, isError = true, htmlContent = '', hideBtn = false) {
     document.getElementById('errorModalIcon').innerText = isError ? '❌' : '✅';
     document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
     document.getElementById('errorModalTitle').innerText = title;
     document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
     document.getElementById('errorModalExtra').innerHTML = htmlContent;
+    document.getElementById('errorModalBtn').style.display = hideBtn ? 'none' : 'block';
     document.getElementById('errorModalOverlay').style.display = 'flex';
   }
 </script>
 
   <!-- 錯誤提示框 -->
   <div id="errorModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:#fff; width:80%; max-width:400px; border-radius:16px; padding:25px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15); max-height:80vh; display:flex; flex-direction:column;">
+    <div style="background:#fff; width:80%; max-width:400px; border-radius:16px; padding:25px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.15); max-height:80vh; display:flex; flex-direction:column; position:relative;">
+      <button onclick="document.getElementById('errorModalOverlay').style.display='none'" style="position:absolute; top:15px; right:15px; background:transparent; border:none; font-size:24px; color:#999; cursor:pointer; line-height:1;">&times;</button>
       <div id="errorModalIcon" style="font-size:48px; margin-bottom:15px;">❌</div>
       <div id="errorModalTitle" style="font-size:20px; font-weight:bold; margin-bottom:12px; color:#111;">無法預約</div>
       <div style="overflow-y:auto; margin-bottom:20px;">
         <div id="errorModalText" style="font-size:15px; color:#555; line-height:1.6; text-align:left;">內容</div>
         <div id="errorModalExtra" style="margin-top:15px; text-align:left;"></div>
       </div>
-      <button onclick="document.getElementById('errorModalOverlay').style.display='none'" style="background:#111; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;">我知道了</button>
+      <button id="errorModalBtn" onclick="document.getElementById('errorModalOverlay').style.display='none'" style="background:#111; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;">我知道了</button>
     </div>
   </div>
 
