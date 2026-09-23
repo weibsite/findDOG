@@ -257,7 +257,7 @@
   // 初始化 UI 與設定
   let liffInitPromise = null;
   document.addEventListener("DOMContentLoaded", async () => {
-    liffInitPromise = liff.init({ liffId: "2011657436-SNFTv9uP" }).catch(err => {
+    liffInitPromise = liff.init({ liffId: "2011657436-rGVj5SoG" }).catch(err => {
         console.error('LIFF init failed', err);
     });
     
@@ -655,12 +655,6 @@
       htmlContent += `<div style="font-size:16px; font-weight:bold; margin-top:15px; border-bottom:2px solid #000; padding-bottom:5px;">🏬 ${sName}</div>`;
       msgText += `🏬 ${sName}\n`;
       
-      const sFee = storeGroups[sName][0].storeFee || '';
-      if (sFee) {
-          msgText += `   🛵 外送費: ${sFee}\n`;
-          htmlContent += `<div style="font-size:13px; color:#666; margin-bottom:8px;">🛵 外送費: ${sFee}</div>`;
-      }
-      
       storeGroups[sName].forEach((item, i) => {
         const lineTotal = item.price * item.qty;
         total += lineTotal;
@@ -878,6 +872,7 @@
     }
     
     cart.push({
+      storeName: currentStoreName,
       title: currentItem.title,
       price: finalPrice,
       qty: currentQty,
@@ -1049,41 +1044,11 @@
       document.getElementById('storeView').style.display = 'block';
       
       
-        let originalFee = '';
-        let currentFee = '';
-        let feeHtml = '';
-        
-        if (d.modalityInfo && d.modalityInfo.modalityOptions) {
-          const deliveryOpt = d.modalityInfo.modalityOptions.find(o => o.diningMode === 'DELIVERY');
-          if (deliveryOpt && deliveryOpt.priceTitleRichText && deliveryOpt.priceTitleRichText.richTextElements) {
-             deliveryOpt.priceTitleRichText.richTextElements.forEach(el => {
-                if (el.type === 'text' && el.text && el.text.text) {
-                   const txt = parseText(el.text); // Use helper just in case
-                   const decos = el.text.predefinedDecorations || [];
-                   const isStrike = JSON.stringify(decos).includes('STRIKETHROUGH') || JSON.stringify(decos).includes('LINE_THROUGH');
-                   if (isStrike) {
-                      originalFee += String(txt).trim();
-                   } else {
-                      currentFee += String(txt).trim();
-                   }
-                }
-             });
-          }
-        }
-        
-        currentStoreDeliveryFee = (originalFee ? originalFee.trim() : currentFee.trim());
-        
-        if (originalFee) {
-           feeHtml = `<div style="font-size:14px; color:#666; margin-bottom:15px; padding:10px; background:#f9f9f9; border-radius:8px;">🛵 <b>外送費:</b> <span style="text-decoration:line-through; margin-right:6px;">${escapeHTML(originalFee)}</span> <span style="color:#06c167; font-weight:bold;">${escapeHTML(currentFee)}</span> <br><span style="font-size:12px; color:#999;">(提醒：為避免折價爭議，系統紀錄原始費用 ${escapeHTML(originalFee)})</span></div>`;
-        } else if (currentFee) {
-           feeHtml = `<div style="font-size:14px; color:#666; margin-bottom:15px; padding:10px; background:#f9f9f9; border-radius:8px;">🛵 <b>外送費:</b> ${escapeHTML(currentFee)}</div>`;
-        }
-let html = `
+        let html = `
         <div class="store-header">
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
           <h2>${escapeHTML(parseText(d.title))}</h2>
           ${scheduleHtml}
-        ${feeHtml}
         </div>
       `;
       
