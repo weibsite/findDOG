@@ -957,6 +957,7 @@
         </div>
       `;
       
+      let promoItemsHtml = '';
       if (d.catalogSectionsMap) {
         Object.keys(d.catalogSectionsMap).forEach(key => {
           const sectionArr = d.catalogSectionsMap[key];
@@ -968,7 +969,9 @@
               const items = section.payload.standardItemsPayload.catalogItems || [];
               
               if (items.length > 0) {
-                html += `<div class="menu-category">${escapeHTML(catalogTitle)}</div><div class="menu-grid">`;
+                let sectionHtml = `<div class="menu-category">${escapeHTML(catalogTitle)}</div><div class="menu-grid">`;
+                let hasRegular = false;
+                
                 items.forEach(item => {
                   const itemTitle = parseText(item.title);
                   const itemDesc = parseText(item.itemDescription);
@@ -980,12 +983,14 @@
                   }
                   
                   let promoBadgeHtml = '';
+                  let isPromo = false;
                   try {
                     if (item.promoInfo && item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
                       const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
                       if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
                          const promoText = elements[0].text.text.text;
                          promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
+                         isPromo = true;
                       }
                     }
                   } catch(e) {}
@@ -993,22 +998,41 @@
                   const imgUrl = item.imageUrl || '';
                   const menuItemUuid = item.uuid;
                   
-                  // 點擊會傳入 storeUuid, sectionUuid, subsectionUuid, menuItemUuid
-                  html += `
-                    <div class="menu-item" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\\'")}', ${priceVal}, '${imgUrl}')">
-                      ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
-                      ${promoBadgeHtml}
-                      <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
-                      <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
-                      <div class="menu-item-price">${priceHtml}</div>
-                    </div>
-                  `;
+                  if (isPromo) {
+                      promoItemsHtml += `
+                        <div class="menu-item" style="opacity: 0.6; cursor: not-allowed;">
+                          ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                          ${promoBadgeHtml}
+                          <div class="menu-item-title" style="text-decoration: line-through;">${escapeHTML(itemTitle)}</div>
+                          <div style="color: #d32f2f; font-size: 12px; font-weight: bold; margin-bottom: 4px;">優惠商品無法訂購</div>
+                          <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                          <div class="menu-item-price">${priceHtml}</div>
+                        </div>
+                      `;
+                  } else {
+                      hasRegular = true;
+                      sectionHtml += `
+                        <div class="menu-item" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\\'")}', ${priceVal}, '${imgUrl}')">
+                          ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                          <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
+                          <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                          <div class="menu-item-price">${priceHtml}</div>
+                        </div>
+                      `;
+                  }
                 });
-                html += `</div>`;
+                sectionHtml += `</div>`;
+                if (hasRegular) html += sectionHtml;
               }
             }
           });
         });
+        
+        if (promoItemsHtml) {
+            html += `<div class="menu-category" style="margin-top:20px; color:#d32f2f; border-top:2px dashed #ccc; padding-top:20px;">分類: 無法訂購項目 (優惠商品)</div><div class="menu-grid">`;
+            html += promoItemsHtml;
+            html += `</div>`;
+        }
       } else {
         html += '<div class="status">這家餐廳目前沒有提供菜單資料。</div>';
       }
