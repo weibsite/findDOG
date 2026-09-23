@@ -1058,13 +1058,13 @@
           if (deliveryOpt && deliveryOpt.priceTitleRichText && deliveryOpt.priceTitleRichText.richTextElements) {
              deliveryOpt.priceTitleRichText.richTextElements.forEach(el => {
                 if (el.type === 'text' && el.text && el.text.text) {
-                   const txt = el.text.text;
+                   const txt = parseText(el.text); // Use helper just in case
                    const decos = el.text.predefinedDecorations || [];
                    const isStrike = JSON.stringify(decos).includes('STRIKETHROUGH') || JSON.stringify(decos).includes('LINE_THROUGH');
                    if (isStrike) {
-                      originalFee += txt.trim();
+                      originalFee += String(txt).trim();
                    } else {
-                      currentFee += txt.trim();
+                      currentFee += String(txt).trim();
                    }
                 }
              });
