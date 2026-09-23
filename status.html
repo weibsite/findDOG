@@ -50,6 +50,17 @@
         .status-section.busy { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
         .status-section.busy .status-badge { color: #2980b9; font-size: 20px; padding: 15px 25px; }
         
+        
+        .status-section.connecting { background: #ffffff; color: #333; }
+        .status-section.connecting .status-title { color: #333; }
+        .status-section.connecting .status-badge { background: #f0f0f0; color: #666; box-shadow: none; border: 1px solid #ddd; }
+        .status-section.connecting .notice-text { color: #999; text-shadow: none; }
+        
+        .status-section.offline { background: linear-gradient(135deg, #2c3e50 0%, #000000 100%); }
+        .status-section.offline .status-title { color: #fff; }
+        .status-section.offline .status-badge { background: #111; color: #ff3366; box-shadow: 0 0 10px rgba(255,51,102,0.3); border: 1px solid #ff3366; }
+        .status-section.offline .notice-text { color: #ff3366; text-shadow: none; }
+
         .notice-text {
             font-size: 16px; 
             margin-top: 15px; 
@@ -62,9 +73,9 @@
     </style>
 </head>
 <body>
-    <div id="status-container" class="status-section">
+    <div id="status-container" class="status-section connecting">
         <div class="status-title">店家目前營業狀態</div>
-        <div id="status-text" class="status-badge">讀取中...</div>
+        <div id="status-text" class="status-badge">連線中...</div>
         <div class="notice-text">
             訂單請於3小時前預約<br>
             享優惠不需等待穩定用餐
@@ -72,6 +83,9 @@
     </div>
 
     <script>
+        
+        let lastSuccessTime = Date.now(); // 初始給予 15 秒寬限期
+        
         function setStatus(type, text) {
             const container = document.getElementById('status-container');
             const badge = document.getElementById('status-text');
@@ -80,6 +94,8 @@
             if(type === 'closed') container.classList.add('closed');
             if(type === 'preorder') container.classList.add('preorder');
             if(type === 'busy') container.classList.add('busy');
+            if(type === 'connecting') container.classList.add('connecting');
+            if(type === 'offline') container.classList.add('offline');
             
             badge.innerText = text;
             
@@ -100,18 +116,33 @@
                 if (!lineUrl) return;
 
                 const response = await fetch(lineUrl + '/api/status');
+                if (!response.ok) throw new Error('API Error');
+                
                 const data = await response.json();
+                
+                // 如果成功，更新最後成功時間，並設定狀態
+                lastSuccessTime = Date.now();
                 setStatus(data.type, data.text);
             } catch (err) {
-                console.error("狀態讀取失敗", err);
-                setStatus("open", "營業中"); 
+                console.error("連線異常", err);
+                // 錯誤時不直接改變狀態，交由下方的計時器判定是否已經斷線超過 15 秒
             }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            setStatus('connecting', '連線中');
             loadStatus();
+            
+            // 每 5 秒嘗試連線一次
             setInterval(loadStatus, 5000);
+            
+            // 每 1 秒檢查是否超過 15 秒未成功連線
+            setInterval(() => {
+                if (Date.now() - lastSuccessTime >= 15000) {
+                    setStatus('offline', '斷線中');
+                }
+            }, 1000);
         });
-    </script>
+</script>
 </body>
 </html>
