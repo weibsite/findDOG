@@ -130,7 +130,7 @@
       <div class="input-row">
         <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
         <datalist id="query-list"></datalist>
-        <button class="secondary" onclick="document.getElementById('query').value=''; searchStores()">不知道</button>
+        <button class="secondary" onclick="searchStores()">不知道</button>
         <button onclick="searchStores()">搜尋餐廳</button>
       </div>
     </div>
@@ -979,13 +979,25 @@
                     priceHtml = item.priceTagline.textFormat;
                   }
                   
+                  let promoBadgeHtml = '';
+                  try {
+                    if (item.promoInfo && item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
+                      const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
+                      if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
+                         const promoText = elements[0].text.text.text;
+                         promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
+                      }
+                    }
+                  } catch(e) {}
+                  
                   const imgUrl = item.imageUrl || '';
                   const menuItemUuid = item.uuid;
                   
-                  // 點擊時傳入 storeUuid, sectionUuid, subsectionUuid, menuItemUuid
+                  // 點擊會傳入 storeUuid, sectionUuid, subsectionUuid, menuItemUuid
                   html += `
                     <div class="menu-item" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${escapeHTML(itemTitle).replace(/'/g, "\\'")}', '${escapeHTML(itemDesc).replace(/'/g, "\\'")}', ${priceVal}, '${imgUrl}')">
                       ${imgUrl ? `<div class="menu-item-img" style="background-image: url('${imgUrl}')"></div>` : ''}
+                      ${promoBadgeHtml}
                       <div class="menu-item-title">${escapeHTML(itemTitle)}</div>
                       <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
                       <div class="menu-item-price">${priceHtml}</div>
