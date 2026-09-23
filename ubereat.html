@@ -1301,68 +1301,169 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
     if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
   }
 
-  function renderCustomizations() {
+  
+function renderCustomizations() {
     const area = document.getElementById('customizationsArea');
     if (!currentCustomizations || currentCustomizations.length === 0) {
-      area.innerHTML = '';
-      return;
+        area.innerHTML = '';
+        return;
     }
-    
+    area.innerHTML = renderGroups(currentCustomizations, 'root');
+}
+
+function renderGroups(groups, pathPrefix) {
     let html = '';
-    currentCustomizations.forEach((group, gIdx) => {
-      const gTitle = filterTrailingEnglish(parseText(group.title));
-      const isRadio = group.maxPermitted === 1;
-      let reqText = group.minPermitted > 0 ? `必填 • 選擇 ${group.minPermitted} 項` : '選填';
-      if (group.maxPermitted > 1) reqText += ` (最多 ${group.maxPermitted} 項)`;
-      
-      html += `
-        <div id="group_${gIdx}" class="modal-section" style="background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee; transition: border 0.3s;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
-            <h4 style="margin:0;">${escapeHTML(gTitle)}</h4>
-            <span id="req_${gIdx}" style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:4px; transition: all 0.3s;">${reqText}</span>
-          </div>
-      `;
-      
-      group.options.forEach((opt, oIdx) => {
-        const oTitle = filterTrailingEnglish(parseText(opt.title));
-        const oPrice = opt.price > 0 ? `+$${opt.price / 100}` : '';
-        const inputType = isRadio ? 'radio' : 'checkbox';
-        const inputName = `grp_${gIdx}`;
+    groups.forEach((group, gIdx) => {
+        const gTitle = filterTrailingEnglish(parseText(group.title));
+        const isRadio = group.maxPermitted === 1;
+        let reqText = group.minPermitted > 0 ? `必填 ${group.minPermitted} 項` : '';
+        if (group.maxPermitted > 1) reqText += ` (最多 ${group.maxPermitted} 項)`;
+        
+        const gPath = `${pathPrefix}_g${gIdx}`;
         
         html += `
-          <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaeaea; cursor:pointer;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <input type="${inputType}" name="${inputName}" data-gidx="${gIdx}" data-oidx="${oIdx}" onchange="recalcCustomizations()" style="width:18px;height:18px;">
-              <span>${escapeHTML(oTitle)}</span>
+        <div id="${gPath}" class="modal-section cust-group" data-min="${group.minPermitted || 0}" data-max="${group.maxPermitted || 0}" data-title="${escapeHTML(gTitle)}" style="background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee; margin-bottom:10px; transition: border 0.3s;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+                <h4 style="margin:0;">${escapeHTML(gTitle)}</h4>
+                <span class="req-badge" style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:4px; transition: all 0.3s;">${reqText}</span>
             </div>
-            <span style="color:#666; font-size:14px;">${oPrice}</span>
-          </label>
         `;
-      });
-      html += `</div>`;
+        
+        group.options.forEach((opt, oIdx) => {
+            const oTitle = filterTrailingEnglish(parseText(opt.title));
+            const oPrice = opt.price > 0 ? `+$${opt.price / 100}` : '';
+            const oPath = `${gPath}_o${oIdx}`;
+            
+            let inputHtml = '';
+            if (isRadio) {
+                inputHtml = `<input type="radio" class="cust-input cust-radio" name="${gPath}" data-path="${oPath}" data-title="${escapeHTML(oTitle)}" data-price="${(opt.price || 0) / 100}" onchange="recalcCustomizations()" style="width:18px;height:18px;">`;
+            } else {
+                const optMax = opt.maxPermitted || 0;
+                inputHtml = `
+                <div class="cust-stepper" style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" onclick="changeCustQty(event, '${oPath}', -1, ${optMax})" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:pointer;color:#111;display:flex;align-items:center;justify-content:center;">-</button>
+                    <span id="qty_${oPath}" class="cust-qty cust-input" data-path="${oPath}" data-qty="0" data-title="${escapeHTML(oTitle)}" data-price="${(opt.price || 0) / 100}" style="font-size:15px;font-weight:bold;min-width:16px;text-align:center;">0</span>
+                    <button type="button" onclick="changeCustQty(event, '${oPath}', 1, ${optMax})" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:pointer;color:#111;display:flex;align-items:center;justify-content:center;">+</button>
+                </div>
+                `;
+            }
+            
+            const hasChildren = opt.childCustomizationList && opt.childCustomizationList.length > 0;
+            
+            html += `
+            <div class="cust-option-row">
+                <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaeaea; cursor:pointer;" onclick="${!isRadio ? 'event.preventDefault();' : ''}">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        ${inputHtml}
+                        <span style="line-height:1.4;">${escapeHTML(oTitle)}</span>
+                    </div>
+                    <span style="color:#666; font-size:14px;">${oPrice}</span>
+                </label>
+            `;
+            
+            if (hasChildren) {
+                html += `
+                <div id="children_${oPath}" style="display:none; padding-left:15px; margin-top:5px; border-left:2px solid #ccc; margin-bottom:5px;">
+                    ${renderGroups(opt.childCustomizationList, oPath)}
+                </div>
+                `;
+            }
+            
+            html += `</div>`;
+        });
+        
+        html += `</div>`;
     });
-    area.innerHTML = html;
-  }
+    return html;
+}
 
-  function recalcCustomizations() {
+function changeCustQty(event, oPath, delta, optMax) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const qtySpan = document.getElementById(`qty_${oPath}`);
+    if (!qtySpan) return;
+    
+    let current = parseInt(qtySpan.getAttribute('data-qty') || '0', 10);
+    
+    if (delta > 0) {
+        if (optMax > 0 && current >= optMax) return;
+        
+        const groupDiv = qtySpan.closest('.cust-group');
+        const groupMax = parseInt(groupDiv.getAttribute('data-max') || '0', 10);
+        
+        if (groupMax > 0) {
+            let sum = 0;
+            groupDiv.querySelectorAll(':scope > .cust-option-row > label > div > .cust-stepper > .cust-qty').forEach(span => {
+                sum += parseInt(span.getAttribute('data-qty') || '0', 10);
+            });
+            if (sum >= groupMax) return;
+        }
+    }
+    
+    let newVal = current + delta;
+    if (newVal < 0) newVal = 0;
+    
+    qtySpan.setAttribute('data-qty', newVal);
+    qtySpan.innerText = newVal;
+    
+    recalcCustomizations();
+}
+
+function recalcCustomizations() {
     let extraPrice = 0;
     currentItem.selectedOptions = [];
     
-    currentCustomizations.forEach((group, gIdx) => {
-      group.options.forEach((opt, oIdx) => {
-        const cb = document.querySelector(`input[data-gidx="${gIdx}"][data-oidx="${oIdx}"]`);
-        if (cb && cb.checked) {
-          extraPrice += (opt.price || 0) / 100;
-          currentItem.selectedOptions.push(parseText(opt.title));
+    document.querySelectorAll('.cust-option-row').forEach(row => {
+        const radio = row.querySelector(':scope > label .cust-radio');
+        const qtySpan = row.querySelector(':scope > label .cust-stepper .cust-qty');
+        const childrenDiv = row.querySelector(`:scope > div[id^="children_"]`);
+        
+        let isSelected = false;
+        if (radio && radio.checked) isSelected = true;
+        if (qtySpan && parseInt(qtySpan.getAttribute('data-qty') || '0', 10) > 0) isSelected = true;
+        
+        if (childrenDiv) {
+            childrenDiv.style.display = isSelected ? 'block' : 'none';
         }
-      });
     });
+
+    const getVisibleSelections = (container) => {
+        container.querySelectorAll(':scope > .cust-group > .cust-option-row').forEach(row => {
+            const radio = row.querySelector(':scope > label .cust-radio');
+            const qtySpan = row.querySelector(':scope > label .cust-stepper .cust-qty');
+            
+            let qty = 0;
+            if (radio && radio.checked) qty = 1;
+            if (qtySpan) qty = parseInt(qtySpan.getAttribute('data-qty') || '0', 10);
+            
+            if (qty > 0) {
+                const price = parseFloat(radio ? radio.getAttribute('data-price') : qtySpan.getAttribute('data-price')) || 0;
+                const title = radio ? radio.getAttribute('data-title') : qtySpan.getAttribute('data-title');
+                
+                extraPrice += (price * qty);
+                for (let i = 0; i < qty; i++) {
+                    currentItem.selectedOptions.push(title);
+                }
+                
+                const childrenDiv = row.querySelector(':scope > div[id^="children_"]');
+                if (childrenDiv && childrenDiv.style.display !== 'none') {
+                    getVisibleSelections(childrenDiv);
+                }
+            }
+        });
+    };
+    
+    const rootArea = document.getElementById('customizationsArea');
+    if (rootArea) getVisibleSelections(rootArea);
     
     currentItem.totalPrice = currentItem.basePrice + extraPrice;
     updateModalPrice();
-  }
+}
 
-  function closeItemModal() {
+function closeItemModal() {
+
     document.getElementById('itemModal').style.display = 'none';
   }
 
@@ -1378,51 +1479,65 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
     document.getElementById('modalTotal').innerText = (price * currentQty).toLocaleString();
   }
 
-    function confirmAddToCart() {
-    let isValid = true;
-    let firstInvalidGIdx = -1;
-    let errorMsg = '';
     
-    currentCustomizations.forEach((group, gIdx) => {
-      let selectedCount = 0;
-      group.options.forEach((opt, oIdx) => {
-        const cb = document.querySelector(`input[data-gidx="${gIdx}"][data-oidx="${oIdx}"]`);
-        if (cb && cb.checked) selectedCount++;
-      });
-      
-      const gTitle = filterTrailingEnglish(parseText(group.title));
-      if (group.minPermitted > 0 && selectedCount < group.minPermitted) {
-        if (isValid) firstInvalidGIdx = gIdx;
-        isValid = false;
-        const reqBadge = document.getElementById(`req_${gIdx}`);
+function confirmAddToCart() {
+    let isValid = true;
+    let firstInvalidGroup = null;
+    
+    const validateGroups = (container) => {
+        container.querySelectorAll(':scope > .cust-group').forEach(groupDiv => {
+            if (!isValid) return;
+            
+            const min = parseInt(groupDiv.getAttribute('data-min') || '0', 10);
+            if (min > 0) {
+                let sum = 0;
+                groupDiv.querySelectorAll(':scope > .cust-option-row').forEach(row => {
+                    const radio = row.querySelector(':scope > label .cust-radio');
+                    const qtySpan = row.querySelector(':scope > label .cust-stepper .cust-qty');
+                    if (radio && radio.checked) sum += 1;
+                    if (qtySpan) sum += parseInt(qtySpan.getAttribute('data-qty') || '0', 10);
+                });
+                
+                if (sum < min) {
+                    isValid = false;
+                    firstInvalidGroup = groupDiv;
+                    return;
+                }
+            }
+            
+            groupDiv.querySelectorAll(':scope > .cust-option-row').forEach(row => {
+                const radio = row.querySelector(':scope > label .cust-radio');
+                const qtySpan = row.querySelector(':scope > label .cust-stepper .cust-qty');
+                let isSelected = (radio && radio.checked) || (qtySpan && parseInt(qtySpan.getAttribute('data-qty') || '0', 10) > 0);
+                
+                if (isSelected) {
+                    const childrenDiv = row.querySelector(':scope > div[id^="children_"]');
+                    if (childrenDiv && childrenDiv.style.display !== 'none') {
+                        validateGroups(childrenDiv);
+                    }
+                }
+            });
+        });
+    };
+    
+    const rootArea = document.getElementById('customizationsArea');
+    if (rootArea) validateGroups(rootArea);
+    
+    if (!isValid && firstInvalidGroup) {
+        const reqBadge = firstInvalidGroup.querySelector('.req-badge');
         if (reqBadge) {
-           reqBadge.style.backgroundColor = '#ffebee';
-           reqBadge.style.color = '#d32f2f';
-           setTimeout(() => {
-              reqBadge.style.backgroundColor = '#e0e0e0';
-              reqBadge.style.color = '#666';
-           }, 2000);
+            reqBadge.style.backgroundColor = '#ffebee';
+            reqBadge.style.color = '#d32f2f';
+            setTimeout(() => {
+                reqBadge.style.backgroundColor = '#e0e0e0';
+                reqBadge.style.color = '#666';
+            }, 2000);
         }
-      }
-      if (group.maxPermitted > 0 && selectedCount > group.maxPermitted) {
-        if (isValid) firstInvalidGIdx = gIdx;
-        isValid = false;
-      }
-    });
-
-    if (!isValid) {
-      if (firstInvalidGIdx !== -1) {
-         const firstInvalidEl = document.getElementById(`group_${firstInvalidGIdx}`);
-         if (firstInvalidEl) {
-             firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-             firstInvalidEl.style.border = '2px solid #d32f2f';
-             setTimeout(() => { firstInvalidEl.style.border = '1px solid #eee'; }, 2000);
-         }
-      }
-      return;
+        firstInvalidGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
     }
-
-    const note = document.getElementById('modalNote').value.trim();
+    
+const note = document.getElementById('modalNote').value.trim();
     const finalPrice = currentItem.totalPrice !== undefined ? currentItem.totalPrice : currentItem.basePrice;
     
     // 把選取的客製化選項文字加進備註裡，以便在購物車顯示
