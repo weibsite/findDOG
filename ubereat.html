@@ -689,6 +689,16 @@
     
     currentOrderMessage = msgText;
 
+    
+    const savedPhone = localStorage.getItem('userPhone') || '';
+    const phoneHtml = `
+      <div style="margin-top: 15px; text-align: left;">
+        <label style="font-size: 14px; font-weight: bold; color: #333;">聯絡電話 <span style="color:#d32f2f;">*必填</span></label>
+        <input type="tel" id="userPhoneInput" value="${escapeHTML(savedPhone)}" placeholder="請輸入手機號碼" style="width: 100%; box-sizing: border-box; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+      </div>
+    `;
+    htmlContent += phoneHtml;
+
     const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:20px;">送出訂單至聊天室</button>`;
     htmlContent += sendBtnHtml;
     
@@ -698,6 +708,24 @@
   let currentOrderMessage = "";
 
   async function sendOrderToLine() {
+    const phoneInput = document.getElementById('userPhoneInput');
+    let finalOrderMessage = currentOrderMessage;
+    if (phoneInput) {
+      const phoneVal = phoneInput.value.trim();
+      if (!phoneVal) {
+        const phoneEl = document.getElementById('userPhoneInput');
+        if(phoneEl) {
+           phoneEl.style.border = '2px solid #d32f2f';
+           phoneEl.focus();
+           setTimeout(() => { phoneEl.style.border = '1px solid #ccc'; }, 2000);
+        }
+        return;
+      }
+      localStorage.setItem('userPhone', phoneVal);
+      finalOrderMessage += `
+聯絡電話: ${phoneVal}`;
+    }
+
     if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
 
     if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
@@ -711,7 +739,7 @@
     
     const messages = [{
       type: "text",
-      text: currentOrderMessage
+      text: finalOrderMessage
     }];
 
     liff.sendMessages(messages)
