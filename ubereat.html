@@ -222,7 +222,7 @@
     
     if (addressHistory.length > 0 && !isAddressSet) {
       const lastAddr = addressHistory[0];
-      document.getElementById('addrInput').value = lastAddr.title;
+      document.getElementById('addrInput').value = '📍 ' + lastAddr.title;
       setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
     }
   }
@@ -383,14 +383,18 @@
     const btnSchedule = document.getElementById('btnSchedule');
     const pickerArea = document.getElementById('schedulePickerArea');
     
-    if (mode === 'ASAP') {
-      btnAsap.style.background = '#000'; btnAsap.style.color = '#fff'; btnAsap.style.borderColor = '#000';
-      btnSchedule.style.background = '#fff'; btnSchedule.style.color = '#333'; btnSchedule.style.borderColor = '#ccc';
-      pickerArea.style.display = 'none';
-    } else {
-      btnSchedule.style.background = '#000'; btnSchedule.style.color = '#fff'; btnSchedule.style.borderColor = '#000';
-      btnAsap.style.background = '#fff'; btnAsap.style.color = '#333'; btnAsap.style.borderColor = '#ccc';
-      pickerArea.style.display = 'block';
+    if (btnAsap && btnSchedule) {
+      if (mode === 'ASAP') {
+        btnAsap.style.background = '#000'; btnAsap.style.color = '#fff'; btnAsap.style.borderColor = '#000';
+        btnSchedule.style.background = '#fff'; btnSchedule.style.color = '#333'; btnSchedule.style.borderColor = '#ccc';
+      } else {
+        btnSchedule.style.background = '#000'; btnSchedule.style.color = '#fff'; btnSchedule.style.borderColor = '#000';
+        btnAsap.style.background = '#fff'; btnAsap.style.color = '#333'; btnAsap.style.borderColor = '#ccc';
+      }
+    }
+    
+    if (pickerArea) {
+      pickerArea.style.display = mode === 'ASAP' ? 'none' : 'block';
     }
   }
 
@@ -400,7 +404,8 @@
   });
 
   async function searchAddress() {
-    const q = document.getElementById('addrInput').value.trim();
+    let q = document.getElementById('addrInput').value.trim();
+    if (q.startsWith('📍 ')) q = q.substring(3).trim();
     if (!q) return;
     
     // Check if it's already in history to skip server searching
@@ -485,7 +490,9 @@
     const statusEl = document.getElementById('addrStatus');
     statusEl.innerText = ''; 
     document.getElementById('addrResults').innerHTML = '';
-    document.getElementById('addrInput').value = title.split(',')[0];
+    let displayTitle = title.split(',')[0];
+    if (displayTitle.startsWith('📍 ')) displayTitle = displayTitle.substring(3).trim();
+    document.getElementById('addrInput').value = '📍 ' + displayTitle;
     try {
       const res = await fetch(`${API_BASE_URL}/api/set-address`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -613,7 +620,8 @@
     let total = 0;
     let msg = '【UberEats 點餐確認】\n';
     
-    const addr = document.getElementById('addrInput').value.trim();
+    let addr = document.getElementById('addrInput').value.trim();
+    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
     if (addr) msg += `📍 外送地址: ${addr}\n`;
     
     const scheduleSelect = document.getElementById('scheduleTime');
@@ -877,7 +885,7 @@
                 let text = `此餐廳在您選擇的時段 ( ${selectedScheduleText} ) 未營業或無法接單。`;
                 let btnsHtml = '';
                 if (availableWindows.length > 0) {
-                    text += `<br><br><b style="color:#111;">💡 餐廳可接單時段 (點擊直接修改)：</b>`;
+                    btnsHtml += `<br><b style="color:#111;">💡 餐廳可接單時段 (點擊直接修改)：</b>`;
                     const top5 = availableWindows.slice(0, 5);
                     top5.forEach(tw => {
                         const sd = new Date(tw.startTimeSeconds * 1000);
@@ -896,7 +904,7 @@
                         btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
                     });
                 } else {
-                    text += `<br><br>這間餐廳目前沒有提供任何可預約的時段。`;
+                    text += `\n\n這間餐廳目前沒有提供任何可預約的時段。`;
                 }
 
                 showModal('無法預約', text, true, btnsHtml);
