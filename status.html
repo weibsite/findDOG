@@ -70,6 +70,27 @@
             color: #fff200; 
             text-shadow: 0px 1px 2px rgba(0,0,0,0.2);
         }
+    
+        .order-btn {
+            display: inline-block;
+            background-color: #fff200;
+            color: #d81b43;
+            text-decoration: none;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 40px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            text-align: center;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
     </style>
 </head>
 <body>
@@ -79,6 +100,10 @@
         <div class="notice-text">
             訂單請於3小時前預約<br>
             享優惠不需等待穩定用餐
+        </div>
+        
+        <div id="action-container" style="display: none;">
+            <a href="https://liff.line.me/2011657436-rGVj5SoG" class="order-btn">開始點餐</a>
         </div>
     </div>
 
@@ -97,7 +122,18 @@
             if(type === 'connecting') container.classList.add('connecting');
             if(type === 'offline') container.classList.add('offline');
             
+            
             badge.innerText = text;
+            
+            const actionContainer = document.getElementById('action-container');
+            if (actionContainer) {
+                if (type === 'connecting' || type === 'offline') {
+                    actionContainer.style.display = 'none';
+                } else {
+                    actionContainer.style.display = 'block';
+                }
+            }
+
             
             if (text.length > 10) {
                 badge.style.fontSize = "20px";
