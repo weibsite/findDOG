@@ -722,8 +722,14 @@
         return;
       }
       localStorage.setItem('userPhone', phoneVal);
-      finalOrderMessage += `
-聯絡電話: ${phoneVal}`;
+      // 自動在外送備註加上「到了請打XXX電話」，若使用者備註已有該號碼則不重複加
+      if (!finalOrderMessage.includes(phoneVal)) {
+        if (finalOrderMessage.includes('外送備註:')) {
+          finalOrderMessage = finalOrderMessage.replace('外送備註: ', '外送備註: 到了請打 ' + phoneVal + ' 電話，');
+        } else {
+          finalOrderMessage = finalOrderMessage.replace('\n\n總計:', '\n外送備註: 到了請打 ' + phoneVal + ' 電話\n\n總計:');
+        }
+      }
     }
 
     if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
