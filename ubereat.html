@@ -537,7 +537,7 @@
 
     const statusEl = document.getElementById('status');
     const resultsEl = document.getElementById('results');
-    statusEl.innerHTML = '搜尋中，請稍候...'; statusEl.className = 'status'; resultsEl.innerHTML = '';
+    statusEl.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><div style="margin-top: 10px;">搜尋中...</div>'; statusEl.className = 'status'; resultsEl.innerHTML = '';
     
     try {
       const res = await fetch(`${API_BASE_URL}/api/search`, {
@@ -562,7 +562,7 @@
         const style = isBad ? 'filter: grayscale(100%); opacity: 0.6;' : '';
         
         return `
-          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick=\"openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name)}'))\">
+          <div id="card_${s.storeUuid}" class="card" style="${style}" onclick=\"openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'))\">
             <div class="card-img" style="background-image: url('${imgUrl}')"></div>
             <div class="card-body">
               <div class="card-name">${escapeHTML(name)}</div>
