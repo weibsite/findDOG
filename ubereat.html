@@ -322,49 +322,72 @@
     if (!q) return;
     const statusEl = document.getElementById('addrStatus');
     const resultsEl = document.getElementById('addrResults');
-    statusEl.innerText = '尋找地址中 (透過高級伺服器解析)...'; 
+    statusEl.innerText = '尋找中...'; 
     resultsEl.innerHTML = '';
+
+    const fallbackSearch = async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=tw&q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (data.length === 0) { 
+          statusEl.innerText = '找不到該地址，請嘗試其他關鍵字。'; 
+          return; 
+        }
+        if (data.length === 1) {
+          setAddress(data[0].lat, data[0].lon, data[0].display_name);
+        } else {
+          statusEl.innerText = '請選擇正確的地址：';
+          resultsEl.innerHTML = data.slice(0, 5).map(item => `
+            <div class="addr-item" onclick="setAddress(${item.lat}, ${item.lon}, '${escapeHTML(item.display_name)}')">
+              📍 ${escapeHTML(item.display_name)}
+            </div>
+          `).join('');
+        }
+      } catch (e) { 
+        statusEl.innerText = '尋找地址失敗: ' + e.message; 
+      }
+    };
     
     try {
       const ws = new WebSocket(WS_URL);
-      let isTimeout = false;
+      let resolved = false;
+      
       const timeoutId = setTimeout(() => {
-        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-          isTimeout = true;
+        if (!resolved) {
+          resolved = true;
           ws.close();
-          statusEl.innerText = '❌ 尋找地址逾時，伺服器可能正在忙碌中。';
+          fallbackSearch();
         }
-      }, 15000);
+      }, 5000);
 
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'search_address', address: q }));
       };
 
       ws.onmessage = (event) => {
+        if (resolved) return;
         const data = JSON.parse(event.data);
         if (data.type === 'search_address_result') {
+          resolved = true;
           clearTimeout(timeoutId);
-          if (data.success && data.lat && data.lng) {
-            statusEl.innerText = '✅ 找到精準座標，請點擊下方確認：';
-            resultsEl.innerHTML = `
-              <div class="addr-item" onclick="setAddress(${data.lat}, ${data.lng}, '${escapeHTML(q)}')">
-                📍 ${escapeHTML(q)} <span style="font-size:12px; color:#999; margin-left:8px;">(點擊設定)</span>
-              </div>
-            `;
-          } else {
-            statusEl.innerText = '❌ 找不到該地址，請嘗試其他關鍵字';
-          }
           ws.close();
+          if (data.success && data.lat && data.lng) {
+            setAddress(data.lat, data.lng, q);
+          } else {
+            fallbackSearch();
+          }
         }
       };
 
       ws.onerror = (e) => {
-        if (!isTimeout) {
-            statusEl.innerText = `❌ 連線至地址伺服器失敗，請確認該伺服器已啟動 (${WS_URL})`;
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          fallbackSearch();
         }
       };
     } catch (e) { 
-        statusEl.innerText = '❌ 尋找地址失敗: ' + e.message; 
+        fallbackSearch();
     }
   }
 
