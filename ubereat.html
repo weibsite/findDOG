@@ -1240,7 +1240,7 @@ if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPro
 
   try {
     if (!liff.isInClient()) {
-      alert("請在 LINE APP 中使用此功能以發送訂單");
+      showModal('無法發送', '請在 LINE APP 中開啟此頁面以發送訂單。', true);
       return;
     }
     await liff.sendMessages([
@@ -1249,12 +1249,19 @@ if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPro
         text: msgText
       }
     ]);
-    alert("訂單已送出");
+    
     cart = [];
     updateCartBadge();
-    liff.closeWindow();
+    
+    const successHtml = `
+      <div style="text-align:center; margin-top:20px;">
+        <button onclick="liff.closeWindow();" style="width:100%; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">關閉視窗</button>
+      </div>
+    `;
+    showModal('訂單已送出', '您的訂單明細已成功傳送至聊天室！', false, successHtml, true);
+    
   } catch (err) {
-    alert('發生錯誤: ' + err.message);
+    showModal('發生錯誤', err.message, true);
   }
 }
 async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
