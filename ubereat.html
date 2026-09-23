@@ -145,7 +145,14 @@
         <button class="secondary" onclick="searchStores()">不知道</button>
         <button onclick="searchStores()">搜尋餐廳</button>
       </div>
+    </div
+    <div class="section">
+      <div class="section-title">6. 手機號碼</div>
+      <div class="input-row">
+        <input type="tel" id="initPhone" placeholder="您的手機號碼 (選填)" oninput="syncPhone('init')" />
+      </div>
     </div>
+
   </div>
 
   <!-- 搜尋結果清單頁面 -->
@@ -809,7 +816,13 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
     }
   }
 
-  document.addEventListener('DOMContentLoaded', updateCartBadge);
+  document.addEventListener('DOMContentLoaded', () => {
+    updateCartBadge();
+    const initPhone = document.getElementById('initPhone');
+    if (initPhone) {
+        initPhone.value = localStorage.getItem('userPhone') || '';
+    }
+});
 
   let currentStoreUuid = '';
   let currentStoreName = '';
@@ -965,7 +978,7 @@ function openCheckoutSummary() {
         <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="放門口、外送桌..." style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
       </div>
       <div style="margin-bottom:12px;"><strong>電話:</strong> 
-        <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone('checkout')">
       </div>
       <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}</div>
       
@@ -1906,6 +1919,20 @@ const note = document.getElementById('modalNote').value.trim();
 
 
   // ========== 拆單試算引擎 ==========
+  
+  function syncPhone(source) {
+    const init = document.getElementById('initPhone');
+    const chk = document.getElementById('checkoutPhone');
+    
+    if (source === 'init' && init) {
+        localStorage.setItem('userPhone', init.value);
+        if (chk) chk.value = init.value;
+    } else if (source === 'checkout' && chk) {
+        localStorage.setItem('userPhone', chk.value);
+        if (init) init.value = chk.value;
+    }
+  }
+
   function calcOrderCost(items) {
   let totalSum = 0;
   items.forEach(it => totalSum += it.price * it.qty);
