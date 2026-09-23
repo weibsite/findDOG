@@ -929,6 +929,7 @@
       if(storeName) currentStoreName = storeName;
       currentStoreUuid = uuid;
     const resultsDiv = document.getElementById('results');
+    const sc = document.getElementById('storeContent');
     const oldHtml = resultsDiv.innerHTML;
     resultsDiv.innerHTML = '<div class="status" style="padding: 40px 20px;"><div class="spinner"></div></div>';
     
@@ -1047,7 +1048,6 @@
       document.getElementById('listView').style.display = 'none';
       document.getElementById('storeView').style.display = 'block';
       
-      const sc = document.getElementById('storeContent');
       
         let originalFee = '';
         let currentFee = '';
@@ -1171,7 +1171,10 @@ let html = `
       updateCartBadge();
       window.scrollTo(0, 0);
     } catch (e) {
-      sc.innerHTML = `<div class="status error">錯誤: ${e.message}</div>`;
+      const errHtml = `<div class="status error">錯誤: ${e.message}\n\n詳細資訊請按 F12 查看 Console。</div>`;
+    if (typeof sc !== 'undefined' && sc) { sc.innerHTML = errHtml; document.getElementById('storeView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; }
+    else if (resultsDiv) { resultsDiv.innerHTML = errHtml; }
+    console.error('openStore error:', e);
     }
   }
   
