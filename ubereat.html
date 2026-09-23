@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <title>訂餐系統</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
@@ -78,7 +79,10 @@
 
 <div class="container">
   
-  <div class="app-header">外送<a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂餐系統</a></div>
+  <div class="app-header">
+    <button id="mainBackBtn" onclick="handleMainBack()" style="display: none;">←</button>
+    <div style="flex: 1; text-align: center;">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+  </div>
 
   <!-- 首頁 -->
   <div id="homeView">
@@ -245,7 +249,11 @@
   }
 
   // 初始化 UI 與設定
+  let liffInitPromise = null;
   document.addEventListener("DOMContentLoaded", async () => {
+    liffInitPromise = liff.init({ liffId: "2011657436-SNFTv9uP" }).catch(err => {
+        console.error('LIFF init failed', err);
+    });
     loadHistory();
     try {
       const configRes = await fetch('config.json?t=' + Date.now());
@@ -566,18 +574,56 @@
     }
   }
 
+  let currentOrderMessage = "";
+
+  function sendOrderToLine() {
+    if (!liff.isLoggedIn()) {
+      alert("請先登入 LINE");
+      return;
+    }
+    if (!liff.isInClient()) {
+      alert("這項功能只能在 LINE APP 的聊天室內使用喔！");
+      return;
+    }
+    
+    const messages = [{
+      type: "text",
+      text: currentOrderMessage
+    }];
+
+    liff.sendMessages(messages)
+      .then(() => {
+        alert("已成功傳送至聊天室！");
+        liff.closeWindow();
+      })
+      .catch((error) => {
+        alert("送出失敗: " + error);
+      });
+  }
+
   function viewCart() {
     if (cart.length === 0) {
       showModal('購物車是空的', '目前沒有加入任何餐點喔！', false);
       return;
     }
+    
     let total = 0;
-    let msg = '【您的購物車】\n\n';
+    let msg = '【UberEats 點餐確認】\n';
+    
+    const addr = document.getElementById('addrInput').value.trim();
+    if (addr) msg += `📍 外送地址: ${addr}\n`;
+    
+    const scheduleSelect = document.getElementById('scheduleTime');
+    if (scheduleSelect && scheduleSelect.selectedIndex >= 0) {
+      msg += `⏰ 預約時間: ${scheduleSelect.options[scheduleSelect.selectedIndex].text}\n`;
+    }
+    
+    msg += '\n【餐點明細】\n';
     cart.forEach((item, i) => {
       const lineTotal = item.price * item.qty;
       total += lineTotal;
       msg += `${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
-      if (item.note) msg += `   餐點內備註: ${item.note}\n`;
+      if (item.note) msg += `   - 備註: ${item.note}\n`;
     });
     
     const foodNotes = document.getElementById('foodNotes').value.trim();
@@ -586,8 +632,14 @@
     if (foodNotes) msg += `\n整體餐點備註: ${foodNotes}`;
     if (deliveryNotes) msg += `\n外送備註: ${deliveryNotes}`;
     
-    msg += `\n\n總計: $${total}\n\n(註：此為測試模擬購物車，尚未與 Uber Eats 真實帳號綁定)`;
-    showModal('購物車', msg, false);
+    msg += `\n\n總計: $${total}`;
+    
+    // 儲存全域變數供 LIFF 發送使用
+    currentOrderMessage = msg;
+    
+    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;">送出訂單至聊天室</button>`;
+    
+    showModal('購物車', msg, false, sendBtnHtml);
   }
 
   // 彈出視窗狀態
