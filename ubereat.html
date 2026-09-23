@@ -638,6 +638,7 @@
 
   // ==== 購物車與餐廳菜單功能 ====
   let cart = [];
+let originalAppHeaderHtml = "";
   try {
     const saved = localStorage.getItem('uberCart');
     if (saved) cart = JSON.parse(saved);
@@ -842,7 +843,14 @@
   document.getElementById('listView').style.display = 'none';
   document.getElementById('checkoutView').style.display = 'none';
   document.getElementById('cartView').style.display = 'block';
-  document.querySelector('.app-header').style.display = 'none';
+  
+  if (!originalAppHeaderHtml) originalAppHeaderHtml = document.querySelector('.app-header').innerHTML;
+  document.querySelector('.app-header').innerHTML = `
+    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">購物車</span></button>
+    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:14px;">新增商品</button>
+  `;
+  document.querySelector('.app-header').style.display = 'flex';
+
   if (document.getElementById('floatingCartBtn')) document.getElementById('floatingCartBtn').style.display = 'none';
   window.scrollTo(0, 0);
 }
@@ -874,8 +882,13 @@ function removeCartItem(idx) {
 function goBackToStore() {
   document.getElementById('cartView').style.display = 'none';
   document.getElementById('checkoutView').style.display = 'none';
+  
+  if (originalAppHeaderHtml) {
+    document.querySelector('.app-header').innerHTML = originalAppHeaderHtml;
+  }
   document.querySelector('.app-header').style.display = 'flex';
   updateCartBadge();
+
   if (typeof currentStoreName !== 'undefined' && currentStoreName) {
     document.getElementById('storeView').style.display = 'block';
   } else {
@@ -886,7 +899,14 @@ function goBackToStore() {
 function backToCart() {
   document.getElementById('checkoutView').style.display = 'none';
   document.getElementById('cartView').style.display = 'block';
-  document.querySelector('.app-header').style.display = 'none';
+  
+  if (!originalAppHeaderHtml) originalAppHeaderHtml = document.querySelector('.app-header').innerHTML;
+  document.querySelector('.app-header').innerHTML = `
+    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">購物車</span></button>
+    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:14px;">新增商品</button>
+  `;
+  document.querySelector('.app-header').style.display = 'flex';
+
   if (document.getElementById('floatingCartBtn')) document.getElementById('floatingCartBtn').style.display = 'none';
 }
 
@@ -951,17 +971,33 @@ function openCheckoutSummary() {
         <input type="text" id="checkoutFoodNotes" value="${escapeHTML(oldFoodNotes)}" placeholder="例如: 全部不要加蔥..." style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
       </div>
   
-      <div style="text-align:right; font-weight:bold; font-size:20px; margin-top:15px;">
-        小計: $${total}
+      
+      <div style="text-align:right; font-size:15px; margin-top:15px;">
+        <div style="color:#666; margin-bottom:4px;">小計: $${total}</div>
+        ${total >= 285 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${143}</div>` : (total > 0 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${Math.floor(total/2)}</div>` : '')}
+        <div style="color:#666; margin-bottom:4px;">代訂費: $50</div>
+        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
+        <div style="font-weight:bold; font-size:20px; margin-top:10px;">
+          總計: <span style="text-decoration:line-through; color:#999; font-size:16px;">$${total + 50}</span> <span style="color:#d32f2f;">$${total - (total >= 285 ? 143 : Math.floor(total/2)) + 50 - ((typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0)}</span>
+        </div>
       </div>
+
     </div>
   `;
   
   document.getElementById('checkoutContent').innerHTML = html;
   
+  
   document.getElementById('cartView').style.display = 'none';
   document.getElementById('checkoutView').style.display = 'block';
+  
+  if (!originalAppHeaderHtml) originalAppHeaderHtml = document.querySelector('.app-header').innerHTML;
+  document.querySelector('.app-header').innerHTML = `
+    <button onclick="backToCart()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">確認訂單</span></button>
+  `;
+  document.querySelector('.app-header').style.display = 'flex';
   window.scrollTo(0, 0);
+
 }
 function toggleSummaryItem(idx) {
   const detail = document.getElementById('summary-detail-' + idx);
@@ -990,7 +1026,6 @@ async function sendOrderToLine(forceSubmit = false) {
 
   const costRes = calcOrderCost(cart);
 
-  // ==== 拆單攔截邏輯 ====
   if (!forceSubmit) {
     if (costRes.shouldSplit && costRes.savings > 0) {
       const suggestHtml = buildSplitSuggestionHtml(costRes);
@@ -999,26 +1034,28 @@ async function sendOrderToLine(forceSubmit = false) {
           <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
         </div>
       `;
-      // The modal already has an X at the top right which hides errorModalOverlay! 
       showModal('💡 偵測到可以拆單', '按照以下建議拆單，可以為您省下運費！', false, interceptHtml, true);
       return;
     }
   }
 
   let msgText = '';
-  
-  // ---- 建立基礎資訊 ----
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
   let timeText = '盡快送達';
+  let isPreOrder = false;
+  
   if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
     const timeSelect = document.getElementById('scheduleTime');
     if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
       timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      const tsVal = timeSelect.value;
+      if (tsVal && (new Date(tsVal).getTime() - new Date().getTime() >= 2.5 * 3600000)) {
+        isPreOrder = true;
+      }
     }
   }
 
   if (forceSubmit === 'split' && costRes.bins) {
-    // ==== 拆單模式 ====
     msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)
 `;
     if (addr) msgText += `📍 地址: ${addr}
@@ -1028,14 +1065,14 @@ async function sendOrderToLine(forceSubmit = false) {
 `;
     
     let grandTotal = 0;
-    let feePerBin = costRes.bins.length >= 2 ? 30 : 40;
+    let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
+    let preOrderDiscount = isPreOrder ? 10 : 0;
     
     costRes.bins.forEach((bin, bIdx) => {
       msgText += `📦 【拆單 ${bIdx + 1}】
 `;
       let binFoodSum = 0;
       
-      // Group items in this bin by storeName
       const binStores = {};
       bin.items.forEach(it => {
         if (!binStores[it.storeName]) binStores[it.storeName] = {};
@@ -1062,17 +1099,27 @@ async function sendOrderToLine(forceSubmit = false) {
         });
       });
       
-      let binFoodCost = Math.ceil(Math.min(binFoodSum, 285) / 2) + Math.max(0, binFoodSum - 285);
-      let binTotal = binFoodCost + feePerBin;
+      let binPromo = binFoodSum >= 285 ? 143 : Math.floor(binFoodSum / 2);
+      let binTotal = (binFoodSum - binPromo) + feePerBin;
       grandTotal += binTotal;
-      msgText += `  小計: $${binFoodSum} ➡️ 結算(含運): $${binTotal}
+      
+      msgText += `  小計: $${binFoodSum}
+`;
+      if (binPromo > 0) msgText += `  🎉 半價優惠: -$${binPromo}
+`;
+      msgText += `  🛵 代訂費: $${feePerBin}
+`;
+      msgText += `  ➡️ 結算: $${binTotal}
 
 `;
     });
+    
+    grandTotal -= preOrderDiscount;
+    if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}
+`;
     msgText += `💰 總結算金額: $${grandTotal}`;
     
   } else {
-    // ==== 正常模式 (一單) ====
     let total = 0;
     const storeGroups = {};
     cart.forEach(item => {
@@ -1103,16 +1150,30 @@ async function sendOrderToLine(forceSubmit = false) {
         }
       });
     });
+    
+    let promoDiscount = total >= 285 ? 143 : Math.floor(total / 2);
+    let serviceFee = 50;
+    let preOrderDiscount = isPreOrder ? 10 : 0;
+    let grandTotal = total - promoDiscount + serviceFee - preOrderDiscount;
+
     msgText += `
-💰 總計小計: $${total}`;
+💰 小計: $${total}
+`;
+    if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}
+`;
+    msgText += `🛵 代訂費: $${serviceFee}
+`;
+    if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}
+`;
+    msgText += `
+✨ 總計: $${grandTotal}`;
   }
 
-  // ---- 處理備註與電話 ----
   const foodNotes = document.getElementById('checkoutFoodNotes') ? document.getElementById('checkoutFoodNotes').value.trim() : '';
   if (foodNotes) {
     msgText += `
 
-🍽️ 訂單備註: ${foodNotes}`;
+🍽️ 餐點訂單備註: ${foodNotes}`;
   }
 
   const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
@@ -1134,7 +1195,7 @@ async function sendOrderToLine(forceSubmit = false) {
 📝 外送備註: 到了請打電話${phoneVal}`;
   }
 
-  if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
+if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
   if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
     liff.login({ redirectUri: window.location.href });
     return;
@@ -1700,92 +1761,98 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
 
   // ========== 拆單試算引擎 ==========
   function calcOrderCost(items) {
-    // 不拆單的成本
-    let totalSum = 0;
-    items.forEach(it => totalSum += it.price * it.qty);
-    let noBinCost = Math.ceil(Math.min(totalSum, 285) / 2) + Math.max(0, totalSum - 285) + 40;
-
-    // 展開所有品項
-    let expanded = [];
-    items.forEach(it => {
-      for (let j = 0; j < it.qty; j++) {
-        expanded.push({ name: it.title, price: it.price, storeName: it.storeName || '未命名餐廳', note: it.note || '' });
+  let totalSum = 0;
+  items.forEach(it => totalSum += it.price * it.qty);
+  
+  let promoDiscount = totalSum >= 285 ? 143 : Math.floor(totalSum / 2);
+  let preOrderDiscount = 0;
+  if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+    const ts = document.getElementById('scheduleTime');
+    if (ts && ts.value) {
+      if (new Date(ts.value).getTime() - new Date().getTime() >= 2.5 * 3600000) {
+        preOrderDiscount = 10;
       }
-    });
+    }
+  }
+  
+  let noBinCost = (totalSum - promoDiscount) + 50 - preOrderDiscount;
 
-    if (expanded.length <= 1) return { shouldSplit: false, noBinCost, bestCost: noBinCost, bins: null };
+  let expanded = [];
+  items.forEach(it => {
+    for (let j = 0; j < it.qty; j++) {
+      expanded.push({ name: it.title, price: it.price, storeName: it.storeName || '未命名餐廳', note: it.note || '' });
+    }
+  });
 
-    expanded.sort((a, b) => b.price - a.price);
+  if (expanded.length <= 1) return { shouldSplit: false, noBinCost, bestCost: noBinCost, bins: null, savings: 0 };
 
-    let bestBins = null;
-    let bestCost = Infinity;
+  expanded.sort((a, b) => b.price - a.price);
 
-    for (let attempt = 0; attempt < 1000; attempt++) {
-      let bins = [];
-      let cur = [...expanded];
-      if (attempt > 0) {
-        for (let i = cur.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [cur[i], cur[j]] = [cur[j], cur[i]];
-        }
-      }
+  let bestBins = null;
+  let bestCost = Infinity;
 
-      if (attempt === 0) {
-        for (let item of cur) {
-          let placed = false;
-          for (let bin of bins) {
-            if (bin.sum + item.price <= 285) {
-              bin.items.push(item);
-              bin.sum += item.price;
-              placed = true;
-              break;
-            }
-          }
-          if (!placed) bins.push({ items: [item], sum: item.price });
-        }
-      } else if (attempt === 1) {
-        let sum = 0;
-        for (let item of cur) sum += item.price;
-        bins.push({ items: cur, sum: sum });
-      } else {
-        for (let item of cur) {
-          if (bins.length === 0) {
-            bins.push({ items: [item], sum: item.price });
-          } else {
-            if (Math.random() < 0.3) {
-              bins.push({ items: [item], sum: item.price });
-            } else {
-              let idx = Math.floor(Math.random() * bins.length);
-              bins[idx].items.push(item);
-              bins[idx].sum += item.price;
-            }
-          }
-        }
-      }
-
-      let cost = 0;
-      let feePerBin = bins.length >= 2 ? 30 : 40;
-      for (let bin of bins) {
-        let foodCost = Math.ceil(Math.min(bin.sum, 285) / 2) + Math.max(0, bin.sum - 285);
-        cost += foodCost + feePerBin;
-      }
-
-      if (cost < bestCost) {
-        bestCost = cost;
-        bestBins = bins;
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    let bins = [];
+    let cur = [...expanded];
+    if (attempt > 0) {
+      for (let i = cur.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cur[i], cur[j]] = [cur[j], cur[i]];
       }
     }
 
-    return {
-      shouldSplit: bestBins && bestBins.length > 1 && bestCost < noBinCost,
-      noBinCost,
-      bestCost,
-      bins: bestBins,
-      savings: noBinCost - bestCost
-    };
+    for (let item of cur) {
+      let placed = false;
+      for (let bin of bins) {
+        if (bin.sum + item.price <= 285) {
+          bin.items.push(item);
+          bin.sum += item.price;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        let maxGap = -1;
+        let bestBin = null;
+        for (let bin of bins) {
+          if (bin.sum < 285 && (285 - bin.sum) > maxGap) {
+            maxGap = 285 - bin.sum;
+            bestBin = bin;
+          }
+        }
+        if (bestBin && (bestBin.sum + item.price <= 285 || Math.random() < 0.3)) {
+          bestBin.items.push(item);
+          bestBin.sum += item.price;
+        } else {
+          bins.push({ items: [item], sum: item.price });
+        }
+      }
+    }
+
+    let cost = 0;
+    let feePerBin = bins.length >= 2 ? 30 : 50;
+    for (let bin of bins) {
+      let binPromo = bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2);
+      let binFoodCost = bin.sum - binPromo;
+      cost += binFoodCost + feePerBin;
+    }
+    cost -= preOrderDiscount;
+
+    if (cost < bestCost) {
+      bestCost = cost;
+      bestBins = bins;
+    }
   }
 
-  function buildSplitSuggestionHtml(result) {
+  return {
+    shouldSplit: bestBins && bestBins.length > 1 && bestCost < noBinCost,
+    noBinCost,
+    bestCost,
+    bins: bestBins,
+    savings: noBinCost - bestCost
+  };
+}
+function buildSplitSuggestionHtml(result) {
     if (!result.shouldSplit) return '';
     let html = `<div style="background:#f0fbf4; border:2px solid #06c167; border-radius:12px; padding:15px; margin-top:15px;">`;
     html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 拆單建議（拆成 ${result.bins.length} 單）</div>`;
@@ -1846,10 +1913,6 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
   <!-- 錯誤提示框 -->
   <!-- 購物車全頁視圖 -->
 <div id="cartView" style="display:none; padding-bottom:100px; min-height:100vh; background:#fff;">
-  <div class="app-header" style="margin-bottom:0;">
-    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">購物車</span></button>
-    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; font-size:14px;">新增商品</button>
-  </div>
   <div id="cartContent" style="padding: 15px 10px;"></div>
   
   <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
@@ -1859,9 +1922,6 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
 
 <!-- 訂單摘要與送出視圖 -->
 <div id="checkoutView" style="display:none; padding-bottom:120px; min-height:100vh; background:#f9f9f9;">
-  <div class="app-header" style="margin-bottom:0;">
-    <button onclick="backToCart()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">確認訂單</span></button>
-  </div>
   <div id="checkoutContent" style="padding: 15px;"></div>
   
   <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
