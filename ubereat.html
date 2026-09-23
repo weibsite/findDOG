@@ -3,6 +3,35 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+
+<!-- 購物車全頁視圖 -->
+<div id="cartView" style="display:none; padding-bottom:100px; min-height:100vh; background:#fff;">
+  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center;">
+    <button onclick="goBackToStore()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0 15px 0 0;">←</button>
+    <h1 style="margin:0; font-size:20px;">購物車</h1>
+  </div>
+  <div id="cartContent" style="padding: 15px;"></div>
+  
+  <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; display:flex; justify-content: space-between; align-items:center; z-index:100;">
+    <button onclick="goBackToStore()" style="background:#f5f5f5; color:#111; border:none; padding:14px 20px; border-radius:8px; font-weight:bold; font-size:16px;">新增商品</button>
+    <button onclick="openCheckoutSummary()" style="background:#111; color:#fff; border:none; padding:14px 20px; border-radius:8px; font-weight:bold; font-size:16px; flex:1; margin-left:10px;">確認訂單</button>
+  </div>
+</div>
+
+<!-- 訂單摘要與送出視圖 -->
+<div id="checkoutView" style="display:none; padding-bottom:120px; min-height:100vh; background:#f9f9f9;">
+  <div style="position:sticky; top:0; background:#fff; z-index:100; padding:15px; border-bottom:1px solid #eee; display:flex; align-items:center;">
+    <button onclick="backToCart()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0 15px 0 0;">←</button>
+    <h1 style="margin:0; font-size:20px;">確認訂單</h1>
+  </div>
+  <div id="checkoutContent" style="padding: 15px;"></div>
+  
+  <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
+    <button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; width:100%;">送出訂單</button>
+  </div>
+</div>
+
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <title>訂餐系統</title>
 <style>
@@ -783,157 +812,317 @@
   let currentCustomizations = [];
 
   function viewCart() {
-    if (cart.length === 0) {
-      alert('購物車是空的喔！');
-      return;
-    }
-    
-    let total = 0;
-    const storeGroups = {};
-    cart.forEach(item => {
-      const sName = item.storeName || '未分類餐廳';
-      if (!storeGroups[sName]) storeGroups[sName] = [];
-      storeGroups[sName].push(item);
-    });
-    
-    let htmlContent = `<div style="text-align: left; max-height: 50vh; overflow-y: auto;">`;
-    
-    let msgText = '【UberEats 點餐確認】\n';
-    let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
-    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
-    msgText += `📍外送地址: ${addr || '未設定地址'}\n`;
-    
-    if (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP') {
-      msgText += `⏰希望送達時間: 盡快送達\n`;
-    } else {
-      const timeSelect = document.getElementById('scheduleTime');
-      const timeText = (timeSelect && timeSelect.options[timeSelect.selectedIndex]) ? timeSelect.options[timeSelect.selectedIndex].text : '';
-      if (timeText) msgText += `⏰希望送達時間: ${timeText}\n`;
-    }
-    
-    msgText += '\n【餐點明細】\n';
+  if (cart.length === 0) {
+    alert('購物車是空的');
+    return;
+  }
+  
+  let html = '';
+  let total = 0;
+  
+  const storeGroups = {};
+  cart.forEach(item => {
+    const sName = item.storeName || '未命名餐廳';
+    if (!storeGroups[sName]) storeGroups[sName] = [];
+    storeGroups[sName].push(item);
+  });
 
-    Object.keys(storeGroups).forEach(sName => {
-      htmlContent += `<div style="font-size:16px; font-weight:bold; margin-top:15px; border-bottom:2px solid #000; padding-bottom:5px;">🏬 ${sName}</div>`;
-      msgText += `🏬 ${sName}\n`;
+  Object.keys(storeGroups).forEach(sName => {
+    html += `<div style="font-size:18px; font-weight:bold; margin-top:15px; margin-bottom:10px;">${escapeHTML(sName)}</div>`;
+    
+    storeGroups[sName].forEach((item) => {
+      const idx = cart.indexOf(item);
+      const lineTotal = item.price * item.qty;
+      total += lineTotal;
       
-      storeGroups[sName].forEach((item, i) => {
-        const lineTotal = item.price * item.qty;
-        total += lineTotal;
-        const cartIdx = cart.indexOf(item);
+      html += `
+      <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
+          <div style="font-weight:bold; font-size:16px;">${escapeHTML(item.title)}</div>
+          <div style="font-weight:bold; font-size:16px;">$${lineTotal}</div>
+        </div>
+        ${item.note ? `<div style="font-size:13px; color:#666; margin-bottom:10px;">${escapeHTML(item.note)}</div>` : ''}
         
-        msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}\n`;
-        if (item.note) msgText += `     - 備註: ${item.note}\n`;
-
-        htmlContent += `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 0; border-bottom:1px solid #eee;">
-            <div style="flex:1; margin-right:10px;">
-              <div style="font-weight:bold;">${item.title} x ${item.qty}</div>
-              ${item.note ? `<div style="font-size:12px; color:#666; margin-top:2px;">備註: ${item.note}</div>` : ''}
-              <div style="font-weight:bold; color:#06c167; margin-top:4px;">$${lineTotal}</div>
-            </div>
-            <button onclick="removeCartItem(${cartIdx})" style="background:#d32f2f; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:14px; white-space:nowrap;">刪除</button>
-          </div>
-        `;
-      });
+        <div style="background: #f5f5f5; border-radius: 30px; display:inline-flex; align-items:center; height:40px;">
+          <div onclick="updateCartItemQty(${idx}, -1)" style="width: 40px; height: 100%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size: 16px; font-weight:bold; color: #111;">${item.qty === 1 ? '🗑️' : '－'}</div>
+          <div style="width: 40px; text-align:center; font-size: 16px; font-weight:bold; color: #111;">${item.qty}</div>
+          <div onclick="updateCartItemQty(${idx}, 1)" style="width: 40px; height: 100%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size: 18px; font-weight:bold; color: #111;">＋</div>
+        </div>
+      </div>
+      `;
     });
-    
-    // Add foodNotes and deliveryNotes from backup
-    const foodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
-    const deliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
-    if (foodNotes) msgText += `\n🍔餐點備註: ${foodNotes}`;
-    if (deliveryNotes) msgText += `\n🏍外送備註: ${deliveryNotes}`;
-    
-    htmlContent += `</div>`;
-    htmlContent += `<div style="font-weight:bold; font-size:20px; text-align:right; margin-top:15px;">總計: $${total}</div>`;
-    msgText += `\n\n💰總計金額: $${total}`;
-    
-    currentOrderMessage = msgText;
+  });
+  
+  html += `<div style="margin-top: 20px; text-align:right; font-size:20px; font-weight:bold;">小計: $${total}</div>`;
+  
+  document.getElementById('cartContent').innerHTML = html;
+  
+  document.getElementById('homeView').style.display = 'none';
+  document.getElementById('storeView').style.display = 'none';
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('checkoutView').style.display = 'none';
+  document.getElementById('cartView').style.display = 'block';
+  window.scrollTo(0, 0);
+}
 
+function updateCartItemQty(idx, change) {
+  cart[idx].qty += change;
+  if (cart[idx].qty <= 0) {
+    cart.splice(idx, 1);
+  }
+  updateCartBadge();
+  if (typeof updateMenuActions === 'function') updateMenuActions();
+  
+  if (cart.length === 0) {
+    goBackToStore();
+    return;
+  }
+  viewCart();
+}
+
+// Ensure removeCartItem is still defined just in case something else calls it (like older code, though shouldn't be possible)
+function removeCartItem(idx) {
+  cart.splice(idx, 1);
+  updateCartBadge();
+  if (typeof updateMenuActions === 'function') updateMenuActions();
+  if (cart.length === 0) { goBackToStore(); return; }
+  viewCart();
+}
+
+function goBackToStore() {
+  document.getElementById('cartView').style.display = 'none';
+  document.getElementById('checkoutView').style.display = 'none';
+  if (typeof currentStoreName !== 'undefined' && currentStoreName) {
+    document.getElementById('storeView').style.display = 'block';
+  } else {
+    document.getElementById('homeView').style.display = 'block';
+  }
+}
+
+function backToCart() {
+  document.getElementById('checkoutView').style.display = 'none';
+  document.getElementById('cartView').style.display = 'block';
+}
+
+function openCheckoutSummary() {
+  let total = 0;
+  cart.forEach(item => total += item.price * item.qty);
+  
+  const savedPhone = localStorage.getItem('userPhone') || '';
+  
+  const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
+
+  let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+  if (addr.startsWith('📍 ')) addr = addr.substring(3).trim(); // Just in case
+  
+  let timeText = '盡快送達';
+  if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+    const timeSelect = document.getElementById('scheduleTime');
+    if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
+      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+    }
+  }
+  
+  let html = `
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">聯絡電話 (必填)</div>
+      <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+    </div>
     
-    const savedPhone = localStorage.getItem('userPhone') || '';
-    const phoneHtml = `
-      <div style="margin-top: 15px; text-align: left;">
-        <label style="font-size: 14px; font-weight: bold; color: #333;">聯絡電話 <span style="color:#d32f2f;">*必填</span></label>
-        <input type="tel" id="userPhoneInput" value="${escapeHTML(savedPhone)}" placeholder="請輸入手機號碼" style="width: 100%; box-sizing: border-box; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送地址</div>
+      <div style="font-size:16px; font-weight:bold;">${escapeHTML(addr) || '未設定'}</div>
+    </div>
+    
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送時間</div>
+      <div style="font-size:16px; font-weight:bold;">${escapeHTML(timeText)}</div>
+    </div>
+    
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:8px; font-size:14px; color:#666;">外送員備註</div>
+      <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如: 放門口、外送桌..." style="width:100%; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box;">
+    </div>
+    
+    <div style="background:#fff; padding:15px; border-radius:12px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-weight:bold; margin-bottom:15px; font-size:16px;">訂單摘要</div>
+  `;
+  
+  cart.forEach((item, idx) => {
+    const lineTotal = item.price * item.qty;
+    html += `
+      <div style="border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSummaryItem(${idx})">
+          <div style="display:flex; gap: 10px; align-items:center; flex:1;">
+            <div style="background:#f5f5f5; padding:2px 8px; border-radius:4px; font-weight:bold; color:#111;">${item.qty}</div>
+            <div style="font-weight:bold; flex:1; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;">${escapeHTML(item.title)}</div>
+          </div>
+          <div style="display:flex; gap: 10px; align-items:center;">
+            <div style="font-weight:bold;">$${lineTotal}</div>
+            <div id="summary-arrow-${idx}" style="color:#999; font-size:14px; font-weight:bold; min-width:14px; text-align:center;">v</div>
+          </div>
+        </div>
+        <div id="summary-detail-${idx}" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #eee; font-size:13px; color:#666; line-height:1.4;">
+          ${item.note ? escapeHTML(item.note).replace(/\n/g, '<br>') : '無特殊客製化'}
+        </div>
       </div>
     `;
-    htmlContent += phoneHtml;
-
-    // 拆單試算
-    const cartItems = cart.map(item => ({ title: item.title, price: item.price, qty: item.qty }));
-    const splitResult = calcOrderCost(cartItems);
-    const splitHtml = buildSplitSuggestionHtml(splitResult);
-    if (splitHtml) htmlContent += splitHtml;
-    window._lastSplitResult = splitResult;
-
-    const sendBtnHtml = `<button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; border-radius:12px; padding:14px 20px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:20px;">送出訂單至聊天室</button>`;
-    htmlContent += sendBtnHtml;
-    
-    showModal('購物車', '', false, htmlContent, true);
+  });
+  
+  html += `
+    <div style="text-align:right; font-weight:bold; font-size:20px; margin-top:15px; padding-top:15px; border-top:2px solid #eee;">
+      小計: $${total}
+    </div>
+  </div>`;
+  
+  // Smart Split suggestion
+  const costRes = calcOrderCost(cart);
+  if (costRes.canSplit && costRes.savings > 0) {
+    html += buildSplitSuggestionHtml(costRes);
   }
+  
+  document.getElementById('checkoutContent').innerHTML = html;
+  
+  document.getElementById('cartView').style.display = 'none';
+  document.getElementById('checkoutView').style.display = 'block';
+  window.scrollTo(0, 0);
+}
 
-  let currentOrderMessage = "";
+function toggleSummaryItem(idx) {
+  const detail = document.getElementById('summary-detail-' + idx);
+  const arrow = document.getElementById('summary-arrow-' + idx);
+  if (detail.style.display === 'none') {
+    detail.style.display = 'block';
+    arrow.innerText = '^';
+  } else {
+    detail.style.display = 'none';
+    arrow.innerText = 'v';
+  }
+}
 
-  async function sendOrderToLine() {
-    const phoneInput = document.getElementById('userPhoneInput');
-    let finalOrderMessage = currentOrderMessage;
-    if (phoneInput) {
-      const phoneVal = phoneInput.value.trim();
-      if (!phoneVal) {
-        const phoneEl = document.getElementById('userPhoneInput');
-        if(phoneEl) {
-           phoneEl.style.border = '2px solid #d32f2f';
-           phoneEl.focus();
-           setTimeout(() => { phoneEl.style.border = '1px solid #ccc'; }, 2000);
-        }
-        return;
-      }
-      localStorage.setItem('userPhone', phoneVal);
-      // 自動在外送備註加上電話提示
-      if (!finalOrderMessage.includes(phoneVal)) {
-        const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalOrderMessage);
-        const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
-        if (finalOrderMessage.includes('外送備註:')) {
-          finalOrderMessage = finalOrderMessage.replace('外送備註: ', '外送備註: ' + phoneNote + '，');
-        } else {
-          finalOrderMessage = finalOrderMessage.replace('\n\n總計:', '\n外送備註: ' + phoneNote + '\n\n總計:');
-        }
-      }
-    }
-
-    if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
-
-    if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
-      liff.login({ redirectUri: window.location.href });
+async function sendOrderToLine() {
+  const phoneInput = document.getElementById('checkoutPhone');
+  if (phoneInput) {
+    const phoneVal = phoneInput.value.trim();
+    if (!phoneVal) {
+      phoneInput.style.border = '2px solid #d32f2f';
+      phoneInput.focus();
+      setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
       return;
     }
-    if (typeof liff !== 'undefined' && !liff.isInClient()) {
-      alert("這項功能只能在 LINE APP 的聊天室內使用喔！");
-      return;
-    }
-    
-    // 附加拆單建議到訊息
-    if (window._lastSplitResult && window._lastSplitResult.shouldSplit) {
-      finalOrderMessage += buildSplitMsgText(window._lastSplitResult);
-    }
-
-    const messages = [{
-      type: "text",
-      text: finalOrderMessage
-    }];
-
-    liff.sendMessages(messages)
-      .then(() => {
-        alert("已成功傳送至聊天室！");
-        liff.closeWindow();
-      })
-      .catch((error) => {
-        alert("傳送失敗: " + error);
-      });
+    localStorage.setItem('userPhone', phoneVal);
   }
 
-  async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
+  let total = 0;
+  const storeGroups = {};
+  cart.forEach(item => {
+    const sName = item.storeName || '未命名餐廳';
+    if (!storeGroups[sName]) storeGroups[sName] = [];
+    storeGroups[sName].push(item);
+  });
+
+  let msgText = '🛵 UberEats 揪團訂單
+';
+  let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+  if (addr) msgText += `📍 地址: ${addr}
+`;
+
+  let timeText = '盡快送達';
+  if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+    const timeSelect = document.getElementById('scheduleTime');
+    if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
+      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+    }
+  }
+  msgText += `🕒 時間: ${timeText}
+
+`;
+
+  Object.keys(storeGroups).forEach(sName => {
+    msgText += `🏪 ${sName}
+`;
+    storeGroups[sName].forEach((item, i) => {
+      const lineTotal = item.price * item.qty;
+      total += lineTotal;
+      msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}
+`;
+      if (item.note) {
+        msgText += `     - 說明: ${item.note.replace(/\\n/g, ' ')}
+`;
+      }
+    });
+  });
+
+  msgText += `
+💰 總計小計: $${total}`;
+
+  const costRes = calcOrderCost(cart);
+  if (costRes.canSplit && costRes.savings > 0) {
+    msgText += buildSplitMsgText(costRes);
+  }
+
+  const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
+  const phoneVal = document.getElementById('checkoutPhone').value.trim();
+  
+  if (deliveryNotes) {
+    let finalNote = deliveryNotes;
+    if (!finalNote.includes(phoneVal)) {
+      const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote);
+      const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
+      finalNote += '。' + phoneNote;
+    }
+    msgText += `
+
+📝 外送備註: ${finalNote}`;
+  } else {
+    msgText += `
+
+📝 外送備註: 到了請打電話${phoneVal}`;
+  }
+
+  if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
+  if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
+    liff.login({ redirectUri: window.location.href });
+    return;
+  }
+  if (typeof liff !== 'undefined' && !liff.isInClient()) {
+    alert("請在 LINE APP 內使用以傳送訂單。");
+    console.log(msgText);
+    cart = [];
+    updateCartBadge();
+    goBackToStore();
+    return;
+  }
+
+  try {
+    if (liff.isApiAvailable('shareTargetPicker')) {
+      const res = await liff.shareTargetPicker([
+        {
+          type: "text",
+          text: msgText
+        }
+      ]);
+      if (res) {
+        cart = [];
+        updateCartBadge();
+        goBackToStore();
+      }
+    } else {
+      await liff.sendMessages([
+        {
+          type: "text",
+          text: msgText
+        }
+      ]);
+      cart = [];
+      updateCartBadge();
+      liff.closeWindow();
+    }
+  } catch (err) {
+    alert('傳送失敗: ' + err.message);
+  }
+}
+async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl) {
     currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [], menuItemUuid: menuItemUuid };
     currentQty = 1;
     currentCustomizations = [];
@@ -1593,7 +1782,7 @@
     document.getElementById('errorModalIcon').innerText = isError ? '❌' : '✅';
     document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
     document.getElementById('errorModalTitle').innerText = title;
-    document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\n/g, '<br>');
+    document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\\n/g, '<br>');
     document.getElementById('errorModalExtra').innerHTML = htmlContent;
     document.getElementById('errorModalBtn').style.display = hideBtn ? 'none' : 'block';
     document.getElementById('errorModalOverlay').style.display = 'flex';
