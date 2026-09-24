@@ -144,7 +144,7 @@
         <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
         <datalist id="query-list"></datalist>
         <button class="secondary" onclick="searchStores()">不知道</button>
-        <button onclick="searchStores()">搜尋餐廳</button>
+        <button onclick="searchStores()">尋找食物</button>
       </div>
     </div>
     <div class="section">
@@ -685,7 +685,7 @@
 
   async function searchStores() {
     if (!isAddressSet) {
-        showModal('請先設定外送地址', '在尋找餐廳之前，請務必先輸入並點擊「尋找地址」，以便系統準確計算外送範圍與營業時間！');
+        showModal('請先設定外送地址', '在尋找食物之前，請務必先輸入並點擊「尋找地址」，以便系統準確計算外送範圍與營業時間！');
         return;
     }
     const q = document.getElementById('query').value.trim();
@@ -1224,6 +1224,12 @@ async function sendOrderToLine(forceSubmit = false) {
       Object.keys(binStores).forEach(sName => {
         msgText += `🏪 ${sName}
 `;
+        let u = Object.values(binStores[sName])[0].storeUrl;
+        if (u) {
+            try { u = decodeURI(u); } catch(e) {}
+            msgText += `🔗 網址: ${u}
+`;
+        }
         let i = 1;
         Object.values(binStores[sName]).forEach(it => {
           const lineTotal = it.price * it.qty;
@@ -1277,6 +1283,12 @@ async function sendOrderToLine(forceSubmit = false) {
     Object.keys(storeGroups).forEach(sName => {
       msgText += `🏪 ${sName}
 `;
+      let u = storeGroups[sName][0].storeUrl;
+      if (u) {
+          try { u = decodeURI(u); } catch(e) {}
+          msgText += `🔗 網址: ${u}
+`;
+      }
       storeGroups[sName].forEach((item, i) => {
         const lineTotal = item.price * item.qty;
         total += lineTotal;
