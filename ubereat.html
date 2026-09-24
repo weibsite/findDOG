@@ -94,7 +94,7 @@
     <button id="mainBackBtn" class="back-btn" onclick="handleMainBack()" style="visibility: hidden;">←</button>
       <div class="header-title" id="headerTitleText">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
       <div id="headerSearchBox" style="display:none; flex:1; margin: 0 10px;">
-         <input type="text" id="storeSearchInput" placeholder="搜尋菜單關鍵字..." oninput="handleStoreSearch()" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:20px; outline:none; font-size:15px; box-sizing:border-box;">
+         <input type="text" id="storeSearchInput" placeholder="搜尋菜單關鍵字..." oninput="handleStoreSearch(true)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); triggerListSearch(true); }" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:20px; outline:none; font-size:15px; box-sizing:border-box;">
       </div>
       <div style="display:flex; align-items:center; gap:5px;">
         <button id="storeSearchBtn" style="background:transparent; border:none; font-size:20px; cursor:pointer; display:none; padding:5px;" onclick="toggleStoreSearch()">🔍</button>
@@ -795,6 +795,7 @@ let isAddressSet = false;
       return;
     }
     const q = document.getElementById('query').value.trim();
+    window.lastListSearchKeyword = q;
     
     if (q) {
       saveSimpleHistory('query');
@@ -902,18 +903,38 @@ function toggleStoreSearch() {
   }
 }
 
+function triggerListSearch(force = false) {
+    if (currentView !== 'list') return;
+    clearTimeout(window.listSearchDebounceTimer);
+    
+    const input = document.getElementById('storeSearchInput');
+    const keyword = input.value.trim();
+    
+    if (keyword === window.lastListSearchKeyword) {
+        if (force) input.blur();
+        return;
+    }
+    
+    window.lastListSearchKeyword = keyword;
+    document.getElementById('query').value = keyword;
+    
+    if (force) {
+        input.blur();
+    }
+    
+    searchStores();
+}
+
 function executeHeaderSearch() {
     if (currentView === 'list') {
-        const keyword = document.getElementById('storeSearchInput').value.trim();
-        document.getElementById('query').value = keyword;
+        triggerListSearch(true);
         toggleStoreSearch();
-        searchStores();
     } else if (currentView === 'store') {
         document.getElementById('storeSearchInput').blur();
     }
 }
 
-function handleStoreSearch() {
+function handleStoreSearch(isUserInput = false) {
   const keyword = document.getElementById('storeSearchInput').value.trim().toLowerCase();
   
   if (currentView === 'list') {
@@ -926,6 +947,13 @@ function handleStoreSearch() {
               card.style.display = 'none';
           }
       });
+      
+      if (isUserInput) {
+          clearTimeout(window.listSearchDebounceTimer);
+          window.listSearchDebounceTimer = setTimeout(() => {
+              triggerListSearch(false);
+          }, 1200);
+      }
       return;
   }
   
