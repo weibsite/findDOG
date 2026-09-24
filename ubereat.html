@@ -231,7 +231,30 @@
   const host = window.location.hostname || '127.0.0.1';
   WS_URL = `${protocol}//${host}:8000/ws`;
   
-  let isAddressSet = false;
+  // 設備檢測機制 (判斷是手機還是電腦)
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+const isDesktopDevice = !isMobileDevice;
+
+function copyToClipboardFallback(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+    } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch(e){}
+        document.body.removeChild(ta);
+    }
+    if (btn) {
+        btn.innerText = '已複製！請貼上至官方帳號';
+        btn.style.background = '#06c167';
+        btn.style.color = '#fff';
+    }
+}
+
+let isAddressSet = false;
   let currentLat = null;
   let currentLng = null;
   let currentAddrTitle = '';
@@ -569,6 +592,20 @@
 
     if (q.startsWith('📍 ')) q = q.substring(3).trim();
     if (!q) { updateAddrTitleState('default'); return; }
+
+    // 前端地址格式基礎檢查：必須包含「X號」或最後以數字結尾
+    const hasHouseNum = /\d+\s*號/.test(q) || /\d+$/.test(q);
+    if (!hasHouseNum) {
+        document.getElementById('addrStatus').innerText = '請輸入包含「門牌號碼」的完整地址 (例: 臺北市中正區重慶南路一段122號 或 臺北市信義區信義路五段7)';
+        updateAddrTitleState('error');
+        document.getElementById('addrResults').innerHTML = '';
+        
+        const btn = document.getElementById('searchAddrBtn');
+        const btn2 = document.getElementById('searchStoresBtn');
+        btn.disabled = false;
+        if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
+        return;
+    }
 
 
     
@@ -1399,20 +1436,14 @@ if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPro
     liff.login({ redirectUri: window.location.href });
     return;
   }
-  if (typeof liff !== 'undefined' && !liff.isInClient()) {
-    alert("請在 LINE APP 內使用以傳送訂單。");
-    console.log(msgText);
-    cart = [];
-    updateCartBadge();
-    goBackToStore();
+  if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
+    const copyBtnHtml = `<div style="margin-top:20px;"><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:12px; background:#eee; color:#111; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">請按此按鈕複製訂單訊息</button></div>`;
+    showModal('偵測到非手機登入', '無法自動為您送出訂單', true, copyBtnHtml, false);
+    
     return;
-  }
+}
 
-  try {
-    if (!liff.isInClient()) {
-      showModal('無法發送', '請在 LINE APP 中開啟此頁面以發送訂單。', true);
-      return;
-    }
+try {
     await liff.sendMessages([
       {
         type: "text",
