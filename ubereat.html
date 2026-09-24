@@ -758,9 +758,12 @@ let isAddressSet = false;
                   clearInterval(checkInterval);
                   document.getElementById('errorModalOverlay').style.display = 'none';
                   searchStores();
-              } else if (resultsHtml !== '' || statusText.includes('找不到') || statusText.includes('請選擇') || statusText.includes('錯誤')) {
+              } else if (resultsHtml !== '' || (statusText !== '' && statusText !== '尋找中...')) {
                   clearInterval(checkInterval);
                   document.getElementById('errorModalOverlay').style.display = 'none';
+                  if (statusText !== '' && statusText !== '尋找中...' && !statusText.includes('請選擇')) {
+                      showModal('地址無效', statusText, true);
+                  }
               } else if (attempts > 30) {
                   clearInterval(checkInterval);
                   document.getElementById('errorModalOverlay').style.display = 'none';
