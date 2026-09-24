@@ -903,39 +903,63 @@ function handleStoreSearch() {
   let html = '<div class="menu-grid">';
   let found = 0;
   
-  if (d.sections) {
-    d.sections.forEach(sec => {
-      if (!sec.subsections) return;
-      sec.subsections.forEach(subsec => {
-        if (!subsec.items) return;
-        subsec.items.forEach(item => {
-          const itemTitle = parseText(item.title) || '';
-          const itemDesc = parseText(item.itemDescription) || '';
-          if (itemTitle.toLowerCase().includes(keyword) || itemDesc.toLowerCase().includes(keyword)) {
-             found++;
-             const priceVal = item.price ? item.price / 100 : 0;
-             const priceStr = priceVal > 0 ? '$' + priceVal : '';
-             const priceHtml = (item.isSoldOut ? '<span style="color:#d32f2f;">已售完</span>' : priceStr);
-             const imgUrl = item.imageUrl || '';
-             
-             let itemHtml = '<div class="menu-item" style="position: relative;" onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + sec.uuid + '\', \'' + subsec.uuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')">';
-             itemHtml += '<div class="menu-item-info">';
-             itemHtml += '<div class="menu-item-title">' + escapeHTML(itemTitle) + '</div>';
-             itemHtml += '<div class="menu-item-desc">' + escapeHTML(itemDesc) + '</div>';
-             itemHtml += '<div class="menu-item-price">' + priceHtml + '</div>';
-             itemHtml += '</div>';
-             
-             if (imgUrl) {
-               itemHtml += '<div class="menu-item-img" style="background-image: url(\'' + imgUrl + '\')"></div>';
-             }
-             
-             itemHtml += '<div class="item-action-area" id="action-' + item.uuid + '" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">';
-             itemHtml += '<div class="quick-add-btn" onclick="handleQuickAdd(event, \'' + storeUuid + '\', \'' + sec.uuid + '\', \'' + subsec.uuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>';
-             itemHtml += '</div></div>';
-             
-             html += itemHtml;
-          }
-        });
+  if (d.catalogSectionsMap) {
+    Object.keys(d.catalogSectionsMap).forEach(key => {
+      const sectionArr = d.catalogSectionsMap[key];
+      sectionArr.forEach(section => {
+        const secUuid = key;
+        const subsecUuid = section.catalogSectionUUID || '';
+        if (section.payload && section.payload.standardItemsPayload) {
+          const items = section.payload.standardItemsPayload.catalogItems || [];
+          items.forEach(item => {
+            const itemTitle = (typeof filterTrailingEnglish === 'function') ? filterTrailingEnglish(parseText(item.title)) : parseText(item.title) || '';
+            const itemDesc = (typeof filterTrailingEnglish === 'function') ? filterTrailingEnglish(parseText(item.itemDescription)) : parseText(item.itemDescription) || '';
+            
+            if (itemTitle.toLowerCase().includes(keyword) || itemDesc.toLowerCase().includes(keyword)) {
+                const priceVal = item.price > 0 ? Math.round(item.price / 100) : 0;
+                let priceHtml = priceVal > 0 ? '$' + priceVal : '';
+                if (item.priceTagline && item.priceTagline.textFormat) {
+                  priceHtml = item.priceTagline.textFormat;
+                }
+                if (item.isSoldOut) priceHtml = '<span style="color:#d32f2f;">已售完</span>';
+                
+                const imgUrl = item.imageUrl || '';
+                
+                let isPromo = false;
+                try {
+                  if (item.promoInfo && item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
+                    const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
+                    if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
+                      const txt = elements[0].text.text.text;
+                      if (txt.includes('買 1 送 1') || txt.includes('免費商品')) {
+                         isPromo = true;
+                      }
+                    }
+                  }
+                } catch(e) {}
+                
+                if (!isPromo) {
+                  found++;
+                  let itemHtml = '<div class="menu-item" style="position: relative;" onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')">';
+                  itemHtml += '<div class="menu-item-info">';
+                  itemHtml += '<div class="menu-item-title">' + escapeHTML(itemTitle) + '</div>';
+                  itemHtml += '<div class="menu-item-desc">' + escapeHTML(itemDesc) + '</div>';
+                  itemHtml += '<div class="menu-item-price">' + priceHtml + '</div>';
+                  itemHtml += '</div>';
+                  
+                  if (imgUrl) {
+                    itemHtml += '<div class="menu-item-img" style="background-image: url(\'' + imgUrl + '\')"></div>';
+                  }
+                  
+                  itemHtml += '<div class="item-action-area" id="action-' + item.uuid + '" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">';
+                  itemHtml += '<div class="quick-add-btn" onclick="handleQuickAdd(event, \'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>';
+                  itemHtml += '</div></div>';
+                  
+                  html += itemHtml;
+                }
+            }
+          });
+        }
       });
     });
   }
