@@ -803,6 +803,7 @@ let isAddressSet = false;
     // 切換到 ListView
     currentView = 'list';
     document.getElementById('mainBackBtn').style.visibility = 'visible';
+    document.getElementById('storeSearchBtn').style.display = 'block';
     document.getElementById('homeView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('listView').style.display = 'block';
@@ -849,6 +850,7 @@ let isAddressSet = false;
   
 
 
+
 function toggleStoreSearch() {
   const title = document.getElementById('headerTitleText');
   const box = document.getElementById('headerSearchBox');
@@ -862,33 +864,71 @@ function toggleStoreSearch() {
   if (box.style.display === 'none') {
     title.style.display = 'none';
     box.style.display = 'block';
-    overlay.style.display = 'block';
     
-    // Switch main back btn action
+    if (currentView === 'store') {
+        input.placeholder = "搜尋菜單關鍵字...";
+        overlay.style.display = 'block';
+    } else if (currentView === 'list') {
+        input.placeholder = "過濾或搜尋餐廳...";
+        overlay.style.display = 'none';
+    }
+    
     mainBackBtn.setAttribute('onclick', 'toggleStoreSearch()');
     mainBackBtn.style.visibility = 'visible';
     
-    // Switch search btn action
-    searchBtn.setAttribute('onclick', 'handleStoreSearch()');
+    searchBtn.setAttribute('onclick', 'executeHeaderSearch()');
     
     input.value = '';
     results.innerHTML = '';
+    
+    if (currentView === 'list') {
+        handleStoreSearch();
+    }
     input.focus();
   } else {
     title.style.display = 'block';
     box.style.display = 'none';
     overlay.style.display = 'none';
     
-    // Restore main back btn action
     mainBackBtn.setAttribute('onclick', 'handleMainBack()');
+    if (currentView === 'home') mainBackBtn.style.visibility = 'hidden';
     
-    // Restore search btn action
     searchBtn.setAttribute('onclick', 'toggleStoreSearch()');
+    
+    if (currentView === 'list') {
+        input.value = '';
+        handleStoreSearch();
+    }
   }
+}
+
+function executeHeaderSearch() {
+    if (currentView === 'list') {
+        const keyword = document.getElementById('storeSearchInput').value.trim();
+        document.getElementById('query').value = keyword;
+        toggleStoreSearch();
+        searchStores();
+    } else if (currentView === 'store') {
+        document.getElementById('storeSearchInput').blur();
+    }
 }
 
 function handleStoreSearch() {
   const keyword = document.getElementById('storeSearchInput').value.trim().toLowerCase();
+  
+  if (currentView === 'list') {
+      const cards = document.querySelectorAll('#results .card');
+      cards.forEach(card => {
+          const name = card.querySelector('.card-name') ? card.querySelector('.card-name').innerText.toLowerCase() : '';
+          if (name.includes(keyword)) {
+              card.style.display = '';
+          } else {
+              card.style.display = 'none';
+          }
+      });
+      return;
+  }
+  
   const results = document.getElementById('storeSearchResults');
   
   if (!keyword) {
@@ -966,8 +1006,9 @@ function handleStoreSearch() {
   html += '</div>';
   if(found === 0) html = '<div style="text-align:center; padding:30px; color:#666;">找不到符合「' + escapeHTML(keyword) + '」的餐點</div>';
   results.innerHTML = html;
-  updateMenuActions(); // Initialize +/- buttons for search results
+  updateMenuActions();
 }
+
 
 
 // ==== 購物車與餐廳菜單功能 ====
@@ -1248,7 +1289,7 @@ function goBackToStore() {
     document.getElementById('storeView').style.display = 'block';
   } else {
     document.getElementById('homeView').style.display = 'block';
-  document.getElementById('storeSearchBtn').style.display = 'none';
+  if(currentView === 'list' || currentView === 'store') document.getElementById('storeSearchBtn').style.display = 'block'; else document.getElementById('storeSearchBtn').style.display = 'none';
   if(document.getElementById('headerSearchBox').style.display === 'block') toggleStoreSearch();
   }
 }
@@ -1945,6 +1986,7 @@ const note = document.getElementById('modalNote').value.trim();
   function goHome() {
     currentView = 'home';
     document.getElementById('mainBackBtn').style.visibility = 'hidden';
+    document.getElementById('storeSearchBtn').style.display = 'none';
     document.getElementById('listView').style.display = 'none';
     document.getElementById('storeView').style.display = 'none';
     document.getElementById('homeView').style.display = 'block';
@@ -1974,6 +2016,9 @@ const note = document.getElementById('modalNote').value.trim();
   }
 
   async function openStore(uuid, storeName, actionUrl = '') {
+    if(document.getElementById('headerSearchBox') && document.getElementById('headerSearchBox').style.display === 'block') {
+        toggleStoreSearch();
+    }
       if(storeName) currentStoreName = storeName;
     if(actionUrl) currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=DELIVERY';
       currentStoreUuid = uuid;
