@@ -1435,11 +1435,18 @@ async function sendOrderToLine(forceSubmit = false) {
   }
 
 if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
-  if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
+  if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
+    const copyBtnHtml = `<div style="margin-top:20px;"><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:12px; background:#eee; color:#111; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">請按此按鈕複製訂單訊息</button></div>`;
+    showModal('偵測到非手機登入', '無法自動為您送出訂單', true, copyBtnHtml, false);
+    return;
+}
+
+if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
     liff.login({ redirectUri: window.location.href });
     return;
-  }
-  if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
+}
+
+if (false) {
     const copyBtnHtml = `<div style="margin-top:20px;"><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:12px; background:#eee; color:#111; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">請按此按鈕複製訂單訊息</button></div>`;
     showModal('偵測到非手機登入', '無法自動為您送出訂單', true, copyBtnHtml, false);
     
