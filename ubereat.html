@@ -1436,8 +1436,8 @@ async function sendOrderToLine(forceSubmit = false) {
 
 if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
   if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
-    const copyBtnHtml = `<div style="margin-top:20px;"><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:12px; background:#eee; color:#111; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">請按此按鈕複製訂單訊息</button></div>`;
-    showModal('偵測到非手機登入', '無法自動為您送出訂單', true, copyBtnHtml, false);
+    const copyBtnHtml = `<div style="text-align:center; font-size:16px; color:#555; margin-bottom: 20px;">無法自動為您送出訂單</div><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:14px; background:#06c167; color:#fff; border:none; border-radius:12px; font-weight:bold; font-size:16px; cursor:pointer;">請按此複製訂單訊息</button>`;
+    showModal('偵測到非手機登入', '', true, copyBtnHtml, true);
     return;
 }
 
@@ -1656,9 +1656,11 @@ function recalcCustomizations() {
                 const title = radio ? radio.getAttribute('data-title') : qtySpan.getAttribute('data-title');
                 
                 extraPrice += (price * qty);
-                for (let i = 0; i < qty; i++) {
-                    currentItem.selectedOptions.push(title);
-                }
+if (qty > 1) {
+currentItem.selectedOptions.push(`${title} x${qty}`);
+} else {
+currentItem.selectedOptions.push(title);
+}
                 
                 const childrenDiv = row.querySelector(':scope > div[id^="children_"]');
                 if (childrenDiv && childrenDiv.style.display !== 'none') {
