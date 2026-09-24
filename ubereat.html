@@ -411,7 +411,7 @@ let isAddressSet = false;
           const ampm = hour >= 12 ? '下午' : '上午';
           const h12 = hour % 12 || 12;
           const mm = min.toString().padStart(2, '0');
-          return `${ampm} ${h12}:${mm}`;
+          return `${getTimeEmoji(hour)} ${ampm} ${h12}:${mm}`;
         };
 
         const tStart = formatTime(h, m);
@@ -1892,7 +1892,7 @@ const note = document.getElementById('modalNote').value.trim();
                             const m = String(dt.getMinutes()).padStart(2, '0');
                             const ampm = h >= 12 ? '下午' : '上午';
                             const h12 = h % 12 || 12;
-                            return `${ampm} ${h12}:${m}`;
+                            return `${getTimeEmoji(h)} ${ampm} ${h12}:${m}`;
                         };
                         
                         const dayStr = (sd.getDate() === new Date().getDate()) ? '今天' : `${sd.getMonth()+1}/${sd.getDate()}`;
@@ -2104,7 +2104,7 @@ const note = document.getElementById('modalNote').value.trim();
         const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
         const h12 = targetDate.getHours() % 12 || 12;
         const mm = String(targetDate.getMinutes()).padStart(2, '0');
-        opt.text = `自訂: ${ampm} ${h12}:${mm}`;
+        opt.text = `自訂: ${getTimeEmoji(targetDate.getHours())} ${ampm} ${h12}:${mm}`;
         timeSelect.appendChild(opt);
         timeSelect.selectedIndex = timeSelect.options.length - 1;
     }
@@ -2113,7 +2113,13 @@ const note = document.getElementById('modalNote').value.trim();
     openStore(storeUuid);
   }
 
-  function escapeHTML(str) {
+  function getTimeEmoji(hour) {
+    if (hour >= 6 && hour < 12) return '🌅'; // 06:00 ~ 11:59
+    if (hour >= 12 && hour < 17) return '☀️'; // 12:00 ~ 16:59
+    if (hour >= 17 && hour < 23) return '🌙'; // 17:00 ~ 22:59
+    return '💤'; // 23:00 ~ 05:59
+}
+function escapeHTML(str) {
     return String(str).replace(/[&<>'"]/g, 
       tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
