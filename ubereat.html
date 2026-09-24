@@ -376,8 +376,32 @@ let isAddressSet = false;
     const daysStr = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
     const dateBtns = document.getElementById('dateButtons');
     dateBtns.innerHTML = '';
+    datesData = [];
+    
+    let now = new Date();
+    let startHourTest = now.getHours() + 1;
+    let startMinTest = Math.ceil(now.getMinutes() / 15) * 15;
+    if (startMinTest >= 60) {
+      startHourTest++;
+      startMinTest = 0;
+    }
+    
+    let hasTodaySlots = false;
+    for (let h = startHourTest; h < 24; h++) {
+      for (let m = (h === startHourTest ? startMinTest : 0); m < 60; m += 15) {
+        let endH = h;
+        let endM = m + 30;
+        if (endM >= 60) { endH++; endM -= 60; }
+        if (endH >= 24) continue;
+        hasTodaySlots = true;
+        break;
+      }
+      if (hasTodaySlots) break;
+    }
 
-    for (let i = 0; i < 7; i++) {
+    let startIndex = hasTodaySlots ? 0 : 1;
+    
+    for (let i = startIndex; i < startIndex + 7; i++) {
       let d = new Date(today);
       d.setDate(today.getDate() + i);
       
@@ -387,25 +411,29 @@ let isAddressSet = false;
       if (i === 1) dayName = '明天';
 
       datesData.push(d);
+      let arrIndex = datesData.length - 1;
       
       const btn = document.createElement('button');
       btn.innerHTML = `<div style="font-size:12px; color:#666;">${dayName}</div><div style="font-size:14px; font-weight:bold;">${label}</div>`;
-      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${i === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
-      btn.onclick = () => selectDate(i);
-      btn.id = `dateBtn_${i}`;
+      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${arrIndex === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
+      btn.onclick = () => selectDate(arrIndex);
+      btn.id = `dateBtn_${arrIndex}`;
       dateBtns.appendChild(btn);
     }
+    selectedDateIndex = 0;
     generateTimeSlots();
   }
 
   function selectDate(idx) {
     selectedDateIndex = idx;
-    for (let i = 0; i < 7; i++) {
-      const btn = document.getElementById(`dateBtn_${i}`);
-      if (i === idx) {
-        btn.style.borderColor = '#000';
-      } else {
-        btn.style.borderColor = '#eee';
+    for (let j = 0; j < datesData.length; j++) {
+      const btn = document.getElementById(`dateBtn_${j}`);
+      if (btn) {
+        if (j === idx) {
+          btn.style.borderColor = '#000';
+        } else {
+          btn.style.borderColor = '#eee';
+        }
       }
     }
     generateTimeSlots();
@@ -417,12 +445,13 @@ let isAddressSet = false;
     
     const targetDate = datesData[selectedDateIndex];
     const now = new Date();
+    const isToday = targetDate.getDate() === now.getDate() && targetDate.getMonth() === now.getMonth() && targetDate.getFullYear() === now.getFullYear();
     
     let startHour = 0;
     let startMin = 0;
     
     // 如果是今天，從現在的下一個小時開始
-    if (selectedDateIndex === 0) {
+    if (isToday) {
       startHour = now.getHours() + 1;
       startMin = Math.ceil(now.getMinutes() / 15) * 15;
       if (startMin >= 60) {
@@ -466,7 +495,7 @@ let isAddressSet = false;
               const endH12 = endH % 12 || 12;
               const startMM = m.toString().padStart(2, '0');
               const endMM = endM.toString().padStart(2, '0');
-              const datePrefix = selectedDateIndex === 0 ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
+              const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
               if (startAmpm === endAmpm) {
                 opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
               } else {
