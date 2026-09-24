@@ -848,6 +848,7 @@ let isAddressSet = false;
 
   
 
+
 function toggleStoreSearch() {
   const title = document.getElementById('headerTitleText');
   const box = document.getElementById('headerSearchBox');
@@ -855,10 +856,21 @@ function toggleStoreSearch() {
   const input = document.getElementById('storeSearchInput');
   const results = document.getElementById('storeSearchResults');
   
+  const mainBackBtn = document.getElementById('mainBackBtn');
+  const searchBtn = document.getElementById('storeSearchBtn');
+  
   if (box.style.display === 'none') {
     title.style.display = 'none';
     box.style.display = 'block';
     overlay.style.display = 'block';
+    
+    // Switch main back btn action
+    mainBackBtn.setAttribute('onclick', 'toggleStoreSearch()');
+    mainBackBtn.style.visibility = 'visible';
+    
+    // Switch search btn action
+    searchBtn.setAttribute('onclick', 'handleStoreSearch()');
+    
     input.value = '';
     results.innerHTML = '';
     input.focus();
@@ -866,6 +878,12 @@ function toggleStoreSearch() {
     title.style.display = 'block';
     box.style.display = 'none';
     overlay.style.display = 'none';
+    
+    // Restore main back btn action
+    mainBackBtn.setAttribute('onclick', 'handleMainBack()');
+    
+    // Restore search btn action
+    searchBtn.setAttribute('onclick', 'toggleStoreSearch()');
   }
 }
 
@@ -891,8 +909,8 @@ function handleStoreSearch() {
       sec.subsections.forEach(subsec => {
         if (!subsec.items) return;
         subsec.items.forEach(item => {
-          const itemTitle = item.title || '';
-          const itemDesc = item.itemDescription || '';
+          const itemTitle = parseText(item.title) || '';
+          const itemDesc = parseText(item.itemDescription) || '';
           if (itemTitle.toLowerCase().includes(keyword) || itemDesc.toLowerCase().includes(keyword)) {
              found++;
              const priceVal = item.price ? item.price / 100 : 0;
@@ -926,6 +944,7 @@ function handleStoreSearch() {
   results.innerHTML = html;
   updateMenuActions(); // Initialize +/- buttons for search results
 }
+
 
 // ==== 購物車與餐廳菜單功能 ====
   let cart = [];
