@@ -131,8 +131,15 @@
     </div>
     
     <div class="section">
-      <div class="section-title">4. 外送備註</div>
+      <div class="section-title" style="display:flex; align-items:center;">
+        4. 外送備註
+        <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
+      </div>
       <div class="input-row">
+        <select id="deliveryMethod" style="flex:0 0 auto; padding:14px 10px; border-radius:8px; border:1px solid #ccc; font-size:15px; background:#fff; outline:none; cursor:pointer;">
+          <option value="當面點交">當面點交</option>
+          <option value="放在門口">放在門口</option>
+        </select>
         <input type="text" id="deliveryNotes" placeholder="例如：放在管理室、到了打電話..." list="delivery-notes-list" onchange="saveSimpleHistory('deliveryNotes')" />
         <datalist id="delivery-notes-list"></datalist>
       </div>
@@ -1129,6 +1136,7 @@ function openCheckoutSummary() {
   
   const savedPhone = localStorage.getItem('userPhone') || '';
   const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
+  const selectedMethod = document.getElementById('deliveryMethod') ? document.getElementById('deliveryMethod').value : '當面點交';
   const oldFoodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
   
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
@@ -1145,8 +1153,18 @@ function openCheckoutSummary() {
   let html = `
     <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="margin-bottom:12px;"><strong>外送地址:</strong> ${escapeHTML(addr) || '未設定'}</div>
-      <div style="margin-bottom:12px;"><strong>外送員備註:</strong> 
-        <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="放門口、外送桌..." style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; align-items:center; margin-bottom:5px;">
+          <strong>外送方式與備註:</strong>
+          <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+            <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
+            <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
+          </select>
+          <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
       </div>
       <div style="margin-bottom:12px;"><strong>電話:</strong> 
         <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone('checkout')">
@@ -1418,22 +1436,19 @@ async function sendOrderToLine(forceSubmit = false) {
 
   const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
   const phoneVal = document.getElementById('checkoutPhone').value.trim();
+  const selectedMethod = document.getElementById('checkoutDeliveryMethod') ? document.getElementById('checkoutDeliveryMethod').value : '當面點交';
   
-  if (deliveryNotes) {
-    let finalNote = deliveryNotes;
-    if (!finalNote.includes(phoneVal)) {
-      const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote);
-      const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
-      finalNote += '。' + phoneNote;
-    }
-    msgText += `
-
-📝 外送備註: ${finalNote}`;
-  } else {
-    msgText += `
-
-📝 外送備註: 到了請打電話${phoneVal}`;
+  let finalNote = deliveryNotes;
+  if (phoneVal && !finalNote.includes(phoneVal)) {
+    const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethod === '放在門口';
+    const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
+    finalNote = finalNote ? (finalNote + '。' + phoneNote) : phoneNote;
   }
+  
+  finalNote = `[${selectedMethod}]` + (finalNote ? ' ' + finalNote : '');
+  
+  msgText += `\n\n📝 外送備註: ${finalNote}`;
+  
 
 if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
   if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
