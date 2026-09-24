@@ -109,8 +109,6 @@
 
     <script>
         
-        let lastSuccessTime = Date.now(); // 初始給予 15 秒寬限期
-        
         function setStatus(type, text) {
             const container = document.getElementById('status-container');
             const badge = document.getElementById('status-text');
@@ -151,33 +149,28 @@
                 const lineUrl = configData.line_url;
                 if (!lineUrl) return;
 
-                const response = await fetch(lineUrl + '/api/status');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超時設定
+                
+                const response = await fetch(lineUrl + '/api/status', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 if (!response.ok) throw new Error('API Error');
                 
                 const data = await response.json();
                 
-                // 如果成功，更新最後成功時間，並設定狀態
-                lastSuccessTime = Date.now();
+                // 如果成功，設定狀態
                 setStatus(data.type, data.text);
             } catch (err) {
                 console.error("連線異常", err);
-                // 錯誤時不直接改變狀態，交由下方的計時器判定是否已經斷線超過 15 秒
+                // 錯誤時直接改為斷線狀態
+                setStatus('offline', '斷線中');
             }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
             setStatus('connecting', '連線中');
             loadStatus();
-            
-            // 每 5 秒嘗試連線一次
-            setInterval(loadStatus, 5000);
-            
-            // 每 1 秒檢查是否超過 15 秒未成功連線
-            setInterval(() => {
-                if (Date.now() - lastSuccessTime >= 15000) {
-                    setStatus('offline', '斷線中');
-                }
-            }, 1000);
         });
 </script>
 </body>
