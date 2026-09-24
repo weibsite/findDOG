@@ -634,6 +634,18 @@ let isAddressSet = false;
     }
     if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
     };
+    // 前端防呆：如果字串是以「路、街、巷、弄、段」結尾，代表 100% 沒有門牌號碼
+    if (/[\u8def\u8857\u5df7\u5f04\u6bb5]$/.test(q)) {
+        document.getElementById('addrStatus').innerText = '請輸入包含「門牌號碼」的完整地址，不能僅輸入到路名';
+        updateAddrTitleState('error');
+        document.getElementById('addrResults').innerHTML = '';
+        const btn = document.getElementById('searchAddrBtn');
+        const btn2 = document.getElementById('searchStoresBtn');
+        btn.disabled = false;
+        if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
+        return;
+    }
+
     
     try {
       // 先使用 Nominatim 進行「模糊地址」過濾（防止只輸入台北市、南屯區）
