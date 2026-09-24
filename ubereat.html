@@ -87,8 +87,14 @@
   
   <div class="app-header">
     <button id="mainBackBtn" class="back-btn" onclick="handleMainBack()" style="visibility: hidden;">←</button>
-      <div class="header-title">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
-      <button class="cart-btn" onclick="viewCart()">🛒<span id="headerCartBadge" class="cart-badge">0</span></button>
+      <div class="header-title" id="headerTitleText">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+      <div id="headerSearchBox" style="display:none; flex:1; margin: 0 10px;">
+         <input type="text" id="storeSearchInput" placeholder="搜尋菜單關鍵字..." oninput="handleStoreSearch()" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:20px; outline:none; font-size:15px; box-sizing:border-box;">
+      </div>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <button id="storeSearchBtn" style="background:transparent; border:none; font-size:20px; cursor:pointer; display:none; padding:5px;" onclick="toggleStoreSearch()">🔍</button>
+        <button class="cart-btn" onclick="viewCart()">🛒<span id="headerCartBadge" class="cart-badge">0</span></button>
+      </div>
   </div>
 
   <!-- 首頁 -->
@@ -96,7 +102,7 @@
   <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s;">
       <div class="section-title">1. 外送地址設定</div>
       <div class="input-row">
-        <button class="secondary" onclick="getCurrentLocation()" style="padding: 0 14px; font-size: 20px;" title="取得目前定位">🎯</button>
+        <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px; font-size: 22px; cursor: pointer; color: inherit;" title="取得目前定位">📌</button>
         <input type="text" id="addrInput"  placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
         <datalist id="addr-list"></datalist>
         <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
@@ -835,7 +841,88 @@ let isAddressSet = false;
     } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
   }
 
-  // ==== 購物車與餐廳菜單功能 ====
+  
+
+function toggleStoreSearch() {
+  const title = document.getElementById('headerTitleText');
+  const box = document.getElementById('headerSearchBox');
+  const overlay = document.getElementById('storeSearchOverlay');
+  const input = document.getElementById('storeSearchInput');
+  const results = document.getElementById('storeSearchResults');
+  
+  if (box.style.display === 'none') {
+    title.style.display = 'none';
+    box.style.display = 'block';
+    overlay.style.display = 'block';
+    input.value = '';
+    results.innerHTML = '';
+    input.focus();
+  } else {
+    title.style.display = 'block';
+    box.style.display = 'none';
+    overlay.style.display = 'none';
+  }
+}
+
+function handleStoreSearch() {
+  const keyword = document.getElementById('storeSearchInput').value.trim().toLowerCase();
+  const results = document.getElementById('storeSearchResults');
+  
+  if (!keyword) {
+    results.innerHTML = '';
+    return;
+  }
+  
+  if (!window.currentStoreRawData) return;
+  const d = window.currentStoreRawData;
+  const storeUuid = d.uuid;
+  
+  let html = '<div class="menu-grid">';
+  let found = 0;
+  
+  if (d.sections) {
+    d.sections.forEach(sec => {
+      if (!sec.subsections) return;
+      sec.subsections.forEach(subsec => {
+        if (!subsec.items) return;
+        subsec.items.forEach(item => {
+          const itemTitle = item.title || '';
+          const itemDesc = item.itemDescription || '';
+          if (itemTitle.toLowerCase().includes(keyword) || itemDesc.toLowerCase().includes(keyword)) {
+             found++;
+             const priceVal = item.price ? item.price / 100 : 0;
+             const priceStr = priceVal > 0 ? '$' + priceVal : '';
+             const priceHtml = (item.isSoldOut ? '<span style="color:#d32f2f;">已售完</span>' : priceStr);
+             const imgUrl = item.imageUrl || '';
+             
+             let itemHtml = '<div class="menu-item" style="position: relative;" onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + sec.uuid + '\', \'' + subsec.uuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')">';
+             itemHtml += '<div class="menu-item-info">';
+             itemHtml += '<div class="menu-item-title">' + escapeHTML(itemTitle) + '</div>';
+             itemHtml += '<div class="menu-item-desc">' + escapeHTML(itemDesc) + '</div>';
+             itemHtml += '<div class="menu-item-price">' + priceHtml + '</div>';
+             itemHtml += '</div>';
+             
+             if (imgUrl) {
+               itemHtml += '<div class="menu-item-img" style="background-image: url(\'' + imgUrl + '\')"></div>';
+             }
+             
+             itemHtml += '<div class="item-action-area" id="action-' + item.uuid + '" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">';
+             itemHtml += '<div class="quick-add-btn" onclick="handleQuickAdd(event, \'' + storeUuid + '\', \'' + sec.uuid + '\', \'' + subsec.uuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>';
+             itemHtml += '</div></div>';
+             
+             html += itemHtml;
+          }
+        });
+      });
+    });
+  }
+  html += '</div>';
+  if(found === 0) html = '<div style="text-align:center; padding:30px; color:#666;">找不到符合「' + escapeHTML(keyword) + '」的餐點</div>';
+  results.innerHTML = html;
+  updateMenuActions(); // Initialize +/- buttons for search results
+}
+
+// ==== 購物車與餐廳菜單功能 ====
   let cart = [];
 let originalAppHeaderHtml = "";
   try {
