@@ -434,10 +434,11 @@ let isAddressSet = false;
               const endH12 = endH % 12 || 12;
               const startMM = m.toString().padStart(2, '0');
               const endMM = endM.toString().padStart(2, '0');
+              const datePrefix = selectedDateIndex === 0 ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
               if (startAmpm === endAmpm) {
-                opt.innerText = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
+                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
               } else {
-                opt.innerText = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
+                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
               }
         timeSelect.appendChild(opt);
       }
@@ -2104,7 +2105,9 @@ const note = document.getElementById('modalNote').value.trim();
         const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
         const h12 = targetDate.getHours() % 12 || 12;
         const mm = String(targetDate.getMinutes()).padStart(2, '0');
-        opt.text = `自訂: ${getTimeEmoji(targetDate.getHours())} ${ampm} ${h12}:${mm}`;
+        const isToday = targetDate.getDate() === new Date().getDate() && targetDate.getMonth() === new Date().getMonth();
+        const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
+        opt.text = `自訂: ${datePrefix}${getTimeEmoji(targetDate.getHours())} ${ampm} ${h12}:${mm}`;
         timeSelect.appendChild(opt);
         timeSelect.selectedIndex = timeSelect.options.length - 1;
     }
