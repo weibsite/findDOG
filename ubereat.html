@@ -79,6 +79,20 @@
 
   /* Floating Cart Button */
   .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
+  /* Floating Cart Button */
+  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
+  
+  /* Beverage Shop Mode */
+  .store-layout-2col { display: flex; gap: 12px; align-items: flex-start; }
+  .store-sidebar { width: 85px; flex-shrink: 0; position: sticky; top: 75px; height: calc(100vh - 90px); overflow-y: auto; background: #f9f9f9; border-radius: 8px; scrollbar-width: none; }
+  .store-sidebar::-webkit-scrollbar { display: none; }
+  .store-sidebar-item { padding: 15px 8px; font-size: 13px; color: #666; cursor: pointer; text-align: center; border-left: 3px solid transparent; transition: all 0.2s; }
+  .store-sidebar-item.active { background: #fff; color: #111; font-weight: bold; border-left: 3px solid #06c167; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  .store-main-list { flex: 1; min-width: 0; }
+  .store-top-nav { display: flex; overflow-x: auto; gap: 8px; padding: 5px 0 15px 0; margin-bottom: 10px; border-bottom: 1px solid #eee; scrollbar-width: none; }
+  .store-top-nav::-webkit-scrollbar { display: none; }
+  .store-top-nav button { white-space: nowrap; padding: 6px 14px; background: #f0f0f0; border: none; border-radius: 20px; font-size: 14px; font-weight: bold; color: #333; cursor: pointer; }
+  .store-top-nav button:active { background: #e0e0e0; }
 </style>
 </head>
 <body>
@@ -2186,7 +2200,43 @@ const note = document.getElementById('modalNote').value.trim();
       document.getElementById('storeView').style.display = 'block';
       
       
-        let html = `
+
+      let allItemTitles = [];
+      let drinkCounts = { '紅茶': 0, '奶茶': 0, '綠茶': 0, '奶綠': 0, '烏': 0 };
+      if (d.catalogSectionsMap) {
+        Object.keys(d.catalogSectionsMap).forEach(key => {
+          d.catalogSectionsMap[key].forEach(section => {
+            if (section.payload && section.payload.standardItemsPayload) {
+              const items = section.payload.standardItemsPayload.catalogItems || [];
+              items.forEach(item => {
+                const title = filterTrailingEnglish(parseText(item.title)) || '';
+                allItemTitles.push(title);
+                Object.keys(drinkCounts).forEach(k => {
+                    if (title.includes(k)) drinkCounts[k]++;
+                });
+              });
+            }
+          });
+        });
+      }
+      let matchedCategories = 0;
+      Object.values(drinkCounts).forEach(c => { if (c > 5) matchedCategories++; });
+      window.isBeverageShop = matchedCategories >= 2;
+      let topKeywords = [];
+      if (window.isBeverageShop) {
+          let bigramCounts = {};
+          allItemTitles.forEach(title => {
+              for (let i = 0; i <= title.length - 2; i++) {
+                  let word = title.substr(i, 2);
+                  if (/^[一-龥]{2}$/.test(word)) {
+                      bigramCounts[word] = (bigramCounts[word] || 0) + 1;
+                  }
+              }
+          });
+          topKeywords = Object.keys(bigramCounts).sort((a, b) => bigramCounts[b] - bigramCounts[a]).slice(0, 8);
+      }
+      
+      let html = `
         <div class="store-header">
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
           <h2>${escapeHTML(parseText(d.title))}</h2>
@@ -2194,7 +2244,19 @@ const note = document.getElementById('modalNote').value.trim();
         </div>
       `;
       
+      if (window.isBeverageShop && topKeywords.length > 0) {
+          html += `<div class="store-top-nav">`;
+          topKeywords.forEach(kw => {
+              html += `<button onclick="doStoreKeywordSearch('${escapeHTML(kw)}')">${escapeHTML(kw)}</button>`;
+          });
+          html += `</div>`;
+      }
+      
       let promoItemsHtml = '';
+      let sidebarHtml = window.isBeverageShop ? `<div class="store-sidebar">` : '';
+      let mainContentHtml = window.isBeverageShop ? `<div class="store-main-list" id="storeMainList">` : '';
+      let catIndex = 0;
+      
       if (d.catalogSectionsMap) {
         Object.keys(d.catalogSectionsMap).forEach(key => {
           const sectionArr = d.catalogSectionsMap[key];
@@ -2206,7 +2268,11 @@ const note = document.getElementById('modalNote').value.trim();
               const items = section.payload.standardItemsPayload.catalogItems || [];
               
               if (items.length > 0) {
-                let sectionHtml = `<div class="menu-category">${escapeHTML(catalogTitle)}</div><div class="menu-grid">`;
+                let catId = `cat_${catIndex++}`;
+                if (window.isBeverageShop) {
+                    sidebarHtml += `<div class="store-sidebar-item" id="nav_${catId}" onclick="document.getElementById('${catId}').scrollIntoView({behavior: 'smooth', block: 'start'})">${escapeHTML(catalogTitle)}</div>`;
+                }
+                let sectionHtml = `<div ${window.isBeverageShop ? `id="${catId}"` : ''} class="menu-category">${escapeHTML(catalogTitle)}</div><div class="menu-grid">`;
                 let hasRegular = false;
                 
                 items.forEach(item => {
@@ -2267,24 +2333,41 @@ const note = document.getElementById('modalNote').value.trim();
                   }
                 });
                 sectionHtml += `</div>`;
-                if (hasRegular) html += sectionHtml;
+                if (hasRegular) mainContentHtml += sectionHtml;
               }
             }
           });
         });
         
         if (promoItemsHtml) {
-            html += `<div class="menu-category" style="margin-top:20px; color:#d32f2f; border-top:2px dashed #ccc; padding-top:20px;">分類: 無法訂購項目 (優惠商品)</div><div class="menu-grid">`;
-            html += promoItemsHtml;
-            html += `</div>`;
+            let catId = `cat_${catIndex++}`;
+            if (window.isBeverageShop) {
+                sidebarHtml += `<div class="store-sidebar-item" id="nav_${catId}" onclick="document.getElementById('${catId}').scrollIntoView({behavior: 'smooth', block: 'start'})">優惠商品</div>`;
+                mainContentHtml += `<div id="${catId}" class="menu-category" style="margin-top:20px; color:#d32f2f; border-top:2px dashed #ccc; padding-top:20px;">分類: 無法訂購項目 (優惠商品)</div><div class="menu-grid">`;
+            } else {
+                mainContentHtml += `<div class="menu-category" style="margin-top:20px; color:#d32f2f; border-top:2px dashed #ccc; padding-top:20px;">分類: 無法訂購項目 (優惠商品)</div><div class="menu-grid">`;
+            }
+            mainContentHtml += promoItemsHtml;
+            mainContentHtml += `</div>`;
         }
       } else {
-        html += '<div class="status">這家餐廳目前沒有提供菜單資料。</div>';
+        mainContentHtml += '<div class="status">這家餐廳目前沒有提供菜單資料。</div>';
+      }
+      
+      if (window.isBeverageShop) {
+          sidebarHtml += `</div>`;
+          mainContentHtml += `</div>`;
+          html += `<div class="store-layout-2col">` + sidebarHtml + mainContentHtml + `</div>`;
+      } else {
+          html += mainContentHtml;
       }
       
       sc.innerHTML = html;
       updateCartBadge();
       window.scrollTo(0, 0);
+      if (window.isBeverageShop) {
+          setupScrollSpy();
+      }
     } catch (e) {
       const errHtml = `<div class="status error">錯誤: ${e.message}\n\n詳細資訊請按 F12 查看 Console。</div>`;
     if (typeof sc !== 'undefined' && sc) { sc.innerHTML = errHtml; document.getElementById('storeView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; }
@@ -2519,6 +2602,50 @@ function buildSplitSuggestionHtml(result) {
     document.getElementById('errorModalBtn').style.display = hideBtn ? 'none' : 'block';
     document.getElementById('errorModalOverlay').style.display = 'flex';
   }
+</script>
+<script>
+  window.doStoreKeywordSearch = function(kw) {
+      const box = document.getElementById('headerSearchBox');
+      if (box.style.display === 'none') {
+          toggleStoreSearch();
+      }
+      document.getElementById('storeSearchInput').value = kw;
+      handleStoreSearch(true);
+  };
+  window.setupScrollSpy = function() {
+      const cats = document.querySelectorAll('.menu-category[id^="cat_"]');
+      const navs = document.querySelectorAll('.store-sidebar-item');
+      if (cats.length === 0) return;
+      const onScroll = () => {
+          if (currentView !== 'store') {
+              window.removeEventListener('scroll', onScroll);
+              return;
+          }
+          let currentId = '';
+          cats.forEach(cat => {
+              const rect = cat.getBoundingClientRect();
+              if (rect.top <= 130) {
+                  currentId = cat.id;
+              }
+          });
+          if (!currentId && cats.length > 0) currentId = cats[0].id;
+          navs.forEach(nav => {
+              nav.classList.remove('active');
+              if (nav.id === `nav_${currentId}`) {
+                  nav.classList.add('active');
+                  const sb = document.querySelector('.store-sidebar');
+                  if (sb) {
+                      const navRect = nav.getBoundingClientRect();
+                      const sbRect = sb.getBoundingClientRect();
+                      if (navRect.bottom > sbRect.bottom) sb.scrollTop += navRect.bottom - sbRect.bottom;
+                      if (navRect.top < sbRect.top) sb.scrollTop -= sbRect.top - navRect.top;
+                  }
+              }
+          });
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      setTimeout(onScroll, 100);
+  };
 </script>
 
   <!-- 錯誤提示框 -->
