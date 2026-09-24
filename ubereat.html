@@ -158,7 +158,7 @@
     <div class="section">
       <div class="section-title" style="display:flex; align-items:center;">
         4. 外送備註
-        <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
+        <span onclick="showModal('外送方式說明', '', false, '<div style=&quot;text-align:left; font-size:15px; line-height:1.6; color:#555;&quot;><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
       </div>
       <div class="input-row">
         <select id="deliveryMethod" style="flex:0 0 auto; padding:14px 10px; border-radius:8px; border:1px solid #ccc; font-size:15px; background:#fff; outline:none; cursor:pointer;">
@@ -1386,7 +1386,7 @@ function openCheckoutSummary() {
   
   const savedPhone = localStorage.getItem('userPhone') || '';
   const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
-  const selectedMethod = document.getElementById('deliveryMethod') ? document.getElementById('deliveryMethod').value : '當面點交';
+  const selectedMethod = document.getElementById('checkoutDeliveryMethod') ? document.getElementById('checkoutDeliveryMethod').value : (localStorage.getItem('deliveryMethod') || '當面點交');
   const oldFoodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
   
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
@@ -1406,10 +1406,10 @@ function openCheckoutSummary() {
       <div style="margin-bottom:12px;">
         <div style="display:flex; align-items:center; margin-bottom:5px;">
           <strong>外送方式與備註:</strong>
-          <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
+          <span onclick="showModal('外送方式說明', '', false, '<div style=&quot;text-align:left; font-size:15px; line-height:1.6; color:#555;&quot;><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+          <select id="checkoutDeliveryMethod" onchange="localStorage.setItem('deliveryMethod', this.value)" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
             <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
             <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
           </select>
