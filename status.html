@@ -70,6 +70,18 @@
             color: #fff200; 
             text-shadow: 0px 1px 2px rgba(0,0,0,0.2);
         }
+
+        .update-time {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            text-align: right;
+            font-size: 14px;
+            color: white;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        .status-section.connecting .update-time { color: #999; }
     
         .order-btn {
             display: inline-block;
@@ -105,6 +117,11 @@
         <div id="action-container" style="display: none;">
             <a href="https://liff.line.me/2011657436-rGVj5SoG" class="order-btn">開始點餐</a>
         </div>
+
+        <div class="update-time">
+            <div>最後更新時間</div>
+            <div id="update-time-text">--</div>
+        </div>
     </div>
 
     <script>
@@ -139,6 +156,18 @@
             } else {
                 badge.style.fontSize = "";
                 badge.style.padding = "";
+            }
+            
+            // 更新時間顯示
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const timeEl = document.getElementById('update-time-text');
+            if (timeEl) {
+                timeEl.innerText = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
             }
         }
 
