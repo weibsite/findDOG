@@ -182,7 +182,7 @@
       <div class="input-row">
         <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
         <datalist id="query-list"></datalist>
-        <button class="secondary" onclick="searchStores()">不知道</button>
+        <button class="secondary" onclick="randomSearch()">不知道</button>
         <button id="searchMainBtn" onclick="searchStores()">尋找食物</button>
       </div>
     </div>
@@ -860,6 +860,16 @@ let isAddressSet = false;
   }
 
 
+
+  function randomSearch() {
+      const foodKeywords = ['飯', '麵', '火鍋', '便當', '炸雞', '飲料', '牛肉麵', '水餃', '咖哩', '小吃', '早午餐', '漢堡'];
+      const shopKeywords = ['全聯', '家樂福', '美廉社', '大潤發', '統一超商', '全家', '屈臣氏', '康是美'];
+      const targetList = currentVertical === 'SHOP' ? shopKeywords : foodKeywords;
+      const randomKeyword = targetList[Math.floor(Math.random() * targetList.length)];
+      
+      document.getElementById('query').value = randomKeyword;
+      searchStores();
+  }
 
   async function searchStores() {
     if (!isAddressSet) {
