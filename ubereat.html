@@ -922,6 +922,31 @@ let isAddressSet = false;
             overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">無法接單</div>`;
         }
         
+        // 解析 meta 標籤中的預約資訊
+        let metaText = '';
+        if (s.meta && s.meta.length > 0) {
+            const closedEta = s.meta.find(m => m.badgeType === 'CLOSED_ETA');
+            if (closedEta && closedEta.text) {
+                let txt = closedEta.text;
+                if (txt === 'Schedule ahead') {
+                    metaText = '可預約';
+                } else if (txt.startsWith('Available in ') && txt.endsWith(' min')) {
+                    const mins = txt.replace('Available in ', '').replace(' min', '');
+                    metaText = `${mins}分鐘後營業 (可預約)`;
+                } else if (txt.startsWith('Available at ')) {
+                    const time = txt.replace('Available at ', '');
+                    metaText = `${time}營業 (可預約)`;
+                } else {
+                    metaText = txt + ' (可預約)';
+                }
+            }
+        }
+        
+        let metaDisplay = `⭐ ${escapeHTML(rating)}`;
+        if (metaText) {
+            metaDisplay += ` &nbsp;|&nbsp; <span style="color:#e67e22; font-weight:bold;">${escapeHTML(metaText)}</span>`;
+        }
+        
         return `
           <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
             <div class="card-img" style="background-image: url('${imgUrl}'); position:relative;">
@@ -929,7 +954,7 @@ let isAddressSet = false;
             </div>
             <div class="card-body">
               <div class="card-name">${escapeHTML(name)}</div>
-              <div class="card-meta">⭐ ${escapeHTML(rating)}</div>
+              <div class="card-meta">${metaDisplay}</div>
             </div>
           </div>
         `;
