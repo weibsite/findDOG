@@ -944,7 +944,21 @@ function randomStore() {
       const json = await res.json();
       if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
       
-      const stores = (json.data.feedItems || []).filter(i => i.type === 'REGULAR_STORE' && i.store).map(i => i.store);
+      let stores = [];
+      (json.data.feedItems || []).forEach(item => {
+          if (item.type === 'REGULAR_STORE' && item.store) {
+              stores.push(item.store);
+          } else if ((item.type === 'REGULAR_CAROUSEL' || item.type === 'STORE_CAROUSEL') && item.carousel && item.carousel.stores) {
+              stores.push(...item.carousel.stores);
+          }
+      });
+      // 過濾掉重複的 storeUuid (有時推薦輪播跟一般列表會重複)
+      const seen = new Set();
+      stores = stores.filter(s => {
+          if (seen.has(s.storeUuid)) return false;
+          seen.add(s.storeUuid);
+          return true;
+      });
       if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
       
       const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
