@@ -183,7 +183,7 @@
         <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
         <datalist id="query-list"></datalist>
         <button class="secondary" onclick="searchStores()">不知道</button>
-        <button onclick="searchStores()">尋找食物</button>
+        <button id="searchMainBtn" onclick="searchStores()">尋找食物</button>
       </div>
     </div>
     <div class="section">
@@ -839,13 +839,15 @@ let isAddressSet = false;
   function toggleVertical() {
       const btn = document.getElementById('verticalToggleBtn');
       const queryInput = document.getElementById('query');
+      const searchBtn = document.getElementById('searchMainBtn');
       if (currentVertical === 'RESTAURANTS') {
           currentVertical = 'SHOP';
           btn.innerText = '目前模式: 生鮮雜貨';
           btn.style.background = '#fef0e5';
           btn.style.borderColor = '#e67e22';
           btn.style.color = '#e67e22';
-          queryInput.placeholder = '想買什麼？ (例如: 大全聯)';
+          queryInput.placeholder = '想買什麼？ (例如: 美廉社)';
+          if (searchBtn) searchBtn.innerText = '尋找生鮮';
       } else {
           currentVertical = 'RESTAURANTS';
           btn.innerText = '目前模式: 餐廳';
@@ -853,8 +855,11 @@ let isAddressSet = false;
           btn.style.borderColor = '#06c167';
           btn.style.color = '#06c167';
           queryInput.placeholder = '想吃什麼？ (例如: 麥當勞)';
+          if (searchBtn) searchBtn.innerText = '尋找食物';
       }
   }
+
+
 
   async function searchStores() {
     if (!isAddressSet) {
