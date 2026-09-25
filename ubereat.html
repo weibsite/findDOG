@@ -1521,6 +1521,15 @@ function toggleSummaryItem(idx) {
 }
 
 async function sendOrderToLine(forceSubmit = false) {
+  if (cart.length === 0) return;
+  
+  let foodTotal = 0;
+  cart.forEach(it => foodTotal += it.price * it.qty);
+  if (foodTotal < 149) {
+    showModal('金額過低', '訂單小計低於$149，建議再加個東西吧！');
+    return;
+  }
+
   const phoneInput = document.getElementById('checkoutPhone');
   if (phoneInput) {
     const phoneVal = phoneInput.value.trim();
