@@ -2196,7 +2196,38 @@ const note = document.getElementById('modalNote').value.trim();
           return;
       }
 
-      if (scheduleMode === 'SCHEDULE') {
+            // 解析所有可用時段，供預約與即時單狀態判斷
+      let availableWindows = [];
+      if (d.timeWindowPicker && d.timeWindowPicker.dates) {
+          d.timeWindowPicker.dates.forEach(dateObj => {
+              if (dateObj.listItems) {
+                  dateObj.listItems.forEach(item => {
+                      if (item.timeWindowViewModel && item.timeWindowViewModel.timeWindow) {
+                          availableWindows.push(item.timeWindowViewModel.timeWindow);
+                      }
+                  });
+              }
+          });
+      }
+
+      // 判斷是否為「當下正在營業中」
+      let isCurrentlyOpen = false;
+      const nowSec = Date.now() / 1000;
+      if (availableWindows.length > 0) {
+          // 若最近的一個接單時間在未來 60 分鐘以內，就認定為現在有營業可以接即時單
+          if (availableWindows[0].startTimeSeconds - nowSec <= 60 * 60) {
+              isCurrentlyOpen = true;
+          }
+      }
+
+      if (scheduleMode === 'ASAP') {
+          // 如果客人選即時，但店根本沒開
+          if (!isCurrentlyOpen) {
+              showModal('無法接單', '此餐廳目前休息中，無法接收即時單。請選擇預約時段，或其他營業中的餐廳。');
+              resultsDiv.innerHTML = oldHtml;
+              return;
+          }
+      } else if (scheduleMode === 'SCHEDULE') {
         const selectedSchedule = document.getElementById('scheduleTime');
         const selectedScheduleValue = selectedSchedule ? selectedSchedule.value : '';
         const selectedScheduleText = selectedSchedule && selectedSchedule.selectedIndex >= 0 ? selectedSchedule.options[selectedSchedule.selectedIndex].text : '';
@@ -2210,26 +2241,25 @@ const note = document.getElementById('modalNote').value.trim();
         const selectedTime = new Date(selectedScheduleValue).getTime() / 1000;
         let timeFound = false;
         
-        let availableWindows = [];
-        d.timeWindowPicker.dates.forEach(dateObj => {
-            if (dateObj.listItems) {
-                dateObj.listItems.forEach(item => {
-                    if (item.timeWindowViewModel && item.timeWindowViewModel.timeWindow) {
-                        const tw = item.timeWindowViewModel.timeWindow;
-                        availableWindows.push(tw);
-                        if (selectedTime >= tw.startTimeSeconds && selectedTime <= tw.startTimeSeconds + 1800) {
-                            timeFound = true;
-                        }
-                    }
-                });
+        availableWindows.forEach(tw => {
+            if (selectedTime >= tw.startTimeSeconds && selectedTime <= tw.startTimeSeconds + 1800) {
+                timeFound = true;
             }
         });
 
         if (!timeFound) {
             let text = `此餐廳在您選的時段 ( ${selectedScheduleText} ) 休息或無法接單。`;
             let btnsHtml = '';
+            
+            // 如果這間店現在其實有營業，可以在最上面給一個「改成即時單」的按鈕
+            if (isCurrentlyOpen) {
+                const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
+                const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
+                btnsHtml += `<button onclick="document.getElementById('errorModalOverlay').style.display='none'; document.getElementById('btnAsap').click(); openStore('${storeUuid}', decodeURIComponent('${encodeURIComponent(safeName)}'), '${safeAction}');" style="margin-top:5px; margin-bottom:15px; background:#fff; color:#000; border:2px solid #000; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">改成即時單 <br><span style="color:#d32f2f; font-size:13px; font-weight:normal;">*無法獲得預約優惠</span></button>`;
+            }
+
             if (availableWindows.length > 0) {
-                btnsHtml += `<br><b style="color:#111;">👉 餐廳可接單時間(點擊直接修改)：</b>`;
+                btnsHtml += `<b style="color:#111;">👉 餐廳可接單時間(點擊直接修改)：</b>`;
                 const top5 = availableWindows.slice(0, 5);
                 top5.forEach(tw => {
                     const sd = new Date(tw.startTimeSeconds * 1000);
@@ -2255,10 +2285,10 @@ const note = document.getElementById('modalNote').value.trim();
                     } else {
                       str = `${dayStr} ${formatT(sd)} - ${formatT(ed)}`;
                     }
-        if (sd.getTime() - Date.now() >= 2.5 * 3600000) {
-            str += ' <span style="color:#06c167; font-weight:bold;">-$10優惠</span>';
-        }
-        btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
+                    if (sd.getTime() - Date.now() >= 2.5 * 3600000) {
+                        str += ' <span style="color:#06c167; font-weight:bold;">-$10優惠</span>';
+                    }
+                    btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
                 });
             } else {
                 text += `\n\n（餐廳目前沒有提供任何預約時段）`;
