@@ -296,7 +296,7 @@ let isAddressSet = false;
   let currentAddrTitle = '';
   let scheduleMode = 'SCHEDULE';
   let selectedDateIndex = 0;
-  const datesData = [];
+  const datesData.length = 0;
   
   // ====== History Logic ======
   let addressHistory = [];
@@ -321,9 +321,14 @@ let isAddressSet = false;
     
     if (addressHistory.length > 0 && !isAddressSet) {
       const lastAddr = addressHistory[0];
-      document.getElementById('addrInput').value = lastAddr.title;
-      scrollAddrToEnd();
-      setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
+      if (typeof lastAddr === 'object' && lastAddr.title) {
+        document.getElementById('addrInput').value = lastAddr.title;
+        scrollAddrToEnd();
+        setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
+      } else {
+        localStorage.removeItem('finddog_history_address');
+        addressHistory = [];
+      }
     }
   }
 
@@ -380,7 +385,7 @@ let isAddressSet = false;
     const daysStr = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
     const dateBtns = document.getElementById('dateButtons');
     dateBtns.innerHTML = '';
-    datesData = [];
+    datesData.length = 0;
     
     let now = new Date();
     let startHourTest = now.getHours() + 1;
