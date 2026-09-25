@@ -1761,23 +1761,46 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
     if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
 
     // 呼叫 API 取得真實客製化選項
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/item`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
-      });
-      const json = await res.json();
-      if (json.status === 'success' && json.data) {
-        currentCustomizations = json.data.customizationsList || [];
-        renderCustomizations();
-      } else {
-        document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '未知錯誤') + ')</div>';
+    let maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      attempt++;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/item`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
+        });
+        
+        if (!res.ok) {
+          if (res.status === 502 || res.status === 504) {
+            if (attempt < maxRetries) {
+              document.getElementById('customizationsArea').innerHTML = `<div style="padding:15px;text-align:center;color:#666;">防護系統突破中，請稍候... (${attempt}/${maxRetries})</div>`;
+              await new Promise(r => setTimeout(r, 5000)); // 等待 5 秒後重試
+              continue;
+            }
+          }
+          throw new Error(`伺服器錯誤 (${res.status})`);
+        }
+        
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          currentCustomizations = json.data.customizationsList || [];
+          renderCustomizations();
+          break; // 成功取得資料，跳出迴圈
+        } else {
+          document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '防護系統阻擋') + ')</div>';
+          break;
+        }
+      } catch (e) {
+        if (attempt >= maxRetries || !e.message.includes("502") && !e.message.includes("504")) {
+          document.getElementById('customizationsArea').innerHTML = `<div style="padding:15px;color:#d32f2f;">載入選項失敗: ${e.message}</div>`;
+          break;
+        }
       }
-    } catch (e) {
-      document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
     }
     const btn2 = document.getElementById('addToCartBtn');
-    if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
   }
 
   
