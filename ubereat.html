@@ -871,6 +871,18 @@ let isAddressSet = false;
       searchStores();
   }
 
+function randomStore() {
+      const qInput = document.getElementById('query');
+      if (!qInput.value.trim()) {
+          const foodKeywords = ['飯', '麵', '火鍋', '便當', '炸雞', '飲料', '小吃', '健康', '牛肉麵'];
+          const shopKeywords = ['全聯', '家樂福', '美廉社', '大潤發', '統一超商', '全家', '超市'];
+          const pool = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? shopKeywords : foodKeywords;
+          const randomWord = pool[Math.floor(Math.random() * pool.length)];
+          qInput.value = randomWord;
+      }
+      searchStores();
+  }
+
   async function searchStores() {
     if (!isAddressSet) {
       const addrVal = document.getElementById('addrInput').value.trim();
