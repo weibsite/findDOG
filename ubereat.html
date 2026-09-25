@@ -923,11 +923,11 @@ let isAddressSet = false;
       if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
       
       const stores = (json.data.feedItems || []).filter(i => i.type === 'REGULAR_STORE' && i.store).map(i => i.store);
-      if (stores.length === 0) { statusEl.innerHTML = '找不到相關餐廳。'; return; }
+      if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
       
       const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
-      statusEl.innerHTML = `為您找到 ${stores.length} 家餐廳：`;
+      statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
       resultsEl.innerHTML = stores.map(s => {
         const imgUrl = s.image && s.image.items && s.image.items.length > 0 ? s.image.items[0].url : '';
         const rating = s.rating ? s.rating.text : '無評價';
