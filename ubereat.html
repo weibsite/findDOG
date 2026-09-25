@@ -162,7 +162,7 @@
     <div class="section">
       <div class="section-title" style="display:flex; align-items:center;">
         4. 外送備註
-        <span onclick="showModal('外送方式說明', '', false, '<div style=&quot;text-align:left; font-size:15px; line-height:1.6; color:#555;&quot;><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
+        <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
       </div>
       <div class="input-row">
         <select id="deliveryMethod" style="flex:0 0 auto; padding:14px 10px; border-radius:8px; border:1px solid #ccc; font-size:15px; background:#fff; outline:none; cursor:pointer;">
@@ -380,7 +380,7 @@ let isAddressSet = false;
     const daysStr = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
     const dateBtns = document.getElementById('dateButtons');
     dateBtns.innerHTML = '';
-    datesData.length = 0;
+    datesData = [];
     
     let now = new Date();
     let startHourTest = now.getHours() + 1;
@@ -1393,7 +1393,7 @@ function openCheckoutSummary() {
   
   const savedPhone = localStorage.getItem('userPhone') || '';
   const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
-  const selectedMethod = document.getElementById('checkoutDeliveryMethod') ? document.getElementById('checkoutDeliveryMethod').value : (localStorage.getItem('deliveryMethod') || '當面點交');
+  const selectedMethod = document.getElementById('deliveryMethod') ? document.getElementById('deliveryMethod').value : '當面點交';
   const oldFoodNotes = document.getElementById('foodNotes') ? document.getElementById('foodNotes').value.trim() : '';
   
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
@@ -1413,10 +1413,10 @@ function openCheckoutSummary() {
       <div style="margin-bottom:12px;">
         <div style="display:flex; align-items:center; margin-bottom:5px;">
           <strong>外送方式與備註:</strong>
-          <span onclick="showModal('外送方式說明', '', false, '<div style=&quot;text-align:left; font-size:15px; line-height:1.6; color:#555;&quot;><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
+          <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="checkoutDeliveryMethod" onchange="localStorage.setItem('deliveryMethod', this.value)" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
             <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
             <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
           </select>
@@ -1447,8 +1447,7 @@ function openCheckoutSummary() {
           </div>
         </div>
         <div id="summary-detail-${idx}" style="display:none; margin-top:4px; padding-left: 25px; font-size:13px; color:#666;">
-          ${item.note ? escapeHTML(item.note).replace(/
-/g, '<br>') : '無'}
+          ${item.note ? escapeHTML(item.note).replace(/\n/g, '<br>') : '無'}
         </div>
       </div>
     `;
@@ -1569,8 +1568,7 @@ async function sendOrderToLine(forceSubmit = false) {
 `;
     
     let grandTotal = 0;
-    let isASAP = (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP');
-    let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 30 : 50;
+    let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
     let preOrderDiscount = isPreOrder ? 10 : 0;
     
     costRes.bins.forEach((bin, bIdx) => {
@@ -1604,8 +1602,7 @@ async function sendOrderToLine(forceSubmit = false) {
           msgText += `  ${i++}. ${it.title} x ${it.qty} = $${lineTotal}
 `;
           if (it.note) {
-            msgText += `     - 說明: ${it.note.replace(/
-/g, ' ')}
+            msgText += `     - 說明: ${it.note.replace(/\n/g, ' ')}
 `;
           }
         });
@@ -1663,8 +1660,7 @@ async function sendOrderToLine(forceSubmit = false) {
         msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}
 `;
         if (item.note) {
-          msgText += `     - 說明: ${item.note.replace(/
-/g, ' ')}
+          msgText += `     - 說明: ${item.note.replace(/\n/g, ' ')}
 `;
         }
       });
@@ -1708,9 +1704,7 @@ async function sendOrderToLine(forceSubmit = false) {
   
   finalNote = `[${selectedMethod}]` + (finalNote ? ' ' + finalNote : '');
   
-  msgText += `
-
-📝 外送備註: ${finalNote}`;
+  msgText += `\n\n📝 外送備註: ${finalNote}`;
   
 
 if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
@@ -1774,46 +1768,23 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
     if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
 
     // 呼叫 API 取得真實客製化選項
-    let maxRetries = 3;
-    let attempt = 0;
-    
-    while (attempt < maxRetries) {
-      attempt++;
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/item`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
-        });
-        
-        if (!res.ok) {
-          if (res.status === 502 || res.status === 504) {
-            if (attempt < maxRetries) {
-              document.getElementById('customizationsArea').innerHTML = `<div style="padding:15px;text-align:center;color:#666;">防護系統突破中，請稍候... (${attempt}/${maxRetries})</div>`;
-              await new Promise(r => setTimeout(r, 5000)); // 等待 5 秒後重試
-              continue;
-            }
-          }
-          throw new Error(`伺服器錯誤 (${res.status})`);
-        }
-        
-        const json = await res.json();
-        if (json.status === 'success' && json.data) {
-          currentCustomizations = json.data.customizationsList || [];
-          renderCustomizations();
-          break; // 成功取得資料，跳出迴圈
-        } else {
-          document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '防護系統阻擋') + ')</div>';
-          break;
-        }
-      } catch (e) {
-        if (attempt >= maxRetries || !e.message.includes("502") && !e.message.includes("504")) {
-          document.getElementById('customizationsArea').innerHTML = `<div style="padding:15px;color:#d32f2f;">載入選項失敗: ${e.message}</div>`;
-          break;
-        }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/item`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
+      });
+      const json = await res.json();
+      if (json.status === 'success' && json.data) {
+        currentCustomizations = json.data.customizationsList || [];
+        renderCustomizations();
+      } else {
+        document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '未知錯誤') + ')</div>';
       }
+    } catch (e) {
+      document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
     }
     const btn2 = document.getElementById('addToCartBtn');
-    if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
+    if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
   }
 
   
@@ -2223,9 +2194,7 @@ const note = document.getElementById('modalNote').value.trim();
             btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
                     });
                 } else {
-                    text += `
-
-這間餐廳目前沒有提供任何可預約的時段。`;
+                    text += `\n\n這間餐廳目前沒有提供任何可預約的時段。`;
                 }
 
                 showModal('無法預約', text, true, btnsHtml);
@@ -2438,9 +2407,7 @@ const note = document.getElementById('modalNote').value.trim();
           setupScrollSpy();
       }
     } catch (e) {
-      const errHtml = `<div class="status error">錯誤: ${e.message}
-
-詳細資訊請按 F12 查看 Console。</div>`;
+      const errHtml = `<div class="status error">錯誤: ${e.message}\n\n詳細資訊請按 F12 查看 Console。</div>`;
     if (typeof sc !== 'undefined' && sc) { sc.innerHTML = errHtml; document.getElementById('storeView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; }
     else if (resultsDiv) { resultsDiv.innerHTML = errHtml; }
     console.error('openStore error:', e);
@@ -2594,7 +2561,6 @@ function escapeHTML(str) {
       }
     }
 
-    // 檢查是否每一單的原價都 >= 170
     let validSplit = true;
     for (let bin of bins) {
       if (bin.sum < 170) {
@@ -2660,9 +2626,7 @@ function buildSplitSuggestionHtml(result) {
 
   function buildSplitMsgText(result) {
     if (!result.shouldSplit || !result.bins) return '';
-    let text = '
-
-💡 拆單建議（省 $' + result.savings + '）：';
+    let text = '\n\n💡 拆單建議（省 $' + result.savings + '）：';
     result.bins.forEach((bin, i) => {
       let counts = {};
       for (let item of bin.items) {
@@ -2673,8 +2637,7 @@ function buildSplitSuggestionHtml(result) {
       for (let key in counts) {
         itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
       }
-      text += `
-第 ${i+1} 單 $${bin.sum}：${itemStrs.join('、')}`;
+      text += `\n第 ${i+1} 單 $${bin.sum}：${itemStrs.join('、')}`;
     });
     return text;
   }
@@ -2683,8 +2646,7 @@ function buildSplitSuggestionHtml(result) {
     document.getElementById('errorModalIcon').innerText = isError ? '❌' : '✅';
     document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
     document.getElementById('errorModalTitle').innerText = title;
-    document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\
-/g, '<br>');
+    document.getElementById('errorModalText').innerHTML = escapeHTML(text).replace(/\\n/g, '<br>');
     document.getElementById('errorModalExtra').innerHTML = htmlContent;
     document.getElementById('errorModalBtn').style.display = hideBtn ? 'none' : 'block';
     document.getElementById('errorModalOverlay').style.display = 'flex';
