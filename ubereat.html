@@ -939,7 +939,13 @@ function randomStore() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS' })
+        body: JSON.stringify({ 
+          query: q, 
+          vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
+          searchSource: 'SEARCH_SUGGESTION',
+          displayType: 'SEARCH_RESULTS',
+          searchType: 'GLOBAL_SEARCH'
+        })
       });
       const json = await res.json();
       if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
