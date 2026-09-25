@@ -2158,13 +2158,35 @@ const note = document.getElementById('modalNote').value.trim();
       // 先驗證排程，失敗則直接彈出，不切換畫面
       let scheduleHtml = '';
       
-      if (!d.scheduledOrderInfo || !d.scheduledOrderInfo.isSchedulable || !d.timeWindowPicker || !d.timeWindowPicker.dates) {
+      let hasValidPriceItem = false;
+      if (d.catalogSectionsMap) {
+        Object.keys(d.catalogSectionsMap).forEach(key => {
+          d.catalogSectionsMap[key].forEach(section => {
+            if (section.payload && section.payload.standardItemsPayload) {
+              const items = section.payload.standardItemsPayload.catalogItems || [];
+              items.forEach(item => {
+                const priceVal = item.price > 0 ? Math.round(item.price / 100) : 0;
+                if (priceVal >= 5 && priceVal <= 60) {
+                    hasValidPriceItem = true;
+                }
+              });
+            }
+          });
+        });
+      }
+
+      const isSchedulable = (d.scheduledOrderInfo && d.scheduledOrderInfo.isSchedulable && d.timeWindowPicker && d.timeWindowPicker.dates);
+
+      if (!isSchedulable || !hasValidPriceItem) {
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
           if (!unSchedulableStores.includes(storeUuid)) {
               unSchedulableStores.push(storeUuid);
               localStorage.setItem('unSchedulableStores', JSON.stringify(unSchedulableStores));
           }
-          showModal('無法接單', `此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。`);
+          
+          let errorMsg = !isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳缺乏符合條件之餐點(需包含$5~$60之品項)，無法為您代購。請選擇其他餐廳。';
+          showModal('無法接單', errorMsg);
+          
           resultsDiv.innerHTML = oldHtml;
           const cardEl = document.getElementById('card_' + storeUuid);
           if (cardEl) {
