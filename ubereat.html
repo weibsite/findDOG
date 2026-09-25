@@ -903,12 +903,30 @@ let isAddressSet = false;
         const rating = s.rating ? s.rating.text : '無評價';
         const name = s.title ? s.title.text : '未知餐廳';
         
+        let isClosed = false;
+        if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'STORE_CLOSED') {
+            isClosed = true;
+        } else if (s.imageOverlay && s.imageOverlay.text === 'Closed') {
+            isClosed = true;
+        }
+
         const isBad = unSchedulableStores.includes(s.storeUuid);
-        const style = isBad ? 'filter: grayscale(100%); opacity: 0.6;' : '';
+        
+        // 加上 grayscale 讓圖片反灰
+        const style = (isBad || isClosed) ? 'filter: grayscale(100%); opacity: 0.85;' : '';
+        
+        let overlayHtml = '';
+        if (isClosed && !isBad) {
+            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">休息中可預約</div>`;
+        } else if (isBad) {
+            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">無法接單</div>`;
+        }
         
         return `
           <div id="card_${s.storeUuid}" class="card" style="${style}" onclick="openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
-            <div class="card-img" style="background-image: url('${imgUrl}')"></div>
+            <div class="card-img" style="background-image: url('${imgUrl}'); position:relative;">
+                ${overlayHtml}
+            </div>
             <div class="card-body">
               <div class="card-name">${escapeHTML(name)}</div>
               <div class="card-meta">⭐ ${escapeHTML(rating)}</div>
