@@ -2577,18 +2577,29 @@ function escapeHTML(str) {
       }
     }
 
-    let cost = 0;
-    let feePerBin = bins.length >= 2 ? 30 : 50;
+    // 檢查是否每一單的原價都 >= 170
+    let validSplit = true;
     for (let bin of bins) {
-      let binPromo = bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2);
-      let binFoodCost = bin.sum - binPromo;
-      cost += binFoodCost + feePerBin;
+      if (bin.sum < 170) {
+        validSplit = false;
+        break;
+      }
     }
-    cost -= preOrderDiscount;
 
-    if (cost < bestCost) {
-      bestCost = cost;
-      bestBins = bins;
+    if (validSplit) {
+      let cost = 0;
+      let feePerBin = bins.length >= 2 ? 30 : 50;
+      for (let bin of bins) {
+        let binPromo = bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2);
+        let binFoodCost = bin.sum - binPromo;
+        cost += binFoodCost + feePerBin;
+      }
+      cost -= preOrderDiscount;
+
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestBins = bins;
+      }
     }
   }
 
