@@ -130,7 +130,11 @@
       <div id="addrResults" class="addr-results"></div>
     </div>
     <div class="section">
-      <div class="section-title">2. 訂餐時間選擇 (排程時段)</div>
+      <div class="section-title">2. 訂餐時間選擇</div>
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <button id="btnSchedule" onclick="setScheduleMode('SCHEDULE')" style="flex:1; padding:10px; border-radius:8px; font-size:15px; background:#000; color:#fff; border:1px solid #000; font-weight:bold; cursor:pointer;">預約時段</button>
+        <button id="btnAsap" onclick="setScheduleMode('ASAP')" style="flex:1; padding:10px; border-radius:8px; font-size:15px; background:#fff; color:#333; border:1px solid #ccc; font-weight:bold; cursor:pointer;">即時</button>
+      </div>
       <div id="schedulePickerArea">
         <div id="dateButtons" style="display:flex; overflow-x:auto; gap:10px; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch;">
           <!-- JS 自動產生按鈕 -->
@@ -1561,7 +1565,7 @@ async function sendOrderToLine(forceSubmit = false) {
 `;
     
     let grandTotal = 0;
-    let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
+    let isASAP = (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP');\n    let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 30 : 50;
     let preOrderDiscount = isPreOrder ? 10 : 0;
     
     costRes.bins.forEach((bin, bIdx) => {
@@ -2588,7 +2592,8 @@ function escapeHTML(str) {
 
     if (validSplit) {
       let cost = 0;
-      let feePerBin = bins.length >= 2 ? 30 : 50;
+      let isASAP = (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP');
+      let feePerBin = (bins.length >= 2 && !isASAP) ? 30 : 50;
       for (let bin of bins) {
         let binPromo = bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2);
         let binFoodCost = bin.sum - binPromo;
