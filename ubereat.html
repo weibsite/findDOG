@@ -752,7 +752,23 @@ let isAddressSet = false;
         }
       }, 15000);
 
+      ws.onerror = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          ws.close();
+          fallbackSearch();
+        }
+      };
+      ws.onclose = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          fallbackSearch();
+        }
+      };
       ws.onopen = () => {
+        console.log('Sending search request to server WS:', WS_URL);
         ws.send(JSON.stringify({ type: 'search_address', address: q }));
       };
 
