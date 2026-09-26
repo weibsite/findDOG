@@ -974,7 +974,11 @@ let isAddressSet = false;
       stores.forEach(s => {
           const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
           const state = s.storeAvailablityState || '';
-          const isCompletelyClosed = (state === 'STORE_CLOSED_NOT_SCHEDULABLE' || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE');
+          let isUIClosed = false;
+          if (state.includes('CLOSED')) isUIClosed = true;
+          if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
+          if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
+          const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
           const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
           const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
 
