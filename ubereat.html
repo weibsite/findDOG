@@ -2416,21 +2416,27 @@ const note = document.getElementById('modalNote').value.trim();
     resultsDiv.innerHTML = '<div class="status" style="padding: 40px 20px;"><div class="spinner"></div></div>';
     
     try {
-      const res = await fetch(`${API_BASE_URL}/api/store`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeUuid: uuid })
-      });
-      let json;
-      try {
-          const textRes = await res.text();
+      let json = null;
+      let retries = 0;
+      while (retries < 3) {
           try {
-              json = JSON.parse(textRes);
-          } catch (e) {
-              console.error('Non-JSON response from server:', textRes);
-              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+              const res = await fetch(`${API_BASE_URL}/api/store`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ storeUuid: uuid })
+              });
+              const textRes = await res.text();
+              try {
+                  json = JSON.parse(textRes);
+                  break; // 成功解析 JSON，跳出重試迴圈
+              } catch (parseError) {
+                  console.error(`Attempt ${retries + 1} failed - Non-JSON response:`, textRes);
+                  if (retries >= 2) throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+              }
+          } catch (networkError) {
+              if (retries >= 2) throw networkError;
           }
-      } catch (e) {
-          throw e;
+          retries++;
+          await new Promise(r => setTimeout(r, 1000)); // 等待 1 秒後重試
       }
       
       if (json.status === 'failure') {
