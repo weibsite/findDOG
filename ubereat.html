@@ -818,7 +818,18 @@ let isAddressSet = false;
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lng, title })
       });
-      const json = await res.json();
+      let json;
+      try {
+          const textRes = await res.text();
+          try {
+              json = JSON.parse(textRes);
+          } catch (e) {
+              console.error('Non-JSON response from server:', textRes);
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+          }
+      } catch (e) {
+          throw e;
+      }
       if (json.status === 'success') {
           // 不顯示成功訊息，讓使用者感覺無縫銜接
           isAddressSet = true;
@@ -943,7 +954,18 @@ let isAddressSet = false;
           searchType: 'GLOBAL_SEARCH'
         })
       });
-      const json = await res.json();
+      let json;
+      try {
+          const textRes = await res.text();
+          try {
+              json = JSON.parse(textRes);
+          } catch (e) {
+              console.error('Non-JSON response from server:', textRes);
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+          }
+      } catch (e) {
+          throw e;
+      }
       if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
       
       let stores = [];
@@ -1403,7 +1425,18 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
       });
-      const json = await res.json();
+      let json;
+      try {
+          const textRes = await res.text();
+          try {
+              json = JSON.parse(textRes);
+          } catch (e) {
+              console.error('Non-JSON response from server:', textRes);
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+          }
+      } catch (e) {
+          throw e;
+      }
       btn.innerHTML = originalHtml;
 
       if (json.status === 'success' && json.data) {
@@ -2027,7 +2060,18 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
       });
-      const json = await res.json();
+      let json;
+      try {
+          const textRes = await res.text();
+          try {
+              json = JSON.parse(textRes);
+          } catch (e) {
+              console.error('Non-JSON response from server:', textRes);
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+          }
+      } catch (e) {
+          throw e;
+      }
       if (json.status === 'success' && json.data) {
         currentCustomizations = json.data.customizationsList || [];
         renderCustomizations();
@@ -2366,7 +2410,18 @@ const note = document.getElementById('modalNote').value.trim();
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeUuid: uuid })
       });
-      const json = await res.json();
+      let json;
+      try {
+          const textRes = await res.text();
+          try {
+              json = JSON.parse(textRes);
+          } catch (e) {
+              console.error('Non-JSON response from server:', textRes);
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+          }
+      } catch (e) {
+          throw e;
+      }
       
       if (json.status === 'failure') {
         resultsDiv.innerHTML = oldHtml;
