@@ -2645,13 +2645,32 @@ const note = document.getElementById('modalNote').value.trim();
       }
       
       const etaText = (d.etaRange && d.etaRange.text) ? d.etaRange.text.replace('Min', '分鐘') : '';
-      const etaHtml = etaText ? `<div style="text-align: center; color: #555; font-size: 14px; margin-top: 5px; margin-bottom: 10px; font-weight: bold;">⏱️ 預計抵達時間 ${escapeHTML(etaText)}</div>` : '';
+      const etaText = (d.etaRange && d.etaRange.text) ? d.etaRange.text.replace('Min', '分鐘') : '';
+      const etaHtml = etaText ? `<div style="text-align: center; color: #555; font-size: 14px; margin-top: 5px; margin-bottom: 5px; font-weight: bold;">⏱️ 預計抵達時間 ${escapeHTML(etaText)}</div>` : '';
+
+      let fareHtml = '';
+      if (d.fareBadge && d.fareBadge.text) {
+          const fareText = d.fareBadge.text;
+          if (fareText.toLowerCase().includes('no fee')) {
+              fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費</div>`;
+          } else {
+              const match = fareText.match(/(\d+)/);
+              if (match) {
+                  let fee = parseInt(match[1], 10);
+                  if (fee > 50) {
+                      fee = fee - 50;
+                  }
+                  fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 額外外送費 ${fee} 元</div>`;
+              }
+          }
+      }
 
       let html = `
         <div class="store-header">
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
           <h2 style="margin-bottom: 5px;">${escapeHTML(parseText(d.title))}</h2>
           ${etaHtml}
+          ${fareHtml}
           ${scheduleHtml}
         </div>
       `;
