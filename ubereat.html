@@ -1437,7 +1437,12 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
     btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#111;"></div>';
     
     try {
-      if (window.isGroceryStore || hasCustomizations === false) {
+      if (window.isGroceryStore) {
+          btn.innerHTML = originalHtml;
+          openGroceryCheckoutSummary();
+          return;
+      }
+      if (hasCustomizations === false) {
           btn.innerHTML = originalHtml;
           window.noOptionsItems.add(menuItemUuid);
           cart.push({
@@ -1812,6 +1817,117 @@ function toggleSummaryItem(idx) {
   }
 }
 
+function openGroceryCheckoutSummary() {
+  const savedPhone = localStorage.getItem('userPhone') || '';
+  let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+  if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
+
+  let html = `
+    <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      
+      <div style="margin-bottom:12px;"><strong>🏪 預訂代訂店家:</strong> <a href="${currentStoreUrl}" target="_blank" style="color:#06c167; text-decoration:none;">${escapeHTML(currentStoreName)}</a></div>
+      <div style="margin-bottom:12px;"><strong>📍 外送地址:</strong> ${escapeHTML(addr) || '未設定'}</div>
+      
+      <div style="margin-bottom:12px;">
+        <label style="display:block; margin-bottom:5px;"><strong>聯絡電話 (必填):</strong></label>
+        <input type="tel" id="groceryPhone" value="${escapeHTML(savedPhone)}" placeholder="外送員聯絡用" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+      </div>
+
+      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+      <h3 style="margin:0 0 10px 0; font-size:18px;">訂單優惠與費用試算</h3>
+      <div style="color:#555; line-height:1.8;">
+        <div style="display:flex; justify-content:space-between;"><span>🏷️ 優惠方案</span><span>盡快送達</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>💰 滿額條件</span><span>需滿 $449</span></div>
+        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>💸 優惠折扣</span><span>-$180</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>🛵 平台服務費</span><span>$35~$60不等</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span>$60</span></div>
+      </div>
+      
+      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+      <div style="background:#f8f9fa; padding:12px; border-radius:6px;">
+        <div style="font-weight:bold; margin-bottom:8px;">🧮 費用試算 (以剛好滿$449為例)</div>
+        <div style="color:#555;">
+          449 (商品) - 180 (優惠) + 35 (平台費最低) + 60 (代訂費)<br>
+          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $364</strong>
+        </div>
+      </div>
+      
+      <div style="margin-top:20px; font-size:14px; color:#666;">
+        ⚠️ <b>注意：</b>此為生鮮雜貨代訂。我們不需要您在此點選詳細商品，請直接送出訂單後，於 LINE 聊天室告知您欲購買之商品清單！
+      </div>
+
+      <button onclick="sendGroceryOrderToLine(event)" style="width:100%; padding:14px; margin-top:20px; background:#06c167; color:#fff; border:none; border-radius:6px; font-size:18px; font-weight:bold; cursor:pointer;">送出代購訂單</button>
+    </div>
+  `;
+
+  document.getElementById('checkoutContent').innerHTML = html;
+
+  document.getElementById('cartView').style.display = 'none';
+  const menuContainer = document.getElementById('menuContainer');
+  if (menuContainer) menuContainer.style.display = 'none';
+  const heroSection = document.querySelector('.hero-section');
+  if (heroSection) heroSection.style.display = 'none';
+  document.getElementById('checkoutView').style.display = 'block';
+
+  if (!originalAppHeaderHtml) originalAppHeaderHtml = document.querySelector('.app-header').innerHTML;
+  document.querySelector('.app-header').innerHTML = `
+    <button onclick="backToStoreFromGroceryCheckout()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; gap:10px; color:#111;">← <span style="font-size:20px;">雜貨代購確認</span></button>
+  `;
+  document.querySelector('.app-header').style.display = 'flex';
+  window.scrollTo(0, 0);
+}
+
+function backToStoreFromGroceryCheckout() {
+    document.getElementById('checkoutView').style.display = 'none';
+    const menuContainer = document.getElementById('menuContainer');
+    if (menuContainer) menuContainer.style.display = 'block';
+    const heroSection = document.querySelector('.hero-section');
+    if (heroSection) heroSection.style.display = 'block';
+    
+    if (originalAppHeaderHtml) {
+        document.querySelector('.app-header').innerHTML = originalAppHeaderHtml;
+    }
+}
+
+async function sendGroceryOrderToLine(event) {
+    const phoneInput = document.getElementById('groceryPhone');
+    if (phoneInput && !phoneInput.value.trim()) {
+        showModal('錯誤', '請輸入聯絡電話');
+        return;
+    }
+    const phone = phoneInput ? phoneInput.value.trim() : '';
+    localStorage.setItem('userPhone', phone);
+
+    let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+    if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
+
+    let msg = `【生鮮雜貨代購訂單】\n`;
+    msg += `📍 店家：${currentStoreName}\n`;
+    msg += `🔗 網址：${currentStoreUrl}\n`;
+    msg += `🏠 外送地址：${addr}\n`;
+    msg += `📞 聯絡電話：${phone}\n`;
+    msg += `⏱ 預計取餐：盡快送達\n`;
+    msg += `\n⚠️ 此為生鮮雜貨代購，請於對話框告知您欲購買之商品清單。\n`;
+
+    const btn = event.currentTarget;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:3px;border-top-color:#fff;"></div>';
+
+    try {
+        if (typeof liff !== 'undefined' && liff.isInClient()) {
+            await liff.sendMessages([{ type: 'text', text: msg }]);
+            showModal('訂單已送出', '雜貨代購訂單已傳送至 LINE，請直接在聊天室告知需要的商品！', false, '', true);
+            setTimeout(() => liff.closeWindow(), 2000);
+        } else {
+            alert("請在 LINE 中開啟此網頁以送出訂單！\n\n模擬送出訊息：\n" + msg);
+            btn.innerHTML = oldHtml;
+        }
+    } catch (err) {
+        showModal('錯誤', '傳送失敗: ' + err.message);
+        btn.innerHTML = oldHtml;
+    }
+}
+
 async function sendOrderToLine(forceSubmit = false) {
   if (cart.length === 0) return;
   
@@ -2082,6 +2198,10 @@ try {
   }
 }
 async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations) {
+  if (window.isGroceryStore) {
+      openGroceryCheckoutSummary();
+      return;
+  }
   const title = decodeURIComponent(titleEnc);
   const desc = decodeURIComponent(descEnc);
     currentItem = { title, desc, basePrice, imgUrl, selectedOptions: [], menuItemUuid: menuItemUuid };
