@@ -1847,8 +1847,8 @@ function openGroceryCheckoutSummary() {
       <div style="background:#f8f9fa; padding:12px; border-radius:6px;">
         <div style="font-weight:bold; margin-bottom:8px;">🧮 費用試算 (以剛好滿$449為例)</div>
         <div style="color:#555;">
-          449 (商品) - 180 (優惠) + 35 (平台費最低) + 60 (代訂費)<br>
-          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $364</strong>
+          449 (商品) - 180 (優惠) + 35~60 (平台費) + 60 (代訂費)<br>
+          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $364 ~ $389</strong>
         </div>
       </div>
       
@@ -1862,11 +1862,14 @@ function openGroceryCheckoutSummary() {
 
   document.getElementById('checkoutContent').innerHTML = html;
 
-  document.getElementById('cartView').style.display = 'none';
-  const menuContainer = document.getElementById('menuContainer');
-  if (menuContainer) menuContainer.style.display = 'none';
-  const heroSection = document.querySelector('.hero-section');
-  if (heroSection) heroSection.style.display = 'none';
+  // 隱藏原本的 storeView 避免畫面重疊
+  if (document.getElementById('storeView')) {
+      document.getElementById('storeView').style.display = 'none';
+  }
+  if (document.getElementById('cartView')) {
+      document.getElementById('cartView').style.display = 'none';
+  }
+
   document.getElementById('checkoutView').style.display = 'block';
 
   if (!originalAppHeaderHtml) originalAppHeaderHtml = document.querySelector('.app-header').innerHTML;
@@ -1879,10 +1882,11 @@ function openGroceryCheckoutSummary() {
 
 function backToStoreFromGroceryCheckout() {
     document.getElementById('checkoutView').style.display = 'none';
-    const menuContainer = document.getElementById('menuContainer');
-    if (menuContainer) menuContainer.style.display = 'block';
-    const heroSection = document.querySelector('.hero-section');
-    if (heroSection) heroSection.style.display = 'block';
+    
+    // 恢復 storeView 顯示
+    if (document.getElementById('storeView')) {
+        document.getElementById('storeView').style.display = 'block';
+    }
     
     if (originalAppHeaderHtml) {
         document.querySelector('.app-header').innerHTML = originalAppHeaderHtml;
