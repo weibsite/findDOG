@@ -1427,7 +1427,8 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
             storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
             menuItemUuid: menuItemUuid
           });
-          updateCartBtn();
+          updateCartBadge();
+          updateMenuActions();
           showToast(`已加入: ${title}`);
           return;
       }
@@ -1473,7 +1474,8 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
       }
     } catch (e) {
       btn.innerHTML = originalHtml;
-      alert("網路錯誤");
+      console.error('Quick add error:', e);
+      showToast('載入失敗，請再試一次');
     }
   }
 
