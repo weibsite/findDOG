@@ -882,7 +882,18 @@ let isAddressSet = false;
 
 
 
-  async function searchStores() {
+  function getUberWebpUrl(originalUrl) {
+    if (!originalUrl || !originalUrl.startsWith('http')) return originalUrl;
+    if (originalUrl.includes('image-proc/resize')) return originalUrl;
+    try {
+        const b64 = btoa(originalUrl);
+        return `https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=${b64}`;
+    } catch(e) {
+        return originalUrl;
+    }
+}
+
+async function searchStores() {
     if (!isAddressSet) {
       const addrVal = document.getElementById('addrInput').value.trim();
       if (addrVal) {
@@ -1076,7 +1087,7 @@ let isAddressSet = false;
             for (let img of s.image.items) {
                 if (img.width >= 400 && img.width <= 800) { bestItem = img; break; }
             }
-            imgUrl = bestItem.url;
+            imgUrl = getUberWebpUrl(bestItem.url);
         }
         const rating = s.rating ? s.rating.text : '無評價';
         const name = s.title ? s.title.text : '未知餐廳';
@@ -1296,7 +1307,7 @@ function handleStoreSearch(isUserInput = false) {
                 }
                 if (item.isSoldOut) priceHtml = '<span style="color:#d32f2f;">已售完</span>';
                 
-                const imgUrl = item.imageUrl || '';
+                const imgUrl = getUberWebpUrl(item.imageUrl || '');
                 
                 let isPromo = false;
                 try {
@@ -2777,7 +2788,7 @@ const note = document.getElementById('modalNote').value.trim();
                     }
                   } catch(e) {}
                   
-                  const imgUrl = item.imageUrl || '';
+                  const imgUrl = getUberWebpUrl(item.imageUrl || '');
                   const menuItemUuid = item.uuid;
                   
                   if (isPromo) {
