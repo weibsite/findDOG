@@ -2555,8 +2555,12 @@ const note = document.getElementById('modalNote').value.trim();
       // 判斷是否為「當下正在營業中」
       let isCurrentlyOpen = false;
       const nowSec = Date.now() / 1000;
-      if (availableWindows.length > 0) {
-          // 若最近的一個接單時間在未來 60 分鐘以內，就認定為現在有營業可以接即時單
+      
+      // 直接使用 Uber Eats 的官方狀態：isOpen 與 isOrderable
+      if (d.isOpen === true && d.isOrderable === true) {
+          isCurrentlyOpen = true;
+      } else if (availableWindows.length > 0) {
+          // 備用防呆：若最近的一個接單時間在未來 120 分鐘以內，也認定為現在有營業可以接即時單
           if (availableWindows[0].startTimeSeconds - nowSec <= 120 * 60) {
               isCurrentlyOpen = true;
           }
