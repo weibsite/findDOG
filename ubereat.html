@@ -2657,10 +2657,21 @@ const note = document.getElementById('modalNote').value.trim();
               const match = fareText.match(/(\d+)/);
               if (match) {
                   let fee = parseInt(match[1], 10);
+                  let displayFee = 0;
+                  let prefixText = "額外外送費";
                   if (fee > 50) {
-                      fee = fee - 50;
+                      displayFee = fee - 50;
+                      prefixText = "外送費超過50 需要額外";
+                  } else {
+                      displayFee = fee - 10;
+                      prefixText = "需要額外";
                   }
-                  fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 額外外送費 ${fee} 元</div>`;
+                  
+                  if (displayFee <= 0) {
+                      fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費</div>`;
+                  } else {
+                      fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 ${prefixText} ${displayFee} 元外送費用</div>`;
+                  }
               }
           }
       }
