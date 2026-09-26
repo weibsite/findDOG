@@ -1382,6 +1382,23 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
     btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#111;"></div>';
     
     try {
+      if (window.isGroceryStore) {
+          btn.innerHTML = originalHtml;
+          window.noOptionsItems.add(menuItemUuid);
+          cart.push({
+            title: title,
+            price: basePrice,
+            qty: 1,
+            note: '',
+            options: [],
+            storeName: currentStoreName,
+            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
+            menuItemUuid: menuItemUuid
+          });
+          updateCartBtn();
+          showToast(`已加入: ${title}`);
+          return;
+      }
       const res = await fetch(`${API_BASE_URL}/api/item`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
@@ -1989,6 +2006,23 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
 
     // 呼叫 API 取得真實客製化選項
     try {
+      if (window.isGroceryStore) {
+          btn.innerHTML = originalHtml;
+          window.noOptionsItems.add(menuItemUuid);
+          cart.push({
+            title: title,
+            price: basePrice,
+            qty: 1,
+            note: '',
+            options: [],
+            storeName: currentStoreName,
+            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
+            menuItemUuid: menuItemUuid
+          });
+          updateCartBtn();
+          showToast(`已加入: ${title}`);
+          return;
+      }
       const res = await fetch(`${API_BASE_URL}/api/item`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
@@ -2341,6 +2375,7 @@ const note = document.getElementById('modalNote').value.trim();
       
       const d = json.data;
       window.currentStoreRawData = d;
+      window.isGroceryStore = (d.isGr === true) || (window.currentVertical === 'SHOP');
       document.getElementById('storeSearchBtn').style.display = 'block';
       const logoUrl = d.heroImageUrls && d.heroImageUrls.length > 0 ? d.heroImageUrls[0].url : '';
       const storeUuid = d.uuid;
@@ -2366,8 +2401,10 @@ const note = document.getElementById('modalNote').value.trim();
       }
 
       const isSchedulable = (d.scheduledOrderInfo && d.scheduledOrderInfo.isSchedulable && d.timeWindowPicker && d.timeWindowPicker.dates);
+      // 如果是生鮮雜貨，給予特權免死金牌，無視預約限制
+      const isGrocery = window.isGroceryStore;
 
-      if (!isSchedulable || !hasValidPriceItem) {
+      if ((!isSchedulable && !isGrocery) || !hasValidPriceItem) {
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
           if (!unSchedulableStores.includes(storeUuid)) {
               unSchedulableStores.push(storeUuid);
