@@ -961,6 +961,29 @@ let isAddressSet = false;
           seen.add(s.storeUuid);
           return true;
       });
+      
+      // 根據使用者要求進行智能排序
+      stores.sort((a, b) => {
+          const getScore = (s) => {
+              const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
+              const searchQ = q.toLowerCase();
+              
+              // 1. 名字有符合關鍵字（優先顯示，不管有沒有營業）
+              if (searchQ && name.includes(searchQ)) return 3; 
+              
+              // 2. 判斷是否為完全不可預約的休息狀態
+              const state = s.storeAvailablityState || '';
+              const isCompletelyClosed = (state === 'STORE_CLOSED_NOT_SCHEDULABLE' || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE');
+              
+              // 如果名字沒符合，但有營業或可預約，排第二
+              if (!isCompletelyClosed) return 2;
+              
+              // 名字沒符合，且完全休息不可預約，墊底
+              return 1;
+          };
+          return getScore(b) - getScore(a);
+      });
+
       if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
       
       const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
