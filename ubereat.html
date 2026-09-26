@@ -1908,18 +1908,20 @@ async function sendOrderToLine(forceSubmit = false) {
       });
       
       let binPromo = binFoodSum >= 285 ? 143 : Math.floor(binFoodSum / 2);
-      let binTotal = (binFoodSum - binPromo) + feePerBin;
+      
+      let binExcess = 0;
+      Object.keys(binStores).forEach(sName => {
+        binExcess += Math.max(0, ...Object.values(binStores[sName]).map(item => item.storeDeliveryFee || 0));
+      });
+      
+      let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess;
       grandTotal += binTotal;
       
-      msgText += `  小計: $${binFoodSum}
-`;
-      if (binPromo > 0) msgText += `  🎉 半價優惠: -$${binPromo}
-`;
-      msgText += `  🛵 代訂費: $${feePerBin}
-`;
-      msgText += `  ➡️ 結算: $${binTotal}
-
-`;
+      msgText += `  小計: $${binFoodSum}\n`;
+      if (binPromo > 0) msgText += `  🎉 半價優惠: -$${binPromo}\n`;
+      msgText += `  🛵 代訂費: $${feePerBin}\n`;
+      if (binExcess > 0) msgText += `  🚚 超額外送費: $${binExcess}\n`;
+      msgText += `  ➡️ 結算: $${binTotal}\n\n`;
     });
     
     grandTotal -= preOrderDiscount;
@@ -3007,7 +3009,16 @@ function escapeHTML(str) {
       for (let bin of bins) {
         let binPromo = bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2);
         let binFoodCost = bin.sum - binPromo;
-        cost += binFoodCost + feePerBin;
+        
+        let binExcess = 0;
+        const bsg = {};
+        bin.items.forEach(i => {
+            if(!bsg[i.storeName||'']) bsg[i.storeName||'']=[];
+            bsg[i.storeName||''].push(i);
+        });
+        Object.keys(bsg).forEach(s => binExcess += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
+        
+        cost += binFoodCost + feePerBin + binExcess;
       }
       cost -= preOrderDiscount;
 
