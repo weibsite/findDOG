@@ -2050,20 +2050,9 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
     // 呼叫 API 取得真實客製化選項
     try {
       if (window.isGroceryStore || hasCustomizations === false) {
-          btn.innerHTML = originalHtml;
           window.noOptionsItems.add(menuItemUuid);
-          cart.push({
-            title: title,
-            price: basePrice,
-            qty: 1,
-            note: '',
-            options: [],
-            storeName: currentStoreName,
-            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
-            menuItemUuid: menuItemUuid
-          });
-          updateCartBtn();
-          showToast(`已加入: ${title}`);
+          document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#06c167;font-weight:bold;">一般商品（無客製化選項）</div>';
+          if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
           return;
       }
       const res = await fetch(`${API_BASE_URL}/api/item`, {
