@@ -1095,6 +1095,8 @@ let isAddressSet = false;
         let metaText = '';
         if (s.meta && s.meta.length > 0) {
             const closedEta = s.meta.find(m => m.badgeType === 'CLOSED_ETA');
+            const openEta = s.meta.find(m => m.badgeType === 'ETD');
+            
             if (closedEta && closedEta.text) {
                 let txt = closedEta.text;
                 if (txt === 'Schedule ahead') {
@@ -1107,6 +1109,14 @@ let isAddressSet = false;
                     metaText = `${time}營業 (可預約)`;
                 } else {
                     metaText = txt + ' (可預約)';
+                }
+            } else if (openEta && openEta.accessibilityText && openEta.accessibilityText.includes('Delivered in')) {
+                const match = openEta.accessibilityText.match(/(\d+ to \d+)/);
+                if (match) {
+                    const timeRange = match[1].replace(' to ', '~');
+                    metaText = `預計 ${timeRange} 分鐘`;
+                } else {
+                    metaText = openEta.text.replace('min', '分鐘');
                 }
             }
         }
@@ -2634,10 +2644,14 @@ const note = document.getElementById('modalNote').value.trim();
           topKeywords = Object.keys(bigramCounts).sort((a, b) => bigramCounts[b] - bigramCounts[a]).slice(0, 8);
       }
       
+      const etaText = (d.etaRange && d.etaRange.text) ? d.etaRange.text.replace('Min', '分鐘') : '';
+      const etaHtml = etaText ? `<div style="text-align: center; color: #555; font-size: 14px; margin-top: 5px; margin-bottom: 10px; font-weight: bold;">⏱️ 預計抵達時間 ${escapeHTML(etaText)}</div>` : '';
+
       let html = `
         <div class="store-header">
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
-          <h2>${escapeHTML(parseText(d.title))}</h2>
+          <h2 style="margin-bottom: 5px;">${escapeHTML(parseText(d.title))}</h2>
+          ${etaHtml}
           ${scheduleHtml}
         </div>
       `;
