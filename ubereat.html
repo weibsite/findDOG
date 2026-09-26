@@ -962,24 +962,33 @@ let isAddressSet = false;
           return true;
       });
       
-      // 根據使用者要求進行智能排序
+      // 根據使用者要求進行智能排序 (進階版：區分品牌名 vs 一般字眼)
       stores.sort((a, b) => {
           const getScore = (s) => {
               const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
               const searchQ = q.toLowerCase();
               
-              // 1. 名字有符合關鍵字（優先顯示，不管有沒有營業）
-              if (searchQ && name.includes(searchQ)) return 3; 
-              
-              // 2. 判斷是否為完全不可預約的休息狀態
               const state = s.storeAvailablityState || '';
               const isCompletelyClosed = (state === 'STORE_CLOSED_NOT_SCHEDULABLE' || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE');
               
-              // 如果名字沒符合，但有營業或可預約，排第二
-              if (!isCompletelyClosed) return 2;
+              if (searchQ) {
+                  // 情況 1：直接命中「品牌名稱」（通常分店命名為 "麥當勞 桃園店"，品牌名會在最前面）
+                  if (name.startsWith(searchQ) || name === searchQ) {
+                      return 5; // 無條件最高優先，不管有沒有開
+                  }
+                  
+                  // 情況 2：店名有包含該字眼，但不是在開頭 (例如搜 "珍珠"，店名是 "阿Q珍珠奶茶")
+                  if (name.includes(searchQ)) {
+                      if (!isCompletelyClosed) return 4; // 如果有開，排第二名
+                      return 2; // 如果沒開，降級到倒數第二名 (讓有開但名字沒中的店排前面)
+                  }
+              }
               
-              // 名字沒符合，且完全休息不可預約，墊底
-              return 1;
+              // 情況 3：店名完全沒包含該字眼 (通常是靠菜單符合被搜出來的)
+              if (!isCompletelyClosed) return 3; // 只要有開或可預約，排第三名
+              
+              // 情況 4：店名沒命中，且完全沒開
+              return 1; // 墊底
           };
           return getScore(b) - getScore(a);
       });
