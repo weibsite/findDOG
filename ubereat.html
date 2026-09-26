@@ -962,36 +962,77 @@ let isAddressSet = false;
           return true;
       });
       
-      // 根據使用者要求進行智能排序 (進階版：區分品牌名 vs 一般字眼)
-      stores.sort((a, b) => {
-          const getScore = (s) => {
-              const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
-              const searchQ = q.toLowerCase();
-              
-              const state = s.storeAvailablityState || '';
-              const isCompletelyClosed = (state === 'STORE_CLOSED_NOT_SCHEDULABLE' || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE');
-              
-              if (searchQ) {
-                  // 情況 1：直接命中「品牌名稱」（通常分店命名為 "麥當勞 桃園店"，品牌名會在最前面）
-                  if (name.startsWith(searchQ) || name === searchQ) {
-                      return 5; // 無條件最高優先，不管有沒有開
-                  }
-                  
-                  // 情況 2：店名有包含該字眼，但不是在開頭 (例如搜 "珍珠"，店名是 "阿Q珍珠奶茶")
-                  if (name.includes(searchQ)) {
-                      if (!isCompletelyClosed) return 4; // 如果有開，排第二名
-                      return 2; // 如果沒開，降級到倒數第二名 (讓有開但名字沒中的店排前面)
-                  }
-              }
-              
-              // 情況 3：店名完全沒包含該字眼 (通常是靠菜單符合被搜出來的)
-              if (!isCompletelyClosed) return 3; // 只要有開或可預約，排第三名
-              
-              // 情況 4：店名沒命中，且完全沒開
-              return 1; // 墊底
-          };
-          return getScore(b) - getScore(a);
+      // 根據使用者要求進行極致智能排序：分類、抽首位、穿插
+      const searchQ = q.toLowerCase();
+      const isShort = searchQ.length < 4;
+
+      let topMatched = null;
+      let openStores = [];
+      let closedMatchedStores = [];
+      let closedUnmatchedStores = [];
+
+      stores.forEach(s => {
+          const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
+          const state = s.storeAvailablityState || '';
+          const isCompletelyClosed = (state === 'STORE_CLOSED_NOT_SCHEDULABLE' || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE');
+          const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
+          const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
+
+          // 標記這家店的匹配分數，方便等一下在各自陣列中再排序一次
+          s._matchScore = isStrongMatch ? 2 : (isWeakMatch ? 1 : 0);
+
+          if (!isCompletelyClosed) {
+              openStores.push(s);
+          } else if (isStrongMatch || isWeakMatch) {
+              closedMatchedStores.push(s);
+          } else {
+              closedUnmatchedStores.push(s);
+          }
       });
+
+      // 各自內部排序：讓符合名稱的排在前面
+      const sortByMatch = (a, b) => b._matchScore - a._matchScore;
+      openStores.sort(sortByMatch);
+      closedMatchedStores.sort(sortByMatch);
+
+      let finalList = [];
+
+      if (isShort) {
+          // 如果字數少於 4，抽取「第一家完全符合」的店家，不論有沒有開，放在絕對第一名
+          // 優先從有開的找，找不到再從沒開的找
+          let foundIdx = openStores.findIndex(s => s._matchScore > 0);
+          if (foundIdx !== -1) {
+              topMatched = openStores.splice(foundIdx, 1)[0];
+          } else {
+              foundIdx = closedMatchedStores.findIndex(s => s._matchScore > 0);
+              if (foundIdx !== -1) {
+                  topMatched = closedMatchedStores.splice(foundIdx, 1)[0];
+              }
+          }
+
+          if (topMatched) finalList.push(topMatched);
+
+          // 接下來把剩下的「有開的」與「沒開但符合的」穿插 (每 2 家有開的，穿插 1 家沒開的)
+          let openIdx = 0, closedIdx = 0;
+          while (openIdx < openStores.length || closedIdx < closedMatchedStores.length) {
+              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
+              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
+              if (closedIdx < closedMatchedStores.length) finalList.push(closedMatchedStores[closedIdx++]);
+          }
+      } else {
+          // 如果字數 >= 4 (通常是確切店名)，把所有強烈符合的(不管有沒有開)都放在最前面
+          const strongClosed = closedMatchedStores.filter(s => s._matchScore === 2);
+          const weakClosed = closedMatchedStores.filter(s => s._matchScore < 2);
+          
+          finalList = finalList.concat(openStores.filter(s => s._matchScore === 2)); // 強符合 有開
+          finalList = finalList.concat(strongClosed);                                // 強符合 沒開
+          finalList = finalList.concat(openStores.filter(s => s._matchScore < 2));   // 弱/不符合 有開
+          finalList = finalList.concat(weakClosed);                                  // 弱符合 沒開
+      }
+
+      // 最後補上完全沒中且沒開的幽靈店家
+      finalList = finalList.concat(closedUnmatchedStores);
+      stores = finalList;
 
       if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
       
