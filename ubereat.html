@@ -5847,31 +5847,23 @@ const note = document.getElementById('modalNote').value.trim();
             if (window.isGroceryStore) {
 
           window.groceryServiceFee = null;
-
           let feeText = '需服務費';
-
-          if (d.basketDependentFeePolicy && d.basketDependentFeePolicy.dialog && d.basketDependentFeePolicy.dialog.tierFee) {
-
-              const tier = d.basketDependentFeePolicy.dialog.tierFee[0];
-
-              if (tier && tier.nonMemberServiceFee) {
-
-                  const matchVal = tier.nonMemberServiceFee.match(/\d+/);
-
-                  if (matchVal) {
-
-                      window.groceryServiceFee = Math.round(parseInt(matchVal[0], 10) * 0.8);
-
-                      feeText = `服務費${window.groceryServiceFee}`;
-
+          try {
+              if (d.basketDependentFeePolicy && d.basketDependentFeePolicy.dialog && d.basketDependentFeePolicy.dialog.tierFee) {
+                  const tier = d.basketDependentFeePolicy.dialog.tierFee[0];
+                  if (tier && tier.nonMemberServiceFee) {
+                      const fareText = tier.nonMemberServiceFee;
+                      const matchVal = fareText.match(/(\d+)/);
+                      if (matchVal) {
+                          let fee = parseInt(matchVal[1], 10);
+                          let displayFee = Math.round(fee * 0.8);
+                          window.groceryServiceFee = displayFee;
+                          feeText = `服務費${displayFee}`;
+                      }
                   }
-
               }
-
-          }
-
+          } catch(e) { console.error(e); }
           fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、${feeText}</div>`;
-
           currentStoreDeliveryFee = 0;
 
       }
