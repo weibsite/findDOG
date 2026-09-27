@@ -6,7 +6,7 @@
 
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<title>訂餐系統1.4</title>
+<title>訂餐系統1.5</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
   .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
@@ -1825,9 +1825,22 @@ function openGroceryCheckoutSummary() {
   const savedPhone = localStorage.getItem('userPhone') || '';
   const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
   const selectedMethod = document.getElementById('deliveryMethod') ? document.getElementById('deliveryMethod').value : '當面點交';
-  
+
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
   if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
+
+  let timeText = '盡快送達';
+  let isPreOrder = false;
+  if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+    const timeSelect = document.getElementById('scheduleTime');
+    if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
+      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      const tsVal = timeSelect.value;
+      if (tsVal && (new Date(tsVal).getTime() - new Date().getTime() >= 2.5 * 3600000)) {
+        isPreOrder = true;
+      }
+    }
+  }
 
   let html = `
     <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -1857,22 +1870,36 @@ function openGroceryCheckoutSummary() {
         <input type="tel" id="groceryPhone" value="${escapeHTML(savedPhone)}" placeholder="外送員聯絡用" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone(\'grocery\')">
       </div>
 
+            <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}
+      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(3小時以上): -$20</div>` : ''}
+      </div>
+
       <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
       <h3 style="margin:0 0 10px 0; font-size:18px;">訂單優惠與費用試算</h3>
       <div style="color:#555; line-height:1.8;">
-        <div style="display:flex; justify-content:space-between;"><span>🏷️ 優惠方案</span><span>盡快送達</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>🏷️ 優惠方案</span><span>${escapeHTML(timeText)}</span></div>
         <div style="display:flex; justify-content:space-between;"><span>💰 滿額條件</span><span>需滿 $449</span></div>
         <div style="display:flex; justify-content:space-between; color:#06c167;"><span>💸 優惠折扣</span><span>-$180</span></div>
         <div style="display:flex; justify-content:space-between;"><span>🛵 平台服務費</span><span>$35~$60不等</span></div>
+        ${isPreOrder ? `
+        <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
+        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(3小時以上)</span><span>-$20</span></div>
+        ` : `
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span>$60</span></div>
+        `}
       </div>
-      
+
       <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
       <div style="background:#f8f9fa; padding:12px; border-radius:6px;">
         <div style="font-weight:bold; margin-bottom:8px;">🧮 費用試算 (以剛好滿$449為例)</div>
         <div style="color:#555;">
+          ${isPreOrder ? `
+          449 (商品) - 180 (優惠) + 35~60 (平台費) + 45 (代訂費) - 20 (預約優惠)<br>
+          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $329 ~ $354</strong>
+          ` : `
           449 (商品) - 180 (優惠) + 35~60 (平台費) + 60 (代訂費)<br>
           <strong style="color:#d32f2f; font-size:18px;">預估總計約: $364 ~ $389</strong>
+          `}
         </div>
       </div>
       
@@ -1964,11 +1991,27 @@ async function sendOrderToLine(forceSubmit = false) {
       let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
       if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
 
+            let timeText = '盡快送達';
+      let isPreOrder = false;
+      if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+        const timeSelect = document.getElementById('scheduleTime');
+        if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
+          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          const tsVal = timeSelect.value;
+          if (tsVal && (new Date(tsVal).getTime() - new Date().getTime() >= 2.5 * 3600000)) {
+            isPreOrder = true;
+          }
+        }
+      }
+
       msgText = `【生鮮雜貨代購訂單】\n`;
       msgText += `📍 店家：${currentStoreName}\n`;
       msgText += `🔗 網址：${currentStoreUrl}\n`;
       msgText += `🏠 外送地址：${addr}\n`;
-      msgText += `⏱ 預計取餐：盡快送達\n`;
+      msgText += `⏱ 預計取餐：${timeText}\n`;
+      if (isPreOrder) {
+          msgText += `🕒 預約優惠(3小時以上): -$20\n`;
+      }
       msgText += `\n⚠️ 此為生鮮雜貨代購，代訂會提供網址，直接選購商品即可。\n`;
 
   } else {
