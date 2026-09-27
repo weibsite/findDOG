@@ -533,6 +533,20 @@
 
 <script>
 
+  
+  function getSelectedScheduleTimestamp() {
+      const ts = document.getElementById('scheduleTime');
+      if (!ts || !ts.value) return 0;
+      try {
+          const parsed = JSON.parse(ts.value);
+          const baseDate = new Date(parsed.date + "T00:00:00+08:00");
+          return baseDate.getTime() + (parsed.startTime * 60 * 1000);
+      } catch (e) {
+          const d = new Date(ts.value);
+          return isNaN(d) ? 0 : d.getTime();
+      }
+  }
+
   let API_BASE_URL = '';
 
   let WS_URL = '';
@@ -893,110 +907,6 @@ let isAddressSet = false;
 
 
 
-
-    for (let h = startHour; h < 24; h++) {
-
-      for (let m = (h === startHour ? startMin : 0); m < 60; m += 15) {
-
-        // 建立 30 分鐘的區間
-
-        let endH = h;
-
-        let endM = m + 30;
-
-        if (endM >= 60) { endH++; endM -= 60; }
-
-        if (endH >= 24) continue;
-
-        
-
-        const formatTime = (hour, min) => {
-
-          const ampm = hour >= 12 ? '下午' : '上午';
-
-          const h12 = hour % 12 || 12;
-
-          const mm = min.toString().padStart(2, '0');
-
-          return `${getTimeEmoji(hour)} ${ampm} ${h12}:${mm}`;
-
-        };
-
-
-
-        const tStart = formatTime(h, m);
-
-        const tEnd = formatTime(endH, endM);
-
-
-
-        const valDate = new Date(targetDate);
-
-        valDate.setHours(h, m, 0, 0);
-
-        
-
-        // 為了模擬時區不偏差，使用本地時間組裝字串或保留 ISO 格式
-
-        const tzo = -valDate.getTimezoneOffset() / 60;
-
-        const sign = tzo >= 0 ? '+' : '-';
-
-        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
-
-        const isoLocal = valDate.getFullYear() + '-' + pad(valDate.getMonth()+1) + '-' + pad(valDate.getDate()) + 'T' + pad(valDate.getHours()) + ':' + pad(valDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
-
-
-
-        const opt = document.createElement('option');
-
-        opt.value = isoLocal; // 用完整的時間字串
-
-              const startAmpm = h >= 12 ? '下午' : '上午';
-
-              const endAmpm = endH >= 12 ? '下午' : '上午';
-
-              const startH12 = h % 12 || 12;
-
-              const endH12 = endH % 12 || 12;
-
-              const startMM = m.toString().padStart(2, '0');
-
-              const endMM = endM.toString().padStart(2, '0');
-
-              const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
-
-              if (startAmpm === endAmpm) {
-
-                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
-
-              } else {
-
-                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
-
-              }
-
-        timeSelect.appendChild(opt);
-
-      }
-
-    }
-
-    
-
-    if (timeSelect.options.length === 0) {
-
-      const opt = document.createElement('option');
-
-      opt.value = "";
-
-      opt.innerText = "今日已無可用時段";
-
-      timeSelect.appendChild(opt);
-
-    }
-
-  }
 
 
 
@@ -3539,7 +3449,7 @@ function openCheckoutSummary() {
 
         })()}
 
-        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
+        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
 
         <div style="font-weight:bold; font-size:20px; margin-top:10px;">
 
@@ -3555,7 +3465,7 @@ function openCheckoutSummary() {
 
               const pd = total >= 285 ? 143 : Math.floor(total/2);
 
-              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
 
               return `總計: <span style="text-decoration:line-through; color:#999; font-size:16px;">$${total + 50 + totalExcess}</span> <span style="color:#d32f2f;">$${total - pd + 50 + totalExcess - pr}</span>`;
 
@@ -5536,7 +5446,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
-        const selectedTime = new Date(selectedScheduleValue).getTime() / 1000;
+        const selectedTime = getSelectedScheduleTimestamp() / 1000;
 
         let timeFound = false;
 
@@ -6338,7 +6248,7 @@ function escapeHTML(str) {
 
     if (ts && ts.value) {
 
-      if (new Date(ts.value).getTime() - new Date().getTime() >= 2.5 * 3600000) {
+      if (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
 
         preOrderDiscount = 10;
 
