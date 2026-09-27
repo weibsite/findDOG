@@ -1857,7 +1857,28 @@ async function searchStores() {
           }
       }
 
-      console.log('📡 [搜尋] 送出資料:', JSON.stringify(searchPayload, null, 2));
+      
+      // 在 F12 顯示預計送往 Uber API 的真實 Payload 以利除錯
+      const expectedUberPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          displayType: searchPayload.displayType,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      if (searchPayload.date) {
+          expectedUberPayload.date = searchPayload.date;
+          expectedUberPayload.startTime = searchPayload.startTime;
+          expectedUberPayload.endTime = searchPayload.endTime;
+      }
+      console.group('🚀 [Uber Eats API] 預計發送的 Payload');
+      console.log(JSON.stringify(expectedUberPayload, null, 2));
+      console.groupEnd();
+
       const res = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(searchPayload)
