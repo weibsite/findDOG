@@ -5261,6 +5261,24 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
           try {
 
               const storePayload = { storeUuid: uuid, lat: currentLat, lng: currentLng };
+              if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+                  const timeSelect = document.getElementById('scheduleTime');
+                  if (timeSelect && timeSelect.value) {
+                      try {
+                          const sData = JSON.parse(timeSelect.value);
+                          const startTimeMs = getSelectedScheduleTimestamp();
+                          storePayload.diningMode = 'DELIVERY';
+                          storePayload.time = {
+                              scheduled: true,
+                              date: sData.date,
+                              startTime: sData.startTime,
+                              startTimeMs: startTimeMs,
+                              endTime: sData.endTime,
+                              deliveryType: 'ASAP'
+                          };
+                      } catch (e) {}
+                  }
+              }
               console.log('📡 [開啟店家] 送出資料:', JSON.stringify(storePayload, null, 2));
               const res = await fetch(`${API_BASE_URL}/api/store`, {
 
