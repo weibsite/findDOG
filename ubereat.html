@@ -2579,6 +2579,12 @@ const note = document.getElementById('modalNote').value.trim();
   }
 
   async function openStore(uuid, storeName, actionUrl = '') {
+    if (cart.length > 0 && storeName && cart[0].storeName && cart[0].storeName !== storeName) {
+        cart = [];
+        saveCart();
+        updateCartBadge();
+    }
+    
     if(document.getElementById('headerSearchBox') && document.getElementById('headerSearchBox').style.display === 'block') {
         toggleStoreSearch();
     }
