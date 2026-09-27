@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>訂餐系統1.9</title>
+<title>計算機系統 2.0</title>
 
 <style>
 
@@ -1916,24 +1916,17 @@ async function searchStores() {
 
     try {
 
-      const res = await fetch(`${API_BASE_URL}/api/search`, {
-
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({ 
-
+      const searchPayload = { 
           query: q, 
-
           vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
-
           searchSource: 'SEARCH_SUGGESTION',
-
           displayType: 'SEARCH_RESULTS',
-
           searchType: 'GLOBAL_SEARCH'
-
-        })
-
+      };
+      console.log('📡 [搜尋] 送出資料:', JSON.stringify(searchPayload, null, 2));
+      const res = await fetch(`${API_BASE_URL}/api/search`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchPayload)
       });
 
       let json;
@@ -5308,11 +5301,13 @@ const note = document.getElementById('modalNote').value.trim();
 
           try {
 
+              const storePayload = { storeUuid: uuid, lat: currentLat, lng: currentLng };
+              console.log('📡 [開啟店家] 送出資料:', JSON.stringify(storePayload, null, 2));
               const res = await fetch(`${API_BASE_URL}/api/store`, {
 
                   method: 'POST', headers: { 'Content-Type': 'application/json' },
 
-                  body: JSON.stringify({ storeUuid: uuid, lat: currentLat, lng: currentLng })
+                  body: JSON.stringify(storePayload)
 
               });
 
