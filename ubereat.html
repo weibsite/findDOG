@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>訂餐系統1.8</title>
+<title>訂餐系統1.9</title>
 
 <style>
 
@@ -5848,13 +5848,8 @@ const note = document.getElementById('modalNote').value.trim();
 
           window.groceryServiceFee = null;
           let feeText = '需服務費';
-          console.log('🔍 [DEBUG] d.fareInfo=', JSON.stringify(d.fareInfo));
-          console.log('🔍 [DEBUG] d.basketDependentFeePolicy=', d.basketDependentFeePolicy);
-          console.log('🔍 [DEBUG] d.fareBadge=', JSON.stringify(d.fareBadge));
-          console.log('🔍 [DEBUG] d.fareInfo keys=', d.fareInfo ? Object.keys(d.fareInfo) : 'N/A');
           try {
               if (d.basketDependentFeePolicy && d.basketDependentFeePolicy.dialog && d.basketDependentFeePolicy.dialog.tierFee) {
-                  console.log('🔍 [DEBUG] tierFee found:', d.basketDependentFeePolicy.dialog.tierFee);
                   const tier = d.basketDependentFeePolicy.dialog.tierFee[0];
                   if (tier && tier.nonMemberServiceFee) {
                       const fareText = tier.nonMemberServiceFee;
@@ -5866,6 +5861,11 @@ const note = document.getElementById('modalNote').value.trim();
                           feeText = `服務費${displayFee}`;
                       }
                   }
+              } else if (d.fareInfo && d.fareInfo.serviceFee !== undefined) {
+                  let fee = parseInt(d.fareInfo.serviceFee, 10);
+                  let displayFee = Math.round(fee * 0.8);
+                  window.groceryServiceFee = displayFee;
+                  feeText = `服務費${displayFee}`;
               }
           } catch(e) { console.error(e); }
           fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、${feeText}</div>`;
