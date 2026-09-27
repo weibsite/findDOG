@@ -707,7 +707,8 @@ let isAddressSet = false;
 
     history = history.filter(item => item.title !== title);
 
-    history.unshift({ lat, lng, title });
+    // [修補] 加入儲存時間戳，方便後續偵測過時座標
+    history.unshift({ lat, lng, title, savedAt: Date.now() });
 
     if (history.length > 5) history = history.slice(0, 5);
 
@@ -1358,10 +1359,12 @@ let isAddressSet = false;
     
 
     // Check if it's already in history to skip server searching
+    // [修補] 超過 7 天的歷史地址視為過時，強制重新查詢座標
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
     const matchedHistory = addressHistory.find(item => item.title === q);
 
-    if (matchedHistory) {
+    if (matchedHistory && matchedHistory.savedAt && (Date.now() - matchedHistory.savedAt) < SEVEN_DAYS_MS) {
 
       setAddress(matchedHistory.lat, matchedHistory.lng, matchedHistory.title);
 
@@ -1589,19 +1592,7 @@ let isAddressSet = false;
 
 
 
-      ws.onerror = (e) => {
-
-        if (!resolved) {
-
-          resolved = true;
-
-          clearTimeout(timeoutId);
-
-          fallbackSearch();
-
-        }
-
-      };
+      // [修補] 移除重複的 ws.onerror（已在上方定義過）
 
     } catch (e) { 
 
@@ -1628,6 +1619,11 @@ let isAddressSet = false;
     document.getElementById('addrInput').value = displayTitle;
 
     scrollAddrToEnd();
+
+    // [修補] 先暫存舊座標，等 API 確認成功後才真正更新
+    const prevLat = currentLat;
+    const prevLng = currentLng;
+    const prevTitle = currentAddrTitle;
 
     currentLat = lat;
 
@@ -1681,6 +1677,11 @@ let isAddressSet = false;
 
       } else {
 
+          // [修補] API 失敗，還原座標
+          currentLat = prevLat;
+          currentLng = prevLng;
+          currentAddrTitle = prevTitle;
+
           statusEl.innerText = '❌ 設定失敗: ' + json.message;
 
         updateAddrTitleState('error');
@@ -1688,6 +1689,11 @@ let isAddressSet = false;
       }
 
     } catch (e) { 
+
+        // [修補] 連線失敗，還原座標
+        currentLat = prevLat;
+        currentLng = prevLng;
+        currentAddrTitle = prevTitle;
 
         statusEl.innerText = '❌ 連線伺服器失敗: ' + e.message;
 
@@ -1793,6 +1799,9 @@ let isAddressSet = false;
 
 async function searchStores() {
 
+    // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
+    if (window._searchLock) return;
+
     if (!isAddressSet) {
 
       const addrVal = document.getElementById('addrInput').value.trim();
@@ -1800,6 +1809,8 @@ async function searchStores() {
       if (addrVal) {
 
           showModal('自動定位中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在為您確認地址，請稍候...</div>', true);
+
+          window._searchLock = true; // [修補] 上鎖
 
           searchAddress(true);
 
@@ -1823,6 +1834,8 @@ async function searchStores() {
 
                   document.getElementById('errorModalOverlay').style.display = 'none';
 
+                  window._searchLock = false; // [修補] 解鎖
+
                   searchStores();
 
               } else if (resultsHtml !== '' || (statusText !== '' && statusText !== '尋找中...')) {
@@ -1830,6 +1843,8 @@ async function searchStores() {
                   clearInterval(checkInterval);
 
                   document.getElementById('errorModalOverlay').style.display = 'none';
+
+                  window._searchLock = false; // [修補] 解鎖
 
                   if (statusText !== '' && statusText !== '尋找中...' && !statusText.includes('請選擇')) {
 
@@ -1842,6 +1857,8 @@ async function searchStores() {
                   clearInterval(checkInterval);
 
                   document.getElementById('errorModalOverlay').style.display = 'none';
+
+                  window._searchLock = false; // [修補] 解鎖
 
                   showModal('地址設定逾時', '無法自動確認地址，請檢查地址是否正確。');
 
