@@ -840,7 +840,20 @@ let isAddressSet = false;
     dateBtns.innerHTML = '';
     if (!uberTimeData || !uberTimeData.dates || uberTimeData.dates.length === 0) return;
 
-    uberTimeData.dates.forEach((dateStr, idx) => {
+    // [過濾空時段] 如果該日期完全沒有時段，就直接隱藏（例如今天已經太晚打烊了）
+    const validDates = uberTimeData.dates.filter(dateStr => {
+        const ranges = uberTimeData.timeRanges[dateStr];
+        return ranges && ranges.length > 0;
+    });
+    uberTimeData.dates = validDates;
+
+    if (validDates.length === 0) {
+        dateBtns.innerHTML = '<div style="padding:10px; color:red; font-size:14px;">近期無可預約時段</div>';
+        document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
+        return;
+    }
+
+    validDates.forEach((dateStr, idx) => {
       let dayName = dateStr;
       const d = new Date(dateStr);
       if (!isNaN(d)) {
@@ -875,27 +888,50 @@ let isAddressSet = false;
     renderTimeSlots(dates[idx]);
   }
 
-  function formatTime(minutes) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-  }
+  
 
   function renderTimeSlots(dateStr) {
     const timeSelect = document.getElementById('scheduleTime');
     timeSelect.innerHTML = '';
-    if (!uberTimeData || !uberTimeData.timeRanges || !uberTimeData.timeRanges[dateStr]) {
-      timeSelect.innerHTML = '<option value="">無可用時段</option>';
+    if (!uberTimeData || !uberTimeData.timeRanges || !uberTimeData.timeRanges[dateStr] || uberTimeData.timeRanges[dateStr].length === 0) {
+      timeSelect.innerHTML = '<option value="">今日已無可用時段</option>';
       return;
     }
+    
+    // 檢查是否為今天，用來決定要不要加日期前綴 (雖然目前設計上已經選了日期標籤)
+    const targetDate = new Date(dateStr);
+    const today = new Date();
+    const isToday = !isNaN(targetDate) && targetDate.toDateString() === today.toDateString();
+
     const ranges = uberTimeData.timeRanges[dateStr];
     ranges.forEach(w => {
-      const st = w.startTime || 0;
+      const st = w.startTime || 0; // minutes from midnight
       const et = w.endTime || 0;
-      const title = `${formatTime(st)} - ${formatTime(et)}`;
+      
+      const h = Math.floor(st / 60);
+      const m = st % 60;
+      const endH = Math.floor(et / 60);
+      const endM = et % 60;
+      
+      const startAmpm = h >= 12 ? '下午' : '上午';
+      const endAmpm = endH >= 12 ? '下午' : '上午';
+      const startH12 = h % 12 || 12;
+      const endH12 = endH % 12 || 12;
+      const startMM = m.toString().padStart(2, '0');
+      const endMM = endM.toString().padStart(2, '0');
+      
+      const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
+      
+      let displayTitle = '';
+      if (startAmpm === endAmpm) {
+          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
+      } else {
+          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
+      }
+
       const opt = document.createElement('option');
-      opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: title });
-      opt.text = title;
+      opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: displayTitle });
+      opt.text = displayTitle;
       timeSelect.appendChild(opt);
     });
   }
