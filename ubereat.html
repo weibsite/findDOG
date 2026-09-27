@@ -1932,300 +1932,247 @@ async function sendOrderToLine(forceSubmit = false) {
       msgText += `🏠 外送地址：${addr}\n`;
       msgText += `⏱ 預計取餐：盡快送達\n`;
       msgText += `\n⚠️ 此為生鮮雜貨代購，代訂會提供網址，直接選購商品即可。\n`;
+
   } else {
-      // let msgText = '';
-  
-    if (window.isGroceryStore) {
-        const phoneInput = document.getElementById('checkoutPhone');
-        if (phoneInput) {
-            const phoneVal = phoneInput.value.trim();
-            if (!phoneVal) {
-                phoneInput.style.border = '2px solid #d32f2f';
-                phoneInput.focus();
-                setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
-                return;
-            }
-            localStorage.setItem('userPhone', phoneVal);
-        }
-  
-        let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
-        if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
-  
-        msgText = `【生鮮雜貨代購訂單】\n`;
-        msgText += `📍 店家：${currentStoreName}\n`;
-        msgText += `🔗 網址：${currentStoreUrl}\n`;
-        msgText += `🏠 外送地址：${addr}\n`;
-        msgText += `⏱ 預計取餐：盡快送達\n`;
-        msgText += `\n⚠️ 此為生鮮雜貨代購，代訂會提供網址，直接選購商品即可。\n`;
-  
-    } else {
-        if (cart.length === 0) return;
-        let foodTotal = 0;
-    cart.forEach(it => foodTotal += it.price * it.qty);
-    if (foodTotal < 149) {
-      showModal('金額過低', '訂單小計低於$149，建議再加個東西吧！');
-      return;
-    }
-  
-    const phoneInput = document.getElementById('checkoutPhone');
-    if (phoneInput) {
-      const phoneVal = phoneInput.value.trim();
-      if (!phoneVal) {
-        phoneInput.style.border = '2px solid #d32f2f';
-        phoneInput.focus();
-        setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
+      if (cart.length === 0) return;
+
+      let foodTotal = 0;
+      cart.forEach(it => foodTotal += it.price * it.qty);
+      if (foodTotal < 149) {
+        showModal('金額過低', '訂單小計低於$149，建議再加個東西吧！');
         return;
       }
-      localStorage.setItem('userPhone', phoneVal);
-    }
-  
-    const costRes = calcOrderCost(cart);
-  
-    if (!forceSubmit) {
-      if (costRes.shouldSplit && costRes.savings > 0) {
-        const suggestHtml = buildSplitSuggestionHtml(costRes);
-        const interceptHtml = suggestHtml + `
-          <div style="display:flex; gap:10px; margin-top:20px;">
-            <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
-          </div>
-        `;
-        showModal('💡 偵測到可以拆單', '按照以下建議拆單，得到最優惠價格!', false, interceptHtml, true);
-        return;
-      }
-    }
-  
-    // msgText already declared
-    let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
-    let coordsText = '';
-    if (addr) {
-        if (typeof currentAddrTitle !== 'undefined' && addr === currentAddrTitle && typeof currentLat !== 'undefined' && currentLat !== null && typeof currentLng !== 'undefined' && currentLng !== null) {
-            coordsText = ` (${currentLat}, ${currentLng})`;
-        } else if (typeof addressHistory !== 'undefined') {
-            const matchedHistory = addressHistory.find(item => {
-                let disp = item.title.split(',')[0];
-                if (disp.startsWith('台灣 ')) disp = disp.substring(3).trim();
-                return disp === addr || item.title === addr;
-            });
-            if (matchedHistory) {
-                coordsText = ` (${matchedHistory.lat}, ${matchedHistory.lng})`;
-            }
+
+      const phoneInput = document.getElementById('checkoutPhone');
+      if (phoneInput) {
+        const phoneVal = phoneInput.value.trim();
+        if (!phoneVal) {
+          phoneInput.style.border = '2px solid #d32f2f';
+          phoneInput.focus();
+          setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
+          return;
         }
-    }
-    let timeText = '盡快送達';
-    let isPreOrder = false;
-    
-    if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
-      const timeSelect = document.getElementById('scheduleTime');
-      if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
-        timeText = timeSelect.options[timeSelect.selectedIndex].text;
-        const tsVal = timeSelect.value;
-        if (tsVal && (new Date(tsVal).getTime() - new Date().getTime() >= 2.5 * 3600000)) {
-          isPreOrder = true;
+        localStorage.setItem('userPhone', phoneVal);
+      }
+
+      const costRes = calcOrderCost(cart);
+
+      if (!forceSubmit) {
+        if (costRes.shouldSplit && costRes.savings > 0) {
+          const suggestHtml = buildSplitSuggestionHtml(costRes);
+          const interceptHtml = suggestHtml + `
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
+            </div>
+          `;
+          showModal('💡 偵測到可以拆單', '按照以下建議拆單，得到最優惠價格!', false, interceptHtml, true);
+          return;
         }
       }
-    }
-  
-    if (forceSubmit === 'split' && costRes.bins) {
-      msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)
-  `;
-      if (addr) msgText += `📍 地址: ${addr}${coordsText}
-  `;
-      msgText += `🕒 時間: ${timeText}
-  
-  `;
-      
-      let grandTotal = 0;
-      let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
-      let preOrderDiscount = isPreOrder ? 10 : 0;
-      
-      costRes.bins.forEach((bin, bIdx) => {
-        msgText += `📦 【拆單 ${bIdx + 1}】
-  `;
-        let binFoodSum = 0;
-        
-        const binStores = {};
-        bin.items.forEach(it => {
-          if (!binStores[it.storeName]) binStores[it.storeName] = {};
-          const key = it.name + '|||' + (it.note || '');
-          if (!binStores[it.storeName][key]) {
-            binStores[it.storeName][key] = { title: it.name, note: it.note, price: it.price, qty: 0, storeUrl: it.storeUrl, storeDeliveryFee: it.storeDeliveryFee || 0 };
+
+      let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+      let coordsText = '';
+      if (addr) {
+          if (typeof currentAddrTitle !== 'undefined' && addr === currentAddrTitle && typeof currentLat !== 'undefined' && currentLat !== null && typeof currentLng !== 'undefined' && currentLng !== null) {
+              coordsText = ` (${currentLat}, ${currentLng})`;
+          } else if (typeof addressHistory !== 'undefined') {
+              const matchedHistory = addressHistory.find(item => {
+                  let disp = item.title.split(',')[0];
+                  if (disp.startsWith('台灣 ')) disp = disp.substring(3).trim();
+                  return disp === addr || item.title === addr;
+              });
+              if (matchedHistory) {
+                  coordsText = ` (${matchedHistory.lat}, ${matchedHistory.lng})`;
+              }
           }
-          binStores[it.storeName][key].qty += 1;
+      }
+      let timeText = '盡快送達';
+      let isPreOrder = false;
+
+      if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+        const timeSelect = document.getElementById('scheduleTime');
+        if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
+          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          const tsVal = timeSelect.value;
+          if (tsVal && (new Date(tsVal).getTime() - new Date().getTime() >= 2.5 * 3600000)) {
+            isPreOrder = true;
+          }
+        }
+      }
+
+      if (forceSubmit === 'split' && costRes.bins) {
+        msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)\n`;
+        if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
+        msgText += `🕒 時間: ${timeText}\n\n`;
+
+        let grandTotal = 0;
+        let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
+        let preOrderDiscount = isPreOrder ? 10 : 0;
+
+        costRes.bins.forEach((bin, bIdx) => {
+          msgText += `📦 【拆單 ${bIdx + 1}】\n`;
+          let binFoodSum = 0;
+
+          const binStores = {};
+          bin.items.forEach(it => {
+            if (!binStores[it.storeName]) binStores[it.storeName] = {};
+            const key = it.name + '|||' + (it.note || '');
+            if (!binStores[it.storeName][key]) {
+              binStores[it.storeName][key] = { title: it.name, note: it.note, price: it.price, qty: 0, storeUrl: it.storeUrl, storeDeliveryFee: it.storeDeliveryFee || 0 };
+            }
+            binStores[it.storeName][key].qty += 1;
+          });
+
+          Object.keys(binStores).forEach(sName => {
+            msgText += `🏪 ${sName}\n`;
+            let u = Object.values(binStores[sName])[0].storeUrl;
+            if (u) {
+                try { u = decodeURI(u); } catch(e) {}
+                msgText += `🔗 網址: ${u}\n`;
+            }
+            let i = 1;
+            Object.values(binStores[sName]).forEach(it => {
+              const lineTotal = it.price * it.qty;
+              binFoodSum += lineTotal;
+              msgText += `  ${i++}. ${it.title} x ${it.qty} = $${lineTotal}\n`;
+              if (it.note) {
+                msgText += `     - 說明: ${it.note.replace(/\n/g, ' ')}\n`;
+              }
+            });
+          });
+
+          let binPromo = binFoodSum >= 285 ? 143 : Math.floor(binFoodSum / 2);
+
+          let binExcess = 0;
+          Object.keys(binStores).forEach(sName => {
+            binExcess += Math.max(0, ...Object.values(binStores[sName]).map(item => item.storeDeliveryFee || 0));
+          });
+
+          let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess;
+          grandTotal += binTotal;
+
+          msgText += `  小計: $${binFoodSum}\n`;
+          if (binPromo > 0) msgText += `  🎉 半價優惠: -$${binPromo}\n`;
+          msgText += `  🛵 代訂費: $${feePerBin}\n`;
+          if (binExcess > 0) msgText += `  🚚 超額外送費: $${binExcess}\n`;
+          msgText += `  ➡️ 結算: $${binTotal}\n\n`;
         });
-        
-        Object.keys(binStores).forEach(sName => {
-          msgText += `🏪 ${sName}
-  `;
-          let u = Object.values(binStores[sName])[0].storeUrl;
+
+        grandTotal -= preOrderDiscount;
+        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}\n`;
+        msgText += `💰 總結算金額: $${grandTotal}`;
+
+      } else {
+        let total = 0;
+        const storeGroups = {};
+        cart.forEach(item => {
+          const sName = item.storeName || '未命名餐廳';
+          if (!storeGroups[sName]) storeGroups[sName] = [];
+          storeGroups[sName].push(item);
+          total += item.price * item.qty;
+        });
+
+        msgText = `🛵 UberEats 揪團訂單\n`;
+        if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
+        msgText += `🕒 時間: ${timeText}\n\n`;
+
+        let storeCount = 0;
+        let totalExcessDeliveryFee = 0;
+        for (const [sName, items] of Object.entries(storeGroups)) {
+          storeCount++;
+          msgText += `🏪 ${sName}\n`;
+          let u = items[0].storeUrl;
           if (u) {
               try { u = decodeURI(u); } catch(e) {}
-              msgText += `🔗 網址: ${u}
-  `;
+              msgText += `🔗 網址: ${u}\n`;
           }
+          
+          let maxDeliveryFeeForStore = 0;
+          items.forEach(it => {
+              if (it.storeDeliveryFee && it.storeDeliveryFee > maxDeliveryFeeForStore) {
+                  maxDeliveryFeeForStore = it.storeDeliveryFee;
+              }
+          });
+          totalExcessDeliveryFee += maxDeliveryFeeForStore;
+          
           let i = 1;
-          Object.values(binStores[sName]).forEach(it => {
+          items.forEach(it => {
             const lineTotal = it.price * it.qty;
-            binFoodSum += lineTotal;
-            msgText += `  ${i++}. ${it.title} x ${it.qty} = $${lineTotal}
-  `;
+            msgText += `  ${i++}. ${it.title} x ${it.qty} = $${lineTotal}\n`;
             if (it.note) {
-              msgText += `     - 說明: ${it.note.replace(/\n/g, ' ')}
-  `;
+              msgText += `     - 說明: ${it.note.replace(/\n/g, ' ')}\n`;
             }
           });
-        });
-        
-        let binPromo = binFoodSum >= 285 ? 143 : Math.floor(binFoodSum / 2);
-        
-        let binExcess = 0;
-        Object.keys(binStores).forEach(sName => {
-          binExcess += Math.max(0, ...Object.values(binStores[sName]).map(item => item.storeDeliveryFee || 0));
-        });
-        
-        let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess;
-        grandTotal += binTotal;
-        
-        msgText += `  小計: $${binFoodSum}\n`;
-        if (binPromo > 0) msgText += `  🎉 半價優惠: -$${binPromo}\n`;
-        msgText += `  🛵 代訂費: $${feePerBin}\n`;
-        if (binExcess > 0) msgText += `  🚚 超額外送費: $${binExcess}\n`;
-        msgText += `  ➡️ 結算: $${binTotal}\n\n`;
-      });
-      
-      grandTotal -= preOrderDiscount;
-      if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}
-  `;
-      msgText += `💰 總結算金額: $${grandTotal}`;
-      
-    } else {
-      let total = 0;
-      const storeGroups = {};
-      cart.forEach(item => {
-        const sName = item.storeName || '未命名餐廳';
-        if (!storeGroups[sName]) storeGroups[sName] = [];
-        storeGroups[sName].push(item);
-      });
-  
-      msgText = `🛵 UberEats 揪團訂單
-  `;
-      if (addr) msgText += `📍 地址: ${addr}${coordsText}
-  `;
-      msgText += `🕒 時間: ${timeText}
-  
-  `;
-  
-      Object.keys(storeGroups).forEach(sName => {
-        msgText += `🏪 ${sName}
-  `;
-        let u = storeGroups[sName][0].storeUrl;
-        if (u) {
-            try { u = decodeURI(u); } catch(e) {}
-            msgText += `🔗 網址: ${u}
-  `;
+          msgText += `\n`;
         }
-        storeGroups[sName].forEach((item, i) => {
-          const lineTotal = item.price * item.qty;
-          total += lineTotal;
-          msgText += `  ${i+1}. ${item.title} x ${item.qty} = $${lineTotal}
-  `;
-          if (item.note) {
-            msgText += `     - 說明: ${item.note.replace(/\n/g, ' ')}
-  `;
-          }
-        });
-      });
-      
-      let promoDiscount = total >= 285 ? 143 : Math.floor(total / 2);
-      let serviceFee = 50;
-      
-      let totalExcessDeliveryFee = 0;
-      Object.keys(storeGroups).forEach(sName => {
-          const excessFee = Math.max(0, ...storeGroups[sName].map(it => it.storeDeliveryFee || 0));
-          totalExcessDeliveryFee += excessFee;
-      });
-  
-      let preOrderDiscount = isPreOrder ? 10 : 0;
-      let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount;
-  
-      msgText += `
-  💰 小計: $${total}
-  `;
-      if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}
-  `;
-      msgText += `🛵 代訂費: $${serviceFee}
-  `;
-      if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}
-  `;
-      if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}
-  `;
-      msgText += `
-  ✨ 總計: $${grandTotal}`;
-    }
-  
-  } // End of isGroceryStore else block
+
+        let promoDiscount = total >= 285 ? 143 : Math.floor(total / 2);
+        let serviceFee = storeCount >= 2 ? 30 : 50;
+
+        let preOrderDiscount = isPreOrder ? 10 : 0;
+        let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount;
+
+        msgText += `💰 小計: $${total}\n`;
+        if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}\n`;
+        msgText += `🛵 代訂費: $${serviceFee}\n`;
+        if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}\n`;
+        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}\n`;
+        msgText += `\n✨ 總計: $${grandTotal}`;
+      }
+  } // END OF isGroceryStore else block
 
   const foodNotes = document.getElementById('checkoutFoodNotes') ? document.getElementById('checkoutFoodNotes').value.trim() : '';
   if (foodNotes) {
-    msgText += `
-
-🍽️ 餐點訂單備註: ${foodNotes}`;
+    msgText += `\n\n🍽️ 餐點訂單備註: ${foodNotes}`;
   }
 
   const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
   const phoneVal = document.getElementById('checkoutPhone').value.trim();
   const selectedMethod = document.getElementById('checkoutDeliveryMethod') ? document.getElementById('checkoutDeliveryMethod').value : '當面點交';
-  
+
   let finalNote = deliveryNotes;
   if (phoneVal && !finalNote.includes(phoneVal)) {
     const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethod === '放在門口';
     const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
     finalNote = finalNote ? (finalNote + '。' + phoneNote) : phoneNote;
   }
-  
-  finalNote = `[${selectedMethod}]` + (finalNote ? ' ' + finalNote : '');
-  
-  msgText += `\n\n📝 外送備註: ${finalNote}`;
-  
 
-if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
+  finalNote = `[${selectedMethod}]` + (finalNote ? ' ' + finalNote : '');
+  msgText += `\n\n📝 外送備註: ${finalNote}`;
+
+
+  if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
   if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
     const copyBtnHtml = `<div style="text-align:center; font-size:16px; color:#555; margin-bottom: 20px;">無法自動為您送出訂單</div><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:14px; background:#06c167; color:#fff; border:none; border-radius:12px; font-weight:bold; font-size:16px; cursor:pointer;">請按此複製訂單訊息</button>`;
     showModal('偵測到非手機登入', '', true, copyBtnHtml, true);
     return;
-}
+  }
 
-if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
-    liff.login({ redirectUri: window.location.href });
-    return;
-}
+  if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href });
+      return;
+  }
 
-if (false) {
-    const copyBtnHtml = `<div style="margin-top:20px;"><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:12px; background:#eee; color:#111; border:1px solid #ccc; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">請按此按鈕複製訂單訊息</button></div>`;
-    showModal('偵測到非手機登入', '無法自動為您送出訂單', true, copyBtnHtml, false);
-    
-    return;
-}
+  try {
+      await liff.sendMessages([
+        {
+          type: "text",
+          text: msgText
+        }
+      ]);
 
-try {
-    await liff.sendMessages([
-      {
-        type: "text",
-        text: msgText
-      }
-    ]);
-    
-    cart = [];
-    updateCartBadge();
-    
-    const successHtml = `
-      <div style="text-align:center; margin-top:20px;">
-        <button onclick="liff.closeWindow();" style="width:100%; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">關閉視窗</button>
-      </div>
-    `;
-    showModal('訂單已送出', '您的訂單明細已成功傳送至聊天室！', false, successHtml, true);
-    
+      cart = [];
+      updateCartBadge();
+
+      const successHtml = `
+        <div style="text-align:center; margin-top:20px;">
+          <button onclick="liff.closeWindow();" style="width:100%; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">關閉視窗</button>
+        </div>
+      `;
+      showModal('訂單已送出', '您的訂單明細已成功傳送至聊天室！', false, successHtml, true);
+
   } catch (err) {
-    showModal('發生錯誤', err.message, true);
+      showModal('發生錯誤', err.message, true);
   }
 }
 async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations) {
