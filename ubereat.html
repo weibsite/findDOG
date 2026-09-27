@@ -1910,6 +1910,32 @@ function backToStoreFromGroceryCheckout() {
 async function sendOrderToLine(forceSubmit = false) {
   let msgText = '';
 
+  const deliveryNotesEl = document.getElementById('checkoutDeliveryNotes');
+  const deliveryMethodEl = document.getElementById('checkoutDeliveryMethod');
+  const deliveryNotesVal = deliveryNotesEl ? deliveryNotesEl.value.trim() : '';
+  const selectedMethodVal = deliveryMethodEl ? deliveryMethodEl.value : '當面點交';
+
+  if (!window._ignoreMethodCheck) {
+    const hasDoorKeywords = /放在|外送桌|放.*上|桌上/.test(deliveryNotesVal);
+    if (hasDoorKeywords && selectedMethodVal === '當面點交') {
+       const safeNotes = deliveryNotesVal.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+       const interceptHtml = `
+         <div style="margin-top:5px; color:#555; font-size:15px; line-height:1.6; text-align:left;">
+            請問你是要指定外送員 <span style="color:#d32f2f; font-weight:bold;">${safeNotes}</span> 嗎？<br><br>
+            但是你分類是選擇「當面點交」，兩個內容可能不合理。<br><br>
+            請問是否切換成 <strong>放在門口</strong>？
+         </div>
+         <div style="display:flex; gap:10px; margin-top:20px;">
+           <button onclick="document.getElementById('checkoutDeliveryMethod').value='放在門口'; document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">是(放在門口)</button>
+           <button onclick="document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#888; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">否(就是當面點交沒錯)</button>
+         </div>
+       `;
+       showModal('⚠️ 備註與外送方式可能衝突', '', true, interceptHtml, true);
+       return;
+    }
+  }
+  window._ignoreMethodCheck = false;
+
   if (window.isGroceryStore) {
       const phoneInput = document.getElementById('checkoutPhone');
       if (phoneInput) {
