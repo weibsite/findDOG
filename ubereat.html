@@ -1842,6 +1842,11 @@ function openGroceryCheckoutSummary() {
     }
   }
 
+  let svcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${window.groceryServiceFee}` : '$35~$60不等';
+  let svcCalcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `${window.groceryServiceFee}` : '35~60';
+  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 20}` : '$329 ~ $354';
+  let totalNormalStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 60}` : '$364 ~ $389';
+
   let html = `
     <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
 
@@ -1880,7 +1885,7 @@ function openGroceryCheckoutSummary() {
         <div style="display:flex; justify-content:space-between;"><span>🏷️ 優惠方案</span><span>${escapeHTML(timeText)}</span></div>
         <div style="display:flex; justify-content:space-between;"><span>💰 滿額條件</span><span>需滿 $449</span></div>
         <div style="display:flex; justify-content:space-between; color:#06c167;"><span>💸 優惠折扣</span><span>-$180</span></div>
-        <div style="display:flex; justify-content:space-between;"><span>🛵 平台服務費</span><span>$35~$60不等</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>🛵 平台服務費</span><span>${svcStr}</span></div>
         ${isPreOrder ? `
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
         <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(3小時以上)</span><span>-$20</span></div>
@@ -1894,11 +1899,11 @@ function openGroceryCheckoutSummary() {
         <div style="font-weight:bold; margin-bottom:8px;">🧮 費用試算 (以剛好滿$449為例)</div>
         <div style="color:#555;">
           ${isPreOrder ? `
-          449 (商品) - 180 (優惠) + 35~60 (平台費) + 45 (代訂費) - 20 (預約優惠)<br>
-          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $329 ~ $354</strong>
+          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 45 (代訂費) - 20 (預約優惠)<br>
+          <strong style="color:#d32f2f; font-size:18px;">預估總計約: ${totalPreOrderStr}</strong>
           ` : `
-          449 (商品) - 180 (優惠) + 35~60 (平台費) + 60 (代訂費)<br>
-          <strong style="color:#d32f2f; font-size:18px;">預估總計約: $364 ~ $389</strong>
+          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 60 (代訂費)<br>
+          <strong style="color:#d32f2f; font-size:18px;">預估總計約: ${totalNormalStr}</strong>
           `}
         </div>
       </div>
@@ -2916,8 +2921,20 @@ const note = document.getElementById('modalNote').value.trim();
           }
       }
       
-      if (window.isGroceryStore) {
-          fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、需服務費</div>`;
+            if (window.isGroceryStore) {
+          window.groceryServiceFee = null;
+          let feeText = '需服務費';
+          if (d.basketDependentFeePolicy && d.basketDependentFeePolicy.dialog && d.basketDependentFeePolicy.dialog.tierFee) {
+              const tier = d.basketDependentFeePolicy.dialog.tierFee[0];
+              if (tier && tier.nonMemberServiceFee) {
+                  const matchVal = tier.nonMemberServiceFee.match(/\d+/);
+                  if (matchVal) {
+                      window.groceryServiceFee = Math.round(parseInt(matchVal[0], 10) * 0.8);
+                      feeText = `服務費${window.groceryServiceFee}`;
+                  }
+              }
+          }
+          fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、${feeText}</div>`;
           currentStoreDeliveryFee = 0;
       }
 
