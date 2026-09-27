@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.7</title>
+<title>計算機系統 2.8</title>
 
 <style>
 
@@ -5256,7 +5256,7 @@ const note = document.getElementById('modalNote').value.trim();
 
 
 
-  async function openStore(uuid, storeName, actionUrl = '') {
+async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
     if (cart.length > 0 && storeName && cart[0].storeName && cart[0].storeName !== storeName) {
 
@@ -5297,6 +5297,9 @@ const note = document.getElementById('modalNote').value.trim();
     try {
 
       let json = null;
+      if (skipFetch && window.currentStoreRawData) {
+          json = { data: window.currentStoreRawData, status: 'success' };
+      } else {
 
       let retries = 0;
 
@@ -5340,6 +5343,7 @@ const note = document.getElementById('modalNote').value.trim();
 
           await new Promise(r => setTimeout(r, 1000)); // 等待 1 秒後重試
 
+      }
       }
 
       
@@ -5580,7 +5584,7 @@ const note = document.getElementById('modalNote').value.trim();
 
                 const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
 
-                btnsHtml += `<button onclick="document.getElementById('errorModalOverlay').style.display='none'; document.getElementById('btnAsap').click(); openStore('${storeUuid}', decodeURIComponent('${encodeURIComponent(safeName)}'), '${safeAction}');" style="margin-top:5px; margin-bottom:15px; background:#fff; color:#000; border:2px solid #000; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">改成即時單 <br><span style="color:#d32f2f; font-size:13px; font-weight:normal;">*無法獲得預約優惠</span></button>`;
+                btnsHtml += `<button onclick="document.getElementById('errorModalOverlay').style.display='none'; document.getElementById('btnAsap').click(); openStore('${storeUuid}', decodeURIComponent('${encodeURIComponent(safeName)}'), '${safeAction}', true);" style="margin-top:5px; margin-bottom:15px; background:#fff; color:#000; border:2px solid #000; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">改成即時單 <br><span style="color:#d32f2f; font-size:13px; font-weight:normal;">*無法獲得預約優惠</span></button>`;
 
             }
 
