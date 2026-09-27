@@ -6136,101 +6136,83 @@ if (window.isGroceryStore) {
   
 
   function quickSetSchedule(startTimeSeconds, storeUuid) {
-
     document.getElementById('errorModalOverlay').style.display='none';
-
     
-
     // Switch to SCHEDULE mode
-
     setScheduleMode('SCHEDULE'); 
-
     const targetDate = new Date(startTimeSeconds * 1000);
-
     
-
     // Update selectedDateIndex
-
     const today = new Date();
-
     today.setHours(0,0,0,0);
-
     const targetDay = new Date(targetDate);
-
     targetDay.setHours(0,0,0,0);
-
     const diffDays = Math.round((targetDay - today) / (1000 * 60 * 60 * 24));
-
     
-
-    if (diffDays >= 0 && diffDays < 7) {
-
-        selectDate(diffDays); 
-
-    }
-
-    
-
-    const timeSelect = document.getElementById('scheduleTime');
-
-    let found = false;
-
-    for (let i = 0; i < timeSelect.options.length; i++) {
-
-        const optDate = new Date(timeSelect.options[i].value);
-
-        if (Math.abs(optDate.getTime() - targetDate.getTime()) < 60000) {
-
-            timeSelect.selectedIndex = i;
-
-            found = true;
-
-            break;
-
-        }
-
-    }
-
-    
-
-    if (!found) {
-
-        const opt = document.createElement('option');
-
-        const tzo = -targetDate.getTimezoneOffset() / 60;
-
-        const sign = tzo >= 0 ? '+' : '-';
-
+    // 這裡我們需要根據 diffDays 去點擊對應的日期按鈕
+    // 但因為有「過濾空時段」的功能，所以不能直接用 diffDays，必須比對 dateStr
+    if (uberTimeData && uberTimeData.dates) {
         const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
-
-        const isoLocal = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate()) + 'T' + pad(targetDate.getHours()) + ':' + pad(targetDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
-
-        opt.value = isoLocal;
-
-        const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
-
-        const h12 = targetDate.getHours() % 12 || 12;
-
-        const mm = String(targetDate.getMinutes()).padStart(2, '0');
-
-        const isToday = targetDate.getDate() === new Date().getDate() && targetDate.getMonth() === new Date().getMonth();
-
-        const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
-
-        opt.text = `自訂: ${datePrefix}${getTimeEmoji(targetDate.getHours())} ${ampm} ${h12}:${mm}`;
-
-        timeSelect.appendChild(opt);
-
-        timeSelect.selectedIndex = timeSelect.options.length - 1;
-
+        const targetDateStr = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate());
+        
+        const idx = uberTimeData.dates.indexOf(targetDateStr);
+        if (idx !== -1) {
+            selectDate(idx);
+        }
     }
-
     
-
-    // Re-attempt opening store
-
-    openStore(storeUuid, '', '', true);
-
+    const timeSelect = document.getElementById('scheduleTime');
+    let found = false;
+    for (let i = 0; i < timeSelect.options.length; i++) {
+        let optTime = 0;
+        try {
+            const parsed = JSON.parse(timeSelect.options[i].value);
+            const baseDate = new Date(parsed.date + "T00:00:00+08:00");
+            optTime = baseDate.getTime() + (parsed.startTime * 60 * 1000);
+        } catch(e) {
+            optTime = new Date(timeSelect.options[i].value).getTime();
+        }
+        
+        if (Math.abs(optTime - targetDate.getTime()) < 60000) {
+            timeSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found) {
+        const opt = document.createElement('option');
+        const st = (targetDate.getHours() * 60) + targetDate.getMinutes();
+        const et = st + 30; // guess 30 mins
+        
+        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+        const dateStr = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate());
+        
+        const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
+        const h12 = targetDate.getHours() % 12 || 12;
+        const mm = String(targetDate.getMinutes()).padStart(2, '0');
+        const title = `(餐廳專屬時段) ${ampm} ${h12}:${mm}`;
+        
+        opt.value = JSON.stringify({
+            date: dateStr,
+            startTime: st,
+            endTime: et,
+            title: title
+        });
+        opt.innerText = title;
+        timeSelect.appendChild(opt);
+        timeSelect.selectedIndex = timeSelect.options.length - 1;
+    }
+    
+    // click the store again using the global variable cache if possible, or just re-run search?
+    // actually it already passes storeUuid, we just call the search address to trigger the card click again.
+    // Wait, the original code had: openStore(storeUuid, storeName, actionUrl, true);
+    // But storeName and actionUrl aren't passed to quickSetSchedule!
+    // The user has to click the store card again.
+    const cardEl = document.getElementById('card_' + storeUuid);
+    if (cardEl) {
+        cardEl.click();
+    }
   }
 
 
