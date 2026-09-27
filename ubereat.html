@@ -1712,22 +1712,26 @@ function openCheckoutSummary() {
   
   let html = `
     <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <div style="margin-bottom:12px;"><strong>外送地址:</strong> ${escapeHTML(addr) || '未設定'}</div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block; margin-bottom:5px;"><strong>外送地址:</strong></label>
+        <input type="text" id="checkoutAddrInput" value="${escapeHTML(addr)}" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+      </div>
       <div style="margin-bottom:12px;">
         <div style="display:flex; align-items:center; margin-bottom:5px;">
           <strong>外送方式與備註:</strong>
           <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="groceryDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
             <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
             <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
           </select>
-          <input type="text" id="groceryDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+          <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
         </div>
       </div>
-      <div style="margin-bottom:12px;"><strong>電話:</strong> 
-        <input type="tel" id="groceryPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone(\'grocery\')">
+      <div style="margin-bottom:12px;">
+        <label style="display:block; margin-bottom:5px;"><strong>電話:</strong></label>
+        <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone(\'checkout\')">
       </div>
       <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}</div>
       
@@ -1824,9 +1828,12 @@ function openGroceryCheckoutSummary() {
 
   let html = `
     <div style="background:#fff; padding:15px; font-size:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      
+
       <div style="margin-bottom:12px;"><strong>🏪 預訂代訂店家:</strong> <a href="${currentStoreUrl}" target="_blank" style="color:#06c167; text-decoration:none;">${escapeHTML(currentStoreName)}</a></div>
-      <div style="margin-bottom:12px;"><strong>📍 外送地址:</strong> ${escapeHTML(addr) || '未設定'}</div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block; margin-bottom:5px;"><strong>📍 外送地址:</strong></label>
+        <input type="text" id="groceryAddrInput" value="${escapeHTML(addr)}" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+      </div>
       
       <div style="margin-bottom:12px;">
         <div style="display:flex; align-items:center; margin-bottom:5px;">
@@ -1950,7 +1957,8 @@ async function sendOrderToLine(forceSubmit = false) {
           localStorage.setItem('userPhone', phoneVal);
       }
 
-      let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+      let addrEl = document.getElementById(prefix + 'AddrInput');
+      let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
       if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
 
       msgText = `【生鮮雜貨代購訂單】\n`;
@@ -1997,7 +2005,8 @@ async function sendOrderToLine(forceSubmit = false) {
         }
       }
 
-      let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
+      let addrEl = document.getElementById(prefix + 'AddrInput');
+      let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
       let coordsText = '';
       if (addr) {
           if (typeof currentAddrTitle !== 'undefined' && addr === currentAddrTitle && typeof currentLat !== 'undefined' && currentLat !== null && typeof currentLng !== 'undefined' && currentLng !== null) {
