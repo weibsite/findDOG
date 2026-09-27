@@ -1823,6 +1823,9 @@ function toggleSummaryItem(idx) {
 
 function openGroceryCheckoutSummary() {
   const savedPhone = localStorage.getItem('userPhone') || '';
+  const oldDeliveryNotes = document.getElementById('deliveryNotes') ? document.getElementById('deliveryNotes').value.trim() : '';
+  const selectedMethod = document.getElementById('deliveryMethod') ? document.getElementById('deliveryMethod').value : '當面點交';
+  
   let addr = document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '';
   if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
 
@@ -1842,10 +1845,10 @@ function openGroceryCheckoutSummary() {
         </div>
         <div style="display:flex; gap:8px;">
           <select id="groceryDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
-            <option value="當面點交">當面點交</option>
-            <option value="放在門口">放在門口</option>
+            <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
+            <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
           </select>
-          <input type="text" id="groceryDeliveryNotes" value="" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+          <input type="text" id="groceryDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
         </div>
       </div>
       
