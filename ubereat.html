@@ -6,7 +6,7 @@
 
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<title>訂餐系統1.3</title>
+<title>訂餐系統1.4</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
   .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
@@ -1719,15 +1719,15 @@ function openCheckoutSummary() {
           <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+          <select id="groceryDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
             <option value="當面點交" ${selectedMethod === '當面點交' ? 'selected' : ''}>當面點交</option>
             <option value="放在門口" ${selectedMethod === '放在門口' ? 'selected' : ''}>放在門口</option>
           </select>
-          <input type="text" id="checkoutDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+          <input type="text" id="groceryDeliveryNotes" value="${escapeHTML(oldDeliveryNotes)}" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
         </div>
       </div>
       <div style="margin-bottom:12px;"><strong>電話:</strong> 
-        <input type="tel" id="checkoutPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone('checkout')">
+        <input type="tel" id="groceryPhone" value="${savedPhone}" placeholder="例如: 0912345678" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone(\'grocery\')">
       </div>
       <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}</div>
       
@@ -1834,17 +1834,17 @@ function openGroceryCheckoutSummary() {
           <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:12px; cursor:pointer; font-weight:bold;">?</span>
         </div>
         <div style="display:flex; gap:8px;">
-          <select id="checkoutDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
+          <select id="groceryDeliveryMethod" style="flex:0 0 auto; padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff; outline:none; cursor:pointer;">
             <option value="當面點交">當面點交</option>
             <option value="放在門口">放在門口</option>
           </select>
-          <input type="text" id="checkoutDeliveryNotes" value="" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+          <input type="text" id="groceryDeliveryNotes" value="" placeholder="例如：到了打電話..." style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
         </div>
       </div>
       
       <div style="margin-bottom:12px;">
         <label style="display:block; margin-bottom:5px;"><strong>聯絡電話 (必填):</strong></label>
-        <input type="tel" id="checkoutPhone" value="${escapeHTML(savedPhone)}" placeholder="外送員聯絡用" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone('checkout')">
+        <input type="tel" id="groceryPhone" value="${escapeHTML(savedPhone)}" placeholder="外送員聯絡用" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="syncPhone(\'grocery\')">
       </div>
 
       <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
@@ -1909,9 +1909,10 @@ function backToStoreFromGroceryCheckout() {
 
 async function sendOrderToLine(forceSubmit = false) {
   let msgText = '';
+  const prefix = window.isGroceryStore ? 'grocery' : 'checkout';
 
-  const deliveryNotesEl = document.getElementById('checkoutDeliveryNotes');
-  const deliveryMethodEl = document.getElementById('checkoutDeliveryMethod');
+  const deliveryNotesEl = document.getElementById(prefix + 'DeliveryNotes');
+  const deliveryMethodEl = document.getElementById(prefix + 'DeliveryMethod');
   const deliveryNotesVal = deliveryNotesEl ? deliveryNotesEl.value.trim() : '';
   const selectedMethodVal = deliveryMethodEl ? deliveryMethodEl.value : '當面點交';
 
@@ -1926,7 +1927,7 @@ async function sendOrderToLine(forceSubmit = false) {
             請問是否切換成 <strong>放在門口</strong>？
          </div>
          <div style="display:flex; gap:10px; margin-top:20px;">
-           <button onclick="document.getElementById('checkoutDeliveryMethod').value='放在門口'; document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">是(放在門口)</button>
+           <button onclick="document.getElementById('${prefix}DeliveryMethod').value='放在門口'; document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">是(放在門口)</button>
            <button onclick="document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#888; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">否(就是當面點交沒錯)</button>
          </div>
        `;
@@ -1937,7 +1938,7 @@ async function sendOrderToLine(forceSubmit = false) {
   window._ignoreMethodCheck = false;
 
   if (window.isGroceryStore) {
-      const phoneInput = document.getElementById('checkoutPhone');
+      const phoneInput = document.getElementById(prefix + 'Phone');
       if (phoneInput) {
           const phoneVal = phoneInput.value.trim();
           if (!phoneVal) {
@@ -1969,7 +1970,7 @@ async function sendOrderToLine(forceSubmit = false) {
         return;
       }
 
-      const phoneInput = document.getElementById('checkoutPhone');
+      const phoneInput = document.getElementById(prefix + 'Phone');
       if (phoneInput) {
         const phoneVal = phoneInput.value.trim();
         if (!phoneVal) {
@@ -1983,7 +1984,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       const costRes = calcOrderCost(cart);
 
-      if (!forceSubmit) {
+      if (!forceSubmit || forceSubmit === 'overrideMethod') {
         if (costRes.shouldSplit && costRes.savings > 0) {
           const suggestHtml = buildSplitSuggestionHtml(costRes);
           const interceptHtml = suggestHtml + `
@@ -2152,18 +2153,16 @@ async function sendOrderToLine(forceSubmit = false) {
     msgText += `\n\n🍽️ 餐點訂單備註: ${foodNotes}`;
   }
 
-  const deliveryNotes = document.getElementById('checkoutDeliveryNotes') ? document.getElementById('checkoutDeliveryNotes').value.trim() : '';
-  const phoneVal = document.getElementById('checkoutPhone').value.trim();
-  const selectedMethod = document.getElementById('checkoutDeliveryMethod') ? document.getElementById('checkoutDeliveryMethod').value : '當面點交';
+  const phoneVal = document.getElementById(prefix + 'Phone') ? document.getElementById(prefix + 'Phone').value.trim() : '';
 
-  let finalNote = deliveryNotes;
+  let finalNote = deliveryNotesVal;
   if (phoneVal && !finalNote.includes(phoneVal)) {
-    const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethod === '放在門口';
+    const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethodVal === '放在門口';
     const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
     finalNote = finalNote ? (finalNote + '。' + phoneNote) : phoneNote;
   }
 
-  finalNote = `[${selectedMethod}]` + (finalNote ? ' ' + finalNote : '');
+  finalNote = `[${selectedMethodVal}]` + (finalNote ? ' ' + finalNote : '');
   msgText += `\n\n📝 外送備註: ${finalNote}`;
 
 
@@ -3067,13 +3066,20 @@ function escapeHTML(str) {
   function syncPhone(source) {
     const init = document.getElementById('initPhone');
     const chk = document.getElementById('checkoutPhone');
-    
+    const gro = document.getElementById('groceryPhone');
+
     if (source === 'init' && init) {
         localStorage.setItem('userPhone', init.value);
         if (chk) chk.value = init.value;
+        if (gro) gro.value = init.value;
     } else if (source === 'checkout' && chk) {
         localStorage.setItem('userPhone', chk.value);
         if (init) init.value = chk.value;
+        if (gro) gro.value = chk.value;
+    } else if (source === 'grocery' && gro) {
+        localStorage.setItem('userPhone', gro.value);
+        if (init) init.value = gro.value;
+        if (chk) chk.value = gro.value;
     }
   }
 
