@@ -238,51 +238,39 @@
 
   <div id="homeView">
 
-  <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s; padding: 10px 15px; margin-bottom: 10px;">
-
-      
-
-      <div class="input-row">
-
-        <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px; font-size: 22px; cursor: pointer; color: inherit;" title="取得目前定位">📌</button>
-
-        <input type="text" id="addrInput" placeholder="請輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
-
-        <datalist id="addr-list"></datalist>
-
-        <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
-
-      </div>
-
-      <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></div>
-
-      <div id="addrResults" class="addr-results"></div>
-
-    </div>
-
+  <!-- Unified Hero Search Block -->
+<div class="section" id="addrSection" style="background: #fff; border-radius: 16px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #eaeaea; transition: background-color 0.3s, border-color 0.3s;">
+  <h2 style="margin: 0 0 15px 0; font-size: 20px; font-weight: bold; color: #111; text-align: center;">預約附近餐點外送服務</h2>
+  
+  <div style="background: #f6f6f6; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
     
-    <div id="subSections" style="display:none; opacity: 0; transition: opacity 0.5s ease;">
-<div class="section" style="padding: 10px 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s;" onclick="openTimePickerModal()">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div class="section-title" style="margin-bottom:0;">2. 預約時間</div>
-        <div style="display:flex; align-items:center; gap:5px; font-weight:bold; color:#06c167; font-size:15px;" id="triggerTimeText">
-          下載中...
-        </div>
+    <!-- Address Input Row -->
+    <div style="display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e0e0e0;">
+      <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px 0 0; font-size: 20px; cursor: pointer; color: #000;" title="使用目前位置">📍</button>
+      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 5px 0;" />
+      <datalist id="addr-list"></datalist>
+    </div>
+    
+    <!-- Time Picker Row -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; cursor: pointer; transition: background 0.2s;" onclick="openTimePickerModal()" onmousedown="this.style.background='#ebebeb'" onmouseup="this.style.background='transparent'" onmouseleave="this.style.background='transparent'">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">🕒</span>
+        <span id="triggerTimeText" style="font-size: 16px; font-weight: bold; color: #111;">下載中...</span>
       </div>
+      <span style="font-size: 14px; color: #666;">▼</span>
       <!-- Hidden original select to preserve compatibility -->
       <select id="scheduleTime" style="display:none;"></select>
     </div>
+  </div>
 
+  <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px; text-align: center;"></div>
+  <div id="addrResults" class="addr-results" style="margin-top: 5px;"></div>
 
+  <!-- Search Button -->
+  <button class="primary-btn" onclick="searchAddress(true)" style="width: 100%; background: #000; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: bold; margin-top: 15px; cursor: pointer; transition: opacity 0.2s;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">尋找食物</button>
 
-
-
-
-
-
-
-
-
+</div>
+<div id="subSections" style="display:none; opacity: 0; transition: opacity 0.5s ease;">
     <div class="section" style="padding: 10px 15px; margin-bottom: 10px;">
 
       <div class="section-title" style="margin-bottom: 6px;">3. 餐點備註</div>
@@ -367,6 +355,8 @@
       </div>
 
     </div>
+    </div> <!-- end subSections -->
+
 
 
 
@@ -6840,6 +6830,4 @@ function buildSplitSuggestionHtml(result) {
 
 </body>
 
-</html
-    </div> <!-- end subSections -->
->
+</html>
