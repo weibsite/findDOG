@@ -268,11 +268,11 @@
 
   <!-- Search Buttons -->
   <div id="heroActionButtons" style="display: flex; gap: 10px; margin-top: 15px; transition: opacity 0.3s ease;">
-    <button onclick="searchAddress(true)" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
+    <button onclick="handleHeroClick('SHOP')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
       <span style="font-size: 32px;">🛒</span>
       <span>生鮮雜貨</span>
     </button>
-    <button onclick="searchAddress(true)" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
+    <button onclick="handleHeroClick('RESTAURANTS')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
       <span style="font-size: 32px;">🍔</span>
       <span>尋找美食</span>
     </button>
@@ -1602,6 +1602,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   let currentVertical = 'RESTAURANTS';
+
+  
+  function handleHeroClick(mode) {
+      let q = document.getElementById('addrInput').value.trim();
+      if (q.startsWith('📍 ')) q = q.substring(3).trim();
+      if (!q) {
+          alert('請先輸入外送地址！');
+          document.getElementById('addrInput').focus();
+          return;
+      }
+      
+      if (mode === 'SHOP' && currentVertical === 'RESTAURANTS') {
+          toggleVertical();
+      } else if (mode === 'RESTAURANTS' && currentVertical === 'SHOP') {
+          toggleVertical();
+      }
+      
+      searchAddress(true);
+  }
 
   function toggleVertical() {
 
