@@ -953,7 +953,16 @@ function updateTriggerText() {
             const parsed = JSON.parse(scheduleSelect.value);
             const d = new Date(parsed.date);
             const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-            trigger.innerText = `${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]} ${parsed.title}`;
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            if (d.toDateString() === today.toDateString()) {
+                trigger.innerText = `今天 ${parsed.title}`;
+            } else if (d.toDateString() === tomorrow.toDateString()) {
+                trigger.innerText = `明天 ${parsed.title}`;
+            } else {
+                trigger.innerText = `${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]} ${parsed.title}`;
+            }
             trigger.style.color = '#000';
         } else {
             trigger.innerText = '選擇時間';
@@ -1055,7 +1064,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const statusEl = document.getElementById('addrStatus');
 
-      statusEl.innerText = '定位中...';
+      statusEl.innerHTML = '<div class="spinner" style="margin: 15px auto 10px auto; width: 24px; height: 24px; border-width: 3px;"></div><div style="color: #06c167; font-weight: bold;">取得 GPS 定位中...</div>';
 
       if (navigator.geolocation) {
 
