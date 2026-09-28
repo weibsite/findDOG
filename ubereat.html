@@ -238,79 +238,51 @@
 
   <div id="homeView">
 
-  <div class="section" id="addrSection" style="transition: background-color 0.3s, border-color 0.3s; padding: 10px 15px; margin-bottom: 10px;">
-
-      <div class="section-title">1. 外送地址設定</div>
-
-      <div class="input-row">
-
-        <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px; font-size: 22px; cursor: pointer; color: inherit;" title="取得目前定位">📌</button>
-
-        <input type="text" id="addrInput"  placeholder="請輸入地址 (路名、地標)" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" />
-
-        <datalist id="addr-list"></datalist>
-
-        <button class="secondary" onclick="searchAddress(true)">尋找地址</button>
-
-      </div>
-
-      <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></div>
-
-      <div id="addrResults" class="addr-results"></div>
-
+  <!-- Unified Hero Search Block -->
+<div class="section" id="addrSection" style="background: #fff; border-radius: 16px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #eaeaea; transition: background-color 0.3s, border-color 0.3s;">
+  <h2 style="margin: 0 0 15px 0; font-size: 20px; font-weight: bold; color: #111; text-align: center;">預約外送代訂服務</h2>
+  
+  <div style="background: #f6f6f6; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
+    
+    <!-- Address Input Row -->
+    <div style="display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e0e0e0;">
+      <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px 0 0; font-size: 20px; cursor: pointer; color: #000;" title="使用目前位置">📍</button>
+      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 5px 0;" />
+      <datalist id="addr-list"></datalist>
     </div>
+    
+    <!-- Time Picker Row -->
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; cursor: pointer; transition: background 0.2s;" onclick="openTimePickerModal()" onmousedown="this.style.background='#ebebeb'" onmouseup="this.style.background='transparent'" onmouseleave="this.style.background='transparent'">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 20px;">🕒</span>
+        <span id="triggerTimeText" style="font-size: 16px; font-weight: bold; color: #111;">下載中...</span>
+      </div>
+      <span style="font-size: 14px; color: #666;">▼</span>
+      <!-- Hidden original select to preserve compatibility -->
+      <select id="scheduleTime" style="display:none;"></select>
+    </div>
+  </div>
 
+  <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px; text-align: center;"></div>
+  <div id="addrResults" class="addr-results" style="margin-top: 5px;"></div>
+
+  <!-- Search Buttons -->
+  <div id="heroActionButtons" style="display: flex; gap: 10px; margin-top: 15px; transition: opacity 0.3s ease;">
+    <button onclick="handleHeroClick('SHOP')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
+      <span style="font-size: 32px;">🛒</span>
+      <span>生鮮雜貨</span>
+    </button>
+    <button onclick="handleHeroClick('RESTAURANTS')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
+      <span style="font-size: 32px;">🍔</span>
+      <span>尋找美食</span>
+    </button>
+  </div>
+
+</div>
+<div id="subSections" style="display:none; opacity: 0; transition: opacity 0.5s ease;">
     <div class="section" style="padding: 10px 15px; margin-bottom: 10px;">
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-
-        <div class="section-title" style="margin-bottom:0;">2. 訂餐時間選擇</div>
-
-        <div style="display:flex; gap:8px;">
-
-          <button id="btnSchedule" onclick="setScheduleMode('SCHEDULE')" style="padding:6px 14px; border-radius:20px; font-size:14px; background:#000; color:#fff; border:1px solid #000; font-weight:bold; cursor:pointer;">預約</button>
-
-          <button id="btnAsap" onclick="setScheduleMode('ASAP')" style="padding:6px 14px; border-radius:20px; font-size:14px; background:#fff; color:#333; border:1px solid #ccc; font-weight:bold; cursor:pointer;">即時</button>
-
-        </div>
-
-      </div>
-
-      <div id="schedulePickerArea">
-
-        <div id="dateButtons" style="display:flex; overflow-x:auto; gap:10px; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch;">
-
-          <!-- JS 自動產生按鈕 -->
-
-        </div>
-
-        <div class="input-row">
-
-          <select id="scheduleTime" style="flex:1; padding:14px; border:1px solid #ccc; border-radius:8px; font-size:15px; outline:none;">
-
-            <!-- JS 自動產生選項 -->
-
-          </select>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-
-
-
-
-
-
-
-
-
-    <div class="section" style="padding: 10px 15px; margin-bottom: 10px;">
-
-      <div class="section-title" style="margin-bottom: 6px;">3. 餐點備註</div>
+      <div class="section-title" style="margin-bottom: 6px;">餐點備註</div>
 
       <div class="input-row">
 
@@ -328,7 +300,7 @@
 
       <div class="section-title" style="display:flex; align-items:center;">
 
-        4. 外送備註
+        外送備註
 
         <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
 
@@ -392,6 +364,8 @@
       </div>
 
     </div>
+    </div> <!-- end subSections -->
+
 
 
 
@@ -676,7 +650,7 @@ let isAddressSet = false;
         document.getElementById('addrInput').value = lastAddr.title;
 
         scrollAddrToEnd();
-
+        revealSubSections();
         setAddress(lastAddr.lat, lastAddr.lng, lastAddr.title);
 
       } else {
@@ -819,6 +793,9 @@ let isAddressSet = false;
     loadHistory();
 
     initSchedulePicker();
+    
+    // Config loaded, API_BASE_URL is ready, now we can fetch times
+    fetchDeliveryTimes();
 
   });
 
@@ -831,21 +808,18 @@ let isAddressSet = false;
   let isDeliveryTimesLoaded = false;
   let onDeliveryTimesLoadedCallback = null;
 
+  
   async function fetchDeliveryTimes() {
-    if (!isAddressSet || !currentLat || !currentLng) return;
+    
     if (uberTimeData && uberTimeData.dates && uberTimeData.dates.length > 0) return; // Do not fetch again if we already have it
     
     isDeliveryTimesLoading = true;
     isDeliveryTimesLoaded = false;
     
-    document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:#666; font-size:14px;">正在讀取可用時段...</div>';
-    document.getElementById('scheduleTime').innerHTML = '<option value="">載入中...</option>';
-
     try {
-                  const payload = { lat: currentLat, lng: currentLng, title: currentAddrTitle };
+                  const payload = { lat: currentLat || 25.033964, lng: currentLng || 121.564468, title: currentAddrTitle || '台北市' };
       const res = await fetch(`${API_BASE_URL}/api/delivery-times_v3`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        method: 'GET'
       });
       let data;
       const contentType = res.headers.get('content-type') || '';
@@ -867,9 +841,7 @@ let isAddressSet = false;
       }
     } catch (e) {
       console.error(e);
-      document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:red; font-size:14px;">無法取得預約時段</div>';
-      document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
-    }
+      }
 
     isDeliveryTimesLoading = false;
     isDeliveryTimesLoaded = true;
@@ -881,190 +853,153 @@ let isAddressSet = false;
   }
 
   function renderDates() {
-    const dateBtns = document.getElementById('dateButtons');
-    dateBtns.innerHTML = '';
-    if (!uberTimeData || !uberTimeData.dates || uberTimeData.dates.length === 0) return;
-
-    // [過濾空時段] 如果該日期完全沒有時段，就直接隱藏（例如今天已經太晚打烊了）
-    const validDates = uberTimeData.dates.filter(dateStr => {
-        const ranges = uberTimeData.timeRanges[dateStr];
-        return ranges && ranges.length > 0;
-    });
-    uberTimeData.dates = validDates;
-
-    if (validDates.length === 0) {
-        dateBtns.innerHTML = '<div style="padding:10px; color:red; font-size:14px;">近期無可預約時段</div>';
-        document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
-        return;
-    }
-
-    validDates.forEach((dateStr, idx) => {
-      let dayName = dateStr;
-      const d = new Date(dateStr);
-      if (!isNaN(d)) {
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        if (d.toDateString() === today.toDateString()) dayName = '今天';
-        else if (d.toDateString() === tomorrow.toDateString()) dayName = '明天';
-        else {
-           const daysStr = ['週日','週一','週二','週三','週四','週五','週六'];
-           dayName = daysStr[d.getDay()];
-        }
-      }
-      const btn = document.createElement('button');
-      btn.innerHTML = `<div style="font-size:12px; color:#666;">${dayName}</div><div style="font-size:14px; font-weight:bold;">${dateStr.substring(5).replace('-','/')}</div>`;
-      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${idx === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
-      btn.onclick = () => selectDate(idx);
-      btn.id = `dateBtn_${idx}`;
-      dateBtns.appendChild(btn);
-    });
-    selectDate(0);
-  }
-
-  function selectDate(idx) {
-    selectedDateIndex = idx;
     if (!uberTimeData || !uberTimeData.dates) return;
-    const dates = uberTimeData.dates;
-    for (let j = 0; j < dates.length; j++) {
-      const btn = document.getElementById(`dateBtn_${j}`);
-      if (btn) btn.style.borderColor = (j === idx) ? '#000' : '#eee';
-    }
-    renderTimeSlots(dates[idx]);
-  }
-
-  
-
-  function renderTimeSlots(dateStr) {
-    const timeSelect = document.getElementById('scheduleTime');
-    timeSelect.innerHTML = '';
-    if (!uberTimeData || !uberTimeData.timeRanges || !uberTimeData.timeRanges[dateStr] || uberTimeData.timeRanges[dateStr].length === 0) {
-      timeSelect.innerHTML = '<option value="">今日已無可用時段</option>';
-      return;
-    }
+    const dateSelect = document.getElementById('modalDateSelect');
+    dateSelect.innerHTML = '';
     
-    // 檢查是否為今天，用來決定要不要加日期前綴 (雖然目前設計上已經選了日期標籤)
-    const targetDate = new Date(dateStr);
     const today = new Date();
-    const isToday = !isNaN(targetDate) && targetDate.toDateString() === today.toDateString();
-
-    if (isToday) {
-      const opt = document.createElement('option');
-      opt.value = 'ASAP';
-      opt.text = '🚀 立刻送出 (約5~30分)';
-      opt.style.fontWeight = 'bold';
-      opt.style.color = '#06c167';
-      timeSelect.appendChild(opt);
-    }
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
     
-    timeSelect.onchange = function() {
-        if (this.value === 'ASAP') {
-            setScheduleMode('ASAP');
-            // reset to first actual time slot in case they click '預訂' again later
-            if (this.options.length > 1) {
-                this.selectedIndex = 1;
-            }
+    uberTimeData.dates.forEach((dStr, idx) => {
+        const d = new Date(dStr);
+        const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+        let label = '';
+        if (d.toDateString() === today.toDateString()) {
+            label = `今天，${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]}`;
+        } else if (d.toDateString() === tomorrow.toDateString()) {
+            label = `明天，${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]}`;
+        } else {
+            label = `${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]}`;
         }
-    };
+        const opt = document.createElement('option');
+        opt.value = dStr;
+        opt.text = label;
+        dateSelect.appendChild(opt);
+    });
+    
+    renderModalTimes();
+    
+    // Automatically set default trigger text if not set yet
+    if (document.getElementById('triggerTimeText').innerText.includes('下載中')) {
+        const modalSelect = document.getElementById('modalTimeSelect');
+        const scheduleSelect = document.getElementById('scheduleTime');
+        if (modalSelect.options.length > 0 && scheduleSelect.options.length === 0) {
+            const newOpt = document.createElement('option');
+            newOpt.value = modalSelect.options[0].value;
+            newOpt.text = modalSelect.options[0].text;
+            scheduleSelect.appendChild(newOpt);
+        }
+        updateTriggerText();
+    }
+}
 
+function renderModalTimes() {
+    const dateStr = document.getElementById('modalDateSelect').value;
+    const timeSelect = document.getElementById('modalTimeSelect');
+    timeSelect.innerHTML = '';
+    
+    if (!uberTimeData || !uberTimeData.timeRanges || !uberTimeData.timeRanges[dateStr]) return;
+    
     const ranges = uberTimeData.timeRanges[dateStr];
     ranges.forEach(w => {
-      const st = w.startTime || 0; // minutes from midnight
-      const et = w.endTime || 0;
-      
-      const h = Math.floor(st / 60);
-      const m = st % 60;
-      const endH = Math.floor(et / 60);
-      const endM = et % 60;
-      
-      const startAmpm = h >= 12 ? '下午' : '上午';
-      const endAmpm = endH >= 12 ? '下午' : '上午';
-      const startH12 = h % 12 || 12;
-      const endH12 = endH % 12 || 12;
-      const startMM = m.toString().padStart(2, '0');
-      const endMM = endM.toString().padStart(2, '0');
-      
-      const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
-      
-      let displayTitle = '';
-      if (startAmpm === endAmpm) {
-          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
-      } else {
-          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
-      }
-
-      const opt = document.createElement('option');
-      opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: displayTitle });
-      opt.text = displayTitle;
-      timeSelect.appendChild(opt);
+        const st = w.startTime || 0;
+        const et = w.endTime || 0;
+        
+        const h = Math.floor(st / 60);
+        const m = st % 60;
+        const endH = Math.floor(et / 60);
+        const endM = et % 60;
+        
+        const startAmpm = h >= 12 ? '下午' : '上午';
+        const endAmpm = endH >= 12 ? '下午' : '上午';
+        const startH12 = h % 12 || 12;
+        const endH12 = endH % 12 || 12;
+        const startMM = m.toString().padStart(2, '0');
+        const endMM = endM.toString().padStart(2, '0');
+        
+        let displayTitle = '';
+        if (startAmpm === endAmpm) {
+            displayTitle = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} - ${endH12}:${endMM}`;
+        } else {
+            displayTitle = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} - ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
+        }
+        
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: displayTitle });
+        opt.text = displayTitle;
+        timeSelect.appendChild(opt);
     });
+}
+
+function openTimePickerModal() {
+    if (!uberTimeData || !uberTimeData.dates) return;
+    document.getElementById('timePickerModal').style.display = 'flex';
+}
+
+function closeTimePickerModal() {
+    document.getElementById('timePickerModal').style.display = 'none';
+}
+
+function updateTriggerText() {
+    const trigger = document.getElementById('triggerTimeText');
+    const scheduleSelect = document.getElementById('scheduleTime');
     
-    if (isToday && timeSelect.options.length > 1) {
-        timeSelect.selectedIndex = 1;
+    if (scheduleMode === 'ASAP') {
+        trigger.innerText = '🚀 即時訂單 (約5~30分)';
+        trigger.style.color = '#06c167';
+    } else {
+        if (scheduleSelect.options.length > 0) {
+            const parsed = JSON.parse(scheduleSelect.value);
+            const d = new Date(parsed.date);
+            const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+            if (d.toDateString() === today.toDateString()) {
+                trigger.innerText = `今天 ${parsed.title}`;
+            } else if (d.toDateString() === tomorrow.toDateString()) {
+                trigger.innerText = `明天 ${parsed.title}`;
+            } else {
+                trigger.innerText = `${d.getMonth()+1}月${d.getDate()}日${dayNames[d.getDay()]} ${parsed.title}`;
+            }
+            trigger.style.color = '#000';
+        } else {
+            trigger.innerText = '選擇時間';
+        }
     }
-  }
-  
-  function initSchedulePicker() {
-      document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:#666; font-size:14px;">請先設定地址，以讀取可用時段</div>';
-      document.getElementById('scheduleTime').innerHTML = '<option value="">(請先設定地址)</option>';
-  }
+}
 
-
-
-
-
-
-  function setScheduleMode(mode) {
-
+function confirmTimePicker(mode) {
     scheduleMode = mode;
-
-    const btnAsap = document.getElementById('btnAsap');
-
-    const btnSchedule = document.getElementById('btnSchedule');
-
-    const pickerArea = document.getElementById('schedulePickerArea');
-
+    const scheduleSelect = document.getElementById('scheduleTime');
     
-
-    if (btnAsap && btnSchedule) {
-
-      if (mode === 'ASAP') {
-
-        btnAsap.style.background = '#000'; btnAsap.style.color = '#fff'; btnAsap.style.borderColor = '#000';
-
-        btnSchedule.style.background = '#fff'; btnSchedule.style.color = '#333'; btnSchedule.style.borderColor = '#ccc';
-
-      } else {
-
-        btnSchedule.style.background = '#000'; btnSchedule.style.color = '#fff'; btnSchedule.style.borderColor = '#000';
-
-        btnAsap.style.background = '#fff'; btnAsap.style.color = '#333'; btnAsap.style.borderColor = '#ccc';
-
-      }
-
+    if (mode === 'SCHEDULE') {
+        const selectedModalOpt = document.getElementById('modalTimeSelect').options[document.getElementById('modalTimeSelect').selectedIndex];
+        if (selectedModalOpt) {
+            scheduleSelect.innerHTML = '';
+            const newOpt = document.createElement('option');
+            newOpt.value = selectedModalOpt.value;
+            newOpt.text = selectedModalOpt.text;
+            scheduleSelect.appendChild(newOpt);
+        }
     }
-
     
-
-    if (pickerArea) {
-
-      pickerArea.style.display = mode === 'ASAP' ? 'none' : 'block';
-
-    }
-
+    updateTriggerText();
+    closeTimePickerModal();
+    
     if (typeof renderCart === 'function') {
-
-      renderCart();
-
+        renderCart();
     }
+}
 
-  }
-
-
-
-  // 初始化 UI
-
-  document.addEventListener("DOMContentLoaded", () => {
+function initSchedulePicker() {
+    // Legacy init function, can be empty now
+}
+function setScheduleMode(mode) {
+    // Handled by confirmTimePicker now
+}
+document.addEventListener("DOMContentLoaded", () => {
 
     initSchedulePicker();
 
@@ -1073,6 +1008,19 @@ let isAddressSet = false;
 
 
   
+
+    function revealSubSections() {
+      const el = document.getElementById('subSections');
+      if (el && el.style.display === 'none') {
+          el.style.display = 'block';
+          setTimeout(() => { el.style.opacity = '1'; }, 10);
+      }
+      const heroBtns = document.getElementById('heroActionButtons');
+      if (heroBtns && heroBtns.style.display !== 'none') {
+          heroBtns.style.opacity = '0';
+          setTimeout(() => { heroBtns.style.display = 'none'; }, 300);
+      }
+  }
 
   function updateAddrTitleState(state) {
 
@@ -1116,7 +1064,7 @@ let isAddressSet = false;
 
       const statusEl = document.getElementById('addrStatus');
 
-      statusEl.innerText = '定位中...';
+      statusEl.innerHTML = '<div class="spinner" style="margin: 15px auto 10px auto; width: 24px; height: 24px; border-width: 3px;"></div><div style="color: #06c167; font-weight: bold;">取得 GPS 定位中...</div>';
 
       if (navigator.geolocation) {
 
@@ -1624,7 +1572,7 @@ let isAddressSet = false;
           // 不顯示成功訊息，讓使用者感覺無縫銜接
 
           isAddressSet = true;
-
+          revealSubSections();
           saveAddressHistory(lat, lng, title);
 
         updateAddrTitleState('ok');
@@ -1663,6 +1611,25 @@ let isAddressSet = false;
 
 
   let currentVertical = 'RESTAURANTS';
+
+  
+  function handleHeroClick(mode) {
+      let q = document.getElementById('addrInput').value.trim();
+      if (q.startsWith('📍 ')) q = q.substring(3).trim();
+      if (!q) {
+          alert('請先輸入外送地址！');
+          document.getElementById('addrInput').focus();
+          return;
+      }
+      
+      if (mode === 'SHOP' && currentVertical === 'RESTAURANTS') {
+          toggleVertical();
+      } else if (mode === 'RESTAURANTS' && currentVertical === 'SHOP') {
+          toggleVertical();
+      }
+      
+      searchAddress(true);
+  }
 
   function toggleVertical() {
 
@@ -6883,6 +6850,28 @@ function buildSplitSuggestionHtml(result) {
   </div>
 
 
+
+
+<!-- Time Picker Modal -->
+<div id="timePickerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:flex-end;" onclick="if(event.target===this) closeTimePickerModal()">
+  <div style="background:#fff; width:100%; max-width:500px; border-radius:16px 16px 0 0; padding:20px; box-sizing:border-box; position:relative; animation: slideUp 0.3s ease-out;">
+    <h2 style="margin-top:0; font-size:24px; font-weight:bold; margin-bottom:20px;">挑選時間</h2>
+    <div style="position:relative; margin-bottom:15px;">
+        <select id="modalDateSelect" onchange="renderModalTimes()" style="width:100%; padding:15px; font-size:16px; border:1px solid #ddd; border-radius:8px; appearance:none; outline:none; font-weight:bold; cursor:pointer; background:#fff;"></select>
+        <div style="position:absolute; right:15px; top:18px; pointer-events:none;">
+            <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M17 11.7V14.9L12 11.1L7 14.9V11.7L12 7.9L17 11.7Z" fill="#333" transform="rotate(180, 12, 12)"></path></svg>
+        </div>
+    </div>
+    <div style="position:relative; margin-bottom:25px;">
+        <select id="modalTimeSelect" style="width:100%; padding:15px; font-size:16px; border:1px solid #ddd; border-radius:8px; appearance:none; outline:none; font-weight:bold; cursor:pointer; background:#fff;"></select>
+        <div style="position:absolute; right:15px; top:18px; pointer-events:none;">
+            <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M17 11.7V14.9L12 11.1L7 14.9V11.7L12 7.9L17 11.7Z" fill="#333" transform="rotate(180, 12, 12)"></path></svg>
+        </div>
+    </div>
+    <button onclick="confirmTimePicker('SCHEDULE')" style="width:100%; padding:15px; background:#05a055; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-bottom:10px; cursor:pointer;">預約訂單</button>
+    <button onclick="confirmTimePicker('ASAP')" style="width:100%; padding:15px; background:#eee; color:#000; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">即時訂單</button>
+  </div>
+</div>
 
 </body>
 
