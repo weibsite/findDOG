@@ -817,8 +817,7 @@ let isAddressSet = false;
     try {
                   const payload = { lat: currentLat || 25.033964, lng: currentLng || 121.564468, title: currentAddrTitle || '台北市' };
       const res = await fetch(`${API_BASE_URL}/api/delivery-times_v3`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        method: 'GET'
       });
       let data;
       const contentType = res.headers.get('content-type') || '';
@@ -917,7 +916,12 @@ function renderModalTimes() {
         const startMM = m.toString().padStart(2, '0');
         const endMM = endM.toString().padStart(2, '0');
         
-        const displayTitle = `${startAmpm}${startH12}:${startMM} - ${endAmpm}${endH12}:${endMM}`;
+        let displayTitle = '';
+        if (startAmpm === endAmpm) {
+            displayTitle = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} - ${endH12}:${endMM}`;
+        } else {
+            displayTitle = `${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} - ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
+        }
         
         const opt = document.createElement('option');
         opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: displayTitle });
@@ -6829,8 +6833,8 @@ function buildSplitSuggestionHtml(result) {
             <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M17 11.7V14.9L12 11.1L7 14.9V11.7L12 7.9L17 11.7Z" fill="#333" transform="rotate(180, 12, 12)"></path></svg>
         </div>
     </div>
-    <button onclick="confirmTimePicker('SCHEDULE')" style="width:100%; padding:15px; background:#000; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-bottom:10px; cursor:pointer;">安排時間</button>
-    <button onclick="confirmTimePicker('ASAP')" style="width:100%; padding:15px; background:#eee; color:#000; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">立即外送</button>
+    <button onclick="confirmTimePicker('SCHEDULE')" style="width:100%; padding:15px; background:#05a055; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-bottom:10px; cursor:pointer;">預約訂單</button>
+    <button onclick="confirmTimePicker('ASAP')" style="width:100%; padding:15px; background:#eee; color:#000; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer;">立即送出</button>
   </div>
 </div>
 
