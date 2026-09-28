@@ -59,7 +59,7 @@
         .status-section.offline { background: linear-gradient(135deg, #2c3e50 0%, #000000 100%); }
         .status-section.offline .status-title { color: #fff; }
         .status-section.offline .status-badge { background: #111; color: #ff3366; box-shadow: 0 0 10px rgba(255,51,102,0.3); border: 1px solid #ff3366; }
-        .status-section.offline .notice-text { color: #ff3366; text-shadow: none; }
+        .status-section.offline .notice-text { color: #ffffff; text-shadow: none; }
 
         .notice-text {
             font-size: 16px; 
@@ -141,11 +141,21 @@
             badge.innerText = text;
             
             const actionContainer = document.getElementById('action-container');
+            const noticeEl = document.querySelector('.notice-text');
+            
             if (actionContainer) {
-                if (type === 'connecting' || type === 'offline') {
+                if (type === 'connecting') {
                     actionContainer.style.display = 'none';
                 } else {
                     actionContainer.style.display = 'block';
+                }
+            }
+            
+            if (noticeEl) {
+                if (type === 'offline') {
+                    noticeEl.innerHTML = '目前可能訂單較多<br>您還是可以';
+                } else {
+                    noticeEl.innerHTML = '訂單請於3小時前預約<br>享優惠不需等待穩定用餐';
                 }
             }
 
