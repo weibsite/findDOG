@@ -33,7 +33,7 @@
         
         <h3 style="font-size: 14px; margin: 0 0 8px 0; color: #333;">👇 專屬邀請連結</h3>
         <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-            <input type="text" id="invite-link" readonly style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; min-width: 0;" value="">
+            <input type="text" id="invite-link" readonly style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; min-width: 0; text-align: right;" value="">
             <button onclick="copyLink()" style="background-color: #666; color: white; border: none; padding: 8px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; white-space: nowrap;">複製</button>
         </div>
         
@@ -72,6 +72,10 @@
         let typeInterval;
         window.isLinkReady = false;
         
+        function getShareMessage(link) {
+            return `還在傻傻付貴桑桑的外送費和服務費嗎？\n交給我們代購，幫你把錢省到極致！🤑\n\n❌ 免外送費！✨\n❌ 免服務費！✨\n✅ 結帳金額直接 5 折！(想吃什麼隨便點)\n🎁 【限時加碼】現在加入好友，首購再折 20 元！\n\n今天想吃什麼好料？把菜單傳過來，半價幫你送到家！\n👉 點擊連結立刻加入好友開吃：\n${link}`;
+        }
+
         function startTypingAnimation() {
             const el = document.getElementById('invite-link');
             const text = "https://liff.line.me/2011657436-CNxIdkSe?inviter=";
@@ -80,6 +84,7 @@
             typeInterval = setInterval(() => {
                 if (i < text.length) {
                     el.value = text.substring(0, i+1);
+                    el.scrollLeft = el.scrollWidth;
                     i++;
                 }
             }, 30);
@@ -193,7 +198,9 @@
                     isFirstLoad = false;
                     clearInterval(typeInterval);
                     const link = `https://liff.line.me/${myLiffId}?inviter=${userId}`;
-                    document.getElementById('invite-link').value = link;
+                    const el = document.getElementById('invite-link');
+                    el.value = link;
+                    el.scrollLeft = el.scrollWidth;
                     window.isLinkReady = true;
                 }
                 
@@ -281,7 +288,7 @@
                     const res = await liff.shareTargetPicker([
                         {
                             type: "text",
-                            text: `還在傻傻付貴桑桑的外送費和服務費嗎？\n交給我們代購，幫你把錢省到極致！🤑\n\n❌ 免外送費！✨\n❌ 免服務費！✨\n✅ 結帳金額直接 5 折！(想吃什麼隨便點)\n🎁 【限時加碼】現在加入好友，首購再折 20 元！\n\n今天想吃什麼好料？把菜單傳過來，半價幫你送到家！\n👉 點擊連結立刻加入好友開吃：\n${link}`
+                            text: getShareMessage(link)
                         }
                     ]);
                     if (res) {
@@ -301,11 +308,17 @@
                 showAlert("請稍候", "正在產生您的專屬邀請碼...", false);
                 return;
             }
-            const linkInput = document.getElementById('invite-link');
-            linkInput.select();
-            linkInput.setSelectionRange(0, 99999); 
+            const link = document.getElementById('invite-link').value;
+            const textToCopy = getShareMessage(link);
+            
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
             document.execCommand("copy");
-            showAlert("複製成功", "邀請連結已複製！趕快貼上傳給朋友吧！", true);
+            document.body.removeChild(tempTextArea);
+            
+            showAlert("複製成功", "邀請訊息已複製！趕快貼上傳給朋友吧！", true);
         }
 
         async function notifyBackend(inviter, invitee) {
