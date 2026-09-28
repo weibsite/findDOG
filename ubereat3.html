@@ -5304,15 +5304,16 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
                   body: JSON.stringify(uberPayload)
               });
 
+              
               const textRes = await res.text();
-
               try {
-
                   json = JSON.parse(textRes);
-
+                  if (!json.data) {
+                      throw new Error("Uber 回傳了格式正確的 JSON，但裡面沒有 data 欄位！內容：" + textRes);
+                  }
                   break; // 成功解析 JSON，跳出重試迴圈
-
               } catch (parseError) {
+
 
                   console.error(`Attempt ${retries + 1} failed - Non-JSON response:`, textRes);
 
