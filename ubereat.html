@@ -533,6 +533,20 @@
 
 <script>
 
+  
+  function getSelectedScheduleTimestamp() {
+      const ts = document.getElementById('scheduleTime');
+      if (!ts || !ts.value) return 0;
+      try {
+          const parsed = JSON.parse(ts.value);
+          const baseDate = new Date(parsed.date + "T00:00:00+08:00");
+          return baseDate.getTime() + (parsed.startTime * 60 * 1000);
+      } catch (e) {
+          const d = new Date(ts.value);
+          return isNaN(d) ? 0 : d.getTime();
+      }
+  }
+
   let API_BASE_URL = '';
 
   let WS_URL = '';
@@ -776,287 +790,159 @@ let isAddressSet = false;
 
 
 
-  function initSchedulePicker() {
+  
+  // --- [時段 API 串接] ---
+  let uberTimeData = null;
+  let isDeliveryTimesLoading = false;
+  let isDeliveryTimesLoaded = false;
+  let onDeliveryTimesLoadedCallback = null;
 
-    const today = new Date();
-
-    const daysStr = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-
-    const dateBtns = document.getElementById('dateButtons');
-
-    dateBtns.innerHTML = '';
-
-    datesData.length = 0;
-
+  async function fetchDeliveryTimes() {
+    if (!isAddressSet || !currentLat || !currentLng) return;
     
-
-    let now = new Date();
-
-    let startHourTest = now.getHours() + 1;
-
-    let startMinTest = Math.ceil(now.getMinutes() / 15) * 15;
-
-    if (startMinTest >= 60) {
-
-      startHourTest++;
-
-      startMinTest = 0;
-
-    }
-
+    isDeliveryTimesLoading = true;
+    isDeliveryTimesLoaded = false;
     
+    document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:#666; font-size:14px;">正在讀取可用時段...</div>';
+    document.getElementById('scheduleTime').innerHTML = '<option value="">載入中...</option>';
 
-    let hasTodaySlots = false;
-
-    for (let h = startHourTest; h < 24; h++) {
-
-      for (let m = (h === startHourTest ? startMinTest : 0); m < 60; m += 15) {
-
-        let endH = h;
-
-        let endM = m + 30;
-
-        if (endM >= 60) { endH++; endM -= 60; }
-
-        if (endH >= 24) continue;
-
-        hasTodaySlots = true;
-
-        break;
-
+    try {
+                  const payload = { lat: currentLat, lng: currentLng, title: currentAddrTitle };
+      const res = await fetch(`${API_BASE_URL}/api/delivery-times_v3`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success' && data.data && data.data.dates && data.data.timeRanges) {
+        uberTimeData = data.data;
+        renderDates();
+      } else {
+        throw new Error('無法取得時段');
       }
-
-      if (hasTodaySlots) break;
-
+    } catch (e) {
+      console.error(e);
+      document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:red; font-size:14px;">無法取得預約時段</div>';
+      document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
     }
 
+    isDeliveryTimesLoading = false;
+    isDeliveryTimesLoaded = true;
 
-
-    let startIndex = hasTodaySlots ? 0 : 1;
-
-    
-
-    for (let i = startIndex; i < startIndex + 7; i++) {
-
-      let d = new Date(today);
-
-      d.setDate(today.getDate() + i);
-
-      
-
-      let label = `${d.getMonth()+1}月${d.getDate()}日`;
-
-      let dayName = daysStr[d.getDay()];
-
-      if (i === 0) dayName = '今天';
-
-      if (i === 1) dayName = '明天';
-
-
-
-      datesData.push(d);
-
-      let arrIndex = datesData.length - 1;
-
-      
-
-      const btn = document.createElement('button');
-
-      btn.innerHTML = `<div style="font-size:12px; color:#666;">${dayName}</div><div style="font-size:14px; font-weight:bold;">${label}</div>`;
-
-      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${arrIndex === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
-
-      btn.onclick = () => selectDate(arrIndex);
-
-      btn.id = `dateBtn_${arrIndex}`;
-
-      dateBtns.appendChild(btn);
-
+    if (onDeliveryTimesLoadedCallback) {
+        onDeliveryTimesLoadedCallback();
+        onDeliveryTimesLoadedCallback = null;
     }
-
-    selectedDateIndex = 0;
-
-    generateTimeSlots();
-
   }
 
+  function renderDates() {
+    const dateBtns = document.getElementById('dateButtons');
+    dateBtns.innerHTML = '';
+    if (!uberTimeData || !uberTimeData.dates || uberTimeData.dates.length === 0) return;
 
+    // [過濾空時段] 如果該日期完全沒有時段，就直接隱藏（例如今天已經太晚打烊了）
+    const validDates = uberTimeData.dates.filter(dateStr => {
+        const ranges = uberTimeData.timeRanges[dateStr];
+        return ranges && ranges.length > 0;
+    });
+    uberTimeData.dates = validDates;
+
+    if (validDates.length === 0) {
+        dateBtns.innerHTML = '<div style="padding:10px; color:red; font-size:14px;">近期無可預約時段</div>';
+        document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
+        return;
+    }
+
+    validDates.forEach((dateStr, idx) => {
+      let dayName = dateStr;
+      const d = new Date(dateStr);
+      if (!isNaN(d)) {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (d.toDateString() === today.toDateString()) dayName = '今天';
+        else if (d.toDateString() === tomorrow.toDateString()) dayName = '明天';
+        else {
+           const daysStr = ['週日','週一','週二','週三','週四','週五','週六'];
+           dayName = daysStr[d.getDay()];
+        }
+      }
+      const btn = document.createElement('button');
+      btn.innerHTML = `<div style="font-size:12px; color:#666;">${dayName}</div><div style="font-size:14px; font-weight:bold;">${dateStr.substring(5).replace('-','/')}</div>`;
+      btn.style.cssText = `min-width:80px; padding:8px; border-radius:8px; border:2px solid ${idx === 0 ? '#000' : '#eee'}; background:#fff; cursor:pointer; text-align:center;`;
+      btn.onclick = () => selectDate(idx);
+      btn.id = `dateBtn_${idx}`;
+      dateBtns.appendChild(btn);
+    });
+    selectDate(0);
+  }
 
   function selectDate(idx) {
-
     selectedDateIndex = idx;
-
-    for (let j = 0; j < datesData.length; j++) {
-
+    if (!uberTimeData || !uberTimeData.dates) return;
+    const dates = uberTimeData.dates;
+    for (let j = 0; j < dates.length; j++) {
       const btn = document.getElementById(`dateBtn_${j}`);
-
-      if (btn) {
-
-        if (j === idx) {
-
-          btn.style.borderColor = '#000';
-
-        } else {
-
-          btn.style.borderColor = '#eee';
-
-        }
-
-      }
-
+      if (btn) btn.style.borderColor = (j === idx) ? '#000' : '#eee';
     }
-
-    generateTimeSlots();
-
+    renderTimeSlots(dates[idx]);
   }
 
+  
 
-
-  function generateTimeSlots() {
-
+  function renderTimeSlots(dateStr) {
     const timeSelect = document.getElementById('scheduleTime');
-
     timeSelect.innerHTML = '';
-
-    
-
-    const targetDate = datesData[selectedDateIndex];
-
-    const now = new Date();
-
-    const isToday = targetDate.getDate() === now.getDate() && targetDate.getMonth() === now.getMonth() && targetDate.getFullYear() === now.getFullYear();
-
-    
-
-    let startHour = 0;
-
-    let startMin = 0;
-
-    
-
-    // 如果是今天，從現在的下一個小時開始
-
-    if (isToday) {
-
-      startHour = now.getHours() + 1;
-
-      startMin = Math.ceil(now.getMinutes() / 15) * 15;
-
-      if (startMin >= 60) {
-
-        startHour++;
-
-        startMin = 0;
-
-      }
-
+    if (!uberTimeData || !uberTimeData.timeRanges || !uberTimeData.timeRanges[dateStr] || uberTimeData.timeRanges[dateStr].length === 0) {
+      timeSelect.innerHTML = '<option value="">今日已無可用時段</option>';
+      return;
     }
-
-
-
-    for (let h = startHour; h < 24; h++) {
-
-      for (let m = (h === startHour ? startMin : 0); m < 60; m += 15) {
-
-        // 建立 30 分鐘的區間
-
-        let endH = h;
-
-        let endM = m + 30;
-
-        if (endM >= 60) { endH++; endM -= 60; }
-
-        if (endH >= 24) continue;
-
-        
-
-        const formatTime = (hour, min) => {
-
-          const ampm = hour >= 12 ? '下午' : '上午';
-
-          const h12 = hour % 12 || 12;
-
-          const mm = min.toString().padStart(2, '0');
-
-          return `${getTimeEmoji(hour)} ${ampm} ${h12}:${mm}`;
-
-        };
-
-
-
-        const tStart = formatTime(h, m);
-
-        const tEnd = formatTime(endH, endM);
-
-
-
-        const valDate = new Date(targetDate);
-
-        valDate.setHours(h, m, 0, 0);
-
-        
-
-        // 為了模擬時區不偏差，使用本地時間組裝字串或保留 ISO 格式
-
-        const tzo = -valDate.getTimezoneOffset() / 60;
-
-        const sign = tzo >= 0 ? '+' : '-';
-
-        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
-
-        const isoLocal = valDate.getFullYear() + '-' + pad(valDate.getMonth()+1) + '-' + pad(valDate.getDate()) + 'T' + pad(valDate.getHours()) + ':' + pad(valDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
-
-
-
-        const opt = document.createElement('option');
-
-        opt.value = isoLocal; // 用完整的時間字串
-
-              const startAmpm = h >= 12 ? '下午' : '上午';
-
-              const endAmpm = endH >= 12 ? '下午' : '上午';
-
-              const startH12 = h % 12 || 12;
-
-              const endH12 = endH % 12 || 12;
-
-              const startMM = m.toString().padStart(2, '0');
-
-              const endMM = endM.toString().padStart(2, '0');
-
-              const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
-
-              if (startAmpm === endAmpm) {
-
-                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
-
-              } else {
-
-                opt.innerText = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
-
-              }
-
-        timeSelect.appendChild(opt);
-
-      }
-
-    }
-
     
+    // 檢查是否為今天，用來決定要不要加日期前綴 (雖然目前設計上已經選了日期標籤)
+    const targetDate = new Date(dateStr);
+    const today = new Date();
+    const isToday = !isNaN(targetDate) && targetDate.toDateString() === today.toDateString();
 
-    if (timeSelect.options.length === 0) {
+    const ranges = uberTimeData.timeRanges[dateStr];
+    ranges.forEach(w => {
+      const st = w.startTime || 0; // minutes from midnight
+      const et = w.endTime || 0;
+      
+      const h = Math.floor(st / 60);
+      const m = st % 60;
+      const endH = Math.floor(et / 60);
+      const endM = et % 60;
+      
+      const startAmpm = h >= 12 ? '下午' : '上午';
+      const endAmpm = endH >= 12 ? '下午' : '上午';
+      const startH12 = h % 12 || 12;
+      const endH12 = endH % 12 || 12;
+      const startMM = m.toString().padStart(2, '0');
+      const endMM = endM.toString().padStart(2, '0');
+      
+      const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
+      
+      let displayTitle = '';
+      if (startAmpm === endAmpm) {
+          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM}-${endH12}:${endMM}`;
+      } else {
+          displayTitle = `${datePrefix}${getTimeEmoji(h)} ${startAmpm} ${startH12}:${startMM} – ${getTimeEmoji(endH)} ${endAmpm} ${endH12}:${endMM}`;
+      }
 
       const opt = document.createElement('option');
-
-      opt.value = "";
-
-      opt.innerText = "今日已無可用時段";
-
+      opt.value = JSON.stringify({ date: dateStr, startTime: st, endTime: et, title: displayTitle });
+      opt.text = displayTitle;
       timeSelect.appendChild(opt);
-
-    }
-
+    });
   }
+  
+  function initSchedulePicker() {
+      document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:#666; font-size:14px;">請先設定地址，以讀取可用時段</div>';
+      document.getElementById('scheduleTime').innerHTML = '<option value="">(請先設定地址)</option>';
+  }
+
+
+
 
 
 
@@ -1674,6 +1560,7 @@ let isAddressSet = false;
           saveAddressHistory(lat, lng, title);
 
         updateAddrTitleState('ok');
+        fetchDeliveryTimes();
 
       } else {
 
@@ -1876,6 +1763,18 @@ async function searchStores() {
 
     }
 
+    
+    // 等待時段讀取完成
+    if (scheduleMode === 'SCHEDULE' && isDeliveryTimesLoading) {
+        showModal('讀取時段中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在向 Uber 取得預約時段，請稍候...</div>', true);
+        onDeliveryTimesLoadedCallback = () => {
+            document.getElementById('errorModalOverlay').style.display = 'none';
+            window._searchLock = false;
+            searchStores();
+        };
+        return;
+    }
+
     let q = document.getElementById('query').value.trim();
 
     
@@ -1945,9 +1844,79 @@ async function searchStores() {
           displayType: 'SEARCH_RESULTS',
           searchType: 'GLOBAL_SEARCH'
       };
-      console.log('📡 [搜尋] 送出資料:', JSON.stringify(searchPayload, null, 2));
-      const res = await fetch(`${API_BASE_URL}/api/search`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      
+      if (scheduleMode === 'SCHEDULE') {
+          const timeSelect = document.getElementById('scheduleTime');
+          if (timeSelect && timeSelect.value) {
+              try {
+                  const sData = JSON.parse(timeSelect.value);
+                  searchPayload.date = sData.date;
+                  searchPayload.startTime = sData.startTime;
+                  searchPayload.endTime = sData.endTime;
+              } catch (e) {}
+          }
+      }
+
+      
+      // 在 F12 顯示預計送往 Uber API 的真實 Payload 以利除錯
+      const expectedUberPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          displayType: searchPayload.displayType,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      if (searchPayload.date) {
+          expectedUberPayload.date = searchPayload.date;
+          expectedUberPayload.startTime = searchPayload.startTime;
+          expectedUberPayload.endTime = searchPayload.endTime;
+      }
+      console.group('🚀 [Uber Eats API] 預計發送的 Payload');
+      console.log(JSON.stringify(expectedUberPayload, null, 2));
+      console.groupEnd();
+
+      // 改為跟 getStoreV1 一樣，直送 Uber Eats 伺服器
+      const uberSearchHeaders = {
+          "accept": "*/*",
+          "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+          "content-type": "application/json",
+          "x-csrf-token": "x",
+          "x-uber-ciid": "c65c5fae-d7e3-44ad-9146-011e930f77dd",
+          "x-uber-client-gitref": "cdeec6f0ad55ef2fc11f85faf00785cd01b5ddf1",
+          "x-uber-request-id": "e2449281-4735-4392-ae07-b803eb404d0a",
+          "x-uber-session-id": "c86ad72f-ecde-4174-9b4f-9121887789cc",
+          "x-uber-device-location-latitude": currentLat.toString(),
+          "x-uber-device-location-longitude": currentLng.toString(),
+          "x-uber-target-location-latitude": currentLat.toString(),
+          "x-uber-target-location-longitude": currentLng.toString()
+      };
+      
+      const uberSearchPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      
+      if (searchPayload.date) {
+          uberSearchPayload.date = searchPayload.date;
+          uberSearchPayload.startTime = searchPayload.startTime;
+          uberSearchPayload.endTime = searchPayload.endTime;
+      }
+      
+      console.log('📡 [搜尋餐廳] 直送 Uber Payload:', JSON.stringify(uberSearchPayload, null, 2));
+
+      const res = await fetch(`${API_BASE_URL}/api/search_v3`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(searchPayload)
       });
 
@@ -2197,7 +2166,10 @@ async function searchStores() {
 
         const rating = s.rating ? s.rating.text : '無評價';
 
-        const name = s.title ? s.title.text : '未知餐廳';
+                let name = s.title ? s.title.text : '未知餐廳';
+        if (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') {
+            name += ' (不需外送費、需要服務費)';
+        }
 
         
 
@@ -3573,7 +3545,7 @@ function openCheckoutSummary() {
 
         })()}
 
-        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
+        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
 
         <div style="font-weight:bold; font-size:20px; margin-top:10px;">
 
@@ -3589,7 +3561,7 @@ function openCheckoutSummary() {
 
               const pd = total >= 285 ? 143 : Math.floor(total/2);
 
-              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (new Date(document.getElementById('scheduleTime').value).getTime() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
 
               return `總計: <span style="text-decoration:line-through; color:#999; font-size:16px;">$${total + 50 + totalExcess}</span> <span style="color:#d32f2f;">$${total - pd + 50 + totalExcess - pr}</span>`;
 
@@ -3701,13 +3673,13 @@ function openGroceryCheckoutSummary() {
 
 
 
-  let svcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${window.groceryServiceFee}` : '$35~$60不等';
+  let svcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${window.groceryServiceFee}` : '$30~$60不等';
 
-  let svcCalcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `${window.groceryServiceFee}` : '35~60';
+  let svcCalcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `${window.groceryServiceFee}` : '30~60';
 
-  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 20}` : '$329 ~ $354';
+  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 20}` : '$324 ~ $354';
 
-  let totalNormalStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 60}` : '$364 ~ $389';
+  let totalNormalStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 60}` : '$359 ~ $389';
 
 
 
@@ -5327,25 +5299,60 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           try {
 
-              const storePayload = { storeUuid: uuid, lat: currentLat, lng: currentLng };
-              console.log('📡 [開啟店家] 送出資料:', JSON.stringify(storePayload, null, 2));
-              const res = await fetch(`${API_BASE_URL}/api/store`, {
+              const uberPayload = {
+                  storeUuid: uuid,
+                  lat: currentLat,
+                  lng: currentLng,
+                  diningMode: 'DELIVERY',
+                  cbType: 'EATER_ENDORSED'
+              };
+              if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+                  const timeSelect = document.getElementById('scheduleTime');
+                  if (timeSelect && timeSelect.value) {
+                      try {
+                          const sData = JSON.parse(timeSelect.value);
+                          const startTimeMs = getSelectedScheduleTimestamp();
+                          uberPayload.time = {
+                              scheduled: true,
+                              date: sData.date,
+                              startTime: sData.startTime,
+                              startTimeMs: startTimeMs,
+                              endTime: sData.endTime,
+                              deliveryType: 'ASAP'
+                          };
+                      } catch (e) {}
+                  }
+              }
 
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+              console.log('📡 [開啟店家] 直送 Uber Payload:', JSON.stringify(uberPayload, null, 2));
+              
+              const uberHeaders = {
+                  "accept": "*/*",
+                  "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                  "content-type": "application/json",
+                  "x-csrf-token": "x",
+                  "x-uber-device-location-latitude": currentLat.toString(),
+                  "x-uber-device-location-longitude": currentLng.toString(),
+                  "x-uber-target-location-latitude": currentLat.toString(),
+                  "x-uber-target-location-longitude": currentLng.toString()
+              };
 
-                  body: JSON.stringify(storePayload)
-
+              const res = await fetch(`${API_BASE_URL}/api/store_v3`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(uberPayload)
               });
 
+              
               const textRes = await res.text();
-
               try {
-
                   json = JSON.parse(textRes);
-
+                  if (!json.data) {
+                      throw new Error("Uber 回傳了格式正確的 JSON，但裡面沒有 data 欄位！內容：" + textRes);
+                  }
                   break; // 成功解析 JSON，跳出重試迴圈
-
               } catch (parseError) {
+
 
                   console.error(`Attempt ${retries + 1} failed - Non-JSON response:`, textRes);
 
@@ -5383,6 +5390,9 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       window.currentStoreRawData = d;
 
       window.isGroceryStore = (d.isGr === true) || (window.currentVertical === 'SHOP');
+      if (window.isGroceryStore && !currentStoreName.includes('不需外送費、需要服務費')) {
+          currentStoreName += ' (不需外送費、需要服務費)';
+      }
 
       document.getElementById('storeSearchBtn').style.display = 'block';
 
@@ -5570,7 +5580,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
-        const selectedTime = new Date(selectedScheduleValue).getTime() / 1000;
+        const selectedTime = getSelectedScheduleTimestamp() / 1000;
 
         let timeFound = false;
 
@@ -6185,101 +6195,83 @@ if (window.isGroceryStore) {
   
 
   function quickSetSchedule(startTimeSeconds, storeUuid) {
-
     document.getElementById('errorModalOverlay').style.display='none';
-
     
-
     // Switch to SCHEDULE mode
-
     setScheduleMode('SCHEDULE'); 
-
     const targetDate = new Date(startTimeSeconds * 1000);
-
     
-
     // Update selectedDateIndex
-
     const today = new Date();
-
     today.setHours(0,0,0,0);
-
     const targetDay = new Date(targetDate);
-
     targetDay.setHours(0,0,0,0);
-
     const diffDays = Math.round((targetDay - today) / (1000 * 60 * 60 * 24));
-
     
-
-    if (diffDays >= 0 && diffDays < 7) {
-
-        selectDate(diffDays); 
-
-    }
-
-    
-
-    const timeSelect = document.getElementById('scheduleTime');
-
-    let found = false;
-
-    for (let i = 0; i < timeSelect.options.length; i++) {
-
-        const optDate = new Date(timeSelect.options[i].value);
-
-        if (Math.abs(optDate.getTime() - targetDate.getTime()) < 60000) {
-
-            timeSelect.selectedIndex = i;
-
-            found = true;
-
-            break;
-
-        }
-
-    }
-
-    
-
-    if (!found) {
-
-        const opt = document.createElement('option');
-
-        const tzo = -targetDate.getTimezoneOffset() / 60;
-
-        const sign = tzo >= 0 ? '+' : '-';
-
+    // 這裡我們需要根據 diffDays 去點擊對應的日期按鈕
+    // 但因為有「過濾空時段」的功能，所以不能直接用 diffDays，必須比對 dateStr
+    if (uberTimeData && uberTimeData.dates) {
         const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
-
-        const isoLocal = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate()) + 'T' + pad(targetDate.getHours()) + ':' + pad(targetDate.getMinutes()) + ':00' + sign + pad(tzo) + ':00';
-
-        opt.value = isoLocal;
-
-        const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
-
-        const h12 = targetDate.getHours() % 12 || 12;
-
-        const mm = String(targetDate.getMinutes()).padStart(2, '0');
-
-        const isToday = targetDate.getDate() === new Date().getDate() && targetDate.getMonth() === new Date().getMonth();
-
-        const datePrefix = isToday ? '' : `(${targetDate.getMonth()+1}/${targetDate.getDate()}) `;
-
-        opt.text = `自訂: ${datePrefix}${getTimeEmoji(targetDate.getHours())} ${ampm} ${h12}:${mm}`;
-
-        timeSelect.appendChild(opt);
-
-        timeSelect.selectedIndex = timeSelect.options.length - 1;
-
+        const targetDateStr = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate());
+        
+        const idx = uberTimeData.dates.indexOf(targetDateStr);
+        if (idx !== -1) {
+            selectDate(idx);
+        }
     }
-
     
-
-    // Re-attempt opening store
-
-    openStore(storeUuid, '', '', true);
-
+    const timeSelect = document.getElementById('scheduleTime');
+    let found = false;
+    for (let i = 0; i < timeSelect.options.length; i++) {
+        let optTime = 0;
+        try {
+            const parsed = JSON.parse(timeSelect.options[i].value);
+            const baseDate = new Date(parsed.date + "T00:00:00+08:00");
+            optTime = baseDate.getTime() + (parsed.startTime * 60 * 1000);
+        } catch(e) {
+            optTime = new Date(timeSelect.options[i].value).getTime();
+        }
+        
+        if (Math.abs(optTime - targetDate.getTime()) < 60000) {
+            timeSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found) {
+        const opt = document.createElement('option');
+        const st = (targetDate.getHours() * 60) + targetDate.getMinutes();
+        const et = st + 30; // guess 30 mins
+        
+        const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+        const dateStr = targetDate.getFullYear() + '-' + pad(targetDate.getMonth()+1) + '-' + pad(targetDate.getDate());
+        
+        const ampm = targetDate.getHours() >= 12 ? '下午' : '上午';
+        const h12 = targetDate.getHours() % 12 || 12;
+        const mm = String(targetDate.getMinutes()).padStart(2, '0');
+        const title = `(餐廳專屬時段) ${ampm} ${h12}:${mm}`;
+        
+        opt.value = JSON.stringify({
+            date: dateStr,
+            startTime: st,
+            endTime: et,
+            title: title
+        });
+        opt.innerText = title;
+        timeSelect.appendChild(opt);
+        timeSelect.selectedIndex = timeSelect.options.length - 1;
+    }
+    
+    // click the store again using the global variable cache if possible, or just re-run search?
+    // actually it already passes storeUuid, we just call the search address to trigger the card click again.
+    // Wait, the original code had: openStore(storeUuid, storeName, actionUrl, true);
+    // But storeName and actionUrl aren't passed to quickSetSchedule!
+    // The user has to click the store card again.
+    const cardEl = document.getElementById('card_' + storeUuid);
+    if (cardEl) {
+        cardEl.click();
+    }
   }
 
 
@@ -6372,7 +6364,7 @@ function escapeHTML(str) {
 
     if (ts && ts.value) {
 
-      if (new Date(ts.value).getTime() - new Date().getTime() >= 2.5 * 3600000) {
+      if (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
 
         preOrderDiscount = 10;
 
