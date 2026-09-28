@@ -5262,6 +5262,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
               const uberPayload = {
                   storeUuid: uuid,
+                  lat: currentLat,
+                  lng: currentLng,
                   diningMode: 'DELIVERY',
                   cbType: 'EATER_ENDORSED'
               };
@@ -5296,9 +5298,9 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
                   "x-uber-target-location-longitude": currentLng.toString()
               };
 
-              const res = await fetch("https://www.ubereats.com/_p/api/getStoreV1?localeCode=tw", {
+              const res = await fetch(`${API_BASE_URL}/api/store_v3`, {
                   method: 'POST',
-                  headers: uberHeaders,
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(uberPayload)
               });
 
