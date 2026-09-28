@@ -814,9 +814,6 @@ let isAddressSet = false;
     isDeliveryTimesLoading = true;
     isDeliveryTimesLoaded = false;
     
-    document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:#666; font-size:14px;">正在讀取可用時段...</div>';
-    document.getElementById('scheduleTime').innerHTML = '<option value="">載入中...</option>';
-
     try {
                   const payload = { lat: currentLat || 25.033964, lng: currentLng || 121.564468, title: currentAddrTitle || '台北市' };
       const res = await fetch(`${API_BASE_URL}/api/delivery-times_v3`, {
@@ -843,9 +840,7 @@ let isAddressSet = false;
       }
     } catch (e) {
       console.error(e);
-      document.getElementById('dateButtons').innerHTML = '<div style="padding:10px; color:red; font-size:14px;">無法取得預約時段</div>';
-      document.getElementById('scheduleTime').innerHTML = '<option value="">(無可用時段)</option>';
-    }
+      }
 
     isDeliveryTimesLoading = false;
     isDeliveryTimesLoaded = true;
