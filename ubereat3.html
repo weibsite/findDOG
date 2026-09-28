@@ -1879,8 +1879,44 @@ async function searchStores() {
       console.log(JSON.stringify(expectedUberPayload, null, 2));
       console.groupEnd();
 
+      // 改為跟 getStoreV1 一樣，直送 Uber Eats 伺服器
+      const uberSearchHeaders = {
+          "accept": "*/*",
+          "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+          "content-type": "application/json",
+          "x-csrf-token": "x",
+          "x-uber-ciid": "c65c5fae-d7e3-44ad-9146-011e930f77dd",
+          "x-uber-client-gitref": "cdeec6f0ad55ef2fc11f85faf00785cd01b5ddf1",
+          "x-uber-request-id": "e2449281-4735-4392-ae07-b803eb404d0a",
+          "x-uber-session-id": "c86ad72f-ecde-4174-9b4f-9121887789cc",
+          "x-uber-device-location-latitude": currentLat.toString(),
+          "x-uber-device-location-longitude": currentLng.toString(),
+          "x-uber-target-location-latitude": currentLat.toString(),
+          "x-uber-target-location-longitude": currentLng.toString()
+      };
+      
+      const uberSearchPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      
+      if (searchPayload.date) {
+          uberSearchPayload.date = searchPayload.date;
+          uberSearchPayload.startTime = searchPayload.startTime;
+          uberSearchPayload.endTime = searchPayload.endTime;
+      }
+      
+      console.log('📡 [搜尋餐廳] 直送 Uber Payload:', JSON.stringify(uberSearchPayload, null, 2));
+
       const res = await fetch(`${API_BASE_URL}/api/search_v3`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(searchPayload)
       });
 
