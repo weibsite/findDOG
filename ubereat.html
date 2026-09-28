@@ -847,7 +847,17 @@ let isAddressSet = false;
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      let data;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/gzip')) {
+          const ds = new DecompressionStream('gzip');
+          const decompressedStream = res.body.pipeThrough(ds);
+          const decompressedResponse = new Response(decompressedStream);
+          const text = await decompressedResponse.text();
+          data = JSON.parse(text);
+      } else {
+          data = await res.json();
+      }
       
       if (data.status === 'success' && data.data && data.data.dates && data.data.timeRanges) {
         uberTimeData = data.data;
@@ -937,6 +947,25 @@ let isAddressSet = false;
     const targetDate = new Date(dateStr);
     const today = new Date();
     const isToday = !isNaN(targetDate) && targetDate.toDateString() === today.toDateString();
+
+    if (isToday) {
+      const opt = document.createElement('option');
+      opt.value = 'ASAP';
+      opt.text = '🚀 立刻送出 (約5~30分)';
+      opt.style.fontWeight = 'bold';
+      opt.style.color = '#06c167';
+      timeSelect.appendChild(opt);
+    }
+    
+    timeSelect.onchange = function() {
+        if (this.value === 'ASAP') {
+            setScheduleMode('ASAP');
+            // reset to first actual time slot in case they click '預訂' again later
+            if (this.options.length > 1) {
+                this.selectedIndex = 1;
+            }
+        }
+    };
 
     const ranges = uberTimeData.timeRanges[dateStr];
     ranges.forEach(w => {
