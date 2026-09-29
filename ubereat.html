@@ -3958,6 +3958,19 @@ async function sendOrderToLine(forceSubmit = false) {
 
   const prefix = window.isGroceryStore ? 'grocery' : 'checkout';
 
+  const phoneInput = document.getElementById(prefix + 'Phone');
+  if (phoneInput) {
+      const phoneVal = phoneInput.value.trim();
+      if (!phoneVal) {
+          phoneInput.style.border = '2px solid #d32f2f';
+          phoneInput.focus();
+          setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
+          showModal('請輸入手機號碼', '請留下電話，以方便外送員抵達時與您聯絡！');
+          return;
+      }
+      localStorage.setItem('userPhone', phoneVal);
+  }
+
 
 
   const deliveryNotesEl = document.getElementById(prefix + 'DeliveryNotes');
@@ -4014,27 +4027,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (window.isGroceryStore) {
 
-      const phoneInput = document.getElementById(prefix + 'Phone');
 
-      if (phoneInput) {
-
-          const phoneVal = phoneInput.value.trim();
-
-          if (!phoneVal) {
-
-              phoneInput.style.border = '2px solid #d32f2f';
-
-              phoneInput.focus();
-
-              setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
-
-              return;
-
-          }
-
-          localStorage.setItem('userPhone', phoneVal);
-
-      }
 
 
 
@@ -4114,27 +4107,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
 
-      const phoneInput = document.getElementById(prefix + 'Phone');
 
-      if (phoneInput) {
-
-        const phoneVal = phoneInput.value.trim();
-
-        if (!phoneVal) {
-
-          phoneInput.style.border = '2px solid #d32f2f';
-
-          phoneInput.focus();
-
-          setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
-
-          return;
-
-        }
-
-        localStorage.setItem('userPhone', phoneVal);
-
-      }
 
 
 
@@ -5224,19 +5197,17 @@ const note = document.getElementById('modalNote').value.trim();
 
     
 
-    const badge = document.getElementById('cartBadge');
-
-    badge.innerText = '✅ 已加入';
-
-    badge.style.background = '#000';
-
-    setTimeout(() => {
-
-      badge.style.background = '#06c167';
-
-      updateCartBadge();
-
-    }, 1500);
+    const badge = document.getElementById('floatingCartBtn');
+    if (badge) {
+        const originalText = badge.innerText;
+        const originalBg = badge.style.background;
+        badge.innerText = '✅ 已加入';
+        badge.style.background = '#000';
+        setTimeout(() => {
+          badge.style.background = originalBg;
+          updateCartBadge();
+        }, 1500);
+    }
 
   }
 
