@@ -819,7 +819,9 @@ let isAddressSet = false;
     try {
                   const payload = { lat: currentLat || 25.033964, lng: currentLng || 121.564468, title: currentAddrTitle || '台北市' };
       const res = await fetch(`${API_BASE_URL}/api/delivery-times_v3`, {
-        method: 'GET'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
       let data;
       const contentType = res.headers.get('content-type') || '';
