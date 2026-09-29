@@ -5372,7 +5372,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
                   "x-uber-target-location-longitude": currentLng.toString()
               };
 
-              const res = await fetch(`${API_BASE_URL}/api/store`, {
+              const res = await fetch(`${API_BASE_URL}/api/store_v3`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(uberPayload)
@@ -5857,7 +5857,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
-      let fareHtml = '';
+      let fareHtml = '<div id="storeFareArea" style="text-align: center; color: #999; font-size: 13px; margin-bottom: 10px;">運費查詢中...</div>';
 
       if (d.fareBadge && d.fareBadge.text) {
 
@@ -6199,6 +6199,101 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       
 
       sc.innerHTML = html;
+
+      // === Background fetch v1 for delivery fee ===
+      (async () => {
+          try {
+              const feePayload = {
+                  storeUuid: uuid,
+                  lat: currentLat,
+                  lng: currentLng
+              };
+              if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+                  const timeSelect = document.getElementById('scheduleTime');
+                  if (timeSelect && timeSelect.value) {
+                      try {
+                          const sData = JSON.parse(timeSelect.value);
+                          feePayload.diningMode = 'DELIVERY';
+                          feePayload.time = {
+                              scheduled: true,
+                              date: sData.date,
+                              startTime: sData.startTime,
+                              startTimeMs: getSelectedScheduleTimestamp(),
+                              endTime: sData.endTime,
+                              deliveryType: 'ASAP'
+                          };
+                      } catch(e) {}
+                  }
+              }
+              const feeRes = await fetch(`${API_BASE_URL}/api/store`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(feePayload)
+              });
+              const feeJson = await feeRes.json();
+              if (feeJson.data || feeJson.status === 'success') {
+                  const fd = feeJson.data || feeJson;
+                  const fareArea = document.getElementById('storeFareArea');
+                  if (!fareArea) return;
+                  
+                  if (fd.fareBadge && fd.fareBadge.text) {
+                      const fareText = fd.fareBadge.text;
+                      if (fareText.toLowerCase().includes('no fee')) {
+                          currentStoreDeliveryFee = 0;
+                          fareArea.innerHTML = '免運費 🎉';
+                          fareArea.style.color = '#d32f2f';
+                          fareArea.style.fontWeight = 'bold';
+                          fareArea.style.fontSize = '14px';
+                      } else {
+                          const match = fareText.match(/(\d+)/);
+                          if (match) {
+                              let fee = parseInt(match[1], 10);
+                              let displayFee = fee > 50 ? fee - 50 : fee - 10;
+                              if (displayFee <= 0) {
+                                  currentStoreDeliveryFee = 0;
+                                  fareArea.innerHTML = '免運費 🎉';
+                                  fareArea.style.color = '#d32f2f';
+                                  fareArea.style.fontWeight = 'bold';
+                                  fareArea.style.fontSize = '14px';
+                              } else {
+                                  currentStoreDeliveryFee = displayFee;
+                                  fareArea.innerHTML = `⚠️ 超過50元免運 額外運費 ${displayFee} 元`;
+                                  fareArea.style.color = '#d32f2f';
+                                  fareArea.style.fontWeight = 'bold';
+                                  fareArea.style.fontSize = '14px';
+                              }
+                          }
+                      }
+                  } else {
+                      fareArea.innerHTML = '免運費 🎉';
+                      fareArea.style.color = '#d32f2f';
+                      fareArea.style.fontWeight = 'bold';
+                      fareArea.style.fontSize = '14px';
+                      currentStoreDeliveryFee = 0;
+                  }
+                  
+                  if (window.isGroceryStore && fd.basketDependentFeePolicy && fd.basketDependentFeePolicy.dialog && fd.basketDependentFeePolicy.dialog.tierFee) {
+                      const tier = fd.basketDependentFeePolicy.dialog.tierFee[0];
+                      if (tier && tier.nonMemberServiceFee) {
+                          const matchVal = tier.nonMemberServiceFee.match(/(\d+)/);
+                          if (matchVal) {
+                              window.groceryServiceFee = Math.round(parseInt(matchVal[1], 10) * 0.8);
+                          }
+                      }
+                  } else if (window.isGroceryStore && fd.fareInfo && fd.fareInfo.serviceFee !== undefined) {
+                      window.groceryServiceFee = Math.round(parseInt(fd.fareInfo.serviceFee, 10) * 0.8);
+                  }
+              }
+          } catch(e) {
+              console.log('背景運費查詢失敗:', e);
+              const fareArea = document.getElementById('storeFareArea');
+              if (fareArea) {
+                  fareArea.innerHTML = '';
+                  fareArea.style.display = 'none';
+              }
+          }
+      })();
+
 updateCartBadge();
 window.scrollTo(0, 0);
 if (window.isGroceryStore) {
