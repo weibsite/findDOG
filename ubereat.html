@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html lang="zh-Hant">
 
@@ -193,6 +193,11 @@
 </head>
 
 <body>
+<div id="fullScreenLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.85); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(3px);">
+    <div class="spinner" style="width: 50px; height: 50px; border-top-color: #06c167; border-width: 4px; margin-bottom: 20px;"></div>
+    <div style="font-size: 18px; font-weight: bold; color: #06c167; letter-spacing: 1px;" id="fullScreenLoaderText">定位查詢中，請稍候...</div>
+</div>
+
 
 
 
@@ -1296,6 +1301,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.length === 0) {
 
             statusEl.innerText = '找不到地址';
+            const loader = document.getElementById('fullScreenLoader');
+            if (loader) loader.style.display = 'none';
 
             return;
 
@@ -1307,6 +1314,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } else {
 
+            const loader = document.getElementById('fullScreenLoader');
+            if (loader) loader.style.display = 'none';
             statusEl.innerText = '請選擇精確地址：';
 
             resultsEl.innerHTML = data.slice(0, 5).map(item => {
@@ -1328,6 +1337,11 @@ document.addEventListener("DOMContentLoaded", () => {
         statusEl.innerText = '搜尋地址錯誤: ' + e.message;
 
         updateAddrTitleState('error');
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none';
+
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none';
 
     }
 
@@ -1342,6 +1356,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('addrStatus').innerText = '請輸入包含「門牌號碼」的完整地址，不能僅輸入到路名';
 
         updateAddrTitleState('error');
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none';
 
         document.getElementById('addrResults').innerHTML = '';
 
@@ -1380,6 +1396,8 @@ document.addEventListener("DOMContentLoaded", () => {
                   document.getElementById('addrStatus').innerText = '請輸入包含「門牌號碼」的完整地址 (例: 臺北市中正區重慶南路一段122號) 或具體地標 (例: 台北車站)';
 
                   updateAddrTitleState('error');
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none';
 
                   document.getElementById('addrResults').innerHTML = '';
 
@@ -1571,6 +1589,8 @@ document.addEventListener("DOMContentLoaded", () => {
           // 不顯示成功訊息，讓使用者感覺無縫銜接
 
           isAddressSet = true;
+          const loader = document.getElementById('fullScreenLoader');
+          if (loader) loader.style.display = 'none';
           revealSubSections();
           saveAddressHistory(lat, lng, title);
 
@@ -1587,6 +1607,8 @@ document.addEventListener("DOMContentLoaded", () => {
           statusEl.innerText = '❌ 設定失敗: ' + json.message;
 
         updateAddrTitleState('error');
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none';
 
       }
 
@@ -1599,7 +1621,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         statusEl.innerText = '❌ 連線伺服器失敗: ' + e.message;
 
-      updateAddrTitleState('error'); 
+      updateAddrTitleState('error');
+        const loader = document.getElementById('fullScreenLoader');
+        if (loader) loader.style.display = 'none'; 
 
     }
 
@@ -1625,6 +1649,20 @@ document.addEventListener("DOMContentLoaded", () => {
           toggleVertical();
       } else if (mode === 'RESTAURANTS' && currentVertical === 'SHOP') {
           toggleVertical();
+      }
+      
+      // 顯示全螢幕讀取畫面
+      const loader = document.getElementById('fullScreenLoader');
+      if (loader) {
+          loader.style.display = 'flex';
+          window.isHeroClicked = true; // 標記是點擊按鈕進來的
+      }
+      
+      // 如果地址已經設定好且一致，直接進入
+      if (isAddressSet && currentAddrTitle === formatNominatimAddress({lat: 0, lon: 0, display_name: q}) || (isAddressSet && q === window.lastSearchedAddr)) {
+          if (loader) loader.style.display = 'none';
+          revealSubSections();
+          return;
       }
       
       searchAddress(true);
