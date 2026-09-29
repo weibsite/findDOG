@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="zh-Hant">
 
@@ -2700,7 +2700,8 @@ function handleStoreSearch(isUserInput = false) {
 
                   found++;
 
-                  let itemHtml = '<div class="menu-item" style="position: relative;" onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')">';
+                  const isSoldOut = item.isSoldOut === true;
+                  let itemHtml = '<div class="menu-item" style="position: relative;' + (isSoldOut ? ' opacity:0.6; cursor:not-allowed;' : '') + '" ' + (isSoldOut ? '' : 'onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')"') + '>';
 
                   itemHtml += '<div class="menu-item-info">';
 
@@ -2722,11 +2723,12 @@ function handleStoreSearch(isUserInput = false) {
 
                   
 
-                  itemHtml += '<div class="item-action-area" id="action-' + item.uuid + '" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">';
-
-                  itemHtml += '<div class="quick-add-btn" onclick="handleQuickAdd(event, \'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>';
-
-                  itemHtml += '</div></div>';
+                  if (!isSoldOut) {
+                      itemHtml += '<div class="item-action-area" id="action-' + item.uuid + '" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">';
+                      itemHtml += '<div class="quick-add-btn" onclick="handleQuickAdd(event, \'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>';
+                      itemHtml += '</div>';
+                  }
+                  itemHtml += '</div>';
 
                   
 
@@ -3464,7 +3466,7 @@ function openCheckoutSummary() {
 
     if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
     }
 
@@ -3608,7 +3610,7 @@ function openCheckoutSummary() {
 
         })()}
 
-        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(3小時以上): -$10</div>` : ''}
+        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(2.5小時以上): -$10</div>` : ''}
 
         <div style="font-weight:bold; font-size:20px; margin-top:10px;">
 
@@ -3720,7 +3722,7 @@ function openGroceryCheckoutSummary() {
 
     if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
       const tsVal = timeSelect.value;
 
@@ -3740,7 +3742,7 @@ function openGroceryCheckoutSummary() {
 
   let svcCalcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `${window.groceryServiceFee}` : '30~60';
 
-  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 20}` : '$324 ~ $354';
+  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 10}` : '$334 ~ $364';
 
   let totalNormalStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 60}` : '$359 ~ $389';
 
@@ -3804,7 +3806,7 @@ function openGroceryCheckoutSummary() {
 
             <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}
 
-      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(3小時以上): -$20</div>` : ''}
+      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(2.5小時以上): -$10</div>` : ''}
 
       </div>
 
@@ -3828,7 +3830,7 @@ function openGroceryCheckoutSummary() {
 
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
 
-        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(3小時以上)</span><span>-$20</span></div>
+        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(2.5小時以上)</span><span>-$10</span></div>
 
         ` : `
 
@@ -3850,7 +3852,7 @@ function openGroceryCheckoutSummary() {
 
           ${isPreOrder ? `
 
-          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 45 (代訂費) - 20 (預約優惠)<br>
+          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 45 (代訂費) - 10 (預約優惠)<br>
 
           <strong style="color:#d32f2f; font-size:18px;">預估總計約: ${totalPreOrderStr}</strong>
 
@@ -3970,7 +3972,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (!window._ignoreMethodCheck) {
 
-    const hasDoorKeywords = /放在|外送桌|放.*上|桌上/.test(deliveryNotesVal);
+    const hasDoorKeywords = /放|外送桌|桌上/.test(deliveryNotesVal);
 
     if (hasDoorKeywords && selectedMethodVal === '當面點交') {
 
@@ -4039,6 +4041,7 @@ async function sendOrderToLine(forceSubmit = false) {
       let addrEl = document.getElementById(prefix + 'AddrInput');
 
       let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
+      addr = normalizeAddress(addr);
 
       if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
 
@@ -4054,7 +4057,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
           const tsVal = timeSelect.value;
 
@@ -4083,7 +4086,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (isPreOrder) {
 
-          msgText += `🕒 預約優惠(3小時以上): -$20\n`;
+          msgText += `🕒 預約優惠(2.5小時以上): -$10\n`;
 
       }
 
@@ -4155,7 +4158,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
           `;
 
-          showModal('💡 偵測到可以拆單', '按照以下建議拆單，得到最優惠價格!', false, interceptHtml, true);
+          showModal('💡 偵測到可享有多單優惠', '按照以下建議分成多單，可得到最優惠價格!', false, interceptHtml, true);
 
           return;
 
@@ -4168,6 +4171,7 @@ async function sendOrderToLine(forceSubmit = false) {
       let addrEl = document.getElementById(prefix + 'AddrInput');
 
       let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
+      addr = normalizeAddress(addr);
 
       let coordsText = '';
 
@@ -4211,7 +4215,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
           const tsVal = timeSelect.value;
 
@@ -4229,7 +4233,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (forceSubmit === 'split' && costRes.bins) {
 
-        msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)\n`;
+        msgText = `🛵 UberEats 揪團訂單 (✅已享有多單優惠)\n`;
 
         if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
 
@@ -4239,7 +4243,8 @@ async function sendOrderToLine(forceSubmit = false) {
 
         let grandTotal = 0;
 
-        let feePerBin = costRes.bins.length >= 2 ? 30 : 50;
+        let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+        let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 40 : 50;
 
         let preOrderDiscount = isPreOrder ? 10 : 0;
 
@@ -4247,7 +4252,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         costRes.bins.forEach((bin, bIdx) => {
 
-          msgText += `📦 【拆單 ${bIdx + 1}】\n`;
+          msgText += `📦 【多單 ${bIdx + 1}】\n`;
 
           let binFoodSum = 0;
 
@@ -4345,7 +4350,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         grandTotal -= preOrderDiscount;
 
-        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}\n`;
+        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
         msgText += `💰 總結算金額: $${grandTotal}`;
 
@@ -4459,7 +4464,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}\n`;
 
-        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}\n`;
+        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
         msgText += `\n✨ 總計: $${grandTotal}`;
 
@@ -4487,9 +4492,9 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (phoneVal && !finalNote.includes(phoneVal)) {
 
-    const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethodVal === '放在門口';
+    const hasLocationNote = /放|外送桌|桌上/.test(finalNote) || selectedMethodVal === '放在門口';
 
-    const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
+    const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '沒遇到人請打電話' + phoneVal;
 
     finalNote = finalNote ? (finalNote + '。' + phoneNote) : phoneNote;
 
@@ -4751,6 +4756,7 @@ function renderGroups(groups, pathPrefix) {
 
         group.options.forEach((opt, oIdx) => {
 
+            const isSoldOut = opt.isSoldOut === true;
             const oTitle = filterTrailingEnglish(parseText(opt.title));
 
             const oPrice = opt.price > 0 ? `+$${opt.price / 100}` : '';
@@ -4763,7 +4769,7 @@ function renderGroups(groups, pathPrefix) {
 
             if (isRadio) {
 
-                inputHtml = `<input type="radio" class="cust-input cust-radio" name="${gPath}" data-path="${oPath}" data-title="${escapeHTML(oTitle)}" data-price="${(opt.price || 0) / 100}" onchange="recalcCustomizations()" style="width:18px;height:18px;">`;
+                inputHtml = `<input type="radio" class="cust-input cust-radio" name="${gPath}" data-path="${oPath}" data-title="${escapeHTML(oTitle)}" data-price="${(opt.price || 0) / 100}" onchange="recalcCustomizations()" style="width:18px;height:18px;" ${isSoldOut ? 'disabled' : ''}>`;
 
             } else {
 
@@ -4771,13 +4777,13 @@ function renderGroups(groups, pathPrefix) {
 
                 inputHtml = `
 
-                <div class="cust-stepper" style="display:flex; align-items:center; gap:8px;">
+                <div class="cust-stepper" style="display:flex; align-items:center; gap:8px; opacity: ${isSoldOut ? '0.5' : '1'};">
 
-                    <button type="button" onclick="changeCustQty(event, '${oPath}', -1, ${optMax})" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:pointer;color:#111;display:flex;align-items:center;justify-content:center;">-</button>
+                    <button type="button" onclick="${isSoldOut ? '' : `changeCustQty(event, '${oPath}', -1, ${optMax})`}" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:${isSoldOut ? 'not-allowed' : 'pointer'};color:#111;display:flex;align-items:center;justify-content:center;" ${isSoldOut ? 'disabled' : ''}>-</button>
 
                     <span id="qty_${oPath}" class="cust-qty cust-input" data-path="${oPath}" data-qty="0" data-title="${escapeHTML(oTitle)}" data-price="${(opt.price || 0) / 100}" style="font-size:15px;font-weight:bold;min-width:16px;text-align:center;">0</span>
 
-                    <button type="button" onclick="changeCustQty(event, '${oPath}', 1, ${optMax})" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:pointer;color:#111;display:flex;align-items:center;justify-content:center;">+</button>
+                    <button type="button" onclick="${isSoldOut ? '' : `changeCustQty(event, '${oPath}', 1, ${optMax})`}" style="width:28px;height:28px;border-radius:14px;border:1px solid #ccc;background:#fff;font-weight:bold;cursor:${isSoldOut ? 'not-allowed' : 'pointer'};color:#111;display:flex;align-items:center;justify-content:center;" ${isSoldOut ? 'disabled' : ''}>+</button>
 
                 </div>
 
@@ -4789,19 +4795,20 @@ function renderGroups(groups, pathPrefix) {
 
             const hasChildren = opt.childCustomizationList && opt.childCustomizationList.length > 0;
 
+            const soldOutBadge = isSoldOut ? `<span style="font-size:12px; color:#fff; background:#ff4444; padding:2px 6px; border-radius:4px; margin-left:8px;">已售完</span>` : '';
             
 
             html += `
 
-            <div class="cust-option-row">
+            <div class="cust-option-row" style="${isSoldOut ? 'opacity: 0.6; pointer-events: none;' : ''}">
 
-                <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaeaea; cursor:pointer;" onclick="${!isRadio ? 'event.preventDefault();' : ''}">
+                <label style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eaeaea; cursor:${isSoldOut ? 'not-allowed' : 'pointer'};" onclick="${!isRadio ? 'event.preventDefault();' : ''}">
 
                     <div style="display:flex; align-items:center; gap:10px;">
 
                         ${inputHtml}
 
-                        <span style="line-height:1.4;">${escapeHTML(oTitle)}</span>
+                        <span style="line-height:1.4;">${escapeHTML(oTitle)}${soldOutBadge}</span>
 
                     </div>
 
@@ -5333,7 +5340,11 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
       if(storeName) currentStoreName = storeName;
 
-    if(actionUrl) currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=DELIVERY';
+    if(actionUrl) {
+        currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=DELIVERY';
+    } else {
+        currentStoreUrl = 'https://www.ubereats.com/tw/store/-/' + uuid + '?diningMode=DELIVERY';
+    }
 
       currentStoreUuid = uuid;
 
@@ -5666,27 +5677,17 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
             let text = '';
 
             let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此餐廳在您選的時段 ( ${selectedScheduleText} ) 休息或無法接單。</div>`;
-
             
+            const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
+            const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
 
             // 如果這間店現在其實有營業，可以在最上面給一個「改成即時單」的按鈕
-
             if (isCurrentlyOpen) {
-
-                const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
-
-                const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
-
                 btnsHtml += `<button onclick="document.getElementById('errorModalOverlay').style.display='none'; confirmTimePicker('ASAP'); openStore('${storeUuid}', decodeURIComponent('${encodeURIComponent(safeName)}'), '${safeAction}', true);" style="margin-top:5px; margin-bottom:15px; background:#fff; color:#000; border:2px solid #000; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">改成即時單 <br><span style="color:#d32f2f; font-size:13px; font-weight:normal;">*無法獲得預約優惠</span></button>`;
-
             }
 
-
-
             if (availableWindows.length > 0) {
-
                 btnsHtml += `<b style="color:#111;">👉 餐廳可接單時間(點擊直接修改)：</b>`;
-
                 const top5 = availableWindows.slice(0, 5);
 
                 top5.forEach(tw => {
@@ -5751,7 +5752,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                     }
 
-                    btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
+                    btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}', '${encodeURIComponent(safeName)}', '${safeAction}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
 
                 });
 
@@ -6069,6 +6070,11 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
                     priceHtml = item.priceTagline.textFormat;
 
                   }
+                  
+                  const isSoldOut = item.isSoldOut === true;
+                  if (isSoldOut) {
+                      priceHtml = '<span style="color:#d32f2f; font-weight:bold;">已售完</span>';
+                  }
 
                   
 
@@ -6136,7 +6142,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                       sectionHtml += `
 
-                        <div class="menu-item" style="position: relative;" onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${encodeURIComponent(itemTitle).replace(/'/g, "%27")}', '${encodeURIComponent(itemDesc).replace(/'/g, "%27")}', ${priceVal}, '${imgUrl}', ${item.hasCustomizations === false ? false : true})">
+                        <div class="menu-item" style="position: relative; ${isSoldOut ? 'opacity: 0.6; cursor: not-allowed;' : ''}" ${isSoldOut ? '' : `onclick="openItemModal('${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${encodeURIComponent(itemTitle).replace(/'/g, "%27")}', '${encodeURIComponent(itemDesc).replace(/'/g, "%27")}', ${priceVal}, '${imgUrl}', ${item.hasCustomizations === false ? false : true})"`}>
 
                     <div class="menu-item-info">
 
@@ -6152,13 +6158,13 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                     
 
-                    <div class="item-action-area" id="action-${menuItemUuid}" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">
+                    ${!isSoldOut ? `<div class="item-action-area" id="action-${menuItemUuid}" style="position: absolute; right: 15px; bottom: 15px; background: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; overflow: hidden;" onclick="event.stopPropagation();">
 
                       <div class="quick-add-btn" onclick="handleQuickAdd(event, '${storeUuid}', '${sectionUuid}', '${subsectionUuid}', '${menuItemUuid}', '${encodeURIComponent(itemTitle).replace(/'/g, "%27")}', '${encodeURIComponent(itemDesc).replace(/'/g, "%27")}', ${priceVal}, '${imgUrl}', ${item.hasCustomizations === false ? false : true})" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; color: #111;">＋</div>
 
                     </div>
 
-                  </div>
+                  </div>` : `</div>`}
 
                       `;
 
@@ -6352,7 +6358,7 @@ if (window.isGroceryStore) {
 
   
 
-  function quickSetSchedule(startTimeSeconds, storeUuid) {
+  function quickSetSchedule(startTimeSeconds, storeUuid, encodedStoreName, actionUrl) {
     document.getElementById('errorModalOverlay').style.display='none';
     
     // Switch to SCHEDULE mode
@@ -6398,9 +6404,14 @@ if (window.isGroceryStore) {
     confirmTimePicker('SCHEDULE');
     
     // Re-open the store with the new time
-    if (storeUuid) {
-        const storeEl = document.querySelector(`[data-store-uuid="${storeUuid}"]`);
-        if (storeEl) storeEl.click();
+    if (encodedStoreName) {
+        setTimeout(() => { openStore(storeUuid, decodeURIComponent(encodedStoreName), actionUrl, true); }, 50);
+    } else if (storeUuid) {
+        const storeEl = document.getElementById(`card_${storeUuid}`);
+        if (storeEl) {
+            // Need a small timeout to let confirmTimePicker finish updating state
+            setTimeout(() => { storeEl.click(); }, 50);
+        }
     }
   }
 
@@ -6421,18 +6432,39 @@ if (window.isGroceryStore) {
 function escapeHTML(str) {
 
     return String(str).replace(/[&<>'"]/g, 
-
       tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-
     );
-
   }
 
+function normalizeAddress(addr) {
+  if (!addr) return addr;
+  return addr.replace(/([零一二三四五六七八九十百]+)(號|樓|段)/g, function(match, numStr, suffix) {
+    let map = {'零':0, '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9};
+    if (!/十|百/.test(numStr) && numStr.length > 1) {
+      return numStr.split('').map(c => map[c]).join('') + suffix;
+    }
+    let num = 0, temp = 0, unit = {'十':10, '百':100};
+    if (numStr === '十') return '10' + suffix;
+    let current = 0;
+    for (let i = 0; i < numStr.length; i++) {
+      let char = numStr[i];
+      if (map[char] !== undefined) {
+        current = map[char];
+        if (i === numStr.length - 1) temp += current;
+      } else if (unit[char] !== undefined) {
+        if (current === 0 && char === '十') current = 1; 
+        temp += current * unit[char];
+        current = 0;
+        if (char === '百') { num += temp; temp = 0; }
+      }
+    }
+    num += temp;
+    if (num > 0) return num + suffix;
+    return match;
+  });
+}
 
-
-
-
-  // ========== 拆單試算引擎 ==========
+  // ========== 多單試算引擎 ==========
 
   
 
@@ -6642,9 +6674,8 @@ function escapeHTML(str) {
 
       let cost = 0;
 
-      let isASAP = (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP');
-
-      let feePerBin = (bins.length >= 2 && !isASAP) ? 30 : 50;
+      let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+      let feePerBin = (bins.length >= 2 && !isASAP) ? 40 : 50;
 
       for (let bin of bins) {
 
@@ -6714,13 +6745,13 @@ function buildSplitSuggestionHtml(result) {
 
     let html = `<div style="background:#f0fbf4; border:2px solid #06c167; border-radius:12px; padding:15px; margin-top:15px;">`;
 
-    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 拆單建議（拆成 ${result.bins.length} 單）</div>`;
+    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 多單優惠建議（分成 ${result.bins.length} 單）</div>`;
 
     html += `<div style="text-align:center; margin-bottom:12px;">`;
 
     html += `<span style="text-decoration:line-through; color:#999;">不拆: $${result.noBinCost}</span>`;
 
-    html += ` → <span style="color:#06c167; font-weight:bold;">拆單: $${result.bestCost}</span>`;
+    html += ` → <span style="color:#06c167; font-weight:bold;">多單優惠: $${result.bestCost}</span>`;
 
     html += ` <span style="color:#d32f2f; font-weight:bold;">省 $${result.savings}！</span>`;
 
@@ -6770,7 +6801,7 @@ function buildSplitSuggestionHtml(result) {
 
     if (!result.shouldSplit || !result.bins) return '';
 
-    let text = '\n\n💡 拆單建議（省 $' + result.savings + '）：';
+    let text = '\n\n💡 多單優惠建議（省 $' + result.savings + '）：';
 
     result.bins.forEach((bin, i) => {
 
