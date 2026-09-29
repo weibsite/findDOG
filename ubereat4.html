@@ -3972,7 +3972,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (!window._ignoreMethodCheck) {
 
-    const hasDoorKeywords = /放在|外送桌|放.*上|桌上/.test(deliveryNotesVal);
+    const hasDoorKeywords = /放|外送桌|桌上/.test(deliveryNotesVal);
 
     if (hasDoorKeywords && selectedMethodVal === '當面點交') {
 
@@ -4041,6 +4041,7 @@ async function sendOrderToLine(forceSubmit = false) {
       let addrEl = document.getElementById(prefix + 'AddrInput');
 
       let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
+      addr = normalizeAddress(addr);
 
       if (addr.startsWith('📍 ')) addr = addr.substring(3).trim();
 
@@ -4157,7 +4158,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
           `;
 
-          showModal('💡 偵測到可以拆單', '按照以下建議拆單，得到最優惠價格!', false, interceptHtml, true);
+          showModal('💡 偵測到可享有多單優惠', '按照以下建議分成多單，可得到最優惠價格!', false, interceptHtml, true);
 
           return;
 
@@ -4170,6 +4171,7 @@ async function sendOrderToLine(forceSubmit = false) {
       let addrEl = document.getElementById(prefix + 'AddrInput');
 
       let addr = addrEl ? addrEl.value.trim() : (document.getElementById('addrInput') ? document.getElementById('addrInput').value.trim() : '');
+      addr = normalizeAddress(addr);
 
       let coordsText = '';
 
@@ -4231,7 +4233,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (forceSubmit === 'split' && costRes.bins) {
 
-        msgText = `🛵 UberEats 揪團訂單 (✅已優化拆單)\n`;
+        msgText = `🛵 UberEats 揪團訂單 (✅已享有多單優惠)\n`;
 
         if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
 
@@ -4241,7 +4243,8 @@ async function sendOrderToLine(forceSubmit = false) {
 
         let grandTotal = 0;
 
-        let feePerBin = costRes.bins.length >= 2 ? 40 : 50;
+        let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+        let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 40 : 50;
 
         let preOrderDiscount = isPreOrder ? 10 : 0;
 
@@ -4249,7 +4252,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         costRes.bins.forEach((bin, bIdx) => {
 
-          msgText += `📦 【拆單 ${bIdx + 1}】\n`;
+          msgText += `📦 【多單 ${bIdx + 1}】\n`;
 
           let binFoodSum = 0;
 
@@ -4489,9 +4492,9 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (phoneVal && !finalNote.includes(phoneVal)) {
 
-    const hasLocationNote = /外送桌|放門口|桌上|放在/.test(finalNote) || selectedMethodVal === '放在門口';
+    const hasLocationNote = /放|外送桌|桌上/.test(finalNote) || selectedMethodVal === '放在門口';
 
-    const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '到了請打電話' + phoneVal;
+    const phoneNote = hasLocationNote ? '有問題請打電話' + phoneVal : '沒遇到人請打電話' + phoneVal;
 
     finalNote = finalNote ? (finalNote + '。' + phoneNote) : phoneNote;
 
@@ -5670,27 +5673,17 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
             let text = '';
 
             let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此餐廳在您選的時段 ( ${selectedScheduleText} ) 休息或無法接單。</div>`;
-
             
+            const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
+            const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
 
             // 如果這間店現在其實有營業，可以在最上面給一個「改成即時單」的按鈕
-
             if (isCurrentlyOpen) {
-
-                const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
-
-                const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
-
                 btnsHtml += `<button onclick="document.getElementById('errorModalOverlay').style.display='none'; confirmTimePicker('ASAP'); openStore('${storeUuid}', decodeURIComponent('${encodeURIComponent(safeName)}'), '${safeAction}', true);" style="margin-top:5px; margin-bottom:15px; background:#fff; color:#000; border:2px solid #000; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">改成即時單 <br><span style="color:#d32f2f; font-size:13px; font-weight:normal;">*無法獲得預約優惠</span></button>`;
-
             }
 
-
-
             if (availableWindows.length > 0) {
-
                 btnsHtml += `<b style="color:#111;">👉 餐廳可接單時間(點擊直接修改)：</b>`;
-
                 const top5 = availableWindows.slice(0, 5);
 
                 top5.forEach(tw => {
@@ -5755,7 +5748,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                     }
 
-                    btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
+                    btnsHtml += `<button onclick="quickSetSchedule(${tw.startTimeSeconds}, '${storeUuid}', '${encodeURIComponent(safeName)}', '${safeAction}')" style="margin-top:10px; background:#f0f0f0; color:#111; border:1px solid #ccc; border-radius:8px; padding:12px; width:100%; cursor:pointer; font-weight:bold; text-align:center;">${str}</button>`;
 
                 });
 
@@ -6361,7 +6354,7 @@ if (window.isGroceryStore) {
 
   
 
-  function quickSetSchedule(startTimeSeconds, storeUuid) {
+  function quickSetSchedule(startTimeSeconds, storeUuid, encodedStoreName, actionUrl) {
     document.getElementById('errorModalOverlay').style.display='none';
     
     // Switch to SCHEDULE mode
@@ -6407,9 +6400,14 @@ if (window.isGroceryStore) {
     confirmTimePicker('SCHEDULE');
     
     // Re-open the store with the new time
-    if (storeUuid) {
-        const storeEl = document.querySelector(`[data-store-uuid="${storeUuid}"]`);
-        if (storeEl) storeEl.click();
+    if (encodedStoreName) {
+        setTimeout(() => { openStore(storeUuid, decodeURIComponent(encodedStoreName), actionUrl, true); }, 50);
+    } else if (storeUuid) {
+        const storeEl = document.getElementById(`card_${storeUuid}`);
+        if (storeEl) {
+            // Need a small timeout to let confirmTimePicker finish updating state
+            setTimeout(() => { storeEl.click(); }, 50);
+        }
     }
   }
 
@@ -6430,18 +6428,39 @@ if (window.isGroceryStore) {
 function escapeHTML(str) {
 
     return String(str).replace(/[&<>'"]/g, 
-
       tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-
     );
-
   }
 
+function normalizeAddress(addr) {
+  if (!addr) return addr;
+  return addr.replace(/([零一二三四五六七八九十百]+)(號|樓|段)/g, function(match, numStr, suffix) {
+    let map = {'零':0, '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9};
+    if (!/十|百/.test(numStr) && numStr.length > 1) {
+      return numStr.split('').map(c => map[c]).join('') + suffix;
+    }
+    let num = 0, temp = 0, unit = {'十':10, '百':100};
+    if (numStr === '十') return '10' + suffix;
+    let current = 0;
+    for (let i = 0; i < numStr.length; i++) {
+      let char = numStr[i];
+      if (map[char] !== undefined) {
+        current = map[char];
+        if (i === numStr.length - 1) temp += current;
+      } else if (unit[char] !== undefined) {
+        if (current === 0 && char === '十') current = 1; 
+        temp += current * unit[char];
+        current = 0;
+        if (char === '百') { num += temp; temp = 0; }
+      }
+    }
+    num += temp;
+    if (num > 0) return num + suffix;
+    return match;
+  });
+}
 
-
-
-
-  // ========== 拆單試算引擎 ==========
+  // ========== 多單試算引擎 ==========
 
   
 
@@ -6651,9 +6670,8 @@ function escapeHTML(str) {
 
       let cost = 0;
 
-      let isASAP = (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP');
-
-      let feePerBin = (bins.length >= 2) ? 40 : 50;
+      let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+      let feePerBin = (bins.length >= 2 && !isASAP) ? 40 : 50;
 
       for (let bin of bins) {
 
@@ -6723,13 +6741,13 @@ function buildSplitSuggestionHtml(result) {
 
     let html = `<div style="background:#f0fbf4; border:2px solid #06c167; border-radius:12px; padding:15px; margin-top:15px;">`;
 
-    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 拆單建議（拆成 ${result.bins.length} 單）</div>`;
+    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 多單優惠建議（分成 ${result.bins.length} 單）</div>`;
 
     html += `<div style="text-align:center; margin-bottom:12px;">`;
 
     html += `<span style="text-decoration:line-through; color:#999;">不拆: $${result.noBinCost}</span>`;
 
-    html += ` → <span style="color:#06c167; font-weight:bold;">拆單: $${result.bestCost}</span>`;
+    html += ` → <span style="color:#06c167; font-weight:bold;">多單優惠: $${result.bestCost}</span>`;
 
     html += ` <span style="color:#d32f2f; font-weight:bold;">省 $${result.savings}！</span>`;
 
@@ -6779,7 +6797,7 @@ function buildSplitSuggestionHtml(result) {
 
     if (!result.shouldSplit || !result.bins) return '';
 
-    let text = '\n\n💡 拆單建議（省 $' + result.savings + '）：';
+    let text = '\n\n💡 多單優惠建議（省 $' + result.savings + '）：';
 
     result.bins.forEach((bin, i) => {
 
