@@ -335,7 +335,7 @@
 
       <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
 
-        <span>5. 尋找想吃的餐點</span>
+        <span>尋找想吃的餐點</span>
 
         <div style="display:flex; align-items:center;">
             <button onclick="toggleVertical()" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:1px solid #999; background:#fff; color:#333; width:auto; flex-shrink:0; margin-right:8px; cursor:pointer;">切換</button>
@@ -360,7 +360,7 @@
 
     <div class="section">
 
-      <div class="section-title">6. 手機號碼</div>
+      <div class="section-title">手機號碼</div>
 
       <div class="input-row">
 
@@ -2911,8 +2911,11 @@ let originalAppHeaderHtml = "";
 
 
 async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations) {
-
-  const title = decodeURIComponent(titleEnc);
+  if (!window._quickAddLocks) window._quickAddLocks = {};
+  if (window._quickAddLocks[menuItemUuid]) return;
+  window._quickAddLocks[menuItemUuid] = true;
+  try {
+    const title = decodeURIComponent(titleEnc);
 
   const desc = decodeURIComponent(descEnc);
 
@@ -3067,6 +3070,9 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
       showToast('載入失敗，請再試一次');
 
     }
+  } finally {
+      window._quickAddLocks[menuItemUuid] = false;
+  }
 
   }
 
