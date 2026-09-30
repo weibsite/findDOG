@@ -2312,22 +2312,17 @@ async function searchStores() {
 
                 }
 
-            } else if (openEta && openEta.accessibilityText && openEta.accessibilityText.includes('Delivered in')) {
-
-                const match = openEta.accessibilityText.match(/(\d+ to \d+)/);
-
-                if (match) {
-
-                    const timeRange = match[1].replace(' to ', '~');
-
-                    metaText = `預計 ${timeRange} 分鐘`;
-
-                } else {
-
+            } else if (openEta) {
+                if (openEta.accessibilityText && (openEta.accessibilityText.includes('Delivered in') || openEta.accessibilityText.includes('分鐘內送達'))) {
+                    const match = openEta.accessibilityText.match(/(\d+)\s*(?:to|到)\s*(\d+)/);
+                    if (match) {
+                        metaText = `預計 ${match[1]}~${match[2]} 分鐘`;
+                    } else {
+                        metaText = openEta.text ? openEta.text.replace('min', '分鐘') : '';
+                    }
+                } else if (openEta.text) {
                     metaText = openEta.text.replace('min', '分鐘');
-
                 }
-
             }
 
         }
