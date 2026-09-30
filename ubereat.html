@@ -4088,7 +4088,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (isPreOrder) {
 
-          msgText += `🕒 預約優惠(2.5小時以上): -$10\n`;
+          msgText += `🕒 預約優惠(2.5小時以上): -$20\n`;
 
       }
 
@@ -4655,11 +4655,11 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
       }
 
       if (json.status === 'success' && json.data) {
-
         currentCustomizations = json.data.customizationsList || [];
-
         renderCustomizations();
-
+        
+        const btn2 = document.getElementById('addToCartBtn');
+        if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
       } else {
         handleModalError(json.data ? json.data.message : '未知錯誤');
       }
@@ -4679,15 +4679,9 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
         } else {
             document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;text-align:center;">無法載入客製化選項 (' + escapeHTML(msg) + ')</div>';
             const btn2 = document.getElementById('addToCartBtn');
-            if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+            if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
         }
     }
-
-    if (typeof json !== 'undefined' && json && json.status === 'success' && json.data) {
-        const btn2 = document.getElementById('addToCartBtn');
-        if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
-    }
-
   }
 
 
@@ -5457,7 +5451,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       window.currentStoreRawData = d;
 
       window.isGroceryStore = (d.isGr === true) || (window.currentVertical === 'SHOP');
-      if (window.isGroceryStore && !currentStoreName.includes('不需外送費、需要服務費')) {
+      if (window.isGroceryStore && !currentStoreName.includes('不需外送費、服務費')) {
           currentStoreName += ' (不需外送費、需要服務費)';
       }
 
