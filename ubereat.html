@@ -5526,7 +5526,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
-      if (!isGrocery && (!isSchedulable || !hasValidPriceItem)) {
+      const isTooFar = JSON.stringify(d).includes('"storeStatus":"TOO_FAR_TO_DELIVER"');
+      if (isTooFar || (!isGrocery && (!isSchedulable || !hasValidPriceItem))) {
 
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
@@ -5540,7 +5541,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           
 
-          let errorMsg = !isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折價券，無法為您代購。請選擇其他餐廳。';
+          let errorMsg = isTooFar ? '店家太遠無法外送，請選擇其他餐廳。' : (!isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折扣券，無法為您代購。請選擇其他餐廳。');
 
           showModal('無法接單', errorMsg);
 
