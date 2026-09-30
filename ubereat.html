@@ -4661,20 +4661,32 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
         renderCustomizations();
 
       } else {
-
-        document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '未知錯誤') + ')</div>';
-
+        handleModalError(json.data ? json.data.message : '未知錯誤');
       }
 
     } catch (e) {
-
-      document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
-
+      handleModalError('發生錯誤');
     }
 
-    const btn2 = document.getElementById('addToCartBtn');
+    function handleModalError(msg) {
+        if (!window.customizationRetries) window.customizationRetries = {};
+        if (!window.customizationRetries[menuItemUuid]) {
+            window.customizationRetries[menuItemUuid] = true;
+            document.getElementById('customizationsArea').innerHTML = '<div style="padding:40px 15px;text-align:center;color:#666;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px;">網路稍微不穩，自動重試中...</div></div>';
+            setTimeout(() => {
+                openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations);
+            }, 1500);
+        } else {
+            document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;text-align:center;">無法載入客製化選項 (' + escapeHTML(msg) + ')</div>';
+            const btn2 = document.getElementById('addToCartBtn');
+            if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+        }
+    }
 
-    if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    if (typeof json !== 'undefined' && json && json.status === 'success' && json.data) {
+        const btn2 = document.getElementById('addToCartBtn');
+        if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    }
 
   }
 
@@ -5299,7 +5311,8 @@ const note = document.getElementById('modalNote').value.trim();
 
 
 async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
-
+    window.customizationRetries = {}; // Reset retries state on store entry
+    
     if (cart.length > 0 && storeName && cart[0].storeName && cart[0].storeName !== storeName) {
 
         cart = [];
