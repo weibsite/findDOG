@@ -5974,9 +5974,36 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
+
+let hoursHtml = '';
+if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
+    let lines = [];
+    d.hours.forEach(h => {
+        let dr = h.dayRange || '';
+        if (h.sectionHours && Array.isArray(h.sectionHours)) {
+            h.sectionHours.forEach(sh => {
+                let st = sh.startTime || 0;
+                let et = sh.endTime || 0;
+                let stH = String(Math.floor(st / 60)).padStart(2, '0');
+                let stM = String(st % 60).padStart(2, '0');
+                let etH = String(Math.floor(et / 60)).padStart(2, '0');
+                let etM = String(et % 60).padStart(2, '0');
+                lines.push(`${dr} ${stH}:${stM}~${etH}:${etM}`);
+            });
+        }
+    });
+    if (lines.length > 0) {
+        hoursHtml = `<div style="position:absolute; top:15px; right:15px; text-align:right; font-size:12px; color:#666; background:rgba(255,255,255,0.95); padding:6px 10px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); z-index:10; border:1px solid #eee;">
+            <div style="font-weight:bold; color:#111; margin-bottom:4px; font-size:13px;">🈺 營業時間</div>
+            ${lines.join('<br>')}
+        </div>`;
+    }
+}
+
       let html = `
 
-        <div class="store-header">
+      <div class="store-header" style="position:relative;">
+      ${hoursHtml}
 
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
 
