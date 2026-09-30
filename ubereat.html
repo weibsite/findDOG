@@ -3961,7 +3961,18 @@ function backToStoreFromGroceryCheckout() {
 
 
 
+
 async function sendOrderToLine(forceSubmit = false) {
+  if (window.isSubmittingOrder || window._orderSent) return;
+  window.isSubmittingOrder = true;
+  try {
+      await _sendOrderToLine(forceSubmit);
+  } finally {
+      window.isSubmittingOrder = false;
+  }
+}
+
+async function _sendOrderToLine(forceSubmit = false) {
 
   let msgText = '';
 
@@ -4533,8 +4544,8 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
       cart = [];
-
       updateCartBadge();
+      window._orderSent = true;
 
 
 
