@@ -3602,62 +3602,68 @@ function openCheckoutSummary() {
 
       html += `<div style="display:flex; gap:10px; margin-top:15px;">`;
 
-      // Plan A
-      html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px;">`;
-      html += `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ A方案明細 ]</div>`;
-      html += `<div style="margin-bottom:8px; color:#666; font-size:12px;">(285內半價)</div>`;
-      html += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
-      html += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
-      html += total >= 285 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$143</td></tr>` : (total > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${Math.floor(total/2)}</td></tr>` : '');
-      html += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${visualSvcFee}</td></tr>`;
-      html += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
-      html += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
-      html += (function(){
-         let totalExcess = 0;
-         const sg = {};
-         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-         return totalExcess > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0;">超距外送費:</td><td style="padding:2px 0 2px 4px;">$${totalExcess}</td></tr>` : '';
-      })();
-      html += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預訂折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
-      html += `</table>`;
-      html += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
-      html += (function(){
-         let totalExcess = 0;
-         const sg = {};
-         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-         const pd = total >= 285 ? 143 : Math.floor(total/2);
-         const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
-         return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+
+// Plan A
+html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative;">`;
+
+let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ A方案明細 ]</div>`;
+origTable += `<div style="margin-bottom:8px; color:#666; font-size:12px;">(原始單號)</div>`;
+origTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
+origTable += total >= 285 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$143</td></tr>` : (total > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${Math.floor(total/2)}</td></tr>` : '');
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${visualSvcFee}</td></tr>`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
+origTable += (function(){
+    let totalExcess = 0;
+    const sg = {};
+    cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+    Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+    return totalExcess > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0;">超距外送費:</td><td style="padding:2px 0 2px 4px;">$${totalExcess}</td></tr>` : '';
 })();
+origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
+origTable += `</table>`;
+origTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+origTable += (function(){
+    let totalExcess = 0;
+    const sg = {};
+    cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+    Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+    const pd = total >= 285 ? 143 : Math.floor(total/2);
+    const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+})();
+origTable += `</div>`;
 
-      html += `</div>`; // closes the 總計 div
+let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+if (costRes && costRes.shouldSplit) {
+    window._splitOrigHtml = origTable;
+    window._splitBins = costRes.bins;
+    window._splitSavings = costRes.savings;
+    window._splitBestCost = costRes.bestCost;
+    window._currentSplitIndex = -1; // -1 means original Plan A
+    
+    html += `<button onclick="switchSplitTab(-1)" style="position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">◀</button>`;
+    
+    html += `<div id="splitTabContent" style="min-height:180px; padding: 0 10px;">`;
+    html += origTable;
+    html += `</div>`;
+    
+    html += `<button onclick="switchSplitTab(1)" style="position:absolute; right:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">▶</button>`;
+    
+    // Indicator dots
+    html += `<div style="position:absolute; bottom:2px; left:0; right:0; display:flex; justify-content:center; gap:4px;">`;
+    html += `<div id="split-dot--1" style="width:6px; height:6px; border-radius:50%; background:#06c167;"></div>`;
+    for(let b=0; b<costRes.bins.length; b++){
+        html += `<div id="split-dot-${b}" style="width:6px; height:6px; border-radius:50%; background:#ccc;"></div>`;
+    }
+    html += `</div>`;
+} else {
+    // No split, just render original
+    html += origTable;
+}
 
-      let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
-      if (costRes && costRes.shouldSplit) {
-          window._splitBins = costRes.bins;
-          window._currentSplitIndex = 0;
-          let counts = {};
-          costRes.bins[0].items.forEach(it => { counts[it.name] = (counts[it.name] || 0) + 1; });
-          let itemStrs = [];
-          for (let key in counts) itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
-          
-          html += `<div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; text-align:center;">`;
-          html += `<div style="font-weight:bold; color:#06c167; margin-bottom:5px; font-size:13px;">✨ 自動幫您拆成 ${costRes.bins.length} 單！</div>`;
-          html += `<div style="font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight:bold;">總計降為: $${costRes.bestCost} (多省 $${costRes.savings})</div>`;
-          
-          html += `<div style="position:relative; background:#fff; border:1px solid #06c167; border-radius:8px; padding:10px 20px;">`;
-          html += `<button onclick="switchSplitTab(-1)" style="position:absolute; left:0; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:16px; cursor:pointer; color:#06c167; padding:10px;">◀</button>`;
-          html += `<div id="splitTabContent" style="min-height:50px;">`;
-          html += `<div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">拆單 1 / ${costRes.bins.length}</div>`;
-          html += `<div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${costRes.bins[0].sum}</div>`;
-          html += `<div style="font-size:12px; color:#666; word-break:break-all;">${itemStrs.join('、')}</div>`;
-          html += `</div>`;
-          html += `<button onclick="switchSplitTab(1)" style="position:absolute; right:0; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:16px; cursor:pointer; color:#06c167; padding:10px;">▶</button>`;
-          html += `</div></div>`;
-      }
-      html += `</div></div>`;
+html += `</div>`; // closes Plan A
 
       // Plan B
       html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px;">`;
@@ -6949,6 +6955,52 @@ function buildSplitSuggestionHtml(result) {
 
   }
 
+
+window.renderSplitTab = function() {
+    if (!window._splitBins) return;
+    
+    // Update dots
+    for(let i = -1; i < window._splitBins.length; i++) {
+        let dot = document.getElementById('split-dot-' + i);
+        if (dot) dot.style.background = (i === window._currentSplitIndex) ? '#06c167' : '#ccc';
+    }
+
+    const container = document.getElementById('splitTabContent');
+    if (!container) return;
+
+    if (window._currentSplitIndex === -1) {
+        container.innerHTML = window._splitOrigHtml;
+        return;
+    }
+
+    const bin = window._splitBins[window._currentSplitIndex];
+    let counts = {};
+    bin.items.forEach(item => {
+        let key = item.name;
+        counts[key] = (counts[key] || 0) + 1;
+    });
+    let itemStrs = [];
+    for (let key in counts) {
+        itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+    }
+    
+    let html = `
+        <div style="font-weight:bold; color:#06c167; margin-bottom:2px;">[ 拆單明細 ]</div>
+        <div style="font-size:12px; color:#d32f2f; font-weight:bold; margin-bottom:10px;">✨ 再省 $${window._splitSavings} (總計降為 $${window._splitBestCost})</div>
+        <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">第 ${window._currentSplitIndex + 1} 單 / 共 ${window._splitBins.length} 單</div>
+        <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
+        <div style="font-size:12px; color:#666; word-break:break-all; text-align:left; display:inline-block;">- ${itemStrs.join('<br>- ')}</div>
+    `;
+    container.innerHTML = html;
+};
+
+window.switchSplitTab = function(dir) {
+    if (!window._splitBins) return;
+    window._currentSplitIndex += dir;
+    if (window._currentSplitIndex < -1) window._currentSplitIndex = window._splitBins.length - 1;
+    if (window._currentSplitIndex >= window._splitBins.length) window._currentSplitIndex = -1;
+    window.renderSplitTab();
+};
 </script>
 
 <script>
@@ -7060,38 +7112,6 @@ function showToast(msg) {
         setTimeout(() => el.remove(), 500);
     }, 2000);
 }
-
-window._currentSplitIndex = 0;
-window._splitBins = null;
-window.renderSplitTab = function() {
-    if (!window._splitBins) return;
-    const bin = window._splitBins[window._currentSplitIndex];
-    let counts = {};
-    bin.items.forEach(item => {
-        let key = item.name;
-        counts[key] = (counts[key] || 0) + 1;
-    });
-    let itemStrs = [];
-    for (let key in counts) {
-        itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
-    }
-    const html = `
-        <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">拆單 ${window._currentSplitIndex + 1} / ${window._splitBins.length}</div>
-        <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
-        <div style="font-size:12px; color:#666; word-break:break-all;">${itemStrs.join('、')}</div>
-    `;
-    const container = document.getElementById('splitTabContent');
-    if (container) container.innerHTML = html;
-};
-window.switchSplitTab = function(dir) {
-    if (!window._splitBins) return;
-    window._currentSplitIndex += dir;
-    if (window._currentSplitIndex < 0) window._currentSplitIndex = window._splitBins.length - 1;
-    if (window._currentSplitIndex >= window._splitBins.length) window._currentSplitIndex = 0;
-    window.renderSplitTab();
-};
-</script>
-
 
 
   <!-- 錯誤提示框 -->
