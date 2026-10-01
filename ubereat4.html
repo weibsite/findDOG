@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.53</title>
+<title>計算機系統 2.54</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3609,7 +3609,7 @@ function openCheckoutSummary() {
 // Plan A
 html += `<div id="planACard" onclick="selectPlan('A')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:2px solid #d32f2f; text-align:center; font-size:14px; position:relative; cursor:pointer;">`;
 
-let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ A方案明細 ]</div>`;
+let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ A方案: $285內5折 ]</div>`;
 origTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; margin-top:10px;">`;
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
 origTable += total >= 285 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$143</td></tr>` : (total > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${Math.floor(total/2)}</td></tr>` : '');
@@ -3651,7 +3651,7 @@ if (costRes && costRes.shouldSplit) {
 
     let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
 
-    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>`;
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ 拆單明細 ]</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costRes.bins.length} 單)</div>`;
     sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
@@ -3685,7 +3685,7 @@ html += `</div>`; // closes Plan A
 // Plan B
 html += `<div id="planBCard" onclick="selectPlan('B')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative; cursor:pointer; opacity: ${total < 200 ? 0.5 : 1};">`;
 
-let origTableB = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ B方案明細 ]</div>`;
+let origTableB = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ B方案: $200-$200 ]</div>`;
 if (total < 200) {
     origTableB += `<div style="color:#d32f2f; font-weight:bold; margin-top:30px; font-size:15px;">低消未達無法使用</div>`;
 } else {
@@ -3722,7 +3722,7 @@ if (costResB && costResB.shouldSplit) {
 
     let originalBaseStrB = total + 130 + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
 
-    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>`;
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ 拆單明細 ]</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costResB.bins.length} 單)</div>`;
     sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
@@ -7122,7 +7122,7 @@ window.renderSplitTab = function(plan) {
     for (let key in counts) itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
     
     let html = `
-        <div style="font-weight:bold; color:${color}; margin-bottom:2px;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>
+        <div style="font-weight:bold; color:${color}; margin-bottom:2px;">[ 拆單明細 ]</div>
         <div style="font-size:12px; color:#d32f2f; font-weight:bold; margin-bottom:10px;">✨ 拆單省 $${savings}</div>
         <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">第 ${currentIndex + 1} 單 / 共 ${bins.length} 單</div>
         <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
