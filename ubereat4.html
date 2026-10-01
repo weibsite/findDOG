@@ -4487,17 +4487,31 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        msgText += `💰 小計: $${total}\n`;
 
-        if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}\n`;
+      if (currentPlan === 'planB') {
+          msgText += `📌 [B方案]\n`;
+          msgText += `💰 小計: $${total}\n`;
+          let planBDisc = Math.floor(total * 0.2);
+          msgText += `💸 B方案折抵(8折範例): -$${planBDisc}\n`;
+          msgText += `💼 代訂費: $${serviceFee}\n`;
+          if (totalExcessDeliveryFee > 0) msgText += `🚀 超額外送費: $${totalExcessDeliveryFee}\n`;
+          msgText += `\n📌 總計: $${total - planBDisc + serviceFee + totalExcessDeliveryFee}\n`;
+      } else {
+          msgText += `📌 [A方案]\n`;
+          msgText += `💰 小計: $${total}\n`;
+          if (promoDiscount > 0) msgText += `🏷️ 半價優惠: -$${promoDiscount}\n`;
+          msgText += `💼 代訂費: $${serviceFee}\n`;
+          msgText += `🛵 外送費: $0\n`;
+          msgText += `🛠️ 服務費: $0\n`;
+          if (totalExcessDeliveryFee > 0) msgText += `🚀 超額外送費: $${totalExcessDeliveryFee}\n`;
+          if (preOrderDiscount > 0) msgText += `🕔 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
+          msgText += `\n📌 總計: $${grandTotal}`;
+      }
 
-        msgText += `🛵 代訂費: $${serviceFee}\n`;
 
-        if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}\n`;
 
-        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
-        msgText += `\n✨ 總計: $${grandTotal}`;
+
 
       }
 
