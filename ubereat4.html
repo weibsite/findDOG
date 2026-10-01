@@ -14,10 +14,10 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 2.12</title>
+<title>點餐系統 2.18</title>
 
 <style>
-
+  * { touch-action: manipulation; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
 
   .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
@@ -335,7 +335,7 @@
 
       <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
 
-        <span>5. 尋找想吃的餐點</span>
+        <span>尋找想吃的餐點</span>
 
         <div style="display:flex; align-items:center;">
             <button onclick="toggleVertical()" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:1px solid #999; background:#fff; color:#333; width:auto; flex-shrink:0; margin-right:8px; cursor:pointer;">切換</button>
@@ -360,7 +360,7 @@
 
     <div class="section">
 
-      <div class="section-title">6. 手機號碼</div>
+      <div class="section-title">手機號碼</div>
 
       <div class="input-row">
 
@@ -444,7 +444,10 @@
 
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
 
-      <button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; width:100%;">送出訂單</button>
+      <div style="display:flex; gap:10px;">
+        <button id="planABtn" onclick="sendOrderToLine('planA')" style="flex:1; background:#06c167; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">A方案<br><span style="font-size:13px; font-weight:normal;" id="planAText">(-$0)</span></button>
+        <button id="planBBtn" onclick="sendOrderToLine('planB')" style="flex:1; background:#276ef1; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">B方案<br><span style="font-size:13px; font-weight:normal;" id="planBText">(-$0)</span></button>
+      </div>
 
     </div>
 
@@ -865,6 +868,7 @@ let isAddressSet = false;
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
     
+    let firstAvailableDate = null;
     uberTimeData.dates.forEach((dStr, idx) => {
         const d = new Date(dStr);
         const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
@@ -992,7 +996,14 @@ function confirmTimePicker(mode) {
     updateTriggerText();
     closeTimePickerModal();
     
-    if (typeof renderCart === 'function') {
+      const cv = document.getElementById('checkoutView');
+      if (cv && (cv.style.display === 'block' || cv.style.display === 'flex')) {
+          if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
+              openGroceryCheckoutSummary();
+          } else if (typeof openCheckoutSummary === 'function') {
+              openCheckoutSummary();
+          }
+      } else if (typeof renderCart === 'function') {
         renderCart();
     }
 }
@@ -2312,29 +2323,31 @@ async function searchStores() {
 
                 }
 
-            } else if (openEta && openEta.accessibilityText && openEta.accessibilityText.includes('Delivered in')) {
-
-                const match = openEta.accessibilityText.match(/(\d+ to \d+)/);
-
-                if (match) {
-
-                    const timeRange = match[1].replace(' to ', '~');
-
-                    metaText = `預計 ${timeRange} 分鐘`;
-
-                } else {
-
+            } else if (openEta) {
+                if (openEta.accessibilityText && (openEta.accessibilityText.includes('Delivered in') || openEta.accessibilityText.includes('分鐘內送達'))) {
+                    const match = openEta.accessibilityText.match(/(\d+)\s*(?:to|到)\s*(\d+)/);
+                    if (match) {
+                        metaText = `預計 ${match[1]}~${match[2]} 分鐘`;
+                    } else {
+                        metaText = openEta.text ? openEta.text.replace('min', '分鐘') : '';
+                    }
+                } else if (openEta.text) {
                     metaText = openEta.text.replace('min', '分鐘');
-
                 }
-
             }
 
         }
 
         
 
+        let etaBadgeHtml = '';
+        if (metaText && !isClosed && !isBad) {
+            etaBadgeHtml = `<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:20px; font-size:12px; font-weight:bold; letter-spacing:0.5px; z-index:3; display:flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>${escapeHTML(metaText.replace('預計 ', ''))}</div>`;
+        }
+
         let metaDisplay = `⭐ ${escapeHTML(rating)}`;
+
+        // 原本在下方的文字保留，也可以考慮拿掉，為了保險先留著
 
         if (metaText) {
 
@@ -2352,6 +2365,7 @@ async function searchStores() {
 
                 ${imgUrl ? `<img src="${imgUrl}" loading="lazy" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />` : ''}
 
+                ${etaBadgeHtml}
                 <div style="position:relative; z-index:1; width:100%; height:100%;">
 
                     ${overlayHtml}
@@ -2911,8 +2925,11 @@ let originalAppHeaderHtml = "";
 
 
 async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations) {
-
-  const title = decodeURIComponent(titleEnc);
+  if (!window._quickAddLocks) window._quickAddLocks = {};
+  if (window._quickAddLocks[menuItemUuid]) return;
+  window._quickAddLocks[menuItemUuid] = true;
+  try {
+    const title = decodeURIComponent(titleEnc);
 
   const desc = decodeURIComponent(descEnc);
 
@@ -3067,6 +3084,9 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
       showToast('載入失敗，請再試一次');
 
     }
+  } finally {
+      window._quickAddLocks[menuItemUuid] = false;
+  }
 
   }
 
@@ -3434,6 +3454,26 @@ function backToCart() {
 
 
 
+
+function updatePlanButtons() {
+    let totalSum = 0;
+    cart.forEach(it => totalSum += it.price * it.qty);
+    let promoDiscount = totalSum >= 285 ? 143 : Math.floor(totalSum / 2);
+    let preOrderDiscount = 0;
+    if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+        let tsVal = getSelectedScheduleTimestamp();
+        if (tsVal && (tsVal - new Date().getTime() >= 2.5 * 3600000)) {
+            preOrderDiscount = window.isGroceryStore ? 20 : 10;
+        }
+    }
+    let planA_savings = promoDiscount + preOrderDiscount;
+    let planB_savings = Math.floor(totalSum * 0.2); // Example 20% off for B
+
+    const pA = document.getElementById('planAText');
+    if (pA) pA.innerText = `(-$${planA_savings})`;
+    const pB = document.getElementById('planBText');
+    if (pB) pB.innerText = `(-$${planB_savings})`;
+}
 function openCheckoutSummary() {
 
   let total = 0;
@@ -3466,7 +3506,7 @@ function openCheckoutSummary() {
 
     if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
     }
 
@@ -3520,7 +3560,7 @@ function openCheckoutSummary() {
 
       </div>
 
-      <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}</div>
+      <div style="margin-bottom:15px; display:flex; align-items:center;"><strong>外送時間:</strong> <span style="margin-left:5px;">${escapeHTML(timeText)}</span> <button onclick="openTimePickerModal()" style="margin-left:10px; padding:2px 10px; font-size:12px; cursor:pointer; background:#fff; border:1px solid #000; border-radius:15px; font-weight:bold; color:#000;">修改</button></div>
 
       
 
@@ -3653,6 +3693,7 @@ function openCheckoutSummary() {
   document.getElementById('cartView').style.display = 'none';
 
   document.getElementById('checkoutView').style.display = 'block';
+      updatePlanButtons();
 
   
 
@@ -3722,7 +3763,7 @@ function openGroceryCheckoutSummary() {
 
     if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-      timeText = timeSelect.options[timeSelect.selectedIndex].text;
+      timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
       const tsVal = timeSelect.value;
 
@@ -3742,7 +3783,7 @@ function openGroceryCheckoutSummary() {
 
   let svcCalcStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `${window.groceryServiceFee}` : '30~60';
 
-  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 10}` : '$334 ~ $364';
+  let totalPreOrderStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 45 - 20}` : '$324 ~ $354';
 
   let totalNormalStr = window.groceryServiceFee !== undefined && window.groceryServiceFee !== null ? `$${449 - 180 + window.groceryServiceFee + 60}` : '$359 ~ $389';
 
@@ -3804,9 +3845,9 @@ function openGroceryCheckoutSummary() {
 
 
 
-            <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}
+            <div style="margin-bottom:15px; display:flex; align-items:center;"><strong>外送時間:</strong> <span style="margin-left:5px;">${escapeHTML(timeText)}</span> <button onclick="openTimePickerModal()" style="margin-left:10px; padding:2px 10px; font-size:12px; cursor:pointer; background:#fff; border:1px solid #000; border-radius:15px; font-weight:bold; color:#000;">修改</button></div>
 
-      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(2.5小時以上): -$10</div>` : ''}
+      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(2.5小時以上): -$20</div>` : ''}
 
       </div>
 
@@ -3830,7 +3871,7 @@ function openGroceryCheckoutSummary() {
 
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
 
-        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(2.5小時以上)</span><span>-$10</span></div>
+        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(2.5小時以上)</span><span>-$20</span></div>
 
         ` : `
 
@@ -3852,7 +3893,7 @@ function openGroceryCheckoutSummary() {
 
           ${isPreOrder ? `
 
-          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 45 (代訂費) - 10 (預約優惠)<br>
+          449 (商品) - 180 (優惠) + ${svcCalcStr} (平台費) + 45 (代訂費) - 20 (預約優惠)<br>
 
           <strong style="color:#d32f2f; font-size:18px;">預估總計約: ${totalPreOrderStr}</strong>
 
@@ -3907,6 +3948,7 @@ function openGroceryCheckoutSummary() {
 
 
   document.getElementById('checkoutView').style.display = 'block';
+      updatePlanButtons();
 
 
 
@@ -3952,11 +3994,41 @@ function backToStoreFromGroceryCheckout() {
 
 
 
+
 async function sendOrderToLine(forceSubmit = false) {
+  if (window.isSubmittingOrder || window._orderSent) return;
+  window.isSubmittingOrder = true;
+  try {
+      await _sendOrderToLine(forceSubmit);
+  } finally {
+      window.isSubmittingOrder = false;
+  }
+}
+
+async function _sendOrderToLine(forceSubmit = false) {
+      const priceKeyText = (window.lastMatchedPrice && window.lastMatchedPrice > 0) ? `🗝️${window.lastMatchedPrice}` : '';
 
   let msgText = '';
 
+      if (forceSubmit === 'planA' || forceSubmit === 'planB') {
+          window.selectedPlan = forceSubmit;
+      }
+      const currentPlan = window.selectedPlan || 'planA';
+
   const prefix = window.isGroceryStore ? 'grocery' : 'checkout';
+
+  const phoneInput = document.getElementById(prefix + 'Phone');
+  if (phoneInput) {
+      const phoneVal = phoneInput.value.trim();
+      if (!phoneVal) {
+          phoneInput.style.border = '2px solid #d32f2f';
+          phoneInput.focus();
+          setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
+          showModal('請輸入手機號碼', '請留下電話，以方便外送員抵達時與您聯絡！');
+          return;
+      }
+      localStorage.setItem('userPhone', phoneVal);
+  }
 
 
 
@@ -4014,27 +4086,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
   if (window.isGroceryStore) {
 
-      const phoneInput = document.getElementById(prefix + 'Phone');
 
-      if (phoneInput) {
-
-          const phoneVal = phoneInput.value.trim();
-
-          if (!phoneVal) {
-
-              phoneInput.style.border = '2px solid #d32f2f';
-
-              phoneInput.focus();
-
-              setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
-
-              return;
-
-          }
-
-          localStorage.setItem('userPhone', phoneVal);
-
-      }
 
 
 
@@ -4057,7 +4109,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
           const tsVal = timeSelect.value;
 
@@ -4086,7 +4138,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (isPreOrder) {
 
-          msgText += `🕒 預約優惠(2.5小時以上): -$10\n`;
+          msgText += `🕒 預約優惠(2.5小時以上): -$20\n`;
 
       }
 
@@ -4114,27 +4166,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
 
-      const phoneInput = document.getElementById(prefix + 'Phone');
 
-      if (phoneInput) {
-
-        const phoneVal = phoneInput.value.trim();
-
-        if (!phoneVal) {
-
-          phoneInput.style.border = '2px solid #d32f2f';
-
-          phoneInput.focus();
-
-          setTimeout(() => { phoneInput.style.border = '1px solid #ccc'; }, 2000);
-
-          return;
-
-        }
-
-        localStorage.setItem('userPhone', phoneVal);
-
-      }
 
 
 
@@ -4215,7 +4247,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
         if (timeSelect && timeSelect.options[timeSelect.selectedIndex]) {
 
-          timeText = timeSelect.options[timeSelect.selectedIndex].text;
+          timeText = document.getElementById('triggerTimeText') ? document.getElementById('triggerTimeText').innerText : timeSelect.options[timeSelect.selectedIndex].text;
 
           const tsVal = timeSelect.value;
 
@@ -4233,7 +4265,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
       if (forceSubmit === 'split' && costRes.bins) {
 
-        msgText = `🛵 UberEats 揪團訂單 (✅已享有多單優惠)\n`;
+      msgText = `🛵 UberEats 揪團訂單${priceKeyText} (✅已享有多單優惠)\n`;
 
         if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
 
@@ -4244,9 +4276,9 @@ async function sendOrderToLine(forceSubmit = false) {
         let grandTotal = 0;
 
         let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
-        let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 40 : 50;
+      let feePerBin = 50;
 
-        let preOrderDiscount = isPreOrder ? 10 : 0;
+      let preOrderDiscount = isPreOrder ? (window.isGroceryStore ? 20 : 10) : 0;
 
 
 
@@ -4328,7 +4360,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
 
-          let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess;
+        let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess - preOrderDiscount;
 
           grandTotal += binTotal;
 
@@ -4348,7 +4380,6 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
 
-        grandTotal -= preOrderDiscount;
 
         if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
@@ -4376,7 +4407,7 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
 
-        msgText = `🛵 UberEats 揪團訂單\n`;
+      msgText = `🛵 UberEats 揪團訂單${priceKeyText}\n`;
 
         if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
 
@@ -4551,8 +4582,8 @@ async function sendOrderToLine(forceSubmit = false) {
 
 
       cart = [];
-
       updateCartBadge();
+      window._orderSent = true;
 
 
 
@@ -4673,27 +4704,33 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
       }
 
       if (json.status === 'success' && json.data) {
-
         currentCustomizations = json.data.customizationsList || [];
-
         renderCustomizations();
-
+        
+        const btn2 = document.getElementById('addToCartBtn');
+        if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
       } else {
-
-        document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">無法載入客製化選項 (' + (json.data ? json.data.message : '未知錯誤') + ')</div>';
-
+        handleModalError(json.data ? json.data.message : '未知錯誤');
       }
 
     } catch (e) {
-
-      document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;">載入選項發生錯誤</div>';
-
+      handleModalError('發生錯誤');
     }
 
-    const btn2 = document.getElementById('addToCartBtn');
-
-    if (btn2) { btn2.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
-
+    function handleModalError(msg) {
+        if (!window.customizationRetries) window.customizationRetries = {};
+        if (!window.customizationRetries[menuItemUuid]) {
+            window.customizationRetries[menuItemUuid] = true;
+            document.getElementById('customizationsArea').innerHTML = '<div style="padding:40px 15px;text-align:center;color:#666;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px;">網路稍微不穩，自動重試中...</div></div>';
+            setTimeout(() => {
+                openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations);
+            }, 1500);
+        } else {
+            document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;color:#d32f2f;text-align:center;">無法載入客製化選項 (' + escapeHTML(msg) + ')</div>';
+            const btn2 = document.getElementById('addToCartBtn');
+            if (btn2) { btn2.disabled = false; btn2.style.opacity = '1'; btn2.style.cursor = 'pointer'; }
+        }
+    }
   }
 
 
@@ -5224,19 +5261,17 @@ const note = document.getElementById('modalNote').value.trim();
 
     
 
-    const badge = document.getElementById('cartBadge');
-
-    badge.innerText = '✅ 已加入';
-
-    badge.style.background = '#000';
-
-    setTimeout(() => {
-
-      badge.style.background = '#06c167';
-
-      updateCartBadge();
-
-    }, 1500);
+    const badge = document.getElementById('floatingCartBtn');
+    if (badge) {
+        const originalText = badge.innerText;
+        const originalBg = badge.style.background;
+        badge.innerText = '✅ 已加入';
+        badge.style.background = '#000';
+        setTimeout(() => {
+          badge.style.background = originalBg;
+          updateCartBadge();
+        }, 1500);
+    }
 
   }
 
@@ -5319,7 +5354,8 @@ const note = document.getElementById('modalNote').value.trim();
 
 
 async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
-
+    window.customizationRetries = {}; // Reset retries state on store entry
+    
     if (cart.length > 0 && storeName && cart[0].storeName && cart[0].storeName !== storeName) {
 
         cart = [];
@@ -5464,7 +5500,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       window.currentStoreRawData = d;
 
       window.isGroceryStore = (d.isGr === true) || (window.currentVertical === 'SHOP');
-      if (window.isGroceryStore && !currentStoreName.includes('不需外送費、需要服務費')) {
+      if (window.isGroceryStore && !currentStoreName.includes('不需外送費、服務費')) {
           currentStoreName += ' (不需外送費、需要服務費)';
       }
 
@@ -5483,6 +5519,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       
 
       let hasValidPriceItem = false;
+      window.lastMatchedPrice = 0;
 
       if (d.catalogSectionsMap) {
 
@@ -5501,6 +5538,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
                 if (priceVal >= 10 && priceVal <= 70) {
 
                     hasValidPriceItem = true;
+                    if (window.lastMatchedPrice === 0) window.lastMatchedPrice = priceVal;
 
                 }
 
@@ -5524,7 +5562,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
-      if ((!isSchedulable && !isGrocery) || !hasValidPriceItem) {
+      const isTooFar = JSON.stringify(d).includes('"storeStatus":"TOO_FAR_TO_DELIVER"');
+      if (isTooFar || (!isGrocery && (!isSchedulable || !hasValidPriceItem))) {
 
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
@@ -5538,9 +5577,9 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           
 
-          let errorMsg = !isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折價券，無法為您代購。請選擇其他餐廳。';
+          let errorMsg = isTooFar ? '店家太遠無法外送，請選擇其他餐廳。' : (!isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折扣券，無法為您代購。請選擇其他餐廳。');
 
-          showModal('無法接單', errorMsg);
+          showModal('無法接單', '', true, `<div style="text-align:center;">${errorMsg}</div>`);
 
           
 
@@ -5687,7 +5726,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
             }
 
             if (availableWindows.length > 0) {
-                btnsHtml += `<b style="color:#111;">👉 餐廳可接單時間(點擊直接修改)：</b>`;
+                btnsHtml += `<div style="color:#111; text-align:center; font-weight:bold; margin-bottom:8px;">👉 餐廳可接單時間(點擊直接修改)：</div>`;
                 const top5 = availableWindows.slice(0, 5);
 
                 top5.forEach(tw => {
@@ -5971,9 +6010,36 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
 
+
+let hoursHtml = '';
+if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
+    let lines = [];
+    d.hours.forEach(h => {
+        let dr = h.dayRange || '';
+        if (h.sectionHours && Array.isArray(h.sectionHours)) {
+            h.sectionHours.forEach(sh => {
+                let st = sh.startTime || 0;
+                let et = sh.endTime || 0;
+                let stH = String(Math.floor(st / 60)).padStart(2, '0');
+                let stM = String(st % 60).padStart(2, '0');
+                let etH = String(Math.floor(et / 60)).padStart(2, '0');
+                let etM = String(et % 60).padStart(2, '0');
+                lines.push(`${dr} ${stH}:${stM}~${etH}:${etM}`);
+            });
+        }
+    });
+    if (lines.length > 0) {
+        hoursHtml = `<div style="position:absolute; top:15px; right:15px; text-align:right; font-size:12px; color:#666; background:rgba(255,255,255,0.95); padding:6px 10px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15); z-index:10; border:1px solid #eee;">
+            <div style="font-weight:bold; color:#111; margin-bottom:4px; font-size:13px;">🈺 營業時間</div>
+            ${lines.join('<br>')}
+        </div>`;
+    }
+}
+
       let html = `
 
-        <div class="store-header">
+      <div class="store-header" style="position:relative;">
+      ${hoursHtml}
 
           ${logoUrl ? `<img src="${logoUrl}">` : ''}
 
@@ -6438,7 +6504,7 @@ function escapeHTML(str) {
 
 function normalizeAddress(addr) {
   if (!addr) return addr;
-  return addr.replace(/([零一二三四五六七八九十百]+)(號|樓|段)/g, function(match, numStr, suffix) {
+  return addr.replace(/([零一二三四五六七八九十百]+)(號|樓)/g, function(match, numStr, suffix) {
     let map = {'零':0, '一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9};
     if (!/十|百/.test(numStr) && numStr.length > 1) {
       return numStr.split('').map(c => map[c]).join('') + suffix;
@@ -6528,7 +6594,7 @@ function normalizeAddress(addr) {
 
       if (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
 
-        preOrderDiscount = 10;
+            preOrderDiscount = window.isGroceryStore ? 20 : 10;
 
       }
 
@@ -6556,7 +6622,7 @@ function normalizeAddress(addr) {
 
     for (let j = 0; j < it.qty; j++) {
 
-      expanded.push({ name: it.title, price: it.price, storeName: it.storeName || '未命名餐廳', note: it.note || '', storeDeliveryFee: it.storeDeliveryFee || 0 });
+      expanded.push({ name: it.title, price: it.price, storeName: it.storeName || '未命名餐廳', note: it.note || '', storeDeliveryFee: it.storeDeliveryFee || 0, storeUrl: it.storeUrl });
 
     }
 
@@ -6675,7 +6741,7 @@ function normalizeAddress(addr) {
       let cost = 0;
 
       let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
-      let feePerBin = (bins.length >= 2 && !isASAP) ? 40 : 50;
+        let feePerBin = 50;
 
       for (let bin of bins) {
 
@@ -6701,11 +6767,10 @@ function normalizeAddress(addr) {
 
         
 
-        cost += binFoodCost + feePerBin + binExcess;
+        cost += binFoodCost + feePerBin + binExcess - preOrderDiscount;
 
       }
 
-      cost -= preOrderDiscount;
 
 
 
@@ -6939,6 +7004,29 @@ function buildSplitSuggestionHtml(result) {
 
   };
 
+
+function showToast(msg) {
+    const el = document.createElement('div');
+    el.innerText = msg;
+    el.style.position = 'fixed';
+    el.style.bottom = '20px';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.background = 'rgba(0,0,0,0.8)';
+    el.style.color = '#fff';
+    el.style.padding = '10px 20px';
+    el.style.borderRadius = '20px';
+    el.style.zIndex = '99999';
+    el.style.fontSize = '14px';
+    el.style.fontWeight = 'bold';
+    el.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    document.body.appendChild(el);
+    setTimeout(() => {
+        el.style.transition = 'opacity 0.5s';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+    }, 2000);
+}
 </script>
 
 
