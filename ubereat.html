@@ -4246,9 +4246,9 @@ async function _sendOrderToLine(forceSubmit = false) {
         let grandTotal = 0;
 
         let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
-        let feePerBin = (costRes.bins.length >= 2 && !isASAP) ? 40 : 50;
+      let feePerBin = 50;
 
-        let preOrderDiscount = isPreOrder ? 10 : 0;
+      let preOrderDiscount = isPreOrder ? (window.isGroceryStore ? 20 : 10) : 0;
 
 
 
@@ -4330,7 +4330,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-          let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess;
+        let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess - preOrderDiscount;
 
           grandTotal += binTotal;
 
@@ -4350,7 +4350,6 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        grandTotal -= preOrderDiscount;
 
         if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
@@ -6565,7 +6564,7 @@ function normalizeAddress(addr) {
 
       if (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
 
-        preOrderDiscount = 10;
+            preOrderDiscount = window.isGroceryStore ? 20 : 10;
 
       }
 
@@ -6712,7 +6711,7 @@ function normalizeAddress(addr) {
       let cost = 0;
 
       let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
-      let feePerBin = (bins.length >= 2 && !isASAP) ? 40 : 50;
+        let feePerBin = 50;
 
       for (let bin of bins) {
 
@@ -6738,11 +6737,10 @@ function normalizeAddress(addr) {
 
         
 
-        cost += binFoodCost + feePerBin + binExcess;
+        cost += binFoodCost + feePerBin + binExcess - preOrderDiscount;
 
       }
 
-      cost -= preOrderDiscount;
 
 
 
