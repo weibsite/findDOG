@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.51 (Debug)</title>
+<title>計算機系統 2.53</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3425,6 +3425,10 @@ window.submitSelectedPlan = function() {
     if (plan === 'A') {
         let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
         let isSplit = costRes && costRes.shouldSplit;
+        console.log('submitSelectedPlan evaluating isSplit:', isSplit, 'costRes:', costRes);
+        if (costRes && !isSplit && costRes.savings > 0) {
+            console.log('Would have split, but shouldSplit is false? savings:', costRes.savings);
+        }
         sendOrderToLine(isSplit ? 'split' : 'planA');
     } else {
         sendOrderToLine('planB');
@@ -3647,7 +3651,7 @@ if (costRes && costRes.shouldSplit) {
 
     let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
 
-    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ 拆單明細 ]</div>`;
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costRes.bins.length} 單)</div>`;
     sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
@@ -3718,7 +3722,7 @@ if (costResB && costResB.shouldSplit) {
 
     let originalBaseStrB = total + 130 + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
 
-    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ 拆單明細 ]</div>`;
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costResB.bins.length} 單)</div>`;
     sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
@@ -7118,7 +7122,7 @@ window.renderSplitTab = function(plan) {
     for (let key in counts) itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
     
     let html = `
-        <div style="font-weight:bold; color:${color}; margin-bottom:2px;">[ 拆單明細 ]</div>
+        <div style="font-weight:bold; color:${color}; margin-bottom:2px;">[ 拆單明細 ] ($285內5折 / $200-$200)</div>
         <div style="font-size:12px; color:#d32f2f; font-weight:bold; margin-bottom:10px;">✨ 拆單省 $${savings}</div>
         <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">第 ${currentIndex + 1} 單 / 共 ${bins.length} 單</div>
         <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
