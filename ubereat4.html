@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.49</title>
+<title>計算機系統 2.51 (Debug)</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -444,9 +444,8 @@
 
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
 
-      <div style="display:flex; gap:10px;">
-        <button id="planABtn" onclick="sendOrderToLine('planA')" style="flex:1; background:#06c167; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">A方案<br><span style="font-size:13px; font-weight:normal;" id="planAText">(-$0)</span></button>
-        <button id="planBBtn" onclick="sendOrderToLine('planB')" style="flex:1; background:#276ef1; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">B方案<br><span style="font-size:13px; font-weight:normal;" id="planBText">(-$0)</span></button>
+      <div style="display:flex; gap:10px;" id="checkoutBottomButtons">
+        <button id="checkoutSubmitBtn" onclick="submitSelectedPlan()" style="flex:1; background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>
       </div>
 
     </div>
@@ -3404,83 +3403,34 @@ function backToCart() {
 
 
 function updatePlanButtons() {
-    let btnA_init = document.getElementById('planABtn');
-    if (btnA_init && btnA_init.parentElement) {
-        if (!btnA_init.parentElement.id) btnA_init.parentElement.id = 'checkoutBottomButtons';
-        const container = document.getElementById('checkoutBottomButtons');
-        if (window.isGroceryStore) {
-            container.innerHTML = `<button onclick="sendOrderToLine()" style="flex:1; background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>`;
-            return;
-        } else {
-            if (!document.getElementById('planABtn')) {
-                container.innerHTML = `<button id="planABtn" onclick="sendOrderToLine('planA')" style="flex:1; background:#06c167; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">A方案<br><span style="font-size:13px; font-weight:normal;" id="planAText">(-$0)</span></button>
-                                       <button id="planBBtn" onclick="sendOrderToLine('planB')" style="flex:1; background:#276ef1; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">B方案<br><span style="font-size:13px; font-weight:normal;" id="planBText">(-$0)</span></button>`;
-            }
-        }
-    }
-
-    let totalSum = 0;
-    let storeCountUI = 0;
-    const sCounts = {};
-    cart.forEach(it => { 
-        totalSum += it.price * it.qty;
-        if(!sCounts[it.storeName]) { sCounts[it.storeName]=true; storeCountUI++; }
-    });
-    const visualSvcFee = storeCountUI >= 2 ? 30 : 50;
-    
-    let promoDiscount = totalSum >= 285 ? 143 : Math.floor(totalSum / 2);
-    let preOrderDiscount = 0;
-    if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
-        let tsVal = getSelectedScheduleTimestamp();
-        if (tsVal && (tsVal - new Date().getTime() >= 2.5 * 3600000)) {
-            preOrderDiscount = window.isGroceryStore ? 20 : 10;
-        }
-    }
-    
-    let baseNoDiscount = totalSum + 50; 
-
-    let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
-    let isSplit = costRes && costRes.shouldSplit;
-    
-    let planA_savings = 0;
-    if (isSplit) {
-        let totalExcess = 0;
-        const sg = {};
-        cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-        Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-        let baseTotalWithExcess = totalSum + 50 + totalExcess;
-        planA_savings = baseTotalWithExcess - costRes.bestCost;
-    } else {
-        let planATotal = totalSum - promoDiscount + visualSvcFee - preOrderDiscount;
-        planA_savings = baseNoDiscount - planATotal;
-    }
-
-    const pA = document.getElementById('planAText');
-    if (pA) pA.innerText = `(-$${planA_savings})`;
-    
-    const btnA = document.getElementById('planABtn');
-    if (btnA) {
-        btnA.onclick = function() { sendOrderToLine(isSplit ? 'split' : 'planA'); };
-    }
-    
-    const pB = document.getElementById('planBText');
-    const btnB = document.getElementById('planBBtn');
-    if (totalSum < 200) {
-        if (pB) pB.innerText = `(未滿低消)`;
-        if (btnB) {
-            btnB.style.opacity = '0.5';
-            btnB.onclick = function() { alert('未滿低消200元，無法使用B方案'); };
-        }
-    } else {
-        let planBMinSavings = baseNoDiscount - (totalSum - 70 + 60); 
-        let planBMaxSavings = baseNoDiscount - (totalSum - 70); 
-        if (pB) pB.innerText = `(-$${planBMinSavings} ~ -$${planBMaxSavings})`;
-        if (btnB) {
-            btnB.style.opacity = '1';
-            btnB.onclick = function() { sendOrderToLine('planB'); };
-        }
-    }
+    // Obsolete UI updating replaced by static Selectable cards
 }
+
+window.selectedPlan = 'A';
+window.selectPlan = function(p) {
+    if (p === 'B' && window._checkoutTotal < 200) return;
+    window.selectedPlan = p;
+    const cardA = document.getElementById('planACard');
+    const cardB = document.getElementById('planBCard');
+    if (cardA) cardA.style.border = p === 'A' ? '2px solid #d32f2f' : '1px solid #eee';
+    if (cardB) cardB.style.border = p === 'B' ? '2px solid #d32f2f' : '1px solid #eee';
+};
+
+window.submitSelectedPlan = function() {
+    if (window.isGroceryStore) {
+        sendOrderToLine();
+        return;
+    }
+    let plan = window.selectedPlan || 'A';
+    if (plan === 'A') {
+        let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+        let isSplit = costRes && costRes.shouldSplit;
+        sendOrderToLine(isSplit ? 'split' : 'planA');
+    } else {
+        sendOrderToLine('planB');
+    }
+};
+
 function openCheckoutSummary() {
     if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
         openGroceryCheckoutSummary();
@@ -3653,7 +3603,7 @@ function openCheckoutSummary() {
 
 
 // Plan A
-html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative;">`;
+html += `<div id="planACard" onclick="selectPlan('A')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:2px solid #d32f2f; text-align:center; font-size:14px; position:relative; cursor:pointer;">`;
 
 let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">[ A方案明細 ]</div>`;
 origTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; margin-top:10px;">`;
@@ -3729,7 +3679,7 @@ html += `</div>`; // closes Plan A
 
 
 // Plan B
-html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative;">`;
+html += `<div id="planBCard" onclick="selectPlan('B')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative; cursor:pointer; opacity: ${total < 200 ? 0.5 : 1};">`;
 
 let origTableB = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">[ B方案明細 ]</div>`;
 if (total < 200) {
