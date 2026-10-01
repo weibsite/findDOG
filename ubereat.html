@@ -444,7 +444,10 @@
 
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
 
-      <button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; width:100%;">送出訂單</button>
+      <div style="display:flex; gap:10px;">
+        <button id="planABtn" onclick="sendOrderToLine('planA')" style="flex:1; background:#06c167; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">A方案<br><span style="font-size:13px; font-weight:normal;" id="planAText">(-$0)</span></button>
+        <button id="planBBtn" onclick="sendOrderToLine('planB')" style="flex:1; background:#276ef1; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">B方案<br><span style="font-size:13px; font-weight:normal;" id="planBText">(-$0)</span></button>
+      </div>
 
     </div>
 
@@ -3451,6 +3454,26 @@ function backToCart() {
 
 
 
+
+function updatePlanButtons() {
+    let totalSum = 0;
+    cart.forEach(it => totalSum += it.price * it.qty);
+    let promoDiscount = totalSum >= 285 ? 143 : Math.floor(totalSum / 2);
+    let preOrderDiscount = 0;
+    if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+        let tsVal = getSelectedScheduleTimestamp();
+        if (tsVal && (tsVal - new Date().getTime() >= 2.5 * 3600000)) {
+            preOrderDiscount = window.isGroceryStore ? 20 : 10;
+        }
+    }
+    let planA_savings = promoDiscount + preOrderDiscount;
+    let planB_savings = Math.floor(totalSum * 0.2); // Example 20% off for B
+
+    const pA = document.getElementById('planAText');
+    if (pA) pA.innerText = `(-$${planA_savings})`;
+    const pB = document.getElementById('planBText');
+    if (pB) pB.innerText = `(-$${planB_savings})`;
+}
 function openCheckoutSummary() {
 
   let total = 0;
@@ -3670,6 +3693,7 @@ function openCheckoutSummary() {
   document.getElementById('cartView').style.display = 'none';
 
   document.getElementById('checkoutView').style.display = 'block';
+      updatePlanButtons();
 
   
 
@@ -3924,6 +3948,7 @@ function openGroceryCheckoutSummary() {
 
 
   document.getElementById('checkoutView').style.display = 'block';
+      updatePlanButtons();
 
 
 
@@ -3984,6 +4009,11 @@ async function _sendOrderToLine(forceSubmit = false) {
       const priceKeyText = (window.lastMatchedPrice && window.lastMatchedPrice > 0) ? `🗝️${window.lastMatchedPrice}` : '';
 
   let msgText = '';
+
+      if (forceSubmit === 'planA' || forceSubmit === 'planB') {
+          window.selectedPlan = forceSubmit;
+      }
+      const currentPlan = window.selectedPlan || 'planA';
 
   const prefix = window.isGroceryStore ? 'grocery' : 'checkout';
 
