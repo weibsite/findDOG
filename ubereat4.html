@@ -2993,88 +2993,9 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/item`, {
 
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
-
-      });
-
-      let json;
-
-      try {
-
-          const textRes = await res.text();
-
-          try {
-
-              json = JSON.parse(textRes);
-
-          } catch (e) {
-
-              console.error('Non-JSON response from server:', textRes);
-
-              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
-
-          }
-
-      } catch (e) {
-
-          throw e;
-
-      }
-
-      btn.innerHTML = originalHtml;
-
-
-
-      if (json.status === 'success' && json.data) {
-
-        const cust = json.data.customizationsList || [];
-
-        if (cust.length > 0) {
-
-          // 有選項 -> 打開 modal
-
-          openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl, true);
-
-        } else {
-
-          // 無選項 -> 直接加入購物車
-
-          window.noOptionsItems.add(menuItemUuid);
-
-          cart.push({
-
-            title: title,
-
-            price: basePrice,
-
-            qty: 1,
-
-            note: '',
-
-            options: [],
-
-            storeName: currentStoreName,
-
-            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
-
-            menuItemUuid: menuItemUuid,
-
-            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
-
-          });
-
-          updateCartBadge();
-
-          updateMenuActions();
-
-        }
-
-      }
-
+        btn.innerHTML = originalHtml;
+        openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations);
     } catch (e) {
 
       btn.innerHTML = originalHtml;
@@ -3467,7 +3388,7 @@ function updatePlanButtons() {
         }
     }
     let planA_savings = promoDiscount + preOrderDiscount;
-    let planB_savings = Math.floor(totalSum * 0.2); // Example 20% off for B
+    let planB_savings = Math.floor(totalSum * 0.2);
 
     const pA = document.getElementById('planAText');
     if (pA) pA.innerText = `(-$${planA_savings})`;
@@ -4508,10 +4429,15 @@ async function _sendOrderToLine(forceSubmit = false) {
           msgText += `\n📌 總計: $${grandTotal}`;
       }
 
+        if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}\n`;
 
+        msgText += `🛵 代訂費: $${serviceFee}\n`;
 
+        if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}\n`;
 
+        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
 
+        msgText += `\n✨ 總計: $${grandTotal}`;
 
       }
 
