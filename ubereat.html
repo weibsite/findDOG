@@ -993,7 +993,14 @@ function confirmTimePicker(mode) {
     updateTriggerText();
     closeTimePickerModal();
     
-    if (typeof renderCart === 'function') {
+      const cv = document.getElementById('checkoutView');
+      if (cv && (cv.style.display === 'block' || cv.style.display === 'flex')) {
+          if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
+              openGroceryCheckoutSummary();
+          } else if (typeof openCheckoutSummary === 'function') {
+              openCheckoutSummary();
+          }
+      } else if (typeof renderCart === 'function') {
         renderCart();
     }
 }
@@ -3530,7 +3537,7 @@ function openCheckoutSummary() {
 
       </div>
 
-      <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}</div>
+      <div style="margin-bottom:15px; display:flex; align-items:center;"><strong>外送時間:</strong> <span style="margin-left:5px;">${escapeHTML(timeText)}</span> <button onclick="openTimePickerModal()" style="margin-left:10px; padding:2px 10px; font-size:12px; cursor:pointer; background:#fff; border:1px solid #000; border-radius:15px; font-weight:bold; color:#000;">修改</button></div>
 
       
 
@@ -3814,7 +3821,7 @@ function openGroceryCheckoutSummary() {
 
 
 
-            <div style="margin-bottom:15px;"><strong>外送時間:</strong> ${escapeHTML(timeText)}
+            <div style="margin-bottom:15px; display:flex; align-items:center;"><strong>外送時間:</strong> <span style="margin-left:5px;">${escapeHTML(timeText)}</span> <button onclick="openTimePickerModal()" style="margin-left:10px; padding:2px 10px; font-size:12px; cursor:pointer; background:#fff; border:1px solid #000; border-radius:15px; font-weight:bold; color:#000;">修改</button></div>
 
       ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(2.5小時以上): -$20</div>` : ''}
 
