@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.48</title>
+<title>計算機系統 2.49</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3404,6 +3404,22 @@ function backToCart() {
 
 
 function updatePlanButtons() {
+    let btnA_init = document.getElementById('planABtn');
+    if (btnA_init && btnA_init.parentElement) {
+        if (!btnA_init.parentElement.id) btnA_init.parentElement.id = 'checkoutBottomButtons';
+        if (!btnA.parentElement.id) btnA.parentElement.id = 'checkoutBottomButtons';
+        const container = document.getElementById('checkoutBottomButtons');
+        if (window.isGroceryStore) {
+            container.innerHTML = `<button onclick="sendOrderToLine()" style="flex:1; background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>`;
+            return;
+        } else {
+            if (!document.getElementById('planABtn')) {
+                container.innerHTML = `<button id="planABtn" onclick="sendOrderToLine('planA')" style="flex:1; background:#06c167; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">A方案<br><span style="font-size:13px; font-weight:normal;" id="planAText">(-$0)</span></button>
+                                       <button id="planBBtn" onclick="sendOrderToLine('planB')" style="flex:1; background:#276ef1; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; line-height:1.4;">B方案<br><span style="font-size:13px; font-weight:normal;" id="planBText">(-$0)</span></button>`;
+            }
+        }
+    }
+
     let totalSum = 0;
     let storeCountUI = 0;
     const sCounts = {};
@@ -3467,6 +3483,11 @@ function updatePlanButtons() {
     }
 }
 function openCheckoutSummary() {
+    if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
+        openGroceryCheckoutSummary();
+        return;
+    }
+
 
   let total = 0;
 
