@@ -3549,53 +3549,70 @@ function openCheckoutSummary() {
 
       
 
-      <div style="text-align:right; font-size:15px; margin-top:15px;">
 
-        <div style="color:#666; margin-bottom:4px;">小計: $${total}</div>
+      let storeCountUI = 0;
+      const sCounts = {};
+      cart.forEach(it => { if(!sCounts[it.storeName]) { sCounts[it.storeName]=true; storeCountUI++; }});
+      const visualSvcFee = storeCountUI >= 2 ? 30 : 50;
 
-        ${total >= 285 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${143}</div>` : (total > 0 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${Math.floor(total/2)}</div>` : '')}
+      html += `<div style="display:flex; gap:10px; margin-top:15px;">`;
 
-        <div style="color:#666; margin-bottom:4px;">代訂費: $50</div>
+      // Plan A
+      html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:right; font-size:14px;">`;
+      html += `<div style="font-weight:bold; text-align:center; margin-bottom:8px; color:#06c167;">[ A方案明細 ]</div>`;
+      html += `<div style="color:#666; margin-bottom:4px;">小計: $${total}</div>`;
+      html += total >= 285 ? `<div style="color:#06c167; margin-bottom:4px;">優惠折抵: -$143</div>` : (total > 0 ? `<div style="color:#06c167; margin-bottom:4px;">優惠折抵: -$${Math.floor(total/2)}</div>` : '');
+      html += `<div style="color:#666; margin-bottom:4px;">代訂費: $${visualSvcFee}</div>`;
+      html += `<div style="color:#666; margin-bottom:4px;">外送費: $0</div>`;
+      html += `<div style="color:#666; margin-bottom:4px;">服務費: $0</div>`;
+      
+      html += (function(){
+         let totalExcess = 0;
+         const sg = {};
+         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+         return totalExcess > 0 ? `<div style="color:#666; margin-bottom:4px;">超距外送費: $${totalExcess}</div>` : '';
+      })();
+      
+      html += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣: -$10</div>` : '';
+      
+      html += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+      html += (function(){
+         let totalExcess = 0;
+         const sg = {};
+         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+         const pd = total >= 285 ? 143 : Math.floor(total/2);
+         const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+         return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+      })();
+      html += `</div></div>`;
+      
+      // Plan B
+      html += `<div style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:right; font-size:14px;">`;
+      html += `<div style="font-weight:bold; text-align:center; margin-bottom:8px; color:#276ef1;">[ B方案明細 ]</div>`;
+      html += `<div style="color:#666; margin-bottom:4px;">小計: $${total}</div>`;
+      html += `<div style="color:#06c167; margin-bottom:4px;">B方案折抵: -$${Math.floor(total * 0.2)}</div>`;
+      html += `<div style="color:#666; margin-bottom:4px;">代訂費: $${visualSvcFee}</div>`;
+      html += (function(){
+         let totalExcess = 0;
+         const sg = {};
+         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+         return totalExcess > 0 ? `<div style="color:#666; margin-bottom:4px;">超距外送費: $${totalExcess}</div>` : '';
+      })();
+      html += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+      html += (function(){
+         let totalExcess = 0;
+         const sg = {};
+         cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+         Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+         const pd = Math.floor(total * 0.2);
+         return `總計: <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess}</span>`;
+      })();
+      html += `</div></div>`;
 
-        ${(function(){
-
-            let totalExcess = 0;
-
-            const sg = {};
-
-            cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-
-            Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-
-            return totalExcess > 0 ? `<div style="color:#666; margin-bottom:4px;">超額外送費: $${totalExcess}</div>` : '';
-
-        })()}
-
-        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(2.5小時以上): -$10</div>` : ''}
-
-        <div style="font-weight:bold; font-size:20px; margin-top:10px;">
-
-          ${(function(){
-
-              let totalExcess = 0;
-
-              const sg = {};
-
-              cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-
-              Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-
-              const pd = total >= 285 ? 143 : Math.floor(total/2);
-
-              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
-
-              return `總計: <span style="text-decoration:line-through; color:#999; font-size:16px;">$${total + 50 + totalExcess}</span> <span style="color:#d32f2f;">$${total - pd + 50 + totalExcess - pr}</span>`;
-
-          })()}
-
-        </div>
-
-      </div>
+      html += `</div>`; // end flex container
 
 
 
