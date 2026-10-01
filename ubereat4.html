@@ -3396,6 +3396,7 @@ function updatePlanButtons() {
     }
     
     let baseNoDiscount = totalSum + 50; 
+
     let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
     let isSplit = costRes && costRes.shouldSplit;
     
@@ -3629,7 +3630,33 @@ function openCheckoutSummary() {
          const pd = total >= 285 ? 143 : Math.floor(total/2);
          const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
          return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
-      })();
+})();
+
+      html += `</div>`; // closes the 總計 div
+
+      let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+      if (costRes && costRes.shouldSplit) {
+          window._splitBins = costRes.bins;
+          window._currentSplitIndex = 0;
+          let counts = {};
+          costRes.bins[0].items.forEach(it => { counts[it.name] = (counts[it.name] || 0) + 1; });
+          let itemStrs = [];
+          for (let key in counts) itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+          
+          html += `<div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px; text-align:center;">`;
+          html += `<div style="font-weight:bold; color:#06c167; margin-bottom:5px; font-size:13px;">✨ 自動幫您拆成 ${costRes.bins.length} 單！</div>`;
+          html += `<div style="font-size:12px; color:#d32f2f; margin-bottom:10px; font-weight:bold;">總計降為: $${costRes.bestCost} (多省 $${costRes.savings})</div>`;
+          
+          html += `<div style="position:relative; background:#fff; border:1px solid #06c167; border-radius:8px; padding:10px 20px;">`;
+          html += `<button onclick="switchSplitTab(-1)" style="position:absolute; left:0; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:16px; cursor:pointer; color:#06c167; padding:10px;">◀</button>`;
+          html += `<div id="splitTabContent" style="min-height:50px;">`;
+          html += `<div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">拆單 1 / ${costRes.bins.length}</div>`;
+          html += `<div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${costRes.bins[0].sum}</div>`;
+          html += `<div style="font-size:12px; color:#666; word-break:break-all;">${itemStrs.join('、')}</div>`;
+          html += `</div>`;
+          html += `<button onclick="switchSplitTab(1)" style="position:absolute; right:0; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:16px; cursor:pointer; color:#06c167; padding:10px;">▶</button>`;
+          html += `</div></div>`;
+      }
       html += `</div></div>`;
 
       // Plan B
