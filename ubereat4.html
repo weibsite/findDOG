@@ -3396,11 +3396,29 @@ function updatePlanButtons() {
     }
     
     let baseNoDiscount = totalSum + 50; 
-    let planATotal = totalSum - promoDiscount + visualSvcFee - preOrderDiscount;
-    let planA_savings = baseNoDiscount - planATotal;
+    let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+    let isSplit = costRes && costRes.shouldSplit;
+    
+    let planA_savings = 0;
+    if (isSplit) {
+        let totalExcess = 0;
+        const sg = {};
+        cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+        Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+        let baseTotalWithExcess = totalSum + 50 + totalExcess;
+        planA_savings = baseTotalWithExcess - costRes.bestCost;
+    } else {
+        let planATotal = totalSum - promoDiscount + visualSvcFee - preOrderDiscount;
+        planA_savings = baseNoDiscount - planATotal;
+    }
 
     const pA = document.getElementById('planAText');
     if (pA) pA.innerText = `(-$${planA_savings})`;
+    
+    const btnA = document.getElementById('planABtn');
+    if (btnA) {
+        btnA.onclick = function() { sendOrderToLine(isSplit ? 'split' : 'planA'); };
+    }
     
     const pB = document.getElementById('planBText');
     const btnB = document.getElementById('planBBtn');
@@ -7015,6 +7033,36 @@ function showToast(msg) {
         setTimeout(() => el.remove(), 500);
     }, 2000);
 }
+
+window._currentSplitIndex = 0;
+window._splitBins = null;
+window.renderSplitTab = function() {
+    if (!window._splitBins) return;
+    const bin = window._splitBins[window._currentSplitIndex];
+    let counts = {};
+    bin.items.forEach(item => {
+        let key = item.name;
+        counts[key] = (counts[key] || 0) + 1;
+    });
+    let itemStrs = [];
+    for (let key in counts) {
+        itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+    }
+    const html = `
+        <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">拆單 ${window._currentSplitIndex + 1} / ${window._splitBins.length}</div>
+        <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
+        <div style="font-size:12px; color:#666; word-break:break-all;">${itemStrs.join('、')}</div>
+    `;
+    const container = document.getElementById('splitTabContent');
+    if (container) container.innerHTML = html;
+};
+window.switchSplitTab = function(dir) {
+    if (!window._splitBins) return;
+    window._currentSplitIndex += dir;
+    if (window._currentSplitIndex < 0) window._currentSplitIndex = window._splitBins.length - 1;
+    if (window._currentSplitIndex >= window._splitBins.length) window._currentSplitIndex = 0;
+    window.renderSplitTab();
+};
 </script>
 
 
