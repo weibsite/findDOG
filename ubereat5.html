@@ -1941,7 +1941,7 @@ function generateStoreListHTML(stores, q, currentVertical) {
 
       finalList = finalList.concat(closedUnmatchedStores);
 
-      stores = finalList;
+      stores.length = 0; finalList.forEach(x => stores.push(x));
 
 
 
@@ -7393,23 +7393,35 @@ function renderOverlayHTML() {
                 const uuid = s.storeUuid || '';
                 const actionUrl = s.actionUrl || '';
                 
-                let ratingHtml = '';
-                if (s.rating && s.rating.text) {
-                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
-                }
-                
-                let stateText = '';
-                const state = s.storeAvailablityState || '';
+                let state = s.storeAvailablityState || '';
                 let isUIClosed = false;
                 if (state.includes('CLOSED')) isUIClosed = true;
                 if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
                 if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
-                if (isUIClosed) {
+                const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
+                
+                let ratingHtml = '';
+                if (isCompletelyClosed) {
+                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;font-weight:bold;">未營業</span>`;
+                } else if (s.rating && s.rating.text) {
+                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
+                }
+                
+                let stateText = '';
+                if (isUIClosed && !isCompletelyClosed) {
                     stateText = `<span style="font-size:11px;color:#d32f2f;background:#fdecec;padding:2px 4px;border-radius:4px;margin-left:6px;">休息中</span>`;
                 }
                 
-                html += `<div onclick="openStoreFromOverlay('${uuid}', '${encodedName}', '${actionUrl}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
-                    <span style="color:#06c167;">🏪</span> 
+                let clickAttr = isCompletelyClosed ? '' : `onclick="openStoreFromOverlay('${uuid}', '${encodedName}', '${actionUrl}')"`;
+                let divStyle = isCompletelyClosed 
+                    ? `padding:12px 0; border-bottom:1px solid #f0f0f0; font-size:15px; color:#999; display:flex; align-items:center; gap:8px; opacity:0.6;`
+                    : `padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;`;
+                let iconHtml = isCompletelyClosed 
+                    ? `<span style="color:#999;">🏪</span>`
+                    : `<span style="color:#06c167;">🏪</span>`;
+                
+                html += `<div ${clickAttr} style="${divStyle}">
+                    ${iconHtml}
                     <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${name}</span>
                     ${stateText}
                     ${ratingHtml}
