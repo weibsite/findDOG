@@ -3634,7 +3634,7 @@ if (costRes && costRes.shouldSplit) {
         let bsg = {}; bin.items.forEach(i => { if(!bsg[i.storeName||'']) bsg[i.storeName||'']=[]; bsg[i.storeName||''].push(i); });
         let binEx = 0; Object.keys(bsg).forEach(s => binEx += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
         splitExcess += binEx;
-        let pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? (window.isGroceryStore ? 20 : 10) : 0;
+        let pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? (window.isGroceryStore ? 35 : 10) : 0;
         splitPreorder += pr;
     });
 
@@ -3872,7 +3872,7 @@ function openGroceryCheckoutSummary() {
 
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
 
-        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(2.5小時以上)</span><span>-$20</span></div>
+        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(2.5小時以上)</span><span>-$35</span></div>
 
         ` : `
 
@@ -4158,9 +4158,9 @@ async function _sendOrderToLine(forceSubmit = false) {
 
       cart.forEach(it => foodTotal += it.price * it.qty);
 
-      if (foodTotal < 149) {
+      if (foodTotal < 169) {
 
-        showModal('金額過低', '訂單小計低於$149，建議再加個東西吧！');
+        showModal('金額過低', '訂單小計低於$169，建議再加個東西吧！');
 
         return;
 
@@ -4280,7 +4280,7 @@ async function _sendOrderToLine(forceSubmit = false) {
         let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
       let feePerBin = 50;
 
-      let preOrderDiscount = isPreOrder ? (window.isGroceryStore ? 20 : 10) : 0;
+      let preOrderDiscount = isPreOrder ? (window.isGroceryStore ? 35 : 10) : 0;
 
 
 
@@ -6606,7 +6606,7 @@ function normalizeAddress(addr) {
 
       if (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
 
-            preOrderDiscount = window.isGroceryStore ? 20 : 10;
+            preOrderDiscount = window.isGroceryStore ? 35 : 10;
 
       }
 
