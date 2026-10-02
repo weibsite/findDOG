@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.59</title>
+<title>計算機系統 2.61</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3005,7 +3005,7 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
             menuItemUuid: menuItemUuid,
 
-            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
+            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0,\n      originalStoreDeliveryFee: typeof currentOriginalDeliveryFee !== 'undefined' ? currentOriginalDeliveryFee : (typeof currentStoreDeliveryFee !== 'undefined' && currentStoreDeliveryFee > 0 ? currentStoreDeliveryFee + 50 : 0)
 
           });
 
@@ -3147,7 +3147,7 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
   let currentStoreUrl = '';
 
-  let currentStoreDeliveryFee = '';
+  let currentStoreDeliveryFee = '';\nlet currentOriginalDeliveryFee = 0;
 
   let currentItem = null;
 
@@ -3630,9 +3630,12 @@ origTable += (function(){
     const sg = {};
     cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
     Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+    let totalOrigExcess = 0;
+    Object.keys(sg).forEach(s => totalOrigExcess += Math.max(0, ...sg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0)))));
+
     const pd = total >= 285 ? 143 : Math.floor(total/2);
     const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
-    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalOrigExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
 })();
 origTable += `</div>`;
 
@@ -3649,7 +3652,7 @@ if (costRes && costRes.shouldSplit) {
         splitPreorder += pr;
     });
 
-    let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
+    let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0))))); return te; })();
 
     let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">A方案: $285內5折</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costRes.bins.length} 單)</div>`;
@@ -3720,7 +3723,7 @@ if (costResB && costResB.shouldSplit) {
         splitExcess += binEx;
     });
 
-    let originalBaseStrB = total + 130 + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => it.storeDeliveryFee||0))); return te; })();
+    let originalBaseStrB = total + 130 + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0))))); return te; })();
 
     let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">B方案: $200-$200</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costResB.bins.length} 單)</div>`;
@@ -5336,7 +5339,7 @@ const note = document.getElementById('modalNote').value.trim();
 
       note: fullNote,
 
-      storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
+      storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0,\n      originalStoreDeliveryFee: typeof currentOriginalDeliveryFee !== 'undefined' ? currentOriginalDeliveryFee : (typeof currentStoreDeliveryFee !== 'undefined' && currentStoreDeliveryFee > 0 ? currentStoreDeliveryFee + 50 : 0)
 
     });
 
@@ -5471,7 +5474,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
       currentStoreUuid = uuid;
 
-      currentStoreDeliveryFee = 0;
+      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
     const resultsDiv = document.getElementById('results');
 
@@ -6046,13 +6049,13 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                   if (displayFee <= 0) {
 
-                      currentStoreDeliveryFee = 0;
+                      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
                       fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費</div>`;
 
                   } else {
 
-                      currentStoreDeliveryFee = displayFee;
+                      currentStoreDeliveryFee = displayFee; currentOriginalDeliveryFee = typeof fee !== 'undefined' ? fee : (displayFee > 0 ? displayFee + 50 : 0);
 
                       fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 外送費超過50 需要額外 ${displayFee} 元外送費用</div>`;
 
@@ -6091,7 +6094,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
               }
           } catch(e) { console.error(e); }
           fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、${feeText}</div>`;
-          currentStoreDeliveryFee = 0;
+          currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
       }
 
@@ -6426,7 +6429,7 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                   if (fd.fareBadge && fd.fareBadge.text) {
                       const fareText = fd.fareBadge.text;
                       if (fareText.toLowerCase().includes('no fee')) {
-                          currentStoreDeliveryFee = 0;
+                          currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                           fareArea.innerHTML = '免運費 🎉';
                           fareArea.style.color = '#d32f2f';
                           fareArea.style.fontWeight = 'bold';
@@ -6437,13 +6440,13 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                               let fee = parseInt(match[1], 10);
                               let displayFee = fee > 50 ? fee - 50 : fee - 10;
                               if (displayFee <= 0) {
-                                  currentStoreDeliveryFee = 0;
+                                  currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                                   fareArea.innerHTML = '免運費 🎉';
                                   fareArea.style.color = '#d32f2f';
                                   fareArea.style.fontWeight = 'bold';
                                   fareArea.style.fontSize = '14px';
                               } else {
-                                  currentStoreDeliveryFee = displayFee;
+                                  currentStoreDeliveryFee = displayFee; currentOriginalDeliveryFee = typeof fee !== 'undefined' ? fee : (displayFee > 0 ? displayFee + 50 : 0);
                                   fareArea.innerHTML = `⚠️ 超過50元免運 額外運費 ${displayFee} 元`;
                                   fareArea.style.color = '#d32f2f';
                                   fareArea.style.fontWeight = 'bold';
@@ -6456,7 +6459,7 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                       fareArea.style.color = '#d32f2f';
                       fareArea.style.fontWeight = 'bold';
                       fareArea.style.fontSize = '14px';
-                      currentStoreDeliveryFee = 0;
+                      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                   }
                   
                   if (window.isGroceryStore && fd.basketDependentFeePolicy && fd.basketDependentFeePolicy.dialog && fd.basketDependentFeePolicy.dialog.tierFee) {
