@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 2.18</title>
+<title>計算機系統 2.68</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -444,7 +444,9 @@
 
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
 
-      <button onclick="sendOrderToLine()" style="background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; width:100%;">送出訂單</button>
+      <div style="display:flex; gap:10px;" id="checkoutBottomButtons">
+        <button id="checkoutSubmitBtn" onclick="submitSelectedPlan()" style="flex:1; background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>
+      </div>
 
     </div>
 
@@ -896,6 +898,31 @@ let isAddressSet = false;
             scheduleSelect.appendChild(newOpt);
         }
         updateTriggerText();
+    }
+    autoFixEmptyTime();
+}
+
+
+function autoFixEmptyTime() {
+    if (typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP') return;
+    const modalSelect = document.getElementById('modalTimeSelect');
+    const dateSelect = document.getElementById('modalDateSelect');
+    const scheduleSelect = document.getElementById('scheduleTime');
+    if (!modalSelect || !dateSelect || !scheduleSelect) return;
+    if (modalSelect.options.length === 0 && dateSelect.options.length > 0) {
+        for (let i = 0; i < dateSelect.options.length; i++) {
+            dateSelect.selectedIndex = i;
+            renderModalTimes();
+            if (modalSelect.options.length > 0) {
+                scheduleSelect.innerHTML = '';
+                const newOpt = document.createElement('option');
+                newOpt.value = modalSelect.options[0].value;
+                newOpt.text = modalSelect.options[0].text;
+                scheduleSelect.appendChild(newOpt);
+                if (typeof updateTriggerText === 'function') updateTriggerText();
+                break;
+            }
+        }
     }
 }
 
@@ -1636,6 +1663,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   
   function handleHeroClick(mode) {
+  if (typeof autoFixEmptyTime === "function") autoFixEmptyTime();
       let q = document.getElementById('addrInput').value.trim();
       if (q.startsWith('📍 ')) q = q.substring(3).trim();
       if (!q) {
@@ -1718,6 +1746,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   function randomSearch() {
+  if (typeof autoFixEmptyTime === "function") autoFixEmptyTime();
 
       // 清空輸入框，讓 searchStores 的空字串判斷來代勞隨機抽籤
 
@@ -2976,7 +3005,8 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
             menuItemUuid: menuItemUuid,
 
-            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
+            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0,
+      originalStoreDeliveryFee: typeof currentOriginalDeliveryFee !== 'undefined' ? currentOriginalDeliveryFee : (typeof currentStoreDeliveryFee !== 'undefined' && currentStoreDeliveryFee > 0 ? currentStoreDeliveryFee + 50 : 0)
 
           });
 
@@ -2990,88 +3020,9 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
 
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/item`, {
 
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({ storeUuid, sectionUuid, subsectionUuid, menuItemUuid })
-
-      });
-
-      let json;
-
-      try {
-
-          const textRes = await res.text();
-
-          try {
-
-              json = JSON.parse(textRes);
-
-          } catch (e) {
-
-              console.error('Non-JSON response from server:', textRes);
-
-              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
-
-          }
-
-      } catch (e) {
-
-          throw e;
-
-      }
-
-      btn.innerHTML = originalHtml;
-
-
-
-      if (json.status === 'success' && json.data) {
-
-        const cust = json.data.customizationsList || [];
-
-        if (cust.length > 0) {
-
-          // 有選項 -> 打開 modal
-
-          openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, title, desc, basePrice, imgUrl, true);
-
-        } else {
-
-          // 無選項 -> 直接加入購物車
-
-          window.noOptionsItems.add(menuItemUuid);
-
-          cart.push({
-
-            title: title,
-
-            price: basePrice,
-
-            qty: 1,
-
-            note: '',
-
-            options: [],
-
-            storeName: currentStoreName,
-
-            storeUrl: typeof currentStoreUrl !== 'undefined' ? currentStoreUrl : '',
-
-            menuItemUuid: menuItemUuid,
-
-            storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
-
-          });
-
-          updateCartBadge();
-
-          updateMenuActions();
-
-        }
-
-      }
-
+        btn.innerHTML = originalHtml;
+        openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations);
     } catch (e) {
 
       btn.innerHTML = originalHtml;
@@ -3198,6 +3149,7 @@ async function handleQuickAdd(event, storeUuid, sectionUuid, subsectionUuid, men
   let currentStoreUrl = '';
 
   let currentStoreDeliveryFee = '';
+let currentOriginalDeliveryFee = 0;
 
   let currentItem = null;
 
@@ -3451,7 +3403,46 @@ function backToCart() {
 
 
 
+
+function updatePlanButtons() {
+    // Obsolete UI updating replaced by static Selectable cards
+}
+
+window.selectedPlan = 'A';
+window.selectPlan = function(p) {
+    if (p === 'B' && window._checkoutTotal < 200) return;
+    window.selectedPlan = p;
+    const cardA = document.getElementById('planACard');
+    const cardB = document.getElementById('planBCard');
+    if (cardA) cardA.style.border = p === 'A' ? '2px solid #d32f2f' : '1px solid #eee';
+    if (cardB) cardB.style.border = p === 'B' ? '2px solid #d32f2f' : '1px solid #eee';
+};
+
+window.submitSelectedPlan = function() {
+    if (window.isGroceryStore) {
+        sendOrderToLine();
+        return;
+    }
+    let plan = window.selectedPlan || 'A';
+    if (plan === 'A') {
+        let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+        let isSplit = costRes && costRes.shouldSplit;
+        console.log('submitSelectedPlan evaluating isSplit:', isSplit, 'costRes:', costRes);
+        if (costRes && !isSplit && costRes.savings > 0) {
+            console.log('Would have split, but shouldSplit is false? savings:', costRes.savings);
+        }
+        sendOrderToLine(isSplit ? 'split' : 'planA');
+    } else {
+        sendOrderToLine('planB');
+    }
+};
+
 function openCheckoutSummary() {
+    if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
+        openGroceryCheckoutSummary();
+        return;
+    }
+
 
   let total = 0;
 
@@ -3605,56 +3596,176 @@ function openCheckoutSummary() {
 
       
 
-      <div style="text-align:right; font-size:15px; margin-top:15px;">
 
-        <div style="color:#666; margin-bottom:4px;">小計: $${total}</div>
+  `;
+      let storeCountUI = 0;
+      const sCounts = {};
+      cart.forEach(it => { if(!sCounts[it.storeName]) { sCounts[it.storeName]=true; storeCountUI++; }});
+      const visualSvcFee = storeCountUI >= 2 ? 30 : 50;
 
-        ${total >= 285 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${143}</div>` : (total > 0 ? `<div style="color:#06c167; margin-bottom:4px;">半價優惠: -$${Math.floor(total/2)}</div>` : '')}
-
-        <div style="color:#666; margin-bottom:4px;">代訂費: $50</div>
-
-        ${(function(){
-
-            let totalExcess = 0;
-
-            const sg = {};
-
-            cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-
-            Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-
-            return totalExcess > 0 ? `<div style="color:#666; margin-bottom:4px;">超額外送費: $${totalExcess}</div>` : '';
-
-        })()}
-
-        ${(typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<div style="color:#06c167; margin-bottom:4px;">預訂折扣(2.5小時以上): -$10</div>` : ''}
-
-        <div style="font-weight:bold; font-size:20px; margin-top:10px;">
-
-          ${(function(){
-
-              let totalExcess = 0;
-
-              const sg = {};
-
-              cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
-
-              Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
-
-              const pd = total >= 285 ? 143 : Math.floor(total/2);
-
-              const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
-
-              return `總計: <span style="text-decoration:line-through; color:#999; font-size:16px;">$${total + 50 + totalExcess}</span> <span style="color:#d32f2f;">$${total - pd + 50 + totalExcess - pr}</span>`;
-
-          })()}
-
-        </div>
-
-      </div>
+      html += `<div style="display:flex; gap:10px; margin-top:15px;">`;
 
 
 
+
+// Plan A
+html += `<div id="planACard" onclick="selectPlan('A')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:2px solid #d32f2f; text-align:center; font-size:14px; position:relative; cursor:pointer;">`;
+
+let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">A方案: $285內5折</div>`;
+origTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; margin-top:10px;">`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
+origTable += total >= 285 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$143</td></tr>` : (total > 0 ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${Math.floor(total/2)}</td></tr>` : '');
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${visualSvcFee}</td></tr>`;
+let aTotalExcess = (function(){
+    let te = 0; const sg = {};
+    cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+    Object.keys(sg).forEach(s => te += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+    return te;
+})();
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成:</td><td style="padding:2px 0 2px 4px;">$${aTotalExcess}</td></tr>`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
+origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
+origTable += `</table>`;
+origTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+origTable += (function(){
+    let totalExcess = 0;
+    const sg = {};
+    cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+    Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+    let totalOrigExcess = 0;
+    Object.keys(sg).forEach(s => totalOrigExcess += Math.max(0, ...sg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0)))));
+
+    const pd = total >= 285 ? 143 : Math.floor(total/2);
+    const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalOrigExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+})();
+origTable += `</div>`;
+
+let costRes = typeof calcOrderCost === 'function' ? calcOrderCost(cart) : null;
+if (costRes && costRes.shouldSplit) {
+    let splitFood = 0; let splitPromo = 0; let splitExcess = 0; let splitPreorder = 0; let splitFee = costRes.bins.length * 50;
+    costRes.bins.forEach(bin => {
+        splitFood += bin.sum;
+        splitPromo += (bin.sum >= 285 ? 143 : Math.floor(bin.sum / 2));
+        let bsg = {}; bin.items.forEach(i => { if(!bsg[i.storeName||'']) bsg[i.storeName||'']=[]; bsg[i.storeName||''].push(i); });
+        let binEx = 0; Object.keys(bsg).forEach(s => binEx += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
+        splitExcess += binEx;
+        let pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? (window.isGroceryStore ? 20 : 10) : 0;
+        splitPreorder += pr;
+    });
+
+    let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0))))); return te; })();
+
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">A方案: $285內5折</div>`;
+    sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costRes.bins.length} 單)</div>`;
+    sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">小計:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFood}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPromo}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">代訂費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFee}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">外送加成:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitExcess}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">服務費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$0</td></tr>`;
+if (splitPreorder > 0) {
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPreorder}</td></tr>`;
+}
+sumTable += `</table>`;
+    sumTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+    sumTable += `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${originalBaseStr}</span> <span style="color:#d32f2f; font-size:18px;">$${costRes.bestCost}</span>`;
+    sumTable += `</div>`;
+
+    window._splitOrigHtmlA = sumTable; window._splitBinsA = costRes.bins; window._splitSavingsA = costRes.savings; window._splitBestCostA = costRes.bestCost; window._currentSplitIndexA = -1;
+    
+    html += `<button onclick="switchSplitTab('A', -1)" style="position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">◀</button>`;
+    html += `<div id="splitTabContentA" style="min-height:220px; padding: 0 10px;">` + sumTable + `</div>`;
+    html += `<button onclick="switchSplitTab('A', 1)" style="position:absolute; right:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">▶</button>`;
+    html += `<div style="position:absolute; bottom:2px; left:0; right:0; display:flex; justify-content:center; gap:4px;">`;
+    html += `<div id="split-dot-A--1" style="width:6px; height:6px; border-radius:50%; background:#06c167;"></div>`;
+    for(let b=0; b<costRes.bins.length; b++){
+        html += `<div id="split-dot-A-${b}" style="width:6px; height:6px; border-radius:50%; background:#ccc;"></div>`;
+    }
+    html += `</div>`;
+} else {
+    html += origTable;
+}
+html += `</div>`; // closes Plan A
+
+
+// Plan B
+html += `<div id="planBCard" onclick="selectPlan('B')" style="flex:1; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee; text-align:center; font-size:14px; position:relative; cursor:pointer; opacity: ${total < 200 ? 0.5 : 1};">`;
+
+let origTableB = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">B方案: $200-$200</div>`;
+if (total < 200) {
+    origTableB += `<div style="color:#d32f2f; font-weight:bold; margin-top:30px; font-size:15px;">低消未達無法使用</div>`;
+} else {
+    origTableB += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; margin-top:10px;">`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$200</td></tr>`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$130</td></tr>`;
+let bTotalExcess = (function(){
+let te = 0; const sg = {}; cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); }); Object.keys(sg).forEach(s => te += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+return te;
+})();
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成:</td><td style="padding:2px 0 2px 4px;">${bTotalExcess}</td></tr>`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold;">$18~$60</td></tr>`;
+    origTableB += `</table>`;
+    origTableB += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+    origTableB += (function(){
+        let totalExcess = 0; const sg = {}; cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); }); Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+        let bTotalBase = total - 200 + 130 + 30 + totalExcess;
+        return `總計: <span style="color:#d32f2f; font-size:16px;">$${bTotalBase - 12} ~ $${bTotalBase + 30}</span>`;
+    })();
+    origTableB += `</div>`;
+}
+
+let costResB = (typeof calcOrderCostB === 'function' && total >= 200) ? calcOrderCostB(cart) : null;
+if (costResB && costResB.shouldSplit) {
+    let splitFood = 0; let splitPromo = 0; let splitExcess = 0; let splitPreorder = 0; let splitFee = costResB.bins.length * 130;
+    costResB.bins.forEach(bin => {
+        splitFood += bin.sum;
+        splitPromo += (bin.sum >= 200 ? 200 : 0);
+        let bsg = {}; bin.items.forEach(i => { if(!bsg[i.storeName||'']) bsg[i.storeName||'']=[]; bsg[i.storeName||''].push(i); });
+        let binEx = 0; Object.keys(bsg).forEach(s => binEx += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
+        splitExcess += binEx;
+    });
+
+    let originalBaseStrB = total + 130 + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0))))); return te; })();
+
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">B方案: $200-$200</div>`;
+    sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costResB.bins.length} 單)</div>`;
+    sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; transform: translateX(-4em);">`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">小計:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFood}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap; visibility:hidden;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPromo}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">代訂費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFee}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">外送加成:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitExcess}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold; white-space:nowrap; visibility:hidden;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold; white-space:nowrap;"><span style="visibility:hidden">-</span>$${costResB.bins.length * 18}~$${costResB.bins.length * 60}</td></tr>`;
+let bPreorder = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
+if (bPreorder > 0) {
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap; visibility:hidden;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap; visibility:hidden;">-$0</td></tr>`;
+}
+sumTable += `</table>`;
+    sumTable += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
+    sumTable += `<span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${originalBaseStrB - 200 + 18}~$${originalBaseStrB - 200 + 60}</span> <br><span style="color:#d32f2f; font-size:16px;">$${costResB.bestCost - (costResB.bins.length * 12)} ~ $${costResB.bestCost + (costResB.bins.length * 30)}</span>`;
+sumTable += `</div>`;
+
+    window._splitOrigHtmlB = sumTable; window._splitBinsB = costResB.bins; window._splitSavingsB = costResB.savings; window._splitBestCostB = costResB.bestCost; window._currentSplitIndexB = -1;
+    
+    html += `<button onclick="switchSplitTab('B', -1)" style="position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#276ef1; padding:10px; z-index:2;">◀</button>`;
+    html += `<div id="splitTabContentB" style="min-height:220px; padding: 0 10px;">` + sumTable + `</div>`;
+    html += `<button onclick="switchSplitTab('B', 1)" style="position:absolute; right:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#276ef1; padding:10px; z-index:2;">▶</button>`;
+    html += `<div style="position:absolute; bottom:2px; left:0; right:0; display:flex; justify-content:center; gap:4px;">`;
+    html += `<div id="split-dot-B--1" style="width:6px; height:6px; border-radius:50%; background:#276ef1;"></div>`;
+    for(let b=0; b<costResB.bins.length; b++){
+        html += `<div id="split-dot-B-${b}" style="width:6px; height:6px; border-radius:50%; background:#ccc;"></div>`;
+    }
+    html += `</div>`;
+} else {
+    html += origTableB;
+}
+html += `</div>`; // closes Plan B
+      html += `</div>`; // end flex container
+
+
+
+      html += `
     </div>
 
   `;
@@ -3670,6 +3781,8 @@ function openCheckoutSummary() {
   document.getElementById('cartView').style.display = 'none';
 
   document.getElementById('checkoutView').style.display = 'block';
+      if (document.getElementById('floatingCartBtn')) document.getElementById('floatingCartBtn').style.display = 'none';
+      updatePlanButtons();
 
   
 
@@ -3924,6 +4037,8 @@ function openGroceryCheckoutSummary() {
 
 
   document.getElementById('checkoutView').style.display = 'block';
+      if (document.getElementById('floatingCartBtn')) document.getElementById('floatingCartBtn').style.display = 'none';
+      updatePlanButtons();
 
 
 
@@ -3984,6 +4099,11 @@ async function _sendOrderToLine(forceSubmit = false) {
       const priceKeyText = (window.lastMatchedPrice && window.lastMatchedPrice > 0) ? `🗝️${window.lastMatchedPrice}` : '';
 
   let msgText = '';
+
+      if (forceSubmit === 'planA' || forceSubmit === 'planB') {
+          window.selectedPlan = forceSubmit;
+      }
+      const currentPlan = window.selectedPlan || 'planA';
 
   const prefix = window.isGroceryStore ? 'grocery' : 'checkout';
 
@@ -4235,7 +4355,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
       if (forceSubmit === 'split' && costRes.bins) {
 
-      msgText = `🛵 UberEats 揪團訂單${priceKeyText} (✅已享有多單優惠)\n`;
+      msgText = `🛵 UberEats 揪團訂單${priceKeyText} \nA方案:$285內5折\nB方案:$200-$200\n`;
 
         if (addr) msgText += `📍 地址: ${addr}${coordsText}\n`;
 
@@ -4342,7 +4462,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
           msgText += `  🛵 代訂費: $${feePerBin}\n`;
 
-          if (binExcess > 0) msgText += `  🚚 超額外送費: $${binExcess}\n`;
+          msgText += `   🛵 外送加成: $${binExcess}\n`;
 
           msgText += `  ➡️ 結算: $${binTotal}\n\n`;
 
@@ -4457,20 +4577,28 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        msgText += `💰 小計: $${total}\n`;
 
-        if (promoDiscount > 0) msgText += `🎉 半價優惠: -$${promoDiscount}\n`;
-
-        msgText += `🛵 代訂費: $${serviceFee}\n`;
-
-        if (totalExcessDeliveryFee > 0) msgText += `🚚 超額外送費: $${totalExcessDeliveryFee}\n`;
-
-        if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(2.5小時以上): -$${preOrderDiscount}\n`;
-
-        msgText += `\n✨ 總計: $${grandTotal}`;
-
+      if (currentPlan === 'planB') {
+          msgText += `🏷️ [B方案] ($200-$200)\n`;
+          msgText += `💵 小計: $${total}\n`;
+          msgText += `🎉 優惠折抵: -$200\n`;
+          msgText += `🏍️ 代訂費: $130\n`;
+          msgText += `🛵 外送加成: $${totalExcessDeliveryFee}\n`;
+          msgText += `🧑‍💼 服務費: $18~$60\n`;
+          let minTotal = total - 200 + 130 + totalExcessDeliveryFee + 18;
+          let maxTotal = total - 200 + 130 + totalExcessDeliveryFee + 60;
+          msgText += `\n💰 總計: $${minTotal} ~ $${maxTotal}\n`;
+      } else {
+          msgText += `🏷️ [A方案] ($285內5折)\n`;
+          msgText += `💵 小計: $${total}\n`;
+          if (promoDiscount > 0) msgText += `🎉 優惠半價折抵: -$${promoDiscount}\n`;
+          msgText += `🏍️ 代訂費: $${serviceFee}\n`;
+          msgText += `🛵 外送加成: $${totalExcessDeliveryFee}\n`;
+          msgText += `🧑‍💼 服務費: $0\n`;
+          if (preOrderDiscount > 0) msgText += `📅 預定折扣(2.5小時以上): -$${preOrderDiscount}\n`;
+          msgText += `\n💰 總計: $${grandTotal}`;
       }
-
+      }
   } // END OF isGroceryStore else block
 
 
@@ -5219,7 +5347,8 @@ const note = document.getElementById('modalNote').value.trim();
 
       note: fullNote,
 
-      storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0
+      storeDeliveryFee: typeof currentStoreDeliveryFee !== 'undefined' ? currentStoreDeliveryFee : 0,
+      originalStoreDeliveryFee: typeof currentOriginalDeliveryFee !== 'undefined' ? currentOriginalDeliveryFee : (typeof currentStoreDeliveryFee !== 'undefined' && currentStoreDeliveryFee > 0 ? currentStoreDeliveryFee + 50 : 0)
 
     });
 
@@ -5354,7 +5483,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
       currentStoreUuid = uuid;
 
-      currentStoreDeliveryFee = 0;
+      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
     const resultsDiv = document.getElementById('results');
 
@@ -5929,13 +6058,13 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
                   if (displayFee <= 0) {
 
-                      currentStoreDeliveryFee = 0;
+                      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
                       fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費</div>`;
 
                   } else {
 
-                      currentStoreDeliveryFee = displayFee;
+                      currentStoreDeliveryFee = displayFee; currentOriginalDeliveryFee = typeof fee !== 'undefined' ? fee : (displayFee > 0 ? displayFee + 50 : 0);
 
                       fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 外送費超過50 需要額外 ${displayFee} 元外送費用</div>`;
 
@@ -5974,7 +6103,7 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
               }
           } catch(e) { console.error(e); }
           fareHtml = `<div style="text-align: center; color: #d32f2f; font-size: 14px; margin-bottom: 10px; font-weight: bold;">🚚 免外送費、${feeText}</div>`;
-          currentStoreDeliveryFee = 0;
+          currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
 
       }
 
@@ -6309,7 +6438,7 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                   if (fd.fareBadge && fd.fareBadge.text) {
                       const fareText = fd.fareBadge.text;
                       if (fareText.toLowerCase().includes('no fee')) {
-                          currentStoreDeliveryFee = 0;
+                          currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                           fareArea.innerHTML = '免運費 🎉';
                           fareArea.style.color = '#d32f2f';
                           fareArea.style.fontWeight = 'bold';
@@ -6320,13 +6449,13 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                               let fee = parseInt(match[1], 10);
                               let displayFee = fee > 50 ? fee - 50 : fee - 10;
                               if (displayFee <= 0) {
-                                  currentStoreDeliveryFee = 0;
+                                  currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                                   fareArea.innerHTML = '免運費 🎉';
                                   fareArea.style.color = '#d32f2f';
                                   fareArea.style.fontWeight = 'bold';
                                   fareArea.style.fontSize = '14px';
                               } else {
-                                  currentStoreDeliveryFee = displayFee;
+                                  currentStoreDeliveryFee = displayFee; currentOriginalDeliveryFee = typeof fee !== 'undefined' ? fee : (displayFee > 0 ? displayFee + 50 : 0);
                                   fareArea.innerHTML = `⚠️ 超過50元免運 額外運費 ${displayFee} 元`;
                                   fareArea.style.color = '#d32f2f';
                                   fareArea.style.fontWeight = 'bold';
@@ -6339,7 +6468,7 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                       fareArea.style.color = '#d32f2f';
                       fareArea.style.fontWeight = 'bold';
                       fareArea.style.fontSize = '14px';
-                      currentStoreDeliveryFee = 0;
+                      currentStoreDeliveryFee = 0; currentOriginalDeliveryFee = 0;
                   }
                   
                   if (window.isGroceryStore && fd.basketDependentFeePolicy && fd.basketDependentFeePolicy.dialog && fd.basketDependentFeePolicy.dialog.tierFee) {
@@ -6544,6 +6673,88 @@ function normalizeAddress(addr) {
 
 
 
+
+function calcOrderCostB(items) {
+    let totalSum = 0;
+    items.forEach(it => totalSum += it.price * it.qty);
+
+    let promoDiscount = totalSum >= 200 ? 200 : 0;
+let totalExcessDeliveryFee = 0;
+    const sg = {};
+    items.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
+    Object.keys(sg).forEach(s => totalExcessDeliveryFee += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
+
+    let noBinCost = (totalSum - promoDiscount) + 130 + 30 + totalExcessDeliveryFee;
+
+    let expanded = [];
+    items.forEach(it => {
+        for (let j = 0; j < it.qty; j++) {
+            expanded.push({ name: it.title, price: it.price, storeName: it.storeName || '未知餐廳', note: it.note || '', storeDeliveryFee: it.storeDeliveryFee || 0, storeUrl: it.storeUrl });
+        }
+    });
+
+    if (expanded.length <= 1) return { shouldSplit: false, noBinCost, bestCost: noBinCost, bins: null, savings: 0 };
+
+    let bestBins = null;
+    let bestCost = Infinity;
+
+    for (let attempt = 0; attempt < 1000; attempt++) {
+        let bins = [];
+        let cur = [...expanded];
+        
+        for (let i = cur.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [cur[i], cur[j]] = [cur[j], cur[i]];
+        }
+
+        let currentBin = { items: [], sum: 0 };
+        for (let item of cur) {
+            currentBin.items.push(item);
+            currentBin.sum += item.price;
+            if (currentBin.sum >= 200) {
+                bins.push(currentBin);
+                currentBin = { items: [], sum: 0 };
+            }
+        }
+        if (currentBin.items.length > 0) {
+            if (bins.length > 0) {
+                bins[0].items.push(...currentBin.items);
+                bins[0].sum += currentBin.sum;
+            } else {
+                bins.push(currentBin);
+            }
+        }
+
+        if (bins.length > 1) {
+            let cost = 0;
+            let feePerBin = 130;
+            for (let bin of bins) {
+                let binPromo = bin.sum >= 200 ? 200 : 0;
+                let binFoodCost = bin.sum - binPromo;
+                let binExcess = 0;
+                const bsg = {};
+                bin.items.forEach(i => {
+                    if(!bsg[i.storeName||'']) bsg[i.storeName||'']=[];
+                    bsg[i.storeName||''].push(i);
+                });
+                Object.keys(bsg).forEach(s => binExcess += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
+                cost += binFoodCost + feePerBin + 30 + binExcess;
+            }
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestBins = bins;
+            }
+        }
+    }
+
+    return {
+        shouldSplit: totalSum >= 400 && bestBins && bestBins.length > 1 && bestCost < noBinCost,
+        noBinCost,
+        bestCost,
+        bins: bestBins,
+        savings: noBinCost - bestCost
+    };
+}
   function calcOrderCost(items) {
 
   let totalSum = 0;
@@ -6737,7 +6948,7 @@ function normalizeAddress(addr) {
 
         
 
-        cost += binFoodCost + feePerBin + binExcess - preOrderDiscount;
+        cost += binFoodCost + feePerBin + 30 + binExcess;
 
       }
 
@@ -6886,10 +7097,62 @@ function buildSplitSuggestionHtml(result) {
 
   }
 
+window.renderSplitTab = function(plan) {
+    let bins = plan === 'A' ? window._splitBinsA : window._splitBinsB;
+    let currentIndex = plan === 'A' ? window._currentSplitIndexA : window._currentSplitIndexB;
+    let origHtml = plan === 'A' ? window._splitOrigHtmlA : window._splitOrigHtmlB;
+    let savings = plan === 'A' ? window._splitSavingsA : window._splitSavingsB;
+    let bestCost = plan === 'A' ? window._splitBestCostA : window._splitBestCostB;
+    let color = plan === 'A' ? '#06c167' : '#276ef1';
+    
+    if (!bins) return;
+    for(let i = -1; i < bins.length; i++) {
+        let dot = document.getElementById('split-dot-' + plan + '-' + i);
+        if (dot) dot.style.background = (i === currentIndex) ? color : '#ccc';
+    }
+
+    const container = document.getElementById('splitTabContent' + plan);
+    if (!container) return;
+
+    if (currentIndex === -1) {
+        container.innerHTML = origHtml;
+        return;
+    }
+
+    const bin = bins[currentIndex];
+    let counts = {};
+    bin.items.forEach(item => { let key = item.name; counts[key] = (counts[key] || 0) + 1; });
+    let itemStrs = [];
+    for (let key in counts) itemStrs.push(counts[key] > 1 ? `${key} x${counts[key]}` : key);
+    
+    let titleText = plan === 'A' ? 'A方案: $285內5折' : 'B方案: $200-$200';
+    let html = `
+        <div style="font-weight:bold; color:${color}; margin-bottom:2px;">${titleText}</div>
+        <div style="font-size:12px; color:#d32f2f; font-weight:bold; margin-bottom:10px;">✨ 拆單省 $${savings}</div>
+        <div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">第 ${currentIndex + 1} 單 / 共 ${bins.length} 單</div>
+        <div style="color:#d32f2f; font-weight:bold; font-size:13px; margin-bottom:4px;">小計: $${bin.sum}</div>
+        <div style="font-size:12px; color:#666; word-break:break-all; text-align:left; display:inline-block; max-height:80px; overflow-y:auto;">- ${itemStrs.join('<br>- ')}</div>
+    `;
+    container.innerHTML = html;
+};
+
+window.switchSplitTab = function(plan, dir) {
+    let bins = plan === 'A' ? window._splitBinsA : window._splitBinsB;
+    if (!bins) return;
+    if (plan === 'A') {
+        window._currentSplitIndexA += dir;
+        if (window._currentSplitIndexA < -1) window._currentSplitIndexA = bins.length - 1;
+        if (window._currentSplitIndexA >= bins.length) window._currentSplitIndexA = -1;
+    } else {
+        window._currentSplitIndexB += dir;
+        if (window._currentSplitIndexB < -1) window._currentSplitIndexB = bins.length - 1;
+        if (window._currentSplitIndexB >= bins.length) window._currentSplitIndexB = -1;
+    }
+    window.renderSplitTab(plan);
+};
+
 </script>
-
 <script>
-
   window.doStoreKeywordSearch = function(kw) {
 
       const box = document.getElementById('headerSearchBox');
@@ -6998,7 +7261,6 @@ function showToast(msg) {
     }, 2000);
 }
 </script>
-
 
 
   <!-- 錯誤提示框 -->
