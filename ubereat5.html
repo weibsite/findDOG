@@ -1789,6 +1789,342 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+
+function generateStoreListHTML(stores, q, currentVertical) {
+    const statusEl = document.getElementById('status');
+
+    // 根據使用者要求進行極致智能排序：分類、抽首位、穿插
+
+      const searchQ = q.toLowerCase();
+
+      const isShort = searchQ.length < 4;
+
+
+
+      let topMatched = null;
+
+      let openStores = [];
+
+      let closedMatchedStores = [];
+
+      let closedUnmatchedStores = [];
+
+
+
+      stores.forEach(s => {
+
+          const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
+
+          const state = s.storeAvailablityState || '';
+
+          let isUIClosed = false;
+
+          if (state.includes('CLOSED')) isUIClosed = true;
+
+          if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
+
+          if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
+
+          const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
+
+          const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
+
+          const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
+
+
+
+          // 標記這家店的匹配分數，方便等一下在各自陣列中再排序一次
+
+          s._matchScore = isStrongMatch ? 2 : (isWeakMatch ? 1 : 0);
+
+
+
+          if (!isCompletelyClosed) {
+
+              openStores.push(s);
+
+          } else if (isStrongMatch || isWeakMatch) {
+
+              closedMatchedStores.push(s);
+
+          } else {
+
+              closedUnmatchedStores.push(s);
+
+          }
+
+      });
+
+
+
+      // 各自內部排序：讓符合名稱的排在前面
+
+      const sortByMatch = (a, b) => b._matchScore - a._matchScore;
+
+      openStores.sort(sortByMatch);
+
+      closedMatchedStores.sort(sortByMatch);
+
+
+
+      let finalList = [];
+
+
+
+      if (isShort) {
+
+          // 如果字數少於 4，抽取「第一家完全符合」的店家，不論有沒有開，放在絕對第一名
+
+          // 優先從有開的找，找不到再從沒開的找
+
+          let foundIdx = openStores.findIndex(s => s._matchScore > 0);
+
+          if (foundIdx !== -1) {
+
+              topMatched = openStores.splice(foundIdx, 1)[0];
+
+          } else {
+
+              foundIdx = closedMatchedStores.findIndex(s => s._matchScore > 0);
+
+              if (foundIdx !== -1) {
+
+                  topMatched = closedMatchedStores.splice(foundIdx, 1)[0];
+
+              }
+
+          }
+
+
+
+          if (topMatched) finalList.push(topMatched);
+
+
+
+          // 接下來把剩下的「有開的」與「沒開但符合的」穿插 (每 2 家有開的，穿插 1 家沒開的)
+
+          let openIdx = 0, closedIdx = 0;
+
+          while (openIdx < openStores.length || closedIdx < closedMatchedStores.length) {
+
+              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
+
+              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
+
+              if (closedIdx < closedMatchedStores.length) finalList.push(closedMatchedStores[closedIdx++]);
+
+          }
+
+      } else {
+
+          // 如果字數 >= 4 (通常是確切店名)，把所有強烈符合的(不管有沒有開)都放在最前面
+
+          const strongClosed = closedMatchedStores.filter(s => s._matchScore === 2);
+
+          const weakClosed = closedMatchedStores.filter(s => s._matchScore < 2);
+
+          
+
+          finalList = finalList.concat(openStores.filter(s => s._matchScore === 2)); // 強符合 有開
+
+          finalList = finalList.concat(strongClosed);                                // 強符合 沒開
+
+          finalList = finalList.concat(openStores.filter(s => s._matchScore < 2));   // 弱/不符合 有開
+
+          finalList = finalList.concat(weakClosed);                                  // 弱符合 沒開
+
+      }
+
+
+
+      // 最後補上完全沒中且沒開的幽靈店家
+
+      finalList = finalList.concat(closedUnmatchedStores);
+
+      stores = finalList;
+
+
+
+      if (stores.length === 0) { if(statusEl) statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return '<div style="padding:40px 20px;text-align:center;color:#999;">找不到相關結果。</div>'; }
+
+      
+
+      const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
+
+
+
+      if(statusEl) statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
+
+      return stores.map(s => {
+
+        let imgUrl = '';
+
+        if (s.image && s.image.items && s.image.items.length > 0) {
+
+            let bestItem = s.image.items[s.image.items.length - 1];
+
+            for (let img of s.image.items) {
+
+                if (img.width >= 400 && img.width <= 800) { bestItem = img; break; }
+
+            }
+
+            imgUrl = getUberWebpUrl(bestItem.url);
+
+        }
+
+        const rating = s.rating ? s.rating.text : '無評價';
+
+                let name = s.title ? s.title.text : '未知餐廳';
+        if (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') {
+            name += ' (不需外送費、需要服務費)';
+        }
+
+        
+
+        let isClosed = false;
+
+        if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'STORE_CLOSED') {
+
+            isClosed = true;
+
+        } else if (s.imageOverlay && s.imageOverlay.text === 'Closed') {
+
+            isClosed = true;
+
+        }
+
+
+
+        const isBad = unSchedulableStores.includes(s.storeUuid);
+
+        
+
+        // 加上 grayscale 讓圖片反灰
+
+        const style = (isBad || isClosed) ? 'filter: grayscale(100%); opacity: 0.85;' : '';
+
+        
+
+        let overlayHtml = '';
+
+        if (isClosed && !isBad) {
+
+            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">休息中可預約</div>`;
+
+        } else if (isBad) {
+
+            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">無法接單</div>`;
+
+        }
+
+        
+
+        // 解析 meta 標籤中的預約資訊
+
+        let metaText = '';
+
+        if (s.meta && s.meta.length > 0) {
+
+            const closedEta = s.meta.find(m => m.badgeType === 'CLOSED_ETA');
+
+            const openEta = s.meta.find(m => m.badgeType === 'ETD');
+
+            
+
+            if (closedEta && closedEta.text) {
+
+                let txt = closedEta.text;
+
+                if (txt === 'Schedule ahead') {
+
+                    metaText = '可預約';
+
+                } else if (txt.startsWith('Available in ') && txt.endsWith(' min')) {
+
+                    const mins = txt.replace('Available in ', '').replace(' min', '');
+
+                    metaText = `${mins}分鐘後營業 (可預約)`;
+
+                } else if (txt.startsWith('Available at ')) {
+
+                    const time = txt.replace('Available at ', '');
+
+                    metaText = `${time}營業 (可預約)`;
+
+                } else {
+
+                    metaText = txt + ' (可預約)';
+
+                }
+
+            } else if (openEta) {
+                if (openEta.accessibilityText && (openEta.accessibilityText.includes('Delivered in') || openEta.accessibilityText.includes('分鐘內送達'))) {
+                    const match = openEta.accessibilityText.match(/(\d+)\s*(?:to|到)\s*(\d+)/);
+                    if (match) {
+                        metaText = `預計 ${match[1]}~${match[2]} 分鐘`;
+                    } else {
+                        metaText = openEta.text ? openEta.text.replace('min', '分鐘') : '';
+                    }
+                } else if (openEta.text) {
+                    metaText = openEta.text.replace('min', '分鐘');
+                }
+            }
+
+        }
+
+        
+
+        let etaBadgeHtml = '';
+        if (metaText && !isClosed && !isBad) {
+            etaBadgeHtml = `<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:20px; font-size:12px; font-weight:bold; letter-spacing:0.5px; z-index:3; display:flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>${escapeHTML(metaText.replace('預計 ', ''))}</div>`;
+        }
+
+        let metaDisplay = `⭐ ${escapeHTML(rating)}`;
+
+        // 原本在下方的文字保留，也可以考慮拿掉，為了保險先留著
+
+        if (metaText) {
+
+            metaDisplay += ` &nbsp;|&nbsp; <span style="color:#e67e22; font-weight:bold;">${escapeHTML(metaText)}</span>`;
+
+        }
+
+        
+
+        return `
+
+          <div id="card_${s.storeUuid}" class="card" onclick="openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
+
+            <div class="card-img" style="position:relative; overflow:hidden; ${style}">
+
+                ${imgUrl ? `<img src="${imgUrl}" loading="lazy" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />` : ''}
+
+                ${etaBadgeHtml}
+                <div style="position:relative; z-index:1; width:100%; height:100%;">
+
+                    ${overlayHtml}
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+              <div class="card-name">${escapeHTML(name)}</div>
+
+              <div class="card-meta">${metaDisplay}</div>
+
+            </div>
+
+          </div>
+
+        `;
+
+      }).join('');
+}
+
+
 async function searchStores() {
 
     // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
@@ -2089,335 +2425,7 @@ async function searchStores() {
 
       
 
-      // 根據使用者要求進行極致智能排序：分類、抽首位、穿插
-
-      const searchQ = q.toLowerCase();
-
-      const isShort = searchQ.length < 4;
-
-
-
-      let topMatched = null;
-
-      let openStores = [];
-
-      let closedMatchedStores = [];
-
-      let closedUnmatchedStores = [];
-
-
-
-      stores.forEach(s => {
-
-          const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
-
-          const state = s.storeAvailablityState || '';
-
-          let isUIClosed = false;
-
-          if (state.includes('CLOSED')) isUIClosed = true;
-
-          if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
-
-          if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
-
-          const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
-
-          const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
-
-          const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
-
-
-
-          // 標記這家店的匹配分數，方便等一下在各自陣列中再排序一次
-
-          s._matchScore = isStrongMatch ? 2 : (isWeakMatch ? 1 : 0);
-
-
-
-          if (!isCompletelyClosed) {
-
-              openStores.push(s);
-
-          } else if (isStrongMatch || isWeakMatch) {
-
-              closedMatchedStores.push(s);
-
-          } else {
-
-              closedUnmatchedStores.push(s);
-
-          }
-
-      });
-
-
-
-      // 各自內部排序：讓符合名稱的排在前面
-
-      const sortByMatch = (a, b) => b._matchScore - a._matchScore;
-
-      openStores.sort(sortByMatch);
-
-      closedMatchedStores.sort(sortByMatch);
-
-
-
-      let finalList = [];
-
-
-
-      if (isShort) {
-
-          // 如果字數少於 4，抽取「第一家完全符合」的店家，不論有沒有開，放在絕對第一名
-
-          // 優先從有開的找，找不到再從沒開的找
-
-          let foundIdx = openStores.findIndex(s => s._matchScore > 0);
-
-          if (foundIdx !== -1) {
-
-              topMatched = openStores.splice(foundIdx, 1)[0];
-
-          } else {
-
-              foundIdx = closedMatchedStores.findIndex(s => s._matchScore > 0);
-
-              if (foundIdx !== -1) {
-
-                  topMatched = closedMatchedStores.splice(foundIdx, 1)[0];
-
-              }
-
-          }
-
-
-
-          if (topMatched) finalList.push(topMatched);
-
-
-
-          // 接下來把剩下的「有開的」與「沒開但符合的」穿插 (每 2 家有開的，穿插 1 家沒開的)
-
-          let openIdx = 0, closedIdx = 0;
-
-          while (openIdx < openStores.length || closedIdx < closedMatchedStores.length) {
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (closedIdx < closedMatchedStores.length) finalList.push(closedMatchedStores[closedIdx++]);
-
-          }
-
-      } else {
-
-          // 如果字數 >= 4 (通常是確切店名)，把所有強烈符合的(不管有沒有開)都放在最前面
-
-          const strongClosed = closedMatchedStores.filter(s => s._matchScore === 2);
-
-          const weakClosed = closedMatchedStores.filter(s => s._matchScore < 2);
-
-          
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore === 2)); // 強符合 有開
-
-          finalList = finalList.concat(strongClosed);                                // 強符合 沒開
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore < 2));   // 弱/不符合 有開
-
-          finalList = finalList.concat(weakClosed);                                  // 弱符合 沒開
-
-      }
-
-
-
-      // 最後補上完全沒中且沒開的幽靈店家
-
-      finalList = finalList.concat(closedUnmatchedStores);
-
-      stores = finalList;
-
-
-
-      if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
-
-      
-
-      const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
-
-
-
-      statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
-
-      resultsEl.innerHTML = stores.map(s => {
-
-        let imgUrl = '';
-
-        if (s.image && s.image.items && s.image.items.length > 0) {
-
-            let bestItem = s.image.items[s.image.items.length - 1];
-
-            for (let img of s.image.items) {
-
-                if (img.width >= 400 && img.width <= 800) { bestItem = img; break; }
-
-            }
-
-            imgUrl = getUberWebpUrl(bestItem.url);
-
-        }
-
-        const rating = s.rating ? s.rating.text : '無評價';
-
-                let name = s.title ? s.title.text : '未知餐廳';
-        if (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') {
-            name += ' (不需外送費、需要服務費)';
-        }
-
-        
-
-        let isClosed = false;
-
-        if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'STORE_CLOSED') {
-
-            isClosed = true;
-
-        } else if (s.imageOverlay && s.imageOverlay.text === 'Closed') {
-
-            isClosed = true;
-
-        }
-
-
-
-        const isBad = unSchedulableStores.includes(s.storeUuid);
-
-        
-
-        // 加上 grayscale 讓圖片反灰
-
-        const style = (isBad || isClosed) ? 'filter: grayscale(100%); opacity: 0.85;' : '';
-
-        
-
-        let overlayHtml = '';
-
-        if (isClosed && !isBad) {
-
-            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">休息中可預約</div>`;
-
-        } else if (isBad) {
-
-            overlayHtml = `<div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:bold; letter-spacing:1px; z-index:2;">無法接單</div>`;
-
-        }
-
-        
-
-        // 解析 meta 標籤中的預約資訊
-
-        let metaText = '';
-
-        if (s.meta && s.meta.length > 0) {
-
-            const closedEta = s.meta.find(m => m.badgeType === 'CLOSED_ETA');
-
-            const openEta = s.meta.find(m => m.badgeType === 'ETD');
-
-            
-
-            if (closedEta && closedEta.text) {
-
-                let txt = closedEta.text;
-
-                if (txt === 'Schedule ahead') {
-
-                    metaText = '可預約';
-
-                } else if (txt.startsWith('Available in ') && txt.endsWith(' min')) {
-
-                    const mins = txt.replace('Available in ', '').replace(' min', '');
-
-                    metaText = `${mins}分鐘後營業 (可預約)`;
-
-                } else if (txt.startsWith('Available at ')) {
-
-                    const time = txt.replace('Available at ', '');
-
-                    metaText = `${time}營業 (可預約)`;
-
-                } else {
-
-                    metaText = txt + ' (可預約)';
-
-                }
-
-            } else if (openEta) {
-                if (openEta.accessibilityText && (openEta.accessibilityText.includes('Delivered in') || openEta.accessibilityText.includes('分鐘內送達'))) {
-                    const match = openEta.accessibilityText.match(/(\d+)\s*(?:to|到)\s*(\d+)/);
-                    if (match) {
-                        metaText = `預計 ${match[1]}~${match[2]} 分鐘`;
-                    } else {
-                        metaText = openEta.text ? openEta.text.replace('min', '分鐘') : '';
-                    }
-                } else if (openEta.text) {
-                    metaText = openEta.text.replace('min', '分鐘');
-                }
-            }
-
-        }
-
-        
-
-        let etaBadgeHtml = '';
-        if (metaText && !isClosed && !isBad) {
-            etaBadgeHtml = `<div style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:20px; font-size:12px; font-weight:bold; letter-spacing:0.5px; z-index:3; display:flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>${escapeHTML(metaText.replace('預計 ', ''))}</div>`;
-        }
-
-        let metaDisplay = `⭐ ${escapeHTML(rating)}`;
-
-        // 原本在下方的文字保留，也可以考慮拿掉，為了保險先留著
-
-        if (metaText) {
-
-            metaDisplay += ` &nbsp;|&nbsp; <span style="color:#e67e22; font-weight:bold;">${escapeHTML(metaText)}</span>`;
-
-        }
-
-        
-
-        return `
-
-          <div id="card_${s.storeUuid}" class="card" onclick="openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
-
-            <div class="card-img" style="position:relative; overflow:hidden; ${style}">
-
-                ${imgUrl ? `<img src="${imgUrl}" loading="lazy" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0;" />` : ''}
-
-                ${etaBadgeHtml}
-                <div style="position:relative; z-index:1; width:100%; height:100%;">
-
-                    ${overlayHtml}
-
-                </div>
-
-            </div>
-
-            <div class="card-body">
-
-              <div class="card-name">${escapeHTML(name)}</div>
-
-              <div class="card-meta">${metaDisplay}</div>
-
-            </div>
-
-          </div>
-
-        `;
-
-      }).join('');
+      resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
 
     } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
 
@@ -7298,6 +7306,17 @@ async function fetchStoreSuggestions(q) {
             });
             
             window.suggestionStores = stores;
+        const resultsEl = document.getElementById('results');
+        if (resultsEl) {
+            resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
+            // Also update the status element just in case, though it's hidden in home view
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.innerHTML = `為您找到 ${stores.length} 家${(typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '生鮮雜貨' : '餐廳'}：`;
+                statusEl.className = 'status success';
+            }
+        }
+
             // Re-render the overlay to show newly fetched stores
             renderOverlayHTML();
         }
