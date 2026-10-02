@@ -1793,153 +1793,55 @@ document.addEventListener("DOMContentLoaded", () => {
 function generateStoreListHTML(stores, q, currentVertical) {
     const statusEl = document.getElementById('status');
 
-    // 根據使用者要求進行極致智能排序：分類、抽首位、穿插
+    // 全新智能排序：嚴格依照「關聯度」與「營業狀態」進行排序
 
       const searchQ = q.toLowerCase();
 
-      const isShort = searchQ.length < 4;
-
-
-
-      let topMatched = null;
-
-      let openStores = [];
-
-      let closedMatchedStores = [];
-
-      let closedUnmatchedStores = [];
-
-
+      let openStrong = [], closedStrong = [];
+      let openWeak = [], closedWeak = [];
+      let openNone = [], closedNone = [];
 
       stores.forEach(s => {
-
           const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
-
           const state = s.storeAvailablityState || '';
-
+          
           let isUIClosed = false;
-
           if (state.includes('CLOSED')) isUIClosed = true;
-
           if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
-
           if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
-
+                if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
+          if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
           const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
 
           const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
-
           const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
 
-
-
-          // 標記這家店的匹配分數，方便等一下在各自陣列中再排序一次
-
-          s._matchScore = isStrongMatch ? 2 : (isWeakMatch ? 1 : 0);
-
-
-
-          if (!isCompletelyClosed) {
-
-              openStores.push(s);
-
-          } else if (isStrongMatch || isWeakMatch) {
-
-              closedMatchedStores.push(s);
-
+          if (isStrongMatch) {
+              if (!isCompletelyClosed) openStrong.push(s);
+              else closedStrong.push(s);
+          } else if (isWeakMatch) {
+              if (!isCompletelyClosed) openWeak.push(s);
+              else closedWeak.push(s);
           } else {
-
-              closedUnmatchedStores.push(s);
-
+              if (!isCompletelyClosed) openNone.push(s);
+              else closedNone.push(s);
           }
-
       });
 
-
-
-      // 各自內部排序：讓符合名稱的排在前面
-
-      const sortByMatch = (a, b) => b._matchScore - a._matchScore;
-
-      openStores.sort(sortByMatch);
-
-      closedMatchedStores.sort(sortByMatch);
-
-
-
       let finalList = [];
-
-
-
-      if (isShort) {
-
-          // 如果字數少於 4，抽取「第一家完全符合」的店家，不論有沒有開，放在絕對第一名
-
-          // 優先從有開的找，找不到再從沒開的找
-
-          let foundIdx = openStores.findIndex(s => s._matchScore > 0);
-
-          if (foundIdx !== -1) {
-
-              topMatched = openStores.splice(foundIdx, 1)[0];
-
-          } else {
-
-              foundIdx = closedMatchedStores.findIndex(s => s._matchScore > 0);
-
-              if (foundIdx !== -1) {
-
-                  topMatched = closedMatchedStores.splice(foundIdx, 1)[0];
-
-              }
-
-          }
-
-
-
-          if (topMatched) finalList.push(topMatched);
-
-
-
-          // 接下來把剩下的「有開的」與「沒開但符合的」穿插 (每 2 家有開的，穿插 1 家沒開的)
-
-          let openIdx = 0, closedIdx = 0;
-
-          while (openIdx < openStores.length || closedIdx < closedMatchedStores.length) {
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (closedIdx < closedMatchedStores.length) finalList.push(closedMatchedStores[closedIdx++]);
-
-          }
-
-      } else {
-
-          // 如果字數 >= 4 (通常是確切店名)，把所有強烈符合的(不管有沒有開)都放在最前面
-
-          const strongClosed = closedMatchedStores.filter(s => s._matchScore === 2);
-
-          const weakClosed = closedMatchedStores.filter(s => s._matchScore < 2);
-
-          
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore === 2)); // 強符合 有開
-
-          finalList = finalList.concat(strongClosed);                                // 強符合 沒開
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore < 2));   // 弱/不符合 有開
-
-          finalList = finalList.concat(weakClosed);                                  // 弱符合 沒開
-
-      }
-
-
-
-      // 最後補上完全沒中且沒開的幽靈店家
-
-      finalList = finalList.concat(closedUnmatchedStores);
+      
+      // 1. 強符合 (有開)
+      finalList = finalList.concat(openStrong);
+      // 2. 強符合 (沒開) - 客人精確搜尋的店，就算沒開也要優先顯示給他看
+      finalList = finalList.concat(closedStrong);
+      // 3. 弱符合 (有開)
+      finalList = finalList.concat(openWeak);
+      // 4. 弱符合 (沒開)
+      finalList = finalList.concat(closedWeak);
+      // 5. 無關聯 (有開) - Uber亂塞的廣告店家，至少有開
+      finalList = finalList.concat(openNone);
+      // 6. 無關聯 (沒開) - 垃圾桶墊底
+      finalList = finalList.concat(closedNone);
 
       stores.length = 0; finalList.forEach(x => stores.push(x));
 
