@@ -7309,6 +7309,15 @@ async function fetchStoreSuggestions(q) {
     }
 }
 
+function openStoreFromOverlay(uuid, encodedName, actionUrl) {
+    const name = decodeURIComponent(encodedName);
+    document.getElementById('query').value = name;
+    closeQueryOverlay();
+    if (typeof openStore === 'function') {
+        openStore(uuid, name, actionUrl);
+    }
+}
+
 function renderOverlayHTML() {
     const input = document.getElementById('query');
     const resultsTop = document.getElementById('queryResultsTop');
@@ -7354,7 +7363,10 @@ function renderOverlayHTML() {
             window.suggestionStores.slice(0, 10).forEach(s => {
                 const name = s.title && s.title.text ? s.title.text : '';
                 if (!name) return;
-                const escapedS = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
+                const encodedName = encodeURIComponent(name).replace(/'/g, "%27");
+                const uuid = s.storeUuid || '';
+                const actionUrl = s.actionUrl || '';
+                
                 let ratingHtml = '';
                 if (s.rating && s.rating.text) {
                     ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
@@ -7370,7 +7382,7 @@ function renderOverlayHTML() {
                     stateText = `<span style="font-size:11px;color:#d32f2f;background:#fdecec;padding:2px 4px;border-radius:4px;margin-left:6px;">休息中</span>`;
                 }
                 
-                html += `<div onclick="selectQueryOverlay('${escapedS}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
+                html += `<div onclick="openStoreFromOverlay('${uuid}', '${encodedName}', '${actionUrl}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
                     <span style="color:#06c167;">🏪</span> 
                     <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${name}</span>
                     ${stateText}
