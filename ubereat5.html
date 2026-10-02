@@ -7154,6 +7154,14 @@ function showToast(msg) {
 
 
 <script>
+
+
+let queryDebounceTimer = null;
+let lastSearchedQuery = "";
+let isFetchingSuggestions = false;
+let pendingSuggestionQuery = "";
+window.suggestionStores = [];
+
 function openQueryOverlay() {
     const bg = document.getElementById('queryOverlayBg');
     const resultsTop = document.getElementById('queryResultsTop');
@@ -7170,11 +7178,8 @@ function openQueryOverlay() {
     if (topSpace > 0) {
         resultsTop.style.height = topSpace + 'px';
     }
-    
-    // We want the results to appear from top to bottom in the space above.
-    // By keeping it fixed at top:54 and height:topSpace, normal block flow does top-to-bottom!
 
-    updateQueryOverlay();
+    renderOverlayHTML();
 }
 
 function closeQueryOverlay() {
@@ -7191,18 +7196,122 @@ function closeQueryOverlay() {
 
 function updateQueryOverlay() {
     const input = document.getElementById('query');
+    if(!input) return;
+    const val = input.value.trim();
+    
+    // Immediate feedback in UI (shows typed text)
+    renderOverlayHTML();
+    
+    // Clear previous debounce timer
+    clearTimeout(queryDebounceTimer);
+    
+    // Only fetch if value is not empty and has changed
+    if (val && val !== lastSearchedQuery) {
+        // Trigger fetch after 1000ms of inactivity
+        queryDebounceTimer = setTimeout(() => {
+            if (isFetchingSuggestions || window._searchLock) {
+                // If currently fetching (or manual search is locked), queue the latest query
+                pendingSuggestionQuery = val;
+            } else {
+                lastSearchedQuery = val;
+                fetchStoreSuggestions(val);
+            }
+        }, 1000);
+    }
+}
+
+async function fetchStoreSuggestions(q) {
+    if (!q || typeof currentLat === 'undefined' || typeof currentLng === 'undefined') return;
+    
+    isFetchingSuggestions = true;
+    
+    try {
+        const searchPayload = { 
+            query: q, 
+            lat: currentLat,
+            lng: currentLng,
+            vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
+            searchSource: 'SEARCH_SUGGESTION',
+            displayType: 'SEARCH_RESULTS',
+            searchType: 'GLOBAL_SEARCH'
+        };
+        
+        if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+            const timeSelect = document.getElementById('scheduleTime');
+            if (timeSelect && timeSelect.value) {
+                try {
+                    const sData = JSON.parse(timeSelect.value);
+                    searchPayload.date = sData.date;
+                    searchPayload.startTime = sData.startTime;
+                    searchPayload.endTime = sData.endTime;
+                } catch (e) {}
+            }
+        }
+        
+        const apiBase = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '';
+        if(!apiBase) {
+            isFetchingSuggestions = false;
+            return;
+        }
+
+        const res = await fetch(`${apiBase}/api/search_v3`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(searchPayload)
+        });
+        
+        if (!res.ok) throw new Error('Network response was not ok');
+        const textRes = await res.text();
+        const json = JSON.parse(textRes);
+        
+        if (json.status !== 'failure') {
+            let stores = [];
+            (json.data.feedItems || []).forEach(item => {
+                if ((item.type === 'REGULAR_STORE' || item.type === 'REGULAR_STORE_WITH_ITEMS') && item.store) {
+                    stores.push(item.store);
+                } else if ((item.type === 'REGULAR_CAROUSEL' || item.type === 'STORE_CAROUSEL') && item.carousel && item.carousel.stores) {
+                    stores.push(...item.carousel.stores);
+                } else if (item.type === 'MINI_STORE_WITH_ITEMS' && item.miniStoreWithItems && item.miniStoreWithItems.store) {
+                    stores.push(item.miniStoreWithItems.store);
+                }
+            });
+            
+            const seen = new Set();
+            stores = stores.filter(s => {
+                if (seen.has(s.storeUuid)) return false;
+                seen.add(s.storeUuid);
+                return true;
+            });
+            
+            window.suggestionStores = stores;
+            // Re-render the overlay to show newly fetched stores
+            renderOverlayHTML();
+        }
+    } catch (e) {
+        console.error('Fetch store suggestions error:', e);
+    } finally {
+        isFetchingSuggestions = false;
+        
+        // If the user typed something else while we were waiting, fetch it now!
+        if (pendingSuggestionQuery && pendingSuggestionQuery !== lastSearchedQuery && !window._searchLock) {
+            const nextQ = pendingSuggestionQuery;
+            pendingSuggestionQuery = "";
+            lastSearchedQuery = nextQ;
+            fetchStoreSuggestions(nextQ);
+        }
+    }
+}
+
+function renderOverlayHTML() {
+    const input = document.getElementById('query');
     const resultsTop = document.getElementById('queryResultsTop');
     if(!input || !resultsTop) return;
     
     const val = input.value.trim().toLowerCase();
     
-    // Attempt to load search history for 'query'
-    // Usually it's stored under a generic key. Let's see if we can find existing history in localStorage
-    // If we don't know the exact key used by `saveSimpleHistory('query')`, we assume it's `finddog_history_query`.
     let history = [];
     try {
-        const histKey = 'finddog_history_query'; 
-        history = JSON.parse(localStorage.getItem(histKey) || '[]');
+        history = JSON.parse(localStorage.getItem('finddog_history_query') || '[]');
     } catch(e){}
 
     let html = '';
@@ -7222,17 +7331,34 @@ function updateQueryOverlay() {
                   <span>🔍</span> 搜尋 "${val}"
               </div>`;
               
-        if (typeof storeData !== 'undefined') {
-            const suggestions = storeData.map(s => s.name).filter(n => n.toLowerCase().includes(val)).slice(0, 8);
-            if (suggestions.length > 0) {
-                html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">店家建議</div>';
-                suggestions.forEach(s => {
-                    const escapedS = s.replace(/'/g, "\'").replace(/"/g, '&quot;');
-                    html += `<div onclick="selectQueryOverlay('${escapedS}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
-                        <span style="color:#06c167;">🏪</span> ${s}
-                    </div>`;
-                });
-            }
+        if (window.suggestionStores && window.suggestionStores.length > 0) {
+            html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
+            window.suggestionStores.slice(0, 10).forEach(s => {
+                const name = s.title && s.title.text ? s.title.text : '';
+                if (!name) return;
+                const escapedS = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
+                let ratingHtml = '';
+                if (s.rating && s.rating.text) {
+                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
+                }
+                
+                let stateText = '';
+                const state = s.storeAvailablityState || '';
+                let isUIClosed = false;
+                if (state.includes('CLOSED')) isUIClosed = true;
+                if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
+                if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
+                if (isUIClosed) {
+                    stateText = `<span style="font-size:11px;color:#d32f2f;background:#fdecec;padding:2px 4px;border-radius:4px;margin-left:6px;">休息中</span>`;
+                }
+                
+                html += `<div onclick="selectQueryOverlay('${escapedS}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
+                    <span style="color:#06c167;">🏪</span> 
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${name}</span>
+                    ${stateText}
+                    ${ratingHtml}
+                </div>`;
+            });
         }
     }
     resultsTop.innerHTML = html;
@@ -7241,7 +7367,6 @@ function updateQueryOverlay() {
 function selectQueryOverlay(text) {
     document.getElementById('query').value = text;
     closeQueryOverlay();
-    // Use the existing global searchStores function
     if (typeof searchStores === 'function') {
         searchStores();
     }
@@ -7249,7 +7374,7 @@ function selectQueryOverlay(text) {
 
 function clearQueryOverlayHistory() {
     localStorage.removeItem('finddog_history_query');
-    updateQueryOverlay();
+    renderOverlayHTML();
 }
 </script>
 </body>
