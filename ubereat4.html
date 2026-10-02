@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.65</title>
+<title>計算機系統 2.67</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3705,13 +3705,13 @@ let te = 0; const sg = {}; cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.
 return te;
 })();
     origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成:</td><td style="padding:2px 0 2px 4px;">${bTotalExcess}</td></tr>`;
-    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold;">$15~$60</td></tr>`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold;">$18~$60</td></tr>`;
     origTableB += `</table>`;
     origTableB += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
     origTableB += (function(){
         let totalExcess = 0; const sg = {}; cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); }); Object.keys(sg).forEach(s => totalExcess += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
         let bTotalBase = total - 200 + 130 + 30 + totalExcess;
-        return `總計: <span style="color:#d32f2f; font-size:16px;">$${bTotalBase - 15} ~ $${bTotalBase + 30}</span>`;
+        return `總計: <span style="color:#d32f2f; font-size:16px;">$${bTotalBase - 12} ~ $${bTotalBase + 30}</span>`;
     })();
     origTableB += `</div>`;
 }
@@ -3731,20 +3731,20 @@ if (costResB && costResB.shouldSplit) {
 
     let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#276ef1;">B方案: $200-$200</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costResB.bins.length} 單)</div>`;
-    sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
+    sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; transform: translateX(-4em);">`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">小計:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFood}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap; visibility:hidden;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPromo}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">代訂費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFee}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap; visibility:hidden;">外送加成:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitExcess}</td></tr>`;
-sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold; white-space:nowrap; visibility:hidden;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold; white-space:nowrap;"><span style="visibility:hidden">-</span>$${costResB.bins.length * 15}~$${costResB.bins.length * 60}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold; white-space:nowrap; visibility:hidden;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold; white-space:nowrap;"><span style="visibility:hidden">-</span>$${costResB.bins.length * 18}~$${costResB.bins.length * 60}</td></tr>`;
 let bPreorder = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? 10 : 0;
 if (bPreorder > 0) {
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap; visibility:hidden;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap; visibility:hidden;">-$0</td></tr>`;
 }
 sumTable += `</table>`;
     sumTable += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
-    sumTable += `<span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${originalBaseStrB - 200 + 15}~$${originalBaseStrB - 200 + 60}</span> <br><span style="color:#d32f2f; font-size:16px;">$${costResB.bestCost - (costResB.bins.length * 15)} ~ $${costResB.bestCost + (costResB.bins.length * 30)}</span>`;
-    sumTable += `</div>`;
+    sumTable += `<div style="transform: translateX(-4em);"><span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${originalBaseStrB - 200 + 18}~$${originalBaseStrB - 200 + 60}</span> <br><span style="color:#d32f2f; font-size:16px;">$${costResB.bestCost - (costResB.bins.length * 12)} ~ $${costResB.bestCost + (costResB.bins.length * 30)}</span></div>`;
+sumTable += `</div>`;
 
     window._splitOrigHtmlB = sumTable; window._splitBinsB = costResB.bins; window._splitSavingsB = costResB.savings; window._splitBestCostB = costResB.bestCost; window._currentSplitIndexB = -1;
     
@@ -4584,8 +4584,8 @@ async function _sendOrderToLine(forceSubmit = false) {
           msgText += `🎉 優惠折抵: -$200\n`;
           msgText += `🏍️ 代訂費: $130\n`;
           msgText += `🛵 外送加成: $${totalExcessDeliveryFee}\n`;
-          msgText += `🧑‍💼 服務費: $15~$60\n`;
-          let minTotal = total - 200 + 130 + totalExcessDeliveryFee + 15;
+          msgText += `🧑‍💼 服務費: $18~$60\n`;
+          let minTotal = total - 200 + 130 + totalExcessDeliveryFee + 18;
           let maxTotal = total - 200 + 130 + totalExcessDeliveryFee + 60;
           msgText += `\n💰 總計: $${minTotal} ~ $${maxTotal}\n`;
       } else {
