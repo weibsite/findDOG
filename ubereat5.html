@@ -344,11 +344,13 @@
 
       </div>
 
-      <div class="input-row">
+      <div id="queryOverlayBg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#fff; z-index:800;" onclick="closeQueryOverlay()"></div>
+      <div id="queryResultsTop" style="display:none; position:fixed; top:54px; left:0; width:100vw; z-index:801; overflow-y:auto; padding:15px; box-sizing:border-box;"></div>
+      <div class="input-row" id="queryInputRow">
 
-        <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
+        <input type="text" id="query" autocomplete="off" onfocus="openQueryOverlay()" oninput="updateQueryOverlay()"  placeholder="想吃什麼？ (例如: 麥當勞)"  onkeydown="if(event.key==='Enter') searchStores()" />
 
-        <datalist id="query-list"></datalist>
+        
 
         <button class="secondary" onclick="randomSearch()">不知道</button>
 
@@ -7150,6 +7152,107 @@ function showToast(msg) {
   </div>
 </div>
 
+
+<script>
+function openQueryOverlay() {
+    const bg = document.getElementById('queryOverlayBg');
+    const resultsTop = document.getElementById('queryResultsTop');
+    const row = document.getElementById('queryInputRow');
+    if(!bg || !resultsTop || !row) return;
+
+    bg.style.display = 'block';
+    row.style.position = 'relative';
+    row.style.zIndex = '801';
+    resultsTop.style.display = 'block';
+
+    const rect = row.getBoundingClientRect();
+    const topSpace = rect.top - 54;
+    if (topSpace > 0) {
+        resultsTop.style.height = topSpace + 'px';
+    }
+    
+    // We want the results to appear from top to bottom in the space above.
+    // By keeping it fixed at top:54 and height:topSpace, normal block flow does top-to-bottom!
+
+    updateQueryOverlay();
+}
+
+function closeQueryOverlay() {
+    const bg = document.getElementById('queryOverlayBg');
+    const resultsTop = document.getElementById('queryResultsTop');
+    const row = document.getElementById('queryInputRow');
+    if(bg) bg.style.display = 'none';
+    if(resultsTop) resultsTop.style.display = 'none';
+    if(row) {
+        row.style.position = '';
+        row.style.zIndex = '';
+    }
+}
+
+function updateQueryOverlay() {
+    const input = document.getElementById('query');
+    const resultsTop = document.getElementById('queryResultsTop');
+    if(!input || !resultsTop) return;
+    
+    const val = input.value.trim().toLowerCase();
+    
+    // Attempt to load search history for 'query'
+    // Usually it's stored under a generic key. Let's see if we can find existing history in localStorage
+    // If we don't know the exact key used by `saveSimpleHistory('query')`, we assume it's `finddog_history_query`.
+    let history = [];
+    try {
+        const histKey = 'finddog_history_query'; 
+        history = JSON.parse(localStorage.getItem(histKey) || '[]');
+    } catch(e){}
+
+    let html = '';
+    if (!val) {
+        if (history.length > 0) {
+            html += '<div style="font-size:14px; color:#999; margin-bottom:10px; font-weight:bold;">歷史搜尋</div>';
+            history.forEach(h => {
+                const escapedH = h.replace(/'/g, "\'").replace(/"/g, '&quot;');
+                html += `<div onclick="selectQueryOverlay('${escapedH}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;"><span style="color:#999;">🕒</span> ${h}</div>`;
+            });
+            html += `<div onclick="clearQueryOverlayHistory()" style="padding:15px 0; cursor:pointer; font-size:13px; color:#d32f2f; text-align:center;">清除歷史紀錄</div>`;
+        } else {
+            html += '<div style="font-size:14px; color:#999; text-align:center; margin-top:30px;">輸入關鍵字開始搜尋</div>';
+        }
+    } else {
+        html += `<div onclick="selectQueryOverlay('${val.replace(/'/g, "\'")}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#06c167; display:flex; align-items:center; gap:8px;">
+                  <span>🔍</span> 搜尋 "${val}"
+              </div>`;
+              
+        if (typeof storeData !== 'undefined') {
+            const suggestions = storeData.map(s => s.name).filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+            if (suggestions.length > 0) {
+                html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">店家建議</div>';
+                suggestions.forEach(s => {
+                    const escapedS = s.replace(/'/g, "\'").replace(/"/g, '&quot;');
+                    html += `<div onclick="selectQueryOverlay('${escapedS}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;">
+                        <span style="color:#06c167;">🏪</span> ${s}
+                    </div>`;
+                });
+            }
+        }
+    }
+    resultsTop.innerHTML = html;
+}
+
+function selectQueryOverlay(text) {
+    document.getElementById('query').value = text;
+    closeQueryOverlay();
+    // Use the existing global searchStores function
+    if (typeof searchStores === 'function') {
+        searchStores();
+    }
+}
+
+function clearQueryOverlayHistory() {
+    localStorage.removeItem('finddog_history_query');
+    updateQueryOverlay();
+}
+</script>
 </body>
+
 
 </html>
