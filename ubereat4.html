@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>計算機系統 2.57</title>
+<title>計算機系統 2.59</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -3620,7 +3620,7 @@ let aTotalExcess = (function(){
     Object.keys(sg).forEach(s => te += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
     return te;
 })();
-origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">$${aTotalExcess}</td></tr>`;
+origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成費:</td><td style="padding:2px 0 2px 4px;">$${aTotalExcess}</td></tr>`;
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
 origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
 origTable += `</table>`;
@@ -3657,7 +3657,7 @@ if (costRes && costRes.shouldSplit) {
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${splitPromo}</td></tr>`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${splitFee}</td></tr>`;
-    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">$${splitExcess}</td></tr>`;
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成費:</td><td style="padding:2px 0 2px 4px;">$${splitExcess}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
     if (splitPreorder > 0) sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${splitPreorder}</td></tr>`;
     sumTable += `</table>`;
@@ -3697,7 +3697,7 @@ let bTotalExcess = (function(){
 let te = 0; const sg = {}; cart.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); }); Object.keys(sg).forEach(s => te += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
 return te;
 })();
-    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">${bTotalExcess}</td></tr>`;
+    origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成費:</td><td style="padding:2px 0 2px 4px;">${bTotalExcess}</td></tr>`;
     origTableB += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold;">$15~$60</td></tr>`;
     origTableB += `</table>`;
     origTableB += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
@@ -3728,7 +3728,7 @@ if (costResB && costResB.shouldSplit) {
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${splitFood}</td></tr>`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$${splitPromo}</td></tr>`;
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${splitFee}</td></tr>`;
-    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送費:</td><td style="padding:2px 0 2px 4px;">$${splitExcess}</td></tr>`;
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成費:</td><td style="padding:2px 0 2px 4px;">$${splitExcess}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#d32f2f; font-weight:bold;">服務費:</td><td style="padding:2px 0 2px 4px; color:#d32f2f; font-weight:bold;">$${costResB.bins.length * 15}~$${costResB.bins.length * 60}</td></tr>`;
     sumTable += `</table>`;
     sumTable += `<div style="font-weight:bold; font-size:14px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
@@ -4451,7 +4451,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
           msgText += `  🛵 代訂費: $${feePerBin}\n`;
 
-          msgText += `   🛵 外送費: $${binExcess}\n`;
+          msgText += `   🛵 外送加成費: $${binExcess}\n`;
 
           msgText += `  ➡️ 結算: $${binTotal}\n\n`;
 
@@ -4572,7 +4572,7 @@ async function _sendOrderToLine(forceSubmit = false) {
           msgText += `💵 小計: $${total}\n`;
           msgText += `🎉 優惠折抵: -$200\n`;
           msgText += `🏍️ 代訂費: $130\n`;
-          msgText += `🛵 外送費: $${totalExcessDeliveryFee}\n`;
+          msgText += `🛵 外送加成費: $${totalExcessDeliveryFee}\n`;
           msgText += `🧑‍💼 服務費: $15~$60\n`;
           let minTotal = total - 200 + 130 + totalExcessDeliveryFee + 15;
           let maxTotal = total - 200 + 130 + totalExcessDeliveryFee + 60;
@@ -4582,7 +4582,7 @@ async function _sendOrderToLine(forceSubmit = false) {
           msgText += `💵 小計: $${total}\n`;
           if (promoDiscount > 0) msgText += `🎉 優惠半價折抵: -$${promoDiscount}\n`;
           msgText += `🏍️ 代訂費: $${serviceFee}\n`;
-          msgText += `🛵 外送費: $${totalExcessDeliveryFee}\n`;
+          msgText += `🛵 外送加成費: $${totalExcessDeliveryFee}\n`;
           msgText += `🧑‍💼 服務費: $0\n`;
           if (preOrderDiscount > 0) msgText += `📅 預定折扣(2.5小時以上): -$${preOrderDiscount}\n`;
           msgText += `\n💰 總計: $${grandTotal}`;
@@ -6667,20 +6667,12 @@ function calcOrderCostB(items) {
     items.forEach(it => totalSum += it.price * it.qty);
 
     let promoDiscount = totalSum >= 200 ? 200 : 0;
-    let preOrderDiscount = 0;
-    if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
-        const ts = document.getElementById('scheduleTime');
-        if (ts && ts.value && getSelectedScheduleTimestamp() - new Date().getTime() >= 2.5 * 3600000) {
-            preOrderDiscount = window.isGroceryStore ? 20 : 10;
-        }
-    }
-
-    let totalExcessDeliveryFee = 0;
+let totalExcessDeliveryFee = 0;
     const sg = {};
     items.forEach(it => { if(!sg[it.storeName||'']) sg[it.storeName||'']=[]; sg[it.storeName||''].push(it); });
     Object.keys(sg).forEach(s => totalExcessDeliveryFee += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
 
-    let noBinCost = (totalSum - promoDiscount) + 130 + 30 + totalExcessDeliveryFee - preOrderDiscount;
+    let noBinCost = (totalSum - promoDiscount) + 130 + 30 + totalExcessDeliveryFee;
 
     let expanded = [];
     items.forEach(it => {
@@ -6734,7 +6726,7 @@ function calcOrderCostB(items) {
                     bsg[i.storeName||''].push(i);
                 });
                 Object.keys(bsg).forEach(s => binExcess += Math.max(0, ...bsg[s].map(it => it.storeDeliveryFee||0)));
-                cost += binFoodCost + feePerBin + 30 + binExcess - preOrderDiscount;
+                cost += binFoodCost + feePerBin + 30 + binExcess;
             }
             if (cost < bestCost) {
                 bestCost = cost;
@@ -6944,7 +6936,7 @@ function calcOrderCostB(items) {
 
         
 
-        cost += binFoodCost + feePerBin + 30 + binExcess - preOrderDiscount;
+        cost += binFoodCost + feePerBin + 30 + binExcess;
 
       }
 
