@@ -5549,7 +5549,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           
 
-          let errorMsg = isTooFar ? '店家太遠無法外送，請選擇其他餐廳。' : (!isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折扣券，無法為您代購。請選擇其他餐廳。');
+          const tType = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+          let errorMsg = isTooFar ? `店家太遠無法外送，請選擇其他${tType}。` : (!isSchedulable ? `此${tType}不支援預約點餐系統，無法為您代購。請選擇其他${tType}。` : `此${tType}無法使用折扣券，無法為您代購。請選擇其他${tType}。`);
 
           showModal('無法接單', '', true, `<div style="text-align:center;">${errorMsg}</div>`);
 
@@ -5635,7 +5636,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           if (!isCurrentlyOpen) {
 
-              showModal('無法接單', '此餐廳目前休息中，無法接收即時單。請選擇預約時段，或其他營業中的餐廳。', true, '', true);
+              const tType2 = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+              showModal('無法接單', `此${tType2}目前休息中，無法接收即時單。請選擇預約時段，或其他營業中的${tType2}。`, true, '', true);
 
               resultsDiv.innerHTML = oldHtml;
 
@@ -5687,7 +5689,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
             let text = '';
 
-            let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此餐廳在您選的時段 ( ${selectedScheduleText} ) 休息或無法接單。</div>`;
+            const tType3 = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+            let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此${tType3}在您選的時段 ( ${selectedScheduleText} ) 休息或並不支援。</div>`;
             
             const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
             const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
