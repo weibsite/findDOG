@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 5.8</title>
+<title>點餐系統 5.9</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -348,9 +348,16 @@
 
       </div>
 
-      <div id="queryCloseBtn" style="display:none; position:fixed; top:20px; right:20px; z-index:805; width:36px; height:36px; border-radius:50%; background:#f5f5f5; color:#666; font-size:20px; font-weight:bold; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.1);" onclick="closeQueryOverlay()">✕</div>
-<div id="queryOverlayBg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#fff; z-index:800;" onclick="closeQueryOverlay()"></div>
-      <div id="queryResultsTop" style="display:none; position:fixed; top:54px; left:0; width:100vw; z-index:801; overflow-y:auto; padding:15px; box-sizing:border-box;"></div>
+      <div id="globalSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#fff; z-index:900; box-sizing:border-box; flex-direction:column;">
+    <div id="globalSearchResults" style="flex:1; overflow-y:auto; padding: 15px 15px 10px 15px;"></div>
+    <div style="padding:10px 15px; background:#fff; border-top:1px solid #eee; flex-shrink:0;">
+        <div class="input-row" style="margin:0; box-shadow:none; display:flex; gap:10px;">
+            <input type="text" id="globalSearchInputMobile" autocomplete="off" placeholder="想吃什麼？ (例如: 麥當勞)" oninput="updateQueryOverlay()" onkeydown="if(event.key==='Enter'){ searchStores(); }" style="flex:1; padding:10px 15px; border:1px solid #ddd; border-radius:25px; outline:none; font-size:16px; background:#f5f5f5; box-sizing:border-box;" />
+            <button id="searchMainBtnMobile" onclick="searchStores()" style="border-radius:25px; padding:10px 20px; font-weight:bold; background:#06c167; color:#000; border:none; white-space:nowrap; cursor:pointer;">尋找食物</button>
+            <div onclick="closeQueryOverlay()" style="display:flex; align-items:center; justify-content:center; padding:0 5px; font-size:24px; color:#999; cursor:pointer;">✕</div>
+        </div>
+    </div>
+</div>
       <div class="input-row" id="queryInputRow">
 
         <input type="text" id="query" autocomplete="off" onfocus="openQueryOverlay()" oninput="updateQueryOverlay()"  placeholder="想吃什麼？ (例如: 麥當勞)"  onkeydown="if(event.key==='Enter') searchStores()" />
@@ -7147,45 +7154,42 @@ let pendingSuggestionQuery = "";
 window.suggestionStores = [];
 
 function openQueryOverlay() {
-    const bg = document.getElementById('queryOverlayBg');
-    const resultsTop = document.getElementById('queryResultsTop');
-    const row = document.getElementById('queryInputRow');
-    if(!bg || !resultsTop || !row) return;
-
-    bg.style.display = 'block';
-    const closeBtn = document.getElementById('queryCloseBtn');
-    if (closeBtn) closeBtn.style.display = 'flex';
-    row.style.position = 'relative';
-    row.style.zIndex = '801';
-    resultsTop.style.display = 'block';
-
-    const rect = row.getBoundingClientRect();
-    const topSpace = rect.top - 54;
-    if (topSpace > 0) {
-        resultsTop.style.height = topSpace + 'px';
+    const overlay = document.getElementById('globalSearchOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    
+    // Sync and focus mobile input
+    const headerInput = document.getElementById('query');
+    const mobileInput = document.getElementById('globalSearchInputMobile');
+    if (mobileInput && headerInput) {
+        mobileInput.value = headerInput.value;
+        setTimeout(() => mobileInput.focus(), 100);
     }
-
     renderOverlayHTML();
 }
 
 function closeQueryOverlay() {
-    const bg = document.getElementById('queryOverlayBg');
-    const resultsTop = document.getElementById('queryResultsTop');
-    const row = document.getElementById('queryInputRow');
-    if(bg) bg.style.display = 'none';
-    const closeBtn = document.getElementById('queryCloseBtn');
-    if (closeBtn) closeBtn.style.display = 'none';
-    if(resultsTop) resultsTop.style.display = 'none';
-    if(row) {
-        row.style.position = '';
-        row.style.zIndex = '';
+    const overlay = document.getElementById('globalSearchOverlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    // Clear mobile input and sync back
+    const headerInput = document.getElementById('query');
+    const mobileInput = document.getElementById('globalSearchInputMobile');
+    if (headerInput && mobileInput) {
+        headerInput.value = mobileInput.value;
     }
 }
 
 function updateQueryOverlay() {
-    const input = document.getElementById('query');
-    if(!input) return;
-    const val = input.value.trim();
+    const headerInput = document.getElementById('query');
+    const mobileInput = document.getElementById('globalSearchInputMobile');
+    
+    // Sync both inputs
+    const keyword = (mobileInput && mobileInput === document.activeElement ? mobileInput.value : (headerInput ? headerInput.value : ''));
+    if (headerInput) headerInput.value = keyword;
+    if (mobileInput) mobileInput.value = keyword;
+    
+    const val = keyword.trim();
     
     // Immediate feedback in UI (shows typed text)
     renderOverlayHTML();
@@ -7195,10 +7199,8 @@ function updateQueryOverlay() {
     
     // Only fetch if value is not empty and has changed
     if (val && val !== lastSearchedQuery) {
-        // Trigger fetch after 1000ms of inactivity
         queryDebounceTimer = setTimeout(() => {
             if (isFetchingSuggestions || window._searchLock) {
-                // If currently fetching (or manual search is locked), queue the latest query
                 pendingSuggestionQuery = val;
             } else {
                 lastSearchedQuery = val;
@@ -7327,7 +7329,7 @@ function openStoreFromOverlay(uuid, encodedName, actionUrl) {
 
 function renderOverlayHTML() {
     const input = document.getElementById('query');
-    const resultsTop = document.getElementById('queryResultsTop');
+    const resultsTop = document.getElementById('globalSearchResults');
     if(!input || !resultsTop) return;
     
     const val = input.value.trim().toLowerCase();
@@ -7412,10 +7414,13 @@ function renderOverlayHTML() {
         }
     }
     resultsTop.innerHTML = html;
+    resultsTop.scrollTop = resultsTop.scrollHeight;
 }
 
 function selectQueryOverlay(text) {
     document.getElementById('query').value = text;
+    const mobileInput = document.getElementById('globalSearchInputMobile');
+    if (mobileInput) mobileInput.value = text;
     closeQueryOverlay();
     if (typeof searchStores === 'function') {
         searchStores();
