@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 6.0</title>
+<title>點餐系統 6.1</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -5564,7 +5564,14 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
 
       const isTooFar = JSON.stringify(d).includes('"storeStatus":"TOO_FAR_TO_DELIVER"');
-      if (isTooFar || !isSchedulable || (!isGrocery && !hasValidPriceItem)) {
+      
+      // 針對「即時單」且為「生鮮雜貨」，放寬 isSchedulable 限制，使其行為如同舊版
+      let strictScheduleCheck = !isSchedulable;
+      if (isGrocery && typeof scheduleMode !== 'undefined' && scheduleMode === 'ASAP') {
+          strictScheduleCheck = false;
+      }
+
+      if (isTooFar || strictScheduleCheck || (!isGrocery && !hasValidPriceItem)) {
 
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
