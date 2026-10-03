@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 6.1</title>
+<title>點餐系統 6.2</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -202,7 +202,7 @@
 
 
 
-  <div id="storeSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f7f7f7; z-index:900; box-sizing:border-box; flex-direction:column;">
+  <div id="storeSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100dvh; background:#f7f7f7; z-index:900; box-sizing:border-box; flex-direction:column;">
      <!-- 搜尋結果在上方，可滾動 -->
      <div id="storeSearchResults" style="flex:1; overflow-y:auto; padding: 15px 15px 10px 15px;"></div>
      <!-- 搜尋輸入框固定在底部（靠近手機鍵盤） -->
@@ -348,7 +348,7 @@
 
       </div>
 
-      <div id="globalSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#fff; z-index:900; box-sizing:border-box; flex-direction:column;">
+      <div id="globalSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100dvh; background:#fff; z-index:900; box-sizing:border-box; flex-direction:column;">
     <div id="globalSearchResults" style="flex:1; overflow-y:auto; padding: 15px 15px 10px 15px;"></div>
     <div style="padding:10px 15px 30px 15px; background:#fff; border-top:1px solid #eee; flex-shrink:0;">
         <div class="input-row" style="margin:0; box-shadow:none; display:flex; gap:10px;">
@@ -7438,6 +7438,49 @@ function clearQueryOverlayHistory() {
     localStorage.removeItem('finddog_history_query');
     renderOverlayHTML();
 }
+
+// 修復手機鍵盤彈出時，fixed 容器超過螢幕邊界的問題
+if (window.visualViewport) {
+    const adjustSearchOverlays = () => {
+        const vv = window.visualViewport;
+        const h = vv.height + 'px';
+        // 使用 Math.max 確保在某些捲動邊緣情況下不會變成負值或偏移太多
+        const t = Math.max(0, vv.offsetTop) + 'px';
+        
+        const globalOverlay = document.getElementById('globalSearchOverlay');
+        if (globalOverlay && globalOverlay.style.display !== 'none') {
+            globalOverlay.style.height = h;
+            globalOverlay.style.top = t;
+            // 確保捲動到底部
+            const gResults = document.getElementById('globalSearchResults');
+            if(gResults) gResults.scrollTop = gResults.scrollHeight;
+        }
+        
+        const storeOverlay = document.getElementById('storeSearchOverlay');
+        if (storeOverlay && storeOverlay.style.display !== 'none') {
+            storeOverlay.style.height = h;
+            storeOverlay.style.top = t;
+        }
+    };
+    
+    window.visualViewport.addEventListener('resize', adjustSearchOverlays);
+    window.visualViewport.addEventListener('scroll', adjustSearchOverlays);
+    
+    const originalOpenQuery = typeof openQueryOverlay !== 'undefined' ? openQueryOverlay : function(){};
+    window.openQueryOverlay = function() {
+        originalOpenQuery.apply(this, arguments);
+        setTimeout(adjustSearchOverlays, 50);
+        setTimeout(adjustSearchOverlays, 300); // 鍵盤動畫可能需要時間
+    };
+    
+    const originalToggleStore = typeof toggleStoreSearch !== 'undefined' ? toggleStoreSearch : function(){};
+    window.toggleStoreSearch = function() {
+        originalToggleStore.apply(this, arguments);
+        setTimeout(adjustSearchOverlays, 50);
+        setTimeout(adjustSearchOverlays, 300);
+    };
+}
+
 </script>
 </body>
 
