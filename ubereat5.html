@@ -2355,6 +2355,14 @@ async function searchStores() {
           return true;
 
       });
+      // 過濾掉自取(無法外送)的店家
+      stores = stores.filter(s => {
+          if (s.imageOverlayCallToAction && s.imageOverlayCallToAction.text && s.imageOverlayCallToAction.text.includes('自取')) return false;
+          if (s.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+          if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+          return true;
+      });
+
 
       
 
@@ -7244,6 +7252,14 @@ async function fetchStoreSuggestions(q) {
                 seen.add(s.storeUuid);
                 return true;
             });
+            // 過濾掉自取(無法外送)的店家
+            stores = stores.filter(s => {
+                if (s.imageOverlayCallToAction && s.imageOverlayCallToAction.text && s.imageOverlayCallToAction.text.includes('自取')) return false;
+                if (s.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+                if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+                return true;
+            });
+
             
             window.suggestionStores = stores;
         const resultsEl = document.getElementById('results');
