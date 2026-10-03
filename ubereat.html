@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 3.0</title>
+<title>點餐系統 5.7</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -188,6 +188,7 @@
 
   .store-top-nav button:active { background: #e0e0e0; }
 
+  @keyframes slideDownTop { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 </style>
 
 </head>
@@ -344,11 +345,14 @@
 
       </div>
 
-      <div class="input-row">
+      <div id="queryCloseBtn" style="display:none; position:fixed; top:20px; right:20px; z-index:805; width:36px; height:36px; border-radius:50%; background:#f5f5f5; color:#666; font-size:20px; font-weight:bold; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.1);" onclick="closeQueryOverlay()">✕</div>
+<div id="queryOverlayBg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#fff; z-index:800;" onclick="closeQueryOverlay()"></div>
+      <div id="queryResultsTop" style="display:none; position:fixed; top:54px; left:0; width:100vw; z-index:801; overflow-y:auto; padding:15px; box-sizing:border-box;"></div>
+      <div class="input-row" id="queryInputRow">
 
-        <input type="text" id="query" placeholder="想吃什麼？ (例如: 麥當勞)" list="query-list" onkeydown="if(event.key==='Enter') searchStores()" />
+        <input type="text" id="query" autocomplete="off" onfocus="openQueryOverlay()" oninput="updateQueryOverlay()"  placeholder="想吃什麼？ (例如: 麥當勞)"  onkeydown="if(event.key==='Enter') searchStores()" />
 
-        <datalist id="query-list"></datalist>
+        
 
         <button class="secondary" onclick="randomSearch()">不知道</button>
 
@@ -892,9 +896,10 @@ let isAddressSet = false;
         const modalSelect = document.getElementById('modalTimeSelect');
         const scheduleSelect = document.getElementById('scheduleTime');
         if (modalSelect.options.length > 0 && scheduleSelect.options.length === 0) {
+            const targetIdx = modalSelect.options.length > 1 ? 1 : 0;
             const newOpt = document.createElement('option');
-            newOpt.value = modalSelect.options[0].value;
-            newOpt.text = modalSelect.options[0].text;
+            newOpt.value = modalSelect.options[targetIdx].value;
+            newOpt.text = modalSelect.options[targetIdx].text;
             scheduleSelect.appendChild(newOpt);
         }
         updateTriggerText();
@@ -1334,12 +1339,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (data.length === 0) {
-
+            // Ultimate fallback to app.py parse_map_url
+            try {
+                const mapUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(q);
+                const googleRes = await fetch(`${API_BASE_URL}/api/parse_map_url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: mapUrl })
+                });
+                const googleData = await googleRes.json();
+                if (googleData.lat && googleData.lng) {
+                    setAddress(googleData.lat, googleData.lng, q);
+                    return;
+                }
+            } catch (err) {
+                console.error('Google fallback failed', err);
+            }
+            
             statusEl.innerText = '找不到地址';
             if (document.getElementById('fullScreenLoader')) document.getElementById('fullScreenLoader').style.display = 'none';
-
             return;
-
         }
 
         if (data.length === 1) {
@@ -1784,459 +1803,65 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-async function searchStores() {
 
-    // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
-    if (window._searchLock) return;
-
-    if (!isAddressSet) {
-
-      const addrVal = document.getElementById('addrInput').value.trim();
-
-      if (addrVal) {
-
-          showModal('自動定位中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在為您確認地址，請稍候...</div>', true);
-
-          window._searchLock = true; // [修補] 上鎖
-
-          searchAddress(true);
-
-          
-
-          let attempts = 0;
-
-          const checkInterval = setInterval(() => {
-
-              attempts++;
-
-              const statusText = document.getElementById('addrStatus').innerText;
-
-              const resultsHtml = document.getElementById('addrResults').innerHTML;
-
-              
-
-              if (isAddressSet) {
-
-                  clearInterval(checkInterval);
-
-                  document.getElementById('errorModalOverlay').style.display = 'none';
-
-                  window._searchLock = false; // [修補] 解鎖
-
-                  searchStores();
-
-              } else if (resultsHtml !== '' || (statusText !== '' && statusText !== '尋找中...')) {
-
-                  clearInterval(checkInterval);
-
-                  document.getElementById('errorModalOverlay').style.display = 'none';
-
-                  window._searchLock = false; // [修補] 解鎖
-
-                  if (statusText !== '' && statusText !== '尋找中...' && !statusText.includes('請選擇')) {
-
-                      showModal('地址無效', statusText, true);
-
-                  }
-
-              } else if (attempts > 30) {
-
-                  clearInterval(checkInterval);
-
-                  document.getElementById('errorModalOverlay').style.display = 'none';
-
-                  window._searchLock = false; // [修補] 解鎖
-
-                  showModal('地址設定逾時', '無法自動確認地址，請檢查地址是否正確。');
-
-              }
-
-          }, 500);
-
-          return;
-
-      }
-
-      showModal('請先設定外送地址', '在尋找食物之前，請務必先輸入並點擊「尋找地址」，以便系統準確計算外送範圍與營業時間！');
-
-      return;
-
-    }
-
-    
-    // 等待時段讀取完成
-    if (scheduleMode === 'SCHEDULE' && isDeliveryTimesLoading) {
-        showModal('讀取時段中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在向 Uber 取得預約時段，請稍候...</div>', true);
-        onDeliveryTimesLoadedCallback = () => {
-            document.getElementById('errorModalOverlay').style.display = 'none';
-            window._searchLock = false;
-            searchStores();
-        };
-        return;
-    }
-
-    let q = document.getElementById('query').value.trim();
-
-    
-
-    // 如果沒打字，自動塞入隨機關鍵字，避免出現大混雜
-
-    if (!q) {
-
-        const foodKeywords = ['飯', '麵', '火鍋', '便當', '炸', '烤', '滷', '焗', '飲料', '牛肉麵', '水餃', '咖哩', '小吃', '早午餐', '漢堡', '披薩', '健康', '沙拉', '甜點', '宵夜'];
-
-        const shopKeywords = ['全聯', '家樂福', '美廉社', '大潤發', '統一超商', '全家', '超市', '屈臣氏', '康是美', '生鮮', '零食'];
-
-        const pool = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? shopKeywords : foodKeywords;
-
-        q = pool[Math.floor(Math.random() * pool.length)];
-
-        document.getElementById('query').value = q;
-
-    }
-
-
-
-    window.lastListSearchKeyword = q;
-
-    
-
-    if (q) {
-
-      saveSimpleHistory('query');
-
-    }
-
-    
-
-    // 切換到 ListView
-
-    currentView = 'list';
-
-    document.getElementById('mainBackBtn').style.visibility = 'visible';
-
-    document.getElementById('storeSearchBtn').style.display = 'block';
-
-    document.getElementById('homeView').style.display = 'none';
-
-    document.getElementById('storeView').style.display = 'none';
-
-    document.getElementById('listView').style.display = 'block';
-
-
-
+function generateStoreListHTML(stores, q, currentVertical) {
     const statusEl = document.getElementById('status');
 
-    const resultsEl = document.getElementById('results');
-
-    statusEl.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><div style="margin-top: 10px;">搜尋中...</div>'; statusEl.className = 'status'; resultsEl.innerHTML = '';
-
-    
-
-    try {
-
-      const searchPayload = { 
-          query: q, 
-          lat: currentLat,
-          lng: currentLng,
-          vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
-          searchSource: 'SEARCH_SUGGESTION',
-          displayType: 'SEARCH_RESULTS',
-          searchType: 'GLOBAL_SEARCH'
-      };
-      
-      if (scheduleMode === 'SCHEDULE') {
-          const timeSelect = document.getElementById('scheduleTime');
-          if (timeSelect && timeSelect.value) {
-              try {
-                  const sData = JSON.parse(timeSelect.value);
-                  searchPayload.date = sData.date;
-                  searchPayload.startTime = sData.startTime;
-                  searchPayload.endTime = sData.endTime;
-              } catch (e) {}
-          }
-      }
-
-      
-      // 在 F12 顯示預計送往 Uber API 的真實 Payload 以利除錯
-      const expectedUberPayload = {
-          userQuery: q,
-          searchSource: searchPayload.searchSource,
-          searchType: searchPayload.searchType,
-          vertical: searchPayload.vertical,
-          displayType: searchPayload.displayType,
-          overrideLocationDetails: {
-              latitude: currentLat,
-              longitude: currentLng
-          }
-      };
-      if (searchPayload.date) {
-          expectedUberPayload.date = searchPayload.date;
-          expectedUberPayload.startTime = searchPayload.startTime;
-          expectedUberPayload.endTime = searchPayload.endTime;
-      }
-      console.group('🚀 [Uber Eats API] 預計發送的 Payload');
-      console.log(JSON.stringify(expectedUberPayload, null, 2));
-      console.groupEnd();
-
-      // 改為跟 getStoreV1 一樣，直送 Uber Eats 伺服器
-      const uberSearchHeaders = {
-          "accept": "*/*",
-          "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-          "content-type": "application/json",
-          "x-csrf-token": "x",
-          "x-uber-ciid": "c65c5fae-d7e3-44ad-9146-011e930f77dd",
-          "x-uber-client-gitref": "cdeec6f0ad55ef2fc11f85faf00785cd01b5ddf1",
-          "x-uber-request-id": "e2449281-4735-4392-ae07-b803eb404d0a",
-          "x-uber-session-id": "c86ad72f-ecde-4174-9b4f-9121887789cc",
-          "x-uber-device-location-latitude": currentLat.toString(),
-          "x-uber-device-location-longitude": currentLng.toString(),
-          "x-uber-target-location-latitude": currentLat.toString(),
-          "x-uber-target-location-longitude": currentLng.toString()
-      };
-      
-      const uberSearchPayload = {
-          userQuery: q,
-          searchSource: searchPayload.searchSource,
-          searchType: searchPayload.searchType,
-          vertical: searchPayload.vertical,
-          overrideLocationDetails: {
-              latitude: currentLat,
-              longitude: currentLng
-          }
-      };
-      
-      if (searchPayload.date) {
-          uberSearchPayload.date = searchPayload.date;
-          uberSearchPayload.startTime = searchPayload.startTime;
-          uberSearchPayload.endTime = searchPayload.endTime;
-      }
-      
-      console.log('📡 [搜尋餐廳] 直送 Uber Payload:', JSON.stringify(uberSearchPayload, null, 2));
-
-      const res = await fetch(`${API_BASE_URL}/api/search_v3`, {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchPayload)
-      });
-
-      let json;
-
-      try {
-
-          const textRes = await res.text();
-
-          try {
-
-              json = JSON.parse(textRes);
-
-          } catch (e) {
-
-              console.error('Non-JSON response from server:', textRes);
-
-              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
-
-          }
-
-      } catch (e) {
-
-          throw e;
-
-      }
-
-      if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
-
-      
-
-      let stores = [];
-
-      (json.data.feedItems || []).forEach(item => {
-
-          if ((item.type === 'REGULAR_STORE' || item.type === 'REGULAR_STORE_WITH_ITEMS') && item.store) {
-
-              stores.push(item.store);
-
-          } else if ((item.type === 'REGULAR_CAROUSEL' || item.type === 'STORE_CAROUSEL') && item.carousel && item.carousel.stores) {
-
-              stores.push(...item.carousel.stores);
-
-          } else if (item.type === 'MINI_STORE_WITH_ITEMS' && item.miniStoreWithItems && item.miniStoreWithItems.store) {
-
-              stores.push(item.miniStoreWithItems.store);
-
-          }
-
-      });
-
-      // 過濾掉重複的 storeUuid (有時推薦輪播跟一般列表會重複)
-
-      const seen = new Set();
-
-      stores = stores.filter(s => {
-
-          if (seen.has(s.storeUuid)) return false;
-
-          seen.add(s.storeUuid);
-
-          return true;
-
-      });
-
-      
-
-      // 根據使用者要求進行極致智能排序：分類、抽首位、穿插
+    // 全新智能排序：嚴格依照「關聯度」與「營業狀態」進行排序
 
       const searchQ = q.toLowerCase();
 
-      const isShort = searchQ.length < 4;
-
-
-
-      let topMatched = null;
-
-      let openStores = [];
-
-      let closedMatchedStores = [];
-
-      let closedUnmatchedStores = [];
-
-
+      let openStrong = [], closedStrong = [];
+      let openWeak = [], closedWeak = [];
+      let openNone = [], closedNone = [];
 
       stores.forEach(s => {
-
           const name = s.title && s.title.text ? s.title.text.toLowerCase() : '';
-
           const state = s.storeAvailablityState || '';
-
+          
           let isUIClosed = false;
-
           if (state.includes('CLOSED')) isUIClosed = true;
-
           if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
-
           if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
-
+                if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
+          if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
           const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
 
           const isStrongMatch = searchQ && (name.startsWith(searchQ) || name === searchQ);
-
           const isWeakMatch = searchQ && name.includes(searchQ) && !isStrongMatch;
 
-
-
-          // 標記這家店的匹配分數，方便等一下在各自陣列中再排序一次
-
-          s._matchScore = isStrongMatch ? 2 : (isWeakMatch ? 1 : 0);
-
-
-
-          if (!isCompletelyClosed) {
-
-              openStores.push(s);
-
-          } else if (isStrongMatch || isWeakMatch) {
-
-              closedMatchedStores.push(s);
-
+          if (isStrongMatch) {
+              if (!isCompletelyClosed) openStrong.push(s);
+              else closedStrong.push(s);
+          } else if (isWeakMatch) {
+              if (!isCompletelyClosed) openWeak.push(s);
+              else closedWeak.push(s);
           } else {
-
-              closedUnmatchedStores.push(s);
-
+              if (!isCompletelyClosed) openNone.push(s);
+              else closedNone.push(s);
           }
-
       });
 
-
-
-      // 各自內部排序：讓符合名稱的排在前面
-
-      const sortByMatch = (a, b) => b._matchScore - a._matchScore;
-
-      openStores.sort(sortByMatch);
-
-      closedMatchedStores.sort(sortByMatch);
-
-
-
       let finalList = [];
+      
+      // 1. 強符合 (有開)
+      finalList = finalList.concat(openStrong);
+      // 2. 強符合 (沒開) - 客人精確搜尋的店，就算沒開也要優先顯示給他看
+      finalList = finalList.concat(closedStrong);
+      // 3. 弱符合 (有開)
+      finalList = finalList.concat(openWeak);
+      // 4. 弱符合 (沒開)
+      finalList = finalList.concat(closedWeak);
+      // 5. 無關聯 (有開) - Uber亂塞的廣告店家，至少有開
+      finalList = finalList.concat(openNone);
+      // 6. 無關聯 (沒開) - 垃圾桶墊底
+      finalList = finalList.concat(closedNone);
+
+      stores.length = 0; finalList.forEach(x => stores.push(x));
 
 
 
-      if (isShort) {
-
-          // 如果字數少於 4，抽取「第一家完全符合」的店家，不論有沒有開，放在絕對第一名
-
-          // 優先從有開的找，找不到再從沒開的找
-
-          let foundIdx = openStores.findIndex(s => s._matchScore > 0);
-
-          if (foundIdx !== -1) {
-
-              topMatched = openStores.splice(foundIdx, 1)[0];
-
-          } else {
-
-              foundIdx = closedMatchedStores.findIndex(s => s._matchScore > 0);
-
-              if (foundIdx !== -1) {
-
-                  topMatched = closedMatchedStores.splice(foundIdx, 1)[0];
-
-              }
-
-          }
-
-
-
-          if (topMatched) finalList.push(topMatched);
-
-
-
-          // 接下來把剩下的「有開的」與「沒開但符合的」穿插 (每 2 家有開的，穿插 1 家沒開的)
-
-          let openIdx = 0, closedIdx = 0;
-
-          while (openIdx < openStores.length || closedIdx < closedMatchedStores.length) {
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (openIdx < openStores.length) finalList.push(openStores[openIdx++]);
-
-              if (closedIdx < closedMatchedStores.length) finalList.push(closedMatchedStores[closedIdx++]);
-
-          }
-
-      } else {
-
-          // 如果字數 >= 4 (通常是確切店名)，把所有強烈符合的(不管有沒有開)都放在最前面
-
-          const strongClosed = closedMatchedStores.filter(s => s._matchScore === 2);
-
-          const weakClosed = closedMatchedStores.filter(s => s._matchScore < 2);
-
-          
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore === 2)); // 強符合 有開
-
-          finalList = finalList.concat(strongClosed);                                // 強符合 沒開
-
-          finalList = finalList.concat(openStores.filter(s => s._matchScore < 2));   // 弱/不符合 有開
-
-          finalList = finalList.concat(weakClosed);                                  // 弱符合 沒開
-
-      }
-
-
-
-      // 最後補上完全沒中且沒開的幽靈店家
-
-      finalList = finalList.concat(closedUnmatchedStores);
-
-      stores = finalList;
-
-
-
-      if (stores.length === 0) { statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return; }
+      if (stores.length === 0) { if(statusEl) statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return '<div style="padding:40px 20px;text-align:center;color:#999;">找不到相關結果。</div>'; }
 
       
 
@@ -2244,9 +1869,9 @@ async function searchStores() {
 
 
 
-      statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
+      if(statusEl) statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
 
-      resultsEl.innerHTML = stores.map(s => {
+      return stores.map(s => {
 
         let imgUrl = '';
 
@@ -2413,6 +2038,335 @@ async function searchStores() {
         `;
 
       }).join('');
+}
+
+
+async function searchStores() {
+
+    // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
+    if (window._searchLock) return;
+
+    if (!isAddressSet) {
+
+      const addrVal = document.getElementById('addrInput').value.trim();
+
+      if (addrVal) {
+
+          showModal('自動定位中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在為您確認地址，請稍候...</div>', true);
+
+          window._searchLock = true; // [修補] 上鎖
+
+          searchAddress(true);
+
+          
+
+          let attempts = 0;
+
+          const checkInterval = setInterval(() => {
+
+              attempts++;
+
+              const statusText = document.getElementById('addrStatus').innerText;
+
+              const resultsHtml = document.getElementById('addrResults').innerHTML;
+
+              
+
+              if (isAddressSet) {
+
+                  clearInterval(checkInterval);
+
+                  document.getElementById('errorModalOverlay').style.display = 'none';
+
+                  window._searchLock = false; // [修補] 解鎖
+
+                  searchStores();
+
+              } else if (resultsHtml !== '' || (statusText !== '' && statusText !== '尋找中...')) {
+
+                  clearInterval(checkInterval);
+
+                  document.getElementById('errorModalOverlay').style.display = 'none';
+
+                  window._searchLock = false; // [修補] 解鎖
+
+                  if (statusText !== '' && statusText !== '尋找中...' && !statusText.includes('請選擇')) {
+
+                      showModal('地址無效', statusText, true);
+
+                  }
+
+              } else if (attempts > 30) {
+
+                  clearInterval(checkInterval);
+
+                  document.getElementById('errorModalOverlay').style.display = 'none';
+
+                  window._searchLock = false; // [修補] 解鎖
+
+                  showModal('地址設定逾時', '無法自動確認地址，請檢查地址是否正確。');
+
+              }
+
+          }, 500);
+
+          return;
+
+      }
+
+      showModal('請先設定外送地址', '在尋找食物之前，請務必先輸入並點擊「尋找地址」，以便系統準確計算外送範圍與營業時間！');
+
+      return;
+
+    }
+
+    
+    // 等待時段讀取完成
+    if (scheduleMode === 'SCHEDULE' && isDeliveryTimesLoading) {
+        showModal('讀取時段中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在向 Uber 取得預約時段，請稍候...</div>', true);
+        onDeliveryTimesLoadedCallback = () => {
+            document.getElementById('errorModalOverlay').style.display = 'none';
+            window._searchLock = false;
+            searchStores();
+        };
+        return;
+    }
+
+    let q = document.getElementById('query').value.trim();
+
+    
+
+    // 如果沒打字，自動塞入隨機關鍵字，避免出現大混雜
+
+    if (!q) {
+
+        const foodKeywords = ['飯', '麵', '火鍋', '便當', '炸', '烤', '滷', '焗', '飲料', '牛肉麵', '水餃', '咖哩', '小吃', '早午餐', '漢堡', '披薩', '健康', '沙拉', '甜點', '宵夜'];
+
+        const shopKeywords = ['全聯', '家樂福', '美廉社', '大潤發', '統一超商', '全家', '超市', '屈臣氏', '康是美', '生鮮', '零食'];
+
+        const pool = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? shopKeywords : foodKeywords;
+
+        q = pool[Math.floor(Math.random() * pool.length)];
+
+        document.getElementById('query').value = q;
+
+    }
+
+
+
+    window.lastListSearchKeyword = q;
+
+    
+
+    if (q) {
+
+      saveSimpleHistory('query');
+
+    }
+
+    
+
+    // 切換到 ListView
+
+    currentView = 'list';
+
+    document.getElementById('mainBackBtn').style.visibility = 'visible';
+
+    document.getElementById('storeSearchBtn').style.display = 'block';
+
+    document.getElementById('homeView').style.display = 'none';
+
+    document.getElementById('storeView').style.display = 'none';
+
+    document.getElementById('listView').style.display = 'block';
+
+
+
+    const statusEl = document.getElementById('status');
+
+    const resultsEl = document.getElementById('results');
+
+    statusEl.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><div style="margin-top: 10px;">搜尋中...</div>'; statusEl.className = 'status'; resultsEl.innerHTML = '';
+
+    
+
+    try {
+
+      const searchPayload = { 
+          query: q, 
+          lat: currentLat,
+          lng: currentLng,
+          vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
+          searchSource: 'SEARCH_SUGGESTION',
+          searchType: 'GLOBAL_SEARCH'
+      };
+        if (typeof scheduleMode !== 'undefined') {
+            if (scheduleMode === 'ASAP') {
+                searchPayload.date = "";
+                searchPayload.startTime = 0;
+                searchPayload.endTime = 0;
+            } else if (scheduleMode === 'SCHEDULE') {
+                const timeSelect = document.getElementById('scheduleTime');
+                if (timeSelect && timeSelect.value) {
+                    try {
+                        const sData = JSON.parse(timeSelect.value);
+                        searchPayload.date = sData.date;
+                        searchPayload.startTime = sData.startTime;
+                        searchPayload.endTime = sData.endTime;
+                    } catch (e) {}
+                }
+            }
+        }
+
+      
+      if (scheduleMode === 'SCHEDULE') {
+          const timeSelect = document.getElementById('scheduleTime');
+          if (timeSelect && timeSelect.value) {
+              try {
+                  const sData = JSON.parse(timeSelect.value);
+                  searchPayload.date = sData.date;
+                  searchPayload.startTime = sData.startTime;
+                  searchPayload.endTime = sData.endTime;
+              } catch (e) {}
+          }
+      }
+
+      
+      // 在 F12 顯示預計送往 Uber API 的真實 Payload 以利除錯
+      const expectedUberPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          displayType: searchPayload.displayType,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      if (searchPayload.date) {
+          expectedUberPayload.date = searchPayload.date;
+          expectedUberPayload.startTime = searchPayload.startTime;
+          expectedUberPayload.endTime = searchPayload.endTime;
+      }
+      console.group('🚀 [Uber Eats API] 預計發送的 Payload');
+      console.log(JSON.stringify(expectedUberPayload, null, 2));
+      console.groupEnd();
+
+      // 改為跟 getStoreV1 一樣，直送 Uber Eats 伺服器
+      const uberSearchHeaders = {
+          "accept": "*/*",
+          "accept-language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+          "content-type": "application/json",
+          "x-csrf-token": "x",
+          "x-uber-ciid": "c65c5fae-d7e3-44ad-9146-011e930f77dd",
+          "x-uber-client-gitref": "cdeec6f0ad55ef2fc11f85faf00785cd01b5ddf1",
+          "x-uber-request-id": "e2449281-4735-4392-ae07-b803eb404d0a",
+          "x-uber-session-id": "c86ad72f-ecde-4174-9b4f-9121887789cc",
+          "x-uber-device-location-latitude": currentLat.toString(),
+          "x-uber-device-location-longitude": currentLng.toString(),
+          "x-uber-target-location-latitude": currentLat.toString(),
+          "x-uber-target-location-longitude": currentLng.toString()
+      };
+      
+      const uberSearchPayload = {
+          userQuery: q,
+          searchSource: searchPayload.searchSource,
+          searchType: searchPayload.searchType,
+          vertical: searchPayload.vertical,
+          overrideLocationDetails: {
+              latitude: currentLat,
+              longitude: currentLng
+          }
+      };
+      
+      if (searchPayload.date) {
+          uberSearchPayload.date = searchPayload.date;
+          uberSearchPayload.startTime = searchPayload.startTime;
+          uberSearchPayload.endTime = searchPayload.endTime;
+      }
+      
+      console.log('📡 [搜尋餐廳] 直送 Uber Payload:', JSON.stringify(uberSearchPayload, null, 2));
+
+      const res = await fetch(`${API_BASE_URL}/api/search_v3`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchPayload)
+      });
+
+      let json;
+
+      try {
+
+          const textRes = await res.text();
+
+          try {
+
+              json = JSON.parse(textRes);
+
+          } catch (e) {
+
+              console.error('Non-JSON response from server:', textRes);
+
+              throw new Error('伺服器回傳了非 JSON 格式的錯誤: ' + textRes.substring(0, 50) + '...');
+
+          }
+
+      } catch (e) {
+
+          throw e;
+
+      }
+
+      if (!res.ok || json.status === 'failure') { statusEl.innerHTML = '搜尋失敗'; return; }
+
+      
+
+      let stores = [];
+
+      (json.data.feedItems || []).forEach(item => {
+
+          if ((item.type === 'REGULAR_STORE' || item.type === 'REGULAR_STORE_WITH_ITEMS') && item.store) {
+
+              stores.push(item.store);
+
+          } else if ((item.type === 'REGULAR_CAROUSEL' || item.type === 'STORE_CAROUSEL') && item.carousel && item.carousel.stores) {
+
+              stores.push(...item.carousel.stores);
+
+          } else if (item.type === 'MINI_STORE_WITH_ITEMS' && item.miniStoreWithItems && item.miniStoreWithItems.store) {
+
+              stores.push(item.miniStoreWithItems.store);
+
+          }
+
+      });
+
+      // 過濾掉重複的 storeUuid (有時推薦輪播跟一般列表會重複)
+
+      const seen = new Set();
+
+      stores = stores.filter(s => {
+
+          if (seen.has(s.storeUuid)) return false;
+
+          seen.add(s.storeUuid);
+
+          return true;
+
+      });
+      // 過濾掉自取(無法外送)的店家
+      stores = stores.filter(s => {
+          if (s.imageOverlayCallToAction && s.imageOverlayCallToAction.text && s.imageOverlayCallToAction.text.includes('自取')) return false;
+          if (s.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+          if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+          return true;
+      });
+
+
+      
+
+      resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
 
     } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
 
@@ -5404,6 +5358,13 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
     const oldHtml = resultsDiv.innerHTML;
 
     resultsDiv.innerHTML = '<div class="status" style="padding: 40px 20px;"><div class="spinner"></div></div>';
+    
+    // Immediately transition to list view so user sees the spinner instead of hanging on home
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('storeView').style.display = 'none';
+    document.getElementById('listView').style.display = 'block';
+    currentView = 'list';
+    document.getElementById('mainBackBtn').style.visibility = 'visible';
 
     
 
@@ -5567,14 +5528,14 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
       const isSchedulable = (d.scheduledOrderInfo && d.scheduledOrderInfo.isSchedulable && d.timeWindowPicker && d.timeWindowPicker.dates);
 
-      // 如果是生鮮雜貨，給予特權免死金牌，無視預約限制
+      // 生鮮雜貨與餐廳皆需通過可接單檢查
 
       const isGrocery = window.isGroceryStore;
 
 
 
       const isTooFar = JSON.stringify(d).includes('"storeStatus":"TOO_FAR_TO_DELIVER"');
-      if (isTooFar || (!isGrocery && (!isSchedulable || !hasValidPriceItem))) {
+      if (isTooFar || !isSchedulable || (!isGrocery && !hasValidPriceItem)) {
 
           const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
@@ -5588,7 +5549,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           
 
-          let errorMsg = isTooFar ? '店家太遠無法外送，請選擇其他餐廳。' : (!isSchedulable ? '此餐廳不支援預約點餐系統，無法為您代購。請選擇其他餐廳。' : '此餐廳無法使用折扣券，無法為您代購。請選擇其他餐廳。');
+          const tType = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+          let errorMsg = isTooFar ? `店家太遠無法外送，請選擇其他${tType}。` : (!isSchedulable ? `此${tType}不支援預約點餐系統，無法為您代購。請選擇其他${tType}。` : `此${tType}無法使用折扣券，無法為您代購。請選擇其他${tType}。`);
 
           showModal('無法接單', '', true, `<div style="text-align:center;">${errorMsg}</div>`);
 
@@ -5674,7 +5636,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
           if (!isCurrentlyOpen) {
 
-              showModal('無法接單', '此餐廳目前休息中，無法接收即時單。請選擇預約時段，或其他營業中的餐廳。', true, '', true);
+              const tType2 = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+              showModal('無法接單', `此${tType2}目前休息中，無法接收即時單。請選擇預約時段，或其他營業中的${tType2}。`, true, '', true);
 
               resultsDiv.innerHTML = oldHtml;
 
@@ -5726,7 +5689,8 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
 
             let text = '';
 
-            let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此餐廳在您選的時段 ( ${selectedScheduleText} ) 休息或無法接單。</div>`;
+            const tType3 = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '商店' : '餐廳';
+            let btnsHtml = `<div style="text-align:center; font-size:15px; margin-bottom:15px; line-height:1.6;">此${tType3}在您選的時段 ( ${selectedScheduleText} ) 休息或並不支援。</div>`;
             
             const safeName = storeName ? storeName.replace(/'/g, "%27") : '';
             const safeAction = actionUrl ? actionUrl.replace('https://www.ubereats.com/tw', '').replace(/'/g, "%27") : '';
@@ -7130,8 +7094,8 @@ function showToast(msg) {
 
 
 <!-- Time Picker Modal -->
-<div id="timePickerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:flex-end;" onclick="if(event.target===this) closeTimePickerModal()">
-  <div style="background:#fff; width:100%; max-width:500px; border-radius:16px 16px 0 0; padding:20px; box-sizing:border-box; position:relative; animation: slideUp 0.3s ease-out;">
+<div id="timePickerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:flex-start;" onclick="if(event.target===this) closeTimePickerModal()">
+  <div style="background:#fff; width:100%; max-width:500px; border-radius:0 0 16px 16px; padding:20px; box-sizing:border-box; position:relative; animation: slideDownTop 0.3s ease-out;">
     <h2 style="margin-top:0; font-size:24px; font-weight:bold; margin-bottom:20px;">挑選時間</h2>
     <div style="position:relative; margin-bottom:15px;">
         <select id="modalDateSelect" onchange="renderModalTimes()" style="width:100%; padding:15px; font-size:16px; border:1px solid #ddd; border-radius:8px; appearance:none; outline:none; font-weight:bold; cursor:pointer; background:#fff;"></select>
@@ -7150,6 +7114,298 @@ function showToast(msg) {
   </div>
 </div>
 
+
+<script>
+
+
+let queryDebounceTimer = null;
+let lastSearchedQuery = "";
+let isFetchingSuggestions = false;
+let pendingSuggestionQuery = "";
+window.suggestionStores = [];
+
+function openQueryOverlay() {
+    const bg = document.getElementById('queryOverlayBg');
+    const resultsTop = document.getElementById('queryResultsTop');
+    const row = document.getElementById('queryInputRow');
+    if(!bg || !resultsTop || !row) return;
+
+    bg.style.display = 'block';
+    const closeBtn = document.getElementById('queryCloseBtn');
+    if (closeBtn) closeBtn.style.display = 'flex';
+    row.style.position = 'relative';
+    row.style.zIndex = '801';
+    resultsTop.style.display = 'block';
+
+    const rect = row.getBoundingClientRect();
+    const topSpace = rect.top - 54;
+    if (topSpace > 0) {
+        resultsTop.style.height = topSpace + 'px';
+    }
+
+    renderOverlayHTML();
+}
+
+function closeQueryOverlay() {
+    const bg = document.getElementById('queryOverlayBg');
+    const resultsTop = document.getElementById('queryResultsTop');
+    const row = document.getElementById('queryInputRow');
+    if(bg) bg.style.display = 'none';
+    const closeBtn = document.getElementById('queryCloseBtn');
+    if (closeBtn) closeBtn.style.display = 'none';
+    if(resultsTop) resultsTop.style.display = 'none';
+    if(row) {
+        row.style.position = '';
+        row.style.zIndex = '';
+    }
+}
+
+function updateQueryOverlay() {
+    const input = document.getElementById('query');
+    if(!input) return;
+    const val = input.value.trim();
+    
+    // Immediate feedback in UI (shows typed text)
+    renderOverlayHTML();
+    
+    // Clear previous debounce timer
+    clearTimeout(queryDebounceTimer);
+    
+    // Only fetch if value is not empty and has changed
+    if (val && val !== lastSearchedQuery) {
+        // Trigger fetch after 1000ms of inactivity
+        queryDebounceTimer = setTimeout(() => {
+            if (isFetchingSuggestions || window._searchLock) {
+                // If currently fetching (or manual search is locked), queue the latest query
+                pendingSuggestionQuery = val;
+            } else {
+                lastSearchedQuery = val;
+                fetchStoreSuggestions(val);
+            }
+        }, 1000);
+    }
+}
+
+async function fetchStoreSuggestions(q) {
+    if (!q || !currentLat || !currentLng) return;
+    
+    isFetchingSuggestions = true;
+    
+    try {
+        const searchPayload = { 
+            query: q, 
+            lat: currentLat,
+            lng: currentLng,
+            vertical: typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS',
+            searchSource: 'SEARCH_SUGGESTION',
+            searchType: 'GLOBAL_SEARCH'
+        };
+        if (typeof scheduleMode !== 'undefined') {
+            if (scheduleMode === 'ASAP') {
+                searchPayload.date = "";
+                searchPayload.startTime = 0;
+                searchPayload.endTime = 0;
+            } else if (scheduleMode === 'SCHEDULE') {
+                const timeSelect = document.getElementById('scheduleTime');
+                if (timeSelect && timeSelect.value) {
+                    try {
+                        const sData = JSON.parse(timeSelect.value);
+                        searchPayload.date = sData.date;
+                        searchPayload.startTime = sData.startTime;
+                        searchPayload.endTime = sData.endTime;
+                    } catch (e) {}
+                }
+            }
+        }
+
+        
+
+        
+        const apiBase = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '';
+        if(!apiBase) {
+            isFetchingSuggestions = false;
+            return;
+        }
+
+        const res = await fetch(`${apiBase}/api/search_v3`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(searchPayload)
+        });
+        
+        if (!res.ok) throw new Error('Network response was not ok');
+        const textRes = await res.text();
+        const json = JSON.parse(textRes);
+        
+        if (json.status !== 'failure') {
+            let stores = [];
+            (json.data.feedItems || []).forEach(item => {
+                if ((item.type === 'REGULAR_STORE' || item.type === 'REGULAR_STORE_WITH_ITEMS') && item.store) {
+                    stores.push(item.store);
+                } else if ((item.type === 'REGULAR_CAROUSEL' || item.type === 'STORE_CAROUSEL') && item.carousel && item.carousel.stores) {
+                    stores.push(...item.carousel.stores);
+                } else if (item.type === 'MINI_STORE_WITH_ITEMS' && item.miniStoreWithItems && item.miniStoreWithItems.store) {
+                    stores.push(item.miniStoreWithItems.store);
+                }
+            });
+            
+            const seen = new Set();
+            stores = stores.filter(s => {
+                if (seen.has(s.storeUuid)) return false;
+                seen.add(s.storeUuid);
+                return true;
+            });
+            // 過濾掉自取(無法外送)的店家
+            stores = stores.filter(s => {
+                if (s.imageOverlayCallToAction && s.imageOverlayCallToAction.text && s.imageOverlayCallToAction.text.includes('自取')) return false;
+                if (s.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+                if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState === 'TOO_FAR_TO_DELIVER') return false;
+                return true;
+            });
+
+            
+            window.suggestionStores = stores;
+        const resultsEl = document.getElementById('results');
+        if (resultsEl) {
+            resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
+            // Also update the status element just in case, though it's hidden in home view
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.innerHTML = `為您找到 ${stores.length} 家${(typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '生鮮雜貨' : '餐廳'}：`;
+                statusEl.className = 'status success';
+            }
+        }
+
+            // Re-render the overlay to show newly fetched stores
+            renderOverlayHTML();
+        }
+    } catch (e) {
+        console.error('Fetch store suggestions error:', e);
+    } finally {
+        isFetchingSuggestions = false;
+        
+        // If the user typed something else while we were waiting, fetch it now!
+        if (pendingSuggestionQuery && pendingSuggestionQuery !== lastSearchedQuery && !window._searchLock) {
+            const nextQ = pendingSuggestionQuery;
+            pendingSuggestionQuery = "";
+            lastSearchedQuery = nextQ;
+            fetchStoreSuggestions(nextQ);
+        }
+    }
+}
+
+function openStoreFromOverlay(uuid, encodedName, actionUrl) {
+    const name = decodeURIComponent(encodedName);
+    document.getElementById('query').value = name;
+    closeQueryOverlay();
+    if (typeof openStore === 'function') {
+        openStore(uuid, name, actionUrl);
+    }
+}
+
+function renderOverlayHTML() {
+    const input = document.getElementById('query');
+    const resultsTop = document.getElementById('queryResultsTop');
+    if(!input || !resultsTop) return;
+    
+    const val = input.value.trim().toLowerCase();
+    
+    const searchBtn = document.getElementById('searchMainBtn');
+    if (searchBtn) {
+        if (val) {
+            searchBtn.style.background = '#06c167';
+            searchBtn.style.color = '#000';
+        } else {
+            searchBtn.style.background = '';
+            searchBtn.style.color = '';
+        }
+    }
+    
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('finddog_history_query') || '[]');
+    } catch(e){}
+
+    let html = '';
+    if (!val) {
+        if (history.length > 0) {
+            html += '<div style="font-size:14px; color:#999; margin-bottom:10px; font-weight:bold;">歷史搜尋</div>';
+            history.forEach(h => {
+                const escapedH = h.replace(/'/g, "\'").replace(/"/g, '&quot;');
+                html += `<div onclick="selectQueryOverlay('${escapedH}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;"><span style="color:#999;">🕒</span> ${h}</div>`;
+            });
+            html += `<div onclick="clearQueryOverlayHistory()" style="padding:15px 0; cursor:pointer; font-size:13px; color:#d32f2f; text-align:center;">清除歷史紀錄</div>`;
+        } else {
+            html += '<div style="font-size:14px; color:#999; text-align:center; margin-top:30px;">輸入關鍵字開始搜尋</div>';
+        }
+    } else {
+        html += `<div onclick="selectQueryOverlay('${val.replace(/'/g, "\'")}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#06c167; display:flex; align-items:center; gap:8px;">
+                  <span>🔍</span> 搜尋 "${val}"
+              </div>`;
+              
+        if (window.suggestionStores && window.suggestionStores.length > 0) {
+            html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
+            window.suggestionStores.slice(0, 10).forEach(s => {
+                const name = s.title && s.title.text ? s.title.text : '';
+                if (!name) return;
+                const encodedName = encodeURIComponent(name).replace(/'/g, "%27");
+                const uuid = s.storeUuid || '';
+                const actionUrl = s.actionUrl || '';
+                
+                let state = s.storeAvailablityState || '';
+                let isUIClosed = false;
+                if (state.includes('CLOSED')) isUIClosed = true;
+                if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
+                if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
+                if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
+                const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
+                
+                let ratingHtml = '';
+                if (isCompletelyClosed) {
+                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;font-weight:bold;">未營業</span>`;
+                } else if (s.rating && s.rating.text) {
+                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
+                }
+                
+                let stateText = '';
+                if (isUIClosed && !isCompletelyClosed) {
+                    stateText = `<span style="font-size:11px;color:#d32f2f;background:#fdecec;padding:2px 4px;border-radius:4px;margin-left:6px;">休息中</span>`;
+                }
+                
+                let clickAttr = isCompletelyClosed ? '' : `onclick="openStoreFromOverlay('${uuid}', '${encodedName}', '${actionUrl}')"`;
+                let divStyle = isCompletelyClosed 
+                    ? `padding:12px 0; border-bottom:1px solid #f0f0f0; font-size:15px; color:#999; display:flex; align-items:center; gap:8px; opacity:0.6;`
+                    : `padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;`;
+                let iconHtml = isCompletelyClosed 
+                    ? `<span style="color:#999;">🏪</span>`
+                    : `<span style="color:#06c167;">🏪</span>`;
+                
+                html += `<div ${clickAttr} style="${divStyle}">
+                    ${iconHtml}
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${name}</span>
+                    ${stateText}
+                    ${ratingHtml}
+                </div>`;
+            });
+        }
+    }
+    resultsTop.innerHTML = html;
+}
+
+function selectQueryOverlay(text) {
+    document.getElementById('query').value = text;
+    closeQueryOverlay();
+    if (typeof searchStores === 'function') {
+        searchStores();
+    }
+}
+
+function clearQueryOverlayHistory() {
+    localStorage.removeItem('finddog_history_query');
+    renderOverlayHTML();
+}
+</script>
 </body>
+
 
 </html>
