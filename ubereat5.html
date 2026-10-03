@@ -1339,12 +1339,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (data.length === 0) {
-
+            // Ultimate fallback to app.py parse_map_url
+            try {
+                const mapUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(q);
+                const googleRes = await fetch(`${API_BASE_URL}/api/parse_map_url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: mapUrl })
+                });
+                const googleData = await googleRes.json();
+                if (googleData.lat && googleData.lng) {
+                    setAddress(googleData.lat, googleData.lng, q);
+                    return;
+                }
+            } catch (err) {
+                console.error('Google fallback failed', err);
+            }
+            
             statusEl.innerText = '找不到地址';
             if (document.getElementById('fullScreenLoader')) document.getElementById('fullScreenLoader').style.display = 'none';
-
             return;
-
         }
 
         if (data.length === 1) {
