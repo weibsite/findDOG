@@ -2200,6 +2200,24 @@ async function searchStores() {
           searchSource: 'SEARCH_SUGGESTION',
           searchType: 'GLOBAL_SEARCH'
       };
+        if (typeof scheduleMode !== 'undefined') {
+            if (scheduleMode === 'ASAP') {
+                searchPayload.date = "";
+                searchPayload.startTime = 0;
+                searchPayload.endTime = 0;
+            } else if (scheduleMode === 'SCHEDULE') {
+                const timeSelect = document.getElementById('scheduleTime');
+                if (timeSelect && timeSelect.value) {
+                    try {
+                        const sData = JSON.parse(timeSelect.value);
+                        searchPayload.date = sData.date;
+                        searchPayload.startTime = sData.startTime;
+                        searchPayload.endTime = sData.endTime;
+                    } catch (e) {}
+                }
+            }
+        }
+
       
       if (scheduleMode === 'SCHEDULE') {
           const timeSelect = document.getElementById('scheduleTime');
@@ -7171,18 +7189,26 @@ async function fetchStoreSuggestions(q) {
             searchSource: 'SEARCH_SUGGESTION',
             searchType: 'GLOBAL_SEARCH'
         };
-        
-        if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
-            const timeSelect = document.getElementById('scheduleTime');
-            if (timeSelect && timeSelect.value) {
-                try {
-                    const sData = JSON.parse(timeSelect.value);
-                    searchPayload.date = sData.date;
-                    searchPayload.startTime = sData.startTime;
-                    searchPayload.endTime = sData.endTime;
-                } catch (e) {}
+        if (typeof scheduleMode !== 'undefined') {
+            if (scheduleMode === 'ASAP') {
+                searchPayload.date = "";
+                searchPayload.startTime = 0;
+                searchPayload.endTime = 0;
+            } else if (scheduleMode === 'SCHEDULE') {
+                const timeSelect = document.getElementById('scheduleTime');
+                if (timeSelect && timeSelect.value) {
+                    try {
+                        const sData = JSON.parse(timeSelect.value);
+                        searchPayload.date = sData.date;
+                        searchPayload.startTime = sData.startTime;
+                        searchPayload.endTime = sData.endTime;
+                    } catch (e) {}
+                }
             }
         }
+
+        
+
         
         const apiBase = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '';
         if(!apiBase) {
