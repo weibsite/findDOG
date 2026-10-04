@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.8</title>
+<title>點餐系統 7.9</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2208,8 +2208,16 @@ async function searchStores() {
     const resultsEl = document.getElementById('results');
 
     statusEl.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><div style="margin-top: 10px;">搜尋中...</div>'; statusEl.className = 'status'; resultsEl.innerHTML = '';
-
     
+    // [優化] 如果關鍵字與剛剛自動搜尋的關鍵字完全相同，且資料已下載完畢，直接使用快取不需重發 API
+    if (q === lastSearchedQuery && typeof isFetchingSuggestions !== 'undefined' && !isFetchingSuggestions && window.suggestionStores && window.suggestionStores.length > 0) {
+        console.log('[Cache Hit] Reusing suggestionStores for searchStores:', q);
+        statusEl.innerHTML = `為您找到 ${window.suggestionStores.length} 家${(typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '生鮮雜貨' : '餐廳'}：`;
+        statusEl.className = 'status success';
+        resultsEl.innerHTML = generateStoreListHTML(window.suggestionStores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
+        window.scrollTo(0, 0);
+        return;
+    }
 
     try {
 
