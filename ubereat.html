@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.4</title>
+<title>點餐系統 7.6</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2611,16 +2611,16 @@ function handleStoreSearch(isUserInput = false) {
 
       
 
-      if (isUserInput) {
-
+            if (isUserInput) {
           clearTimeout(window.listSearchDebounceTimer);
-
+          const prevVal = window._lastStoreSearchValue || '';
+          window._lastStoreSearchValue = keyword;
+          const diff = Math.abs(keyword.length - prevVal.length);
+          const delay = diff > 2 ? 0 : 500;
+          
           window.listSearchDebounceTimer = setTimeout(() => {
-
               triggerListSearch(false);
-
-          }, 1200);
-
+          }, delay);
       }
 
       return;
@@ -7228,6 +7228,9 @@ function updateQueryOverlay() {
     
     const val = keyword.trim();
     
+    const prevVal = window._lastOverlayInputValue || '';
+    window._lastOverlayInputValue = val;
+    
     // Immediate feedback in UI (shows typed text)
     renderOverlayHTML();
     
@@ -7236,14 +7239,19 @@ function updateQueryOverlay() {
     
     // Only fetch if value is not empty and has changed
     if (val && val !== lastSearchedQuery) {
+        const diff = Math.abs(val.length - prevVal.length);
+        const delay = diff > 2 ? 0 : 500;
+        
         queryDebounceTimer = setTimeout(() => {
-            if (isFetchingSuggestions || window._searchLock) {
+            if (typeof isFetchingSuggestions !== 'undefined' && isFetchingSuggestions) {
+                pendingSuggestionQuery = val;
+            } else if (window._searchLock) {
                 pendingSuggestionQuery = val;
             } else {
                 lastSearchedQuery = val;
                 fetchStoreSuggestions(val);
             }
-        }, 1000);
+        }, delay);
     }
 }
 
