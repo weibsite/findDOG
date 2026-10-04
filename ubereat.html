@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.0</title>
+<title>點餐系統 8.3</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -226,7 +226,7 @@
 
     <button id="mainBackBtn" class="back-btn" onclick="handleMainBack()" style="visibility: hidden;">←</button>
 
-      <div class="header-title" id="headerTitleText">外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div>
+      <div class="header-title" id="headerTitleText" style="display:flex; align-items:center; justify-content:center; gap:8px;"><div id="serverStatusDot" style="width:10px; height:10px; border-radius:50%; background-color:#ddd; transition: background-color 0.3s; box-shadow: 0 0 5px rgba(0,0,0,0.2);"></div><div>外送 <a href="https://line.me/R/ti/p/@znx2009l" style="color: #06c167; text-decoration: none;">訂單系統</a></div></div>
 
       <div id="headerSearchBox" style="display:none; flex:1; margin: 0 10px;">
 
@@ -832,7 +832,7 @@ let isAddressSet = false;
     
     // Config loaded, API_BASE_URL is ready, now we can fetch times
     fetchDeliveryTimes();
-
+    loadServerStatusDot();
   });
 
 
@@ -7600,8 +7600,42 @@ if (window.visualViewport) {
     };
 }
 
+
+async function loadServerStatusDot() {
+    try {
+        const apiBase = typeof API_BASE_URL !== 'undefined' && API_BASE_URL ? API_BASE_URL : '';
+        if (!apiBase) return;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); 
+        
+        const response = await fetch(apiBase + '/api/status', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error('API Error');
+        
+        const data = await response.json();
+        updateStatusDot(data.type);
+    } catch (err) {
+        console.error("Status check error", err);
+        updateStatusDot('offline');
+    }
+}
+
+function updateStatusDot(type) {
+    const dot = document.getElementById('serverStatusDot');
+    if (!dot) return;
+    
+    let color = '#00B900'; 
+    if(type === 'closed') color = '#d81b43'; 
+    else if(type === 'preorder') color = '#d68910'; 
+    else if(type === 'busy') color = '#2980b9'; 
+    else if(type === 'connecting') color = '#ddd'; 
+    else if(type === 'offline') color = '#000000'; 
+    
+    dot.style.backgroundColor = color;
+    dot.title = "系統狀態: " + type;
+}
 </script>
 </body>
-
-
 </html>
