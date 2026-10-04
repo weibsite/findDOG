@@ -114,8 +114,8 @@
             享優惠不需等待穩定用餐
         </div>
         
-        <div id="action-container" style="display: none;">
-            <a href="https://liff.line.me/2011657436-rGVj5SoG" class="order-btn">開始點餐</a>
+        <div id="action-container" style="display: none; text-align: center;">
+            <a href="https://liff.line.me/2011657436-rGVj5SoG" id="order-link" class="order-btn">開始點餐</a>
         </div>
 
         <div class="update-time">
@@ -148,6 +148,13 @@
                     actionContainer.style.display = 'none';
                 } else {
                     actionContainer.style.display = 'block';
+                    const btn = document.getElementById('order-link');
+                    if (btn && !btn.dataset.autoClickScheduled) {
+                        btn.dataset.autoClickScheduled = "true";
+                        setTimeout(() => {
+                            window.location.href = btn.href;
+                        }, 1500);
+                    }
                 }
             }
             
