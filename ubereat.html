@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.6</title>
+<title>點餐系統 7.7</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -7345,8 +7345,6 @@ async function fetchStoreSuggestions(q) {
             }
         }
 
-            // Re-render the overlay to show newly fetched stores
-            renderOverlayHTML();
         }
     } catch (e) {
         console.error('Fetch store suggestions error:', e);
@@ -7359,6 +7357,9 @@ async function fetchStoreSuggestions(q) {
             pendingSuggestionQuery = "";
             lastSearchedQuery = nextQ;
             fetchStoreSuggestions(nextQ);
+        } else {
+            // Re-render the overlay to show newly fetched stores, hide spinner, or show error/empty state
+            if (typeof renderOverlayHTML === 'function') renderOverlayHTML();
         }
     }
 }
