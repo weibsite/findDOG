@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 6.6</title>
+<title>點餐系統 6.7</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -4142,6 +4142,11 @@ async function _sendOrderToLine(forceSubmit = false) {
       cart.forEach(it => foodTotal += it.price * it.qty);
 
       let isASAPCheckout = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+      if (!isASAPCheckout && typeof getSelectedScheduleTimestamp === 'function') {
+          if (getSelectedScheduleTimestamp() - Date.now() < 2.99 * 3600000) {
+              isASAPCheckout = true; // 3小時內的預約單視同即時單標準
+          }
+      }
       let minOrderLimit = isASAPCheckout ? 199 : 169;
 
       if (foodTotal < minOrderLimit) {
@@ -4264,6 +4269,11 @@ async function _sendOrderToLine(forceSubmit = false) {
         let grandTotal = 0;
 
         let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+    if (!isASAP && typeof getSelectedScheduleTimestamp === 'function') {
+        if (getSelectedScheduleTimestamp() - Date.now() < 2.99 * 3600000) {
+            isASAP = true; // 3小時內的預約單視同即時單標準
+        }
+    }
       let feePerBin = 50;
 
       let preOrderDiscount = isPreOrder ? (window.isGroceryStore ? 35 : 10) : 0;
@@ -6736,6 +6746,11 @@ function normalizeAddress(addr) {
 
 
     let isASAP = (typeof scheduleMode === 'undefined' || scheduleMode === 'ASAP');
+    if (!isASAP && typeof getSelectedScheduleTimestamp === 'function') {
+        if (getSelectedScheduleTimestamp() - Date.now() < 2.99 * 3600000) {
+            isASAP = true; // 3小時內的預約單視同即時單標準
+        }
+    }
     let binLimit = isASAP ? 199 : 170;
     
     let validSplit = true;
