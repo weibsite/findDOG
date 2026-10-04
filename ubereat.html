@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.3</title>
+<title>點餐系統 7.4</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -7434,12 +7434,19 @@ function renderOverlayHTML() {
             html += '<div style="font-size:14px; color:#999; text-align:center; margin-top:30px;">輸入關鍵字開始搜尋</div>';
         }
     } else {
-        if (window.suggestionStores && window.suggestionStores.length > 0) {
-            let isCompressed = false;
-            if (window.visualViewport && window.visualViewport.height < window.innerHeight * 0.8) {
-                isCompressed = true;
+        let isCompressed = false;
+        if (window.visualViewport && window.visualViewport.height < window.innerHeight * 0.8) {
+            isCompressed = true;
+        }
+        
+        if (val !== (typeof lastSearchedQuery !== 'undefined' ? lastSearchedQuery : '') || (typeof isFetchingSuggestions !== 'undefined' && isFetchingSuggestions)) {
+            if (!isCompressed) {
+                html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
+            } else {
+                html += '<div style="height:10px;"></div>';
             }
-            
+            html += '<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; color:#999; font-size:14px;">搜尋中...</div></div>';
+        } else if (window.suggestionStores && window.suggestionStores.length > 0) {
             if (!isCompressed) {
                 html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
             } else {
@@ -7483,6 +7490,9 @@ function renderOverlayHTML() {
                     </div>
                 </div>`;
             });
+        } else {
+            // Searched but no results
+            html += `<div style="text-align:center; padding:40px 0; color:#999; font-size:14px;">找不到與 "${val}" 相關的店家</div>`;
         }
     }
     resultsTop.innerHTML = html;
