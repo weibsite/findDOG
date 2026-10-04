@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.3</title>
+<title>點餐系統 8.4</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2081,6 +2081,11 @@ async function searchStores() {
 
     // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
     if (window._searchLock) return;
+    
+    // [優化] 執行完整搜尋時，確保自動關閉搜尋面板，讓用戶能看到下方的搜尋結果
+    if (typeof closeQueryOverlay === 'function') {
+        closeQueryOverlay();
+    }
 
     if (!isAddressSet) {
 
@@ -2410,6 +2415,15 @@ async function searchStores() {
 
       
 
+      
+      // [優化] 同步完整搜尋的結果到背景快取，這樣用戶馬上點擊搜尋列時，不用再等一次轉圈圈
+      window.suggestionStores = stores;
+      if (typeof lastSearchedQuery !== 'undefined') {
+          lastSearchedQuery = q;
+      } else {
+          window.lastSearchedQuery = q;
+      }
+      
       resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
       window.scrollTo(0, 0); // 確保每次搜尋完成後，畫面回到最上方優先顯示第一個結果
     } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
@@ -7226,7 +7240,8 @@ function openQueryOverlay() {
         mobileInput.value = headerInput.value;
         setTimeout(() => mobileInput.focus(), 100);
     }
-    renderOverlayHTML();
+    // [優化] 改為呼叫 updateQueryOverlay，這樣如果緩存被清空，能正確觸發新的背景 API 搜尋
+    updateQueryOverlay();
 }
 
 function closeQueryOverlay() {
