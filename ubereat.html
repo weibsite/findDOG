@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.2</title>
+<title>點餐系統 7.3</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -362,7 +362,11 @@
             <button id="verticalToggleBtnMobile" onclick="toggleVertical()" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:1px solid #06c167; background:#e6fcf5; color:#06c167; cursor:pointer;">目前模式: 餐廳</button>
         </div>
         <div class="input-row" style="margin:0; box-shadow:none; display:flex; gap:10px;">
-            <input type="text" id="globalSearchInputMobile" autocomplete="off" placeholder="想吃什麼？ (例如: 麥當勞)" oninput="updateQueryOverlay()" onkeydown="if(event.key==='Enter'){ searchStores(); }" style="flex:1; padding:10px 15px; border:1px solid #ddd; border-radius:25px; outline:none; font-size:16px; background:#f5f5f5; box-sizing:border-box;" />
+            <div style="flex:1; display:flex; align-items:center; background:#f5f5f5; border:1px solid #ddd; border-radius:25px; padding:0 15px; box-sizing:border-box; overflow:hidden;">
+                <span id="searchPrefix" style="display:none; color:#06c167; font-size:16px; font-weight:bold; white-space:nowrap; margin-right:2px;">🔍 搜尋 "</span>
+                <input type="text" id="globalSearchInputMobile" autocomplete="off" placeholder="想吃什麼？ (例如: 麥當勞)" oninput="updateQueryOverlay()" onkeydown="if(event.key==='Enter'){ searchStores(); }" style="flex:1; padding:10px 0; border:none; outline:none; font-size:16px; background:transparent; min-width:0; caret-color:#111;" />
+                <span id="searchSuffix" style="display:none; color:#06c167; font-size:16px; font-weight:bold; margin-left:2px;">"</span>
+            </div>
             <button id="searchMainBtnMobile" onclick="searchStores()" style="border-radius:25px; padding:10px 20px; font-weight:bold; background:#06c167; color:#000; border:none; white-space:nowrap; cursor:pointer;">尋找食物</button>
             <div onclick="closeQueryOverlay()" style="display:flex; align-items:center; justify-content:center; padding:0 5px; font-size:24px; color:#999; cursor:pointer;">✕</div>
         </div>
@@ -7375,24 +7379,40 @@ function renderOverlayHTML() {
         if (val) {
             searchBtn.style.background = '#06c167';
             searchBtn.style.color = '#fff';
-            searchBtn.innerText = `🔍 搜尋 "${val}"`;
         } else {
             searchBtn.style.background = '';
             searchBtn.style.color = '';
-            searchBtn.innerText = defaultText;
         }
+        searchBtn.innerText = defaultText;
     }
     
     const searchBtnMob = document.getElementById('searchMainBtnMobile');
     if (searchBtnMob) {
         if (val) {
             searchBtnMob.style.background = '#06c167';
-            searchBtnMob.style.color = '#fff';
-            searchBtnMob.innerText = `🔍 搜尋 "${val}"`;
+            searchBtnMob.style.color = '#000';
         } else {
             searchBtnMob.style.background = '#06c167';
             searchBtnMob.style.color = '#000';
-            searchBtnMob.innerText = defaultText;
+        }
+        searchBtnMob.innerText = defaultText;
+    }
+    
+    // Toggle input field styling
+    const mobInput = document.getElementById('globalSearchInputMobile');
+    const searchPrefix = document.getElementById('searchPrefix');
+    const searchSuffix = document.getElementById('searchSuffix');
+    if (mobInput) {
+        if (val) {
+            if (searchPrefix) searchPrefix.style.display = 'inline';
+            if (searchSuffix) searchSuffix.style.display = 'inline';
+            mobInput.style.color = '#06c167';
+            mobInput.style.fontWeight = 'bold';
+        } else {
+            if (searchPrefix) searchPrefix.style.display = 'none';
+            if (searchSuffix) searchSuffix.style.display = 'none';
+            mobInput.style.color = '';
+            mobInput.style.fontWeight = '';
         }
     }
     
@@ -7414,9 +7434,6 @@ function renderOverlayHTML() {
             html += '<div style="font-size:14px; color:#999; text-align:center; margin-top:30px;">輸入關鍵字開始搜尋</div>';
         }
     } else {
-        // [移除原本的頂部 🔍 搜尋 "關鍵字" 列]
-        // html += `<div onclick="selectQueryOverlay('${valLower.replace(/'/g, "\'")}')" ...></div>`;
-        
         if (window.suggestionStores && window.suggestionStores.length > 0) {
             let isCompressed = false;
             if (window.visualViewport && window.visualViewport.height < window.innerHeight * 0.8) {
