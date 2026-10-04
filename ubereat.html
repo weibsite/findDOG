@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.1</title>
+<title>點餐系統 7.2</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -7365,16 +7365,34 @@ function renderOverlayHTML() {
     const resultsTop = document.getElementById('globalSearchResults');
     if(!input || !resultsTop) return;
     
-    const val = input.value.trim().toLowerCase();
+    const val = input.value.trim();
+    const valLower = val.toLowerCase();
+    
+    const defaultText = (typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '尋找生鮮' : '尋找食物';
     
     const searchBtn = document.getElementById('searchMainBtn');
     if (searchBtn) {
         if (val) {
             searchBtn.style.background = '#06c167';
-            searchBtn.style.color = '#000';
+            searchBtn.style.color = '#fff';
+            searchBtn.innerText = `🔍 搜尋 "${val}"`;
         } else {
             searchBtn.style.background = '';
             searchBtn.style.color = '';
+            searchBtn.innerText = defaultText;
+        }
+    }
+    
+    const searchBtnMob = document.getElementById('searchMainBtnMobile');
+    if (searchBtnMob) {
+        if (val) {
+            searchBtnMob.style.background = '#06c167';
+            searchBtnMob.style.color = '#fff';
+            searchBtnMob.innerText = `🔍 搜尋 "${val}"`;
+        } else {
+            searchBtnMob.style.background = '#06c167';
+            searchBtnMob.style.color = '#000';
+            searchBtnMob.innerText = defaultText;
         }
     }
     
@@ -7384,7 +7402,7 @@ function renderOverlayHTML() {
     } catch(e){}
 
     let html = '';
-    if (!val) {
+    if (!valLower) {
         if (history.length > 0) {
             html += '<div style="font-size:14px; color:#999; margin-bottom:10px; font-weight:bold;">歷史搜尋</div>';
             history.forEach(h => {
@@ -7396,12 +7414,21 @@ function renderOverlayHTML() {
             html += '<div style="font-size:14px; color:#999; text-align:center; margin-top:30px;">輸入關鍵字開始搜尋</div>';
         }
     } else {
-        html += `<div onclick="selectQueryOverlay('${val.replace(/'/g, "\'")}')" style="padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#06c167; display:flex; align-items:center; gap:8px;">
-                  <span>🔍</span> 搜尋 "${val}"
-              </div>`;
-              
+        // [移除原本的頂部 🔍 搜尋 "關鍵字" 列]
+        // html += `<div onclick="selectQueryOverlay('${valLower.replace(/'/g, "\'")}')" ...></div>`;
+        
         if (window.suggestionStores && window.suggestionStores.length > 0) {
-            html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
+            let isCompressed = false;
+            if (window.visualViewport && window.visualViewport.height < window.innerHeight * 0.8) {
+                isCompressed = true;
+            }
+            
+            if (!isCompressed) {
+                html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
+            } else {
+                html += '<div style="height:10px;"></div>';
+            }
+            
             window.suggestionStores.slice(0, 10).forEach(s => {
                 const name = s.title && s.title.text ? s.title.text : '';
                 if (!name) return;
@@ -7409,39 +7436,34 @@ function renderOverlayHTML() {
                 const uuid = s.storeUuid || '';
                 const actionUrl = s.actionUrl || '';
                 
-                let state = s.storeAvailablityState || '';
-                let isUIClosed = false;
-                if (state.includes('CLOSED')) isUIClosed = true;
-                if (s.tracking && s.tracking.storePayload && s.tracking.storePayload.storeAvailablityState && s.tracking.storePayload.storeAvailablityState.includes('CLOSED')) isUIClosed = true;
-                if (s.imageOverlay && s.imageOverlay.text === 'Closed') isUIClosed = true;
-                if (s.meta && s.meta.some(m => m.badgeType === 'CLOSED_ETA')) isUIClosed = true;
-                const isCompletelyClosed = isUIClosed || state === 'STORE_OFFLINE' || state === 'STORE_UNAVAILABLE';
+                let imageUrl = '';
+                if (s.image && s.image.items && s.image.items.length > 0) {
+                    imageUrl = getUberWebpUrl(s.image.items[0].url);
+                }
                 
                 let ratingHtml = '';
-                if (isCompletelyClosed) {
-                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;font-weight:bold;">未營業</span>`;
-                } else if (s.rating && s.rating.text) {
-                    ratingHtml = `<span style="font-size:12px;color:#999;margin-left:auto;">★ ${s.rating.text}</span>`;
+                if (s.rating && s.rating.text) {
+                    ratingHtml = `<div style="font-size:12px; color:#666; background:#eee; padding:2px 6px; border-radius:10px; margin-top:4px; display:inline-block;">★ ${s.rating.text}</div>`;
                 }
                 
-                let stateText = '';
-                if (isUIClosed && !isCompletelyClosed) {
-                    stateText = `<span style="font-size:11px;color:#d32f2f;background:#fdecec;padding:2px 4px;border-radius:4px;margin-left:6px;">休息中</span>`;
+                let timeText = '';
+                let deliveryFeeText = '';
+                if (s.tracking && s.tracking.storePayload) {
+                    const sp = s.tracking.storePayload;
+                    if (sp.deliveryTimeETA) timeText = sp.deliveryTimeETA + ' 分鐘';
+                    if (sp.deliveryFeeFormatted) deliveryFeeText = sp.deliveryFeeFormatted + ' 外送費';
                 }
-                
-                let clickAttr = isCompletelyClosed ? '' : `onclick="openStoreFromOverlay('${uuid}', '${encodedName}', '${actionUrl}')"`;
-                let divStyle = isCompletelyClosed 
-                    ? `padding:12px 0; border-bottom:1px solid #f0f0f0; font-size:15px; color:#999; display:flex; align-items:center; gap:8px; opacity:0.6;`
-                    : `padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:15px; color:#333; display:flex; align-items:center; gap:8px;`;
-                let iconHtml = isCompletelyClosed 
-                    ? `<span style="color:#999;">🏪</span>`
-                    : `<span style="color:#06c167;">🏪</span>`;
-                
-                html += `<div ${clickAttr} style="${divStyle}">
-                    ${iconHtml}
-                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%;">${name}</span>
-                    ${stateText}
-                    ${ratingHtml}
+                let metaText = [timeText, deliveryFeeText].filter(x=>x).join(' • ');
+                if (metaText) metaText = `<div style="font-size:12px; color:#666; margin-top:2px;">${metaText}</div>`;
+
+                html += `
+                <div onclick="window.openStore('${uuid}', '${encodedName}', '${actionUrl}')" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;">
+                    ${imageUrl ? `<img src="${imageUrl}" style="width:50px; height:50px; border-radius:8px; object-fit:cover; background:#eee; flex-shrink:0;">` : `<div style="width:50px; height:50px; border-radius:8px; background:#eee; flex-shrink:0;"></div>`}
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:15px; font-weight:bold; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</div>
+                        ${metaText}
+                        ${ratingHtml}
+                    </div>
                 </div>`;
             });
         }
