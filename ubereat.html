@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 6.9</title>
+<title>點餐系統 7.1</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2383,7 +2383,7 @@ async function searchStores() {
       
 
       resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
-
+      window.scrollTo(0, 0); // 確保每次搜尋完成後，畫面回到最上方優先顯示第一個結果
     } catch (err) { statusEl.innerHTML = '錯誤: ' + err.message; }
 
   }
@@ -2781,7 +2781,7 @@ function handleStoreSearch(isUserInput = false) {
 
   results.innerHTML = html;
   // Auto-scroll results to bottom so items appear near the input
-  results.scrollTop = results.scrollHeight;
+  results.scrollTop = 0;
 
   updateMenuActions();
 
@@ -7447,7 +7447,7 @@ function renderOverlayHTML() {
         }
     }
     resultsTop.innerHTML = html;
-    resultsTop.scrollTop = resultsTop.scrollHeight;
+    resultsTop.scrollTop = 0;
 }
 
 function selectQueryOverlay(text) {
@@ -7479,7 +7479,7 @@ if (window.visualViewport) {
             globalOverlay.style.top = t;
             // 確保捲動到底部
             const gResults = document.getElementById('globalSearchResults');
-            if(gResults) gResults.scrollTop = gResults.scrollHeight;
+            if(gResults) gResults.scrollTop = 0;
         }
         
         const storeOverlay = document.getElementById('storeSearchOverlay');
