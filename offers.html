@@ -41,50 +41,177 @@
         /* 生鮮雜貨 專屬排版 */
         .grocery-section { border-left: 3px solid #007aff; padding-left: 10px; margin-bottom: 15px; }
         .grocery-title { font-size: 15px; font-weight: bold; color: #007aff; margin-bottom: 8px; }
+
+        /* 滑動容器 */
+        .swipe-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            margin: 0 -15px; 
+        }
+        .swipe-container::-webkit-scrollbar { display: none; }
+        .swipe-slide {
+            flex: 0 0 100%;
+            scroll-snap-align: start;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+        .dots-container {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #d1d5db;
+            transition: background-color 0.3s;
+        }
+        .dot.active { background-color: #007aff; }
+        .swipe-hint { text-align: center; font-size: 11px; color: #999; margin-top: 5px; }
+
+        /* Modal 樣式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 320px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .modal-body { font-size: 14px; color: #555; line-height: 1.5; }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: #f0f0f0; border: none; border-radius: 50%;
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-weight: bold; color: #666;
+        }
+        .help-circle {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 14px; height: 14px; border-radius: 50%;
+            background-color: #00B900; color: white;
+            font-size: 10px; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 美食預約單 -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">🍔 美食預約單</h2>
-            <div class="tag blue">限預約單</div>
-        </div>
-        
-        <div class="highlight-box">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                <div class="highlight-text">✨ $285內 全面半價！</div>
-                <div class="tag-group">
-                    <div class="tag green">免外送費</div>
-                    <div class="tag green">免服務費</div>
+    <!-- 美食 -->
+    <div class="card" style="padding-bottom: 10px;">
+        <div class="swipe-container">
+            <!-- Slide 1: 預約單 (預設) -->
+            <div class="swipe-slide">
+                <div class="card-header">
+                    <h2 class="card-title">🍔 美食預約單</h2>
+                    <div class="tag blue">限預約單</div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="fee-row">
-            <span class="fee-label">💰 代訂費</span>
-            <span class="fee-price">$40</span>
-        </div>
-        
-        <ul class="discount-list">
-            <li>一次叫 2 單以上，每單再折 $10</li>
-            <li><strong style="color: #ff3366;">限 3 小時前預約</strong></li>
-        </ul>
-
-        <details open>
-            <summary>📌 規則與預約優點</summary>
-            <div class="details-content">
-                <strong>📌 規則：</strong>
-                <ul>
-                    <li>需告知預約指定時間 (可預約未來一週內)。</li>
-                    <li>無法疊加其他折扣商品 <strong style="color: #ff3366;">(買一送一、紅字優惠)</strong>。</li>
-                    <li>超過 $285 的金額部分以原價計算。</li>
+                
+                <div class="highlight-box">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div class="highlight-text">✨ $300內 全面半價！</div>
+                        <div class="tag-group">
+                            <div class="tag green">免外送費</div>
+                            <div class="tag green">免服務費</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="fee-row">
+                    <span class="fee-label">💰 代訂費</span>
+                    <span class="fee-price">$50</span>
+                </div>
+                
+                <ul class="discount-list">
+                    <li>一次叫 2 單以上，每單<strong style="color: #00B900;">再折$10</strong></li>
+                    <li><strong style="color: #ff3366;">3小時前</strong>預約每單<strong style="color: #00B900;">再折$10</strong></li>
                 </ul>
-                <strong style="display:inline-block; margin-top: 8px;">💡 預約優點：</strong><br>
-                提早卡位，不怕雨天缺外送員、臨時爆單等太久！
+
+                <details open>
+                    <summary>📌 規則與預約優點</summary>
+                    <div class="details-content">
+                        <strong>📌 規則：</strong>
+                        <ul>
+                            <li>需告知預約指定時間 (可預約未來一週內)。</li>
+                            <li>無法疊加其他折扣商品 <strong style="color: #ff3366;">(買一送一、紅字優惠)</strong>。</li>
+                            <li><strong style="color: #ff3366;">超過$300</strong> 的金額部分以原價計算。</li>
+                        </ul>
+                        <strong style="display:inline-block; margin-top: 8px;">💡 預約優點：</strong><br>
+                        提早卡位，不怕雨天缺外送員、臨時爆單等太久！
+                    </div>
+                </details>
             </div>
-        </details>
+            
+            <!-- Slide 2: 一般單 -->
+            <div class="swipe-slide">
+                <div class="card-header">
+                    <h2 class="card-title">🍔 美食一般單</h2>
+                    <div class="tag gray">即時配送</div>
+                </div>
+                
+                <div class="highlight-box">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div class="highlight-text">✨ 依現場平台優惠為主</div>
+                        <div class="tag-group">
+                            <div class="tag green">免外送費</div>
+                            <div class="tag green">免服務費</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="fee-row">
+                    <span class="fee-label">💰 代訂費</span>
+                    <span class="fee-price">$50</span>
+                </div>
+                
+                <ul class="discount-list">
+                    <li><strong style="color: #ff3366;">限 $200 以上</strong></li>
+                </ul>
+                
+                <details open>
+                    <summary>📌 規則說明</summary>
+                    <div class="details-content">
+                        <strong>📌 說明：</strong>
+                        <ul>
+                            <li>即時幫您點單配送。</li>
+                            <li>無法疊加買一送一或紅字優惠。</li>
+                            <li><strong style="color: #ff3366;">即時訂單送出速度較慢，需要最少 10 分鐘。</strong></li>
+                            <li><strong style="color: #ff3366;">餐期有可能需要等待 30 分鐘。</strong></li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </div>
+        
+        <div class="dots-container">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+        </div>
+        <div class="swipe-hint">👈 左右滑動切換方案 👉</div>
     </div>
 
     <!-- 生鮮雜貨 -->
@@ -97,42 +224,56 @@
             (請先告知要哪間店，我會發連結讓您慢慢挑選)
         </div>
 
-        <!-- 一般單 -->
-        <div class="grocery-section" style="border-color: #666;">
-            <div class="grocery-title" style="color: #666;">👉 ① 一般單 <span class="tag gray" style="margin-left:5px; font-size:11px;">即時配送</span></div>
-            <div class="highlight-box" style="background-color: #f8f9fa; border-color: #ccc;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                    <div class="highlight-text" style="color: #555;">✨ 滿 $449 折 $180</div>
-                    <div class="tag-group">
-                        <div class="tag green">免運費</div>
-                        <div class="tag red">需服務費</div>
+        <div class="swipe-container" style="margin-bottom: 10px;">
+            <!-- Slide 1: 預約單 -->
+            <div class="swipe-slide">
+                <div class="grocery-section">
+                    <div class="grocery-title">👉 預約單 <span class="tag orange" style="margin-left:5px; font-size:11px;">最划算！</span></div>
+                    <div class="highlight-box">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <div class="highlight-text">✨ 滿 $449 折 $200</div>
+                            <div class="tag-group">
+                                <div class="tag green">免運費</div>
+                                <div class="tag red">需服務費</div>
+                            </div>
+                        </div>
+                        <div onclick="openModal('time-discount-modal')" style="font-size: 12px; color: #00B900; font-weight: bold; margin-top: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                            (可再疊加「3小時時段-$25」折扣) <span class="help-circle">?</span>
+                        </div>
+                    </div>
+                    <div class="fee-row" style="margin-bottom: 0;">
+                        <span class="fee-label">💰 代訂費</span>
+                        <span class="fee-price"><span style="text-decoration: line-through; color: #999; font-size: 14px;">$60</span> $45</span>
                     </div>
                 </div>
             </div>
-            <div class="fee-row" style="margin-bottom: 0;">
-                <span class="fee-label">💰 代訂費</span>
-                <span class="fee-price">$60</span>
+            
+            <!-- Slide 2: 一般單 -->
+            <div class="swipe-slide">
+                <div class="grocery-section" style="border-color: #666;">
+                    <div class="grocery-title" style="color: #666;">👉 一般單 <span class="tag gray" style="margin-left:5px; font-size:11px;">即時配送</span></div>
+                    <div class="highlight-box" style="background-color: #f8f9fa; border-color: #ccc;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <div class="highlight-text" style="color: #555;">✨ 滿 $449 折 $180</div>
+                            <div class="tag-group">
+                                <div class="tag green">免運費</div>
+                                <div class="tag red">需服務費</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fee-row" style="margin-bottom: 0;">
+                        <span class="fee-label">💰 代訂費</span>
+                        <span class="fee-price">$60</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 預約單 -->
-        <div class="grocery-section">
-            <div class="grocery-title">👉 ② 預約單 <span class="tag orange" style="margin-left:5px; font-size:11px;">最划算！</span></div>
-            <div class="highlight-box">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                    <div class="highlight-text">✨ 滿 $449 折 $200</div>
-                    <div class="tag-group">
-                        <div class="tag green">免運費</div>
-                        <div class="tag red">需服務費</div>
-                    </div>
-                </div>
-                <div style="font-size: 12px; color: #888; margin-top: 5px;">(可再疊加「3小時時段-$25」折扣)</div>
-            </div>
-            <div class="fee-row" style="margin-bottom: 0;">
-                <span class="fee-label">💰 代訂費</span>
-                <span class="fee-price"><span style="text-decoration: line-through; color: #999; font-size: 14px;">$60</span> $45</span>
-            </div>
+        <div class="dots-container" style="margin-top: 0; margin-bottom: 5px;">
+            <div class="dot active"></div>
+            <div class="dot"></div>
         </div>
+        <div class="swipe-hint" style="margin-bottom: 15px;">👈 左右滑動切換方案 👉</div>
 
         <details open>
             <summary>🏪 可預約店家參考</summary>
@@ -204,5 +345,43 @@
         </details>
     </div>
 
+    <!-- Modal -->
+    <div id="time-discount-modal" class="modal-overlay" onclick="closeModal(event, 'time-discount-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal(event, 'time-discount-modal')">×</button>
+            <div class="modal-title">什麼是3小時折扣?</div>
+            <div class="modal-body">
+                在官方APP內預約時會有3小時時段選項。<br><br>
+                通常會是：<br>
+                <ul style="margin-top: 5px; margin-bottom: 5px; padding-left: 20px; color: #666; font-size: 13px;">
+                    <li>11:00 AM ~ 2:00 PM</li>
+                    <li>12:00 PM ~ 3:00 PM</li>
+                    <li>1:00 PM ~ 4:00 PM</li>
+                    <li>2:00 PM ~ 5:00 PM</li>
+                    <li>3:00 PM ~ 6:00 PM</li>
+                    <li>4:00 PM ~ 7:00 PM</li>
+                    <li>5:00 PM ~ 8:00 PM</li>
+                    <li>6:00 PM ~ 9:00 PM</li>
+                </ul>
+                <br>
+                <strong>不會影響你的食物狀態</strong>，只是讓店家有更長時間準備出貨。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(id) { document.getElementById(id).classList.add('show'); }
+        function closeModal(event, id) { document.getElementById(id).classList.remove('show'); }
+
+        document.querySelectorAll('.swipe-container').forEach(container => {
+            const dots = container.nextElementSibling.querySelectorAll('.dot');
+            container.addEventListener('scroll', () => {
+                const index = Math.round(container.scrollLeft / container.clientWidth);
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === index);
+                });
+            });
+        });
+    </script>
 </body>
 </html>
