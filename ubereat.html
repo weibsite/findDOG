@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 7.9</title>
+<title>點餐系統 8.0</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -1050,15 +1050,30 @@ function confirmTimePicker(mode) {
     updateTriggerText();
     closeTimePickerModal();
     
-      const cv = document.getElementById('checkoutView');
-      if (cv && (cv.style.display === 'block' || cv.style.display === 'flex')) {
-          if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
-              openGroceryCheckoutSummary();
-          } else if (typeof openCheckoutSummary === 'function') {
-              openCheckoutSummary();
-          }
-      } else if (typeof renderCart === 'function') {
+    // [優化] 當切換時間時，清除搜尋快取，強制下次搜尋重新抓取正確時間段的資料
+    if (typeof lastSearchedQuery !== 'undefined') {
+        lastSearchedQuery = "";
+    } else {
+        window.lastSearchedQuery = "";
+    }
+    window.suggestionStores = [];
+    
+    const cv = document.getElementById('checkoutView');
+    if (cv && (cv.style.display === 'block' || cv.style.display === 'flex')) {
+        if (window.isGroceryStore && typeof openGroceryCheckoutSummary === 'function') {
+            openGroceryCheckoutSummary();
+        } else if (typeof openCheckoutSummary === 'function') {
+            openCheckoutSummary();
+        }
+    } else if (typeof renderCart === 'function') {
         renderCart();
+    }
+    
+    // 如果目前在列表頁或搜尋畫面中，自動觸發重新搜尋
+    if (typeof currentView !== 'undefined' && currentView === 'list' && typeof searchStores === 'function') {
+        searchStores();
+    } else if (document.getElementById('storeSearchOverlay') && document.getElementById('storeSearchOverlay').style.display === 'flex' && typeof updateQueryOverlay === 'function') {
+        updateQueryOverlay();
     }
 }
 
