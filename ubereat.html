@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.9</title>
+<title>點餐系統 9.0</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -344,9 +344,9 @@
 
         <span>尋找想吃的餐點</span>
 
-        <div style="display:flex; align-items:center;">
-            <button onclick="toggleVertical()" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:1px solid #999; background:#fff; color:#333; width:auto; flex-shrink:0; margin-right:8px; cursor:pointer;">切換</button>
-            <button id="verticalToggleBtn" onclick="toggleVertical()" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:1px solid #06c167; background:#e6fcf5; color:#06c167; width:auto; flex-shrink:0; cursor:pointer;">目前模式: 餐廳</button>
+        <div style="display:flex; align-items:center; background:#f5f5f5; border-radius:18px; padding:2px;">
+            <button id="verticalBtnShop" onclick="switchVertical('SHOP')" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:none; background:transparent; color:#999; cursor:pointer; width:auto; flex-shrink:0;">生鮮雜貨</button>
+            <button id="verticalBtnRest" onclick="switchVertical('RESTAURANTS')" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:none; background:#fff; color:#06c167; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer; width:auto; flex-shrink:0;">美食餐廳</button>
         </div>
 
       </div>
@@ -359,7 +359,10 @@
     <div id="globalSearchResults" style="flex:1; overflow-y:auto; padding: 15px 15px 10px 15px;"></div>
     <div style="padding:10px 15px 20px 15px; background:#fff; border-top:1px solid #eee; flex-shrink:0;">
         <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
-            <button id="verticalToggleBtnMobile" onclick="toggleVertical()" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:1px solid #06c167; background:#e6fcf5; color:#06c167; cursor:pointer;">目前模式: 餐廳</button>
+            <div style="display:flex; align-items:center; background:#f5f5f5; border-radius:18px; padding:3px;">
+                <button id="verticalBtnShopMobile" onclick="switchVertical('SHOP')" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:none; background:transparent; color:#999; cursor:pointer;">生鮮雜貨</button>
+                <button id="verticalBtnRestMobile" onclick="switchVertical('RESTAURANTS')" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:none; background:#fff; color:#06c167; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">美食餐廳</button>
+            </div>
         </div>
         <div class="input-row" style="margin:0; box-shadow:none; display:flex; gap:10px;">
             <div style="flex:1; display:flex; align-items:center; background:#f5f5f5; border:1px solid #ddd; border-radius:25px; padding:0 15px; box-sizing:border-box; overflow:hidden;">
@@ -1756,20 +1759,26 @@ document.addEventListener("DOMContentLoaded", () => {
       searchAddress(true);
   }
 
-  function toggleVertical() {
-      const btn = document.getElementById('verticalToggleBtn');
-      const btnMob = document.getElementById('verticalToggleBtnMobile');
+  function switchVertical(mode) {
+      if (mode && currentVertical === mode) return;
+      currentVertical = mode ? mode : (currentVertical === 'RESTAURANTS' ? 'SHOP' : 'RESTAURANTS');
+      
+      const btnShop = document.getElementById('verticalBtnShop');
+      const btnShopMob = document.getElementById('verticalBtnShopMobile');
+      const btnRest = document.getElementById('verticalBtnRest');
+      const btnRestMob = document.getElementById('verticalBtnRestMobile');
+      
       const queryInput = document.getElementById('query');
       const queryInputMob = document.getElementById('globalSearchInputMobile');
       const searchBtn = document.getElementById('searchMainBtn');
       const searchBtnMob = document.getElementById('searchMainBtnMobile');
 
-      if (currentVertical === 'RESTAURANTS') {
-          currentVertical = 'SHOP';
-          const txt = '目前模式: 生鮮雜貨';
-          const bg = '#fef0e5'; const border = '#e67e22'; const color = '#e67e22';
-          if (btn) { btn.innerText = txt; btn.style.background = bg; btn.style.borderColor = border; btn.style.color = color; }
-          if (btnMob) { btnMob.innerText = txt; btnMob.style.background = bg; btnMob.style.borderColor = border; btnMob.style.color = color; }
+      if (currentVertical === 'SHOP') {
+          if (btnShop) { btnShop.style.background = '#fff'; btnShop.style.color = '#e67e22'; btnShop.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnShopMob) { btnShopMob.style.background = '#fff'; btnShopMob.style.color = '#e67e22'; btnShopMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnRest) { btnRest.style.background = 'transparent'; btnRest.style.color = '#999'; btnRest.style.boxShadow = 'none'; }
+          if (btnRestMob) { btnRestMob.style.background = 'transparent'; btnRestMob.style.color = '#999'; btnRestMob.style.boxShadow = 'none'; }
+          
           const ph = '想買什麼？ (例如: 美廉社)';
           if (queryInput) queryInput.placeholder = ph;
           if (queryInputMob) queryInputMob.placeholder = ph;
@@ -1778,10 +1787,11 @@ document.addEventListener("DOMContentLoaded", () => {
           if (searchBtnMob) searchBtnMob.innerText = sTxt;
       } else {
           currentVertical = 'RESTAURANTS';
-          const txt = '目前模式: 餐廳';
-          const bg = '#e6fcf5'; const border = '#06c167'; const color = '#06c167';
-          if (btn) { btn.innerText = txt; btn.style.background = bg; btn.style.borderColor = border; btn.style.color = color; }
-          if (btnMob) { btnMob.innerText = txt; btnMob.style.background = bg; btnMob.style.borderColor = border; btnMob.style.color = color; }
+          if (btnRest) { btnRest.style.background = '#fff'; btnRest.style.color = '#06c167'; btnRest.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnRestMob) { btnRestMob.style.background = '#fff'; btnRestMob.style.color = '#06c167'; btnRestMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnShop) { btnShop.style.background = 'transparent'; btnShop.style.color = '#999'; btnShop.style.boxShadow = 'none'; }
+          if (btnShopMob) { btnShopMob.style.background = 'transparent'; btnShopMob.style.color = '#999'; btnShopMob.style.boxShadow = 'none'; }
+          
           const ph = '想吃什麼？ (例如: 麥當勞)';
           if (queryInput) queryInput.placeholder = ph;
           if (queryInputMob) queryInputMob.placeholder = ph;
@@ -1794,6 +1804,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (overlay && overlay.style.display !== 'none') {
           if (typeof updateQueryOverlay === 'function') updateQueryOverlay();
       }
+  }
+
+  function toggleVertical() {
+      switchVertical(currentVertical === 'RESTAURANTS' ? 'SHOP' : 'RESTAURANTS');
   }
 
 
