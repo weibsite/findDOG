@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.4</title>
+<title>點餐系統 8.6</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -1053,8 +1053,10 @@ function confirmTimePicker(mode) {
     // [優化] 當切換時間時，清除搜尋快取，強制下次搜尋重新抓取正確時間段的資料
     if (typeof lastSearchedQuery !== 'undefined') {
         lastSearchedQuery = "";
+        if (typeof lastSearchedVertical !== 'undefined') lastSearchedVertical = "";
     } else {
         window.lastSearchedQuery = "";
+        window.lastSearchedVertical = "";
     }
     window.suggestionStores = [];
     
@@ -1897,15 +1899,26 @@ function generateStoreListHTML(stores, q, currentVertical) {
 
 
 
-      if (stores.length === 0) { if(statusEl) statusEl.innerHTML = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。'; return '<div style="padding:40px 20px;text-align:center;color:#999;">找不到相關結果。</div>'; }
-
-      
+      if (stores.length === 0) { 
+          if(statusEl) {
+              let t = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。';
+              if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+                  t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表目前未營業)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+              }
+              statusEl.innerHTML = t;
+          }
+          return '<div style="padding:40px 20px;text-align:center;color:#999;">找不到相關結果。</div>'; 
+      }
 
       const unSchedulableStores = JSON.parse(localStorage.getItem('unSchedulableStores') || '[]');
 
-
-
-      if(statusEl) statusEl.innerHTML = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
+      if(statusEl) {
+          let t = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
+          if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+              t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表目前未營業)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+          }
+          statusEl.innerHTML = t;
+      }
 
       return stores.map(s => {
 
@@ -2229,8 +2242,9 @@ async function searchStores() {
 
     statusEl.innerHTML = '<div class="spinner" style="margin: 0 auto;"></div><div style="margin-top: 10px;">搜尋中...</div>'; statusEl.className = 'status'; resultsEl.innerHTML = '';
     
-    // [優化] 如果關鍵字與剛剛自動搜尋的關鍵字完全相同，且資料已下載完畢，直接使用快取不需重發 API
-    if (q === lastSearchedQuery && typeof isFetchingSuggestions !== 'undefined' && !isFetchingSuggestions && window.suggestionStores && window.suggestionStores.length > 0) {
+    // [優化] 如果關鍵字與剛剛自動搜尋的關鍵字完全相同 (且分類相同)，且資料已下載完畢，直接使用快取不需重發 API
+    const currentVert = typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS';
+    if (q === lastSearchedQuery && currentVert === (typeof lastSearchedVertical !== 'undefined' ? lastSearchedVertical : '') && typeof isFetchingSuggestions !== 'undefined' && !isFetchingSuggestions && window.suggestionStores && window.suggestionStores.length > 0) {
         console.log('[Cache Hit] Reusing suggestionStores for searchStores:', q);
         statusEl.innerHTML = `為您找到 ${window.suggestionStores.length} 家${(typeof currentVertical !== 'undefined' && currentVertical === 'SHOP') ? '生鮮雜貨' : '餐廳'}：`;
         statusEl.className = 'status success';
@@ -2422,6 +2436,11 @@ async function searchStores() {
           lastSearchedQuery = q;
       } else {
           window.lastSearchedQuery = q;
+      }
+      if (typeof lastSearchedVertical !== 'undefined') {
+          lastSearchedVertical = currentVert;
+      } else {
+          window.lastSearchedVertical = currentVert;
       }
       
       resultsEl.innerHTML = generateStoreListHTML(stores, q, typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS');
@@ -7224,6 +7243,7 @@ function showToast(msg) {
 
 let queryDebounceTimer = null;
 let lastSearchedQuery = "";
+let lastSearchedVertical = "";
 let isFetchingSuggestions = false;
 let pendingSuggestionQuery = "";
 window.suggestionStores = [];
@@ -7276,8 +7296,9 @@ function updateQueryOverlay() {
     // Clear previous debounce timer
     clearTimeout(queryDebounceTimer);
     
-    // Only fetch if value is not empty and has changed
-    if (val && val !== lastSearchedQuery) {
+    // Only fetch if value is not empty and has changed (or vertical changed)
+    const currentVert = typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS';
+    if (val && (val !== lastSearchedQuery || currentVert !== (typeof lastSearchedVertical !== 'undefined' ? lastSearchedVertical : ''))) {
         const diff = Math.abs(val.length - prevVal.length);
         const delay = diff > 2 ? 0 : 500;
         
@@ -7288,6 +7309,7 @@ function updateQueryOverlay() {
                 pendingSuggestionQuery = val;
             } else {
                 lastSearchedQuery = val;
+                if (typeof lastSearchedVertical !== 'undefined') lastSearchedVertical = currentVert;
                 fetchStoreSuggestions(val);
             }
         }, delay);
@@ -7498,7 +7520,8 @@ function renderOverlayHTML() {
             isCompressed = true;
         }
         
-        if (val !== (typeof lastSearchedQuery !== 'undefined' ? lastSearchedQuery : '') || (typeof isFetchingSuggestions !== 'undefined' && isFetchingSuggestions)) {
+        const currentVert = typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS';
+        if (val !== (typeof lastSearchedQuery !== 'undefined' ? lastSearchedQuery : '') || currentVert !== (typeof lastSearchedVertical !== 'undefined' ? lastSearchedVertical : '') || (typeof isFetchingSuggestions !== 'undefined' && isFetchingSuggestions)) {
             if (!isCompressed) {
                 html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
             } else {
