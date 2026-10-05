@@ -151,9 +151,13 @@
                     const btn = document.getElementById('order-link');
                     if (btn && !btn.dataset.autoClickScheduled) {
                         btn.dataset.autoClickScheduled = "true";
-                        setTimeout(() => {
+                        const autoClickTimer = setTimeout(() => {
                             window.location.href = btn.href;
                         }, 1500);
+                        
+                        btn.addEventListener('click', () => {
+                            clearTimeout(autoClickTimer);
+                        });
                     }
                 }
             }
