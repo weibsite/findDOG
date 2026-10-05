@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.6</title>
+<title>點餐系統 8.7</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -1902,8 +1902,8 @@ function generateStoreListHTML(stores, q, currentVertical) {
       if (stores.length === 0) { 
           if(statusEl) {
               let t = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。';
-              if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
-                  t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表目前未營業)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+              if (currentVertical === 'SHOP' && typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+                  t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
               }
               statusEl.innerHTML = t;
           }
@@ -1914,8 +1914,8 @@ function generateStoreListHTML(stores, q, currentVertical) {
 
       if(statusEl) {
           let t = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
-          if (typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
-              t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表目前未營業)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+          if (currentVertical === 'SHOP' && typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
+              t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
           }
           statusEl.innerHTML = t;
       }
