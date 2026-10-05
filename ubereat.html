@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.8</title>
+<title>點餐系統 8.9</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2762,22 +2762,19 @@ function handleStoreSearch(isUserInput = false) {
                 let promoBadgeHtml = '';
 
                 try {
-
-                  if (item.promoInfo && item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
-
-                    const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
-
-                    if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
-
-                      const txt = elements[0].text.text.text;
-
-                      promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(txt)}</div>`;
-                      isPromo = true;
-
+                  if (item.promoInfo && (item.promoInfo.promotionUUID || (item.promoInfo.promoBadge && item.promoInfo.promoBadge.content))) {
+                    isPromo = true;
+                    if (item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
+                      const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
+                      if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
+                        const txt = elements[0].text.text.text;
+                        promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(txt)}</div>`;
+                      }
                     }
-
+                    if (!promoBadgeHtml) {
+                        promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
+                    }
                   }
-
                 } catch(e) {}
 
                 
@@ -6248,23 +6245,21 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                   let isPromo = false;
 
                   try {
-
-                    if (item.promoInfo && item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
-
-                      const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
-
-                      if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
-
-                         const promoText = elements[0].text.text.text;
-
-                         promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
-
-                         isPromo = true;
-
+                    if (item.promoInfo && (item.promoInfo.promotionUUID || (item.promoInfo.promoBadge && item.promoInfo.promoBadge.content))) {
+                      isPromo = true;
+                      
+                      if (item.promoInfo.promoBadge && item.promoInfo.promoBadge.content && item.promoInfo.promoBadge.content.richText) {
+                          const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
+                          if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
+                             const promoText = elements[0].text.text.text;
+                             promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
+                          }
                       }
-
+                      
+                      if (!promoBadgeHtml) {
+                          promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
+                      }
                     }
-
                   } catch(e) {}
 
                   
