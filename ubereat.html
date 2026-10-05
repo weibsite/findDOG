@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 8.7</title>
+<title>點餐系統 8.8</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -2759,6 +2759,7 @@ function handleStoreSearch(isUserInput = false) {
                 
 
                 let isPromo = false;
+                let promoBadgeHtml = '';
 
                 try {
 
@@ -2770,11 +2771,8 @@ function handleStoreSearch(isUserInput = false) {
 
                       const txt = elements[0].text.text.text;
 
-                      if (txt.includes('買 1 送 1') || txt.includes('免費商品')) {
-
-                         isPromo = true;
-
-                      }
+                      promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(txt)}</div>`;
+                      isPromo = true;
 
                     }
 
@@ -2784,12 +2782,25 @@ function handleStoreSearch(isUserInput = false) {
 
                 
 
-                if (!isPromo) {
+                found++;
 
-                  found++;
-
-                  const isSoldOut = item.isSoldOut === true;
-                  let itemHtml = '<div class="menu-item" style="position: relative;' + (isSoldOut ? ' opacity:0.6; cursor:not-allowed;' : '') + '" ' + (isSoldOut ? '' : 'onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')"') + '>';
+                const isSoldOut = item.isSoldOut === true;
+                let itemHtml = '';
+                
+                if (isPromo) {
+                    itemHtml = `
+                    <div class="menu-item" style="opacity: 0.6; cursor: not-allowed;">
+                      <div class="menu-item-info">
+                        ${promoBadgeHtml}
+                        <div class="menu-item-title" style="text-decoration: line-through;">${escapeHTML(itemTitle)}</div>
+                        <div style="color: #d32f2f; font-size: 12px; font-weight: bold; margin-bottom: 4px;">優惠商品無法訂購</div>
+                        <div class="menu-item-desc">${escapeHTML(itemDesc)}</div>
+                        <div class="menu-item-price">${priceHtml}</div>
+                      </div>
+                      ${imgUrl ? `<div class="menu-item-img" style="position:relative; overflow:hidden;"><img src="${imgUrl}" loading="lazy" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;" /></div>` : ''}
+                    </div>`;
+                } else {
+                  itemHtml = '<div class="menu-item" style="position: relative;' + (isSoldOut ? ' opacity:0.6; cursor:not-allowed;' : '') + '" ' + (isSoldOut ? '' : 'onclick="toggleStoreSearch(); openItemModal(\'' + storeUuid + '\', \'' + secUuid + '\', \'' + subsecUuid + '\', \'' + item.uuid + '\', \'' + encodeURIComponent(itemTitle).replace(/'/g, "%27") + '\', \'' + encodeURIComponent(itemDesc).replace(/'/g, "%27") + '\', ' + priceVal + ', \'' + imgUrl + '\', ' + (item.hasCustomizations === false ? 'false' : 'true') + ')"') + '>';
 
                   itemHtml += '<div class="menu-item-info">';
 
@@ -2817,12 +2828,9 @@ function handleStoreSearch(isUserInput = false) {
                       itemHtml += '</div>';
                   }
                   itemHtml += '</div>';
-
-                  
-
-                  html += itemHtml;
-
                 }
+
+                html += itemHtml;
 
             }
 
