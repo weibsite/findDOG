@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 10.6</title>
+<title>點餐系統 10.7</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -7676,6 +7676,7 @@ if (window.visualViewport) {
 }
 
 
+let offlineCheckInterval = null;
 async function loadServerStatusDot() {
     try {
         const apiBase = typeof API_BASE_URL !== 'undefined' && API_BASE_URL ? API_BASE_URL : '';
@@ -7691,9 +7692,20 @@ async function loadServerStatusDot() {
         
         const data = await response.json();
         updateStatusDot(data.type);
+        
+        if (offlineCheckInterval) {
+            clearInterval(offlineCheckInterval);
+            offlineCheckInterval = null;
+            document.getElementById('errorModalOverlay').style.display = 'none';
+        }
     } catch (err) {
         console.error("Status check error", err);
         updateStatusDot('offline');
+        
+        if (!offlineCheckInterval) {
+            showModal('代訂睡覺中', '等睡醒就會恢復正常', false, '', true);
+            offlineCheckInterval = setInterval(loadServerStatusDot, 15000);
+        }
     }
 }
 
