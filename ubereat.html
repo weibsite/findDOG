@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 9.4</title>
+<title>點餐系統 9.8</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -238,7 +238,7 @@
         <div id="storeSearchBtn" style="position:relative; background:transparent; border:none; font-size:20px; cursor:pointer; display:none; padding:0; width:34px; height:34px; box-sizing:border-box; margin-left:5px;">
     <div style="pointer-events:none; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">🔍</div>
     <input type="text" id="storeSearchHiddenInput" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:16px; padding:0; border:none;" 
-           onfocus="if (currentView === 'list') { openQueryOverlay(); } else { toggleStoreSearch(); const m = document.getElementById('storeSearchInputMobile'); if(m) { m.focus(); } }">
+           onfocus="if (this.parentElement.getAttribute('onclick') !== 'executeHeaderSearch()') { toggleStoreSearch(); } else { this.blur(); }">
 </div>
 
         <button class="cart-btn" onclick="viewCart()">🛒<span id="headerCartBadge" class="cart-badge">0</span></button>
@@ -2524,7 +2524,8 @@ function toggleStoreSearch() {
 
     } else if (currentView === 'list') {
 
-        input.placeholder = "過濾或搜尋餐廳...";
+        const vert = typeof currentVertical !== 'undefined' ? currentVertical : 'RESTAURANTS';
+        input.placeholder = vert === 'SHOP' ? '搜尋生鮮...' : '搜尋餐廳...';
 
         overlay.style.display = 'none';
 
@@ -7102,8 +7103,14 @@ window.switchSplitTab = function(plan, dir) {
       }
 
       document.getElementById('storeSearchInput').value = kw;
+      const mobileInput = document.getElementById('storeSearchInputMobile');
+      if (mobileInput) mobileInput.value = kw;
 
       handleStoreSearch(true);
+      
+      // Blur the inputs so the keyboard doesn't pop up and cover the results when clicking a shortcut
+      if (mobileInput) mobileInput.blur();
+      document.getElementById('storeSearchInput').blur();
 
   };
 
@@ -7180,17 +7187,21 @@ function showToast(msg) {
     const el = document.createElement('div');
     el.innerText = msg;
     el.style.position = 'fixed';
-    el.style.bottom = '20px';
+    el.style.top = '50%';
     el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
+    el.style.transform = 'translate(-50%, -50%)';
     el.style.background = 'rgba(0,0,0,0.8)';
     el.style.color = '#fff';
-    el.style.padding = '10px 20px';
+    el.style.padding = '12px 24px';
     el.style.borderRadius = '20px';
     el.style.zIndex = '99999';
-    el.style.fontSize = '14px';
+    el.style.fontSize = '15px';
     el.style.fontWeight = 'bold';
-    el.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    el.style.pointerEvents = 'none';
+    el.style.textAlign = 'center';
+    el.style.maxWidth = '80%';
+    el.style.wordBreak = 'break-word';
     document.body.appendChild(el);
     setTimeout(() => {
         el.style.transition = 'opacity 0.5s';
