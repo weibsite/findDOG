@@ -14,7 +14,7 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 9.1</title>
+<title>點餐系統 9.3</title>
 
 <style>
   * { touch-action: manipulation; }
@@ -235,7 +235,11 @@
 
       <div style="display:flex; align-items:center; gap:5px;">
 
-        <button id="storeSearchBtn" style="background:transparent; border:none; font-size:20px; cursor:pointer; display:none; padding:5px;" onclick="toggleStoreSearch()">🔍</button>
+        <div id="storeSearchBtn" style="position:relative; background:transparent; border:none; font-size:20px; cursor:pointer; display:none; padding:0; width:34px; height:34px; box-sizing:border-box; margin-left:5px;">
+    <div style="pointer-events:none; display:flex; align-items:center; justify-content:center; width:100%; height:100%;">🔍</div>
+    <input type="text" id="storeSearchHiddenInput" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:16px; padding:0; border:none;" 
+           onfocus="if (this.parentElement.getAttribute('onclick') !== 'executeHeaderSearch()') { toggleStoreSearch(); const m = document.getElementById('storeSearchInputMobile'); if(m) { m.focus(); } } else { this.blur(); }">
+</div>
 
         <button class="cart-btn" onclick="viewCart()">🛒<span id="headerCartBadge" class="cart-badge">0</span></button>
 
@@ -2511,11 +2515,11 @@ function toggleStoreSearch() {
         input.placeholder = "搜尋菜單關鍵字...";
 
         overlay.style.display = 'flex';
-        // Sync and focus the bottom mobile input
+        // Sync and focus the mobile input synchronously so the keyboard pops up immediately
         const mobileInput = document.getElementById('storeSearchInputMobile');
         if (mobileInput) {
             mobileInput.value = '';
-            setTimeout(() => mobileInput.focus(), 100);
+            mobileInput.focus();
         }
 
     } else if (currentView === 'list') {
@@ -2568,7 +2572,7 @@ function toggleStoreSearch() {
 
     
 
-    searchBtn.setAttribute('onclick', 'toggleStoreSearch()');
+    searchBtn.removeAttribute('onclick');
 
     
 
