@@ -2563,10 +2563,20 @@ async function searchStoresPickup(q) {
             return true;
         });
 
+        const getDist = (s) => {
+            if (s.location && s.location.distanceToUser) return s.location.distanceToUser;
+            if (s.meta && Array.isArray(s.meta)) {
+                const distMeta = s.meta.find(m => m.badgeType === 'DISTANCE');
+                if (distMeta && distMeta.text) {
+                    const match = distMeta.text.match(/[\d.]+/);
+                    if (match) return parseFloat(match[0]);
+                }
+            }
+            return 99999;
+        };
+
         stores.sort((a, b) => {
-            let distA = (a.location && a.location.distanceToUser) ? a.location.distanceToUser : 99999;
-            let distB = (b.location && b.location.distanceToUser) ? b.location.distanceToUser : 99999;
-            return distA - distB;
+            return getDist(a) - getDist(b);
         });
         
         if (q) {
@@ -2602,8 +2612,9 @@ async function searchStoresPickup(q) {
             const storeUuid = s.storeUuid || '';
             
             let distBadge = '';
-            if (s.location && s.location.distanceToUser) {
-                let distKm = (s.location.distanceToUser).toFixed(1);
+            let parsedDist = getDist(s);
+            if (parsedDist < 99999) {
+                let distKm = parsedDist.toFixed(1);
                 distBadge = `<div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; z-index:1;">${distKm} km</div>`;
             }
 
