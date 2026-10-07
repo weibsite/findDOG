@@ -2575,9 +2575,13 @@ async function searchStoresPickup(q) {
             return 99999;
         };
 
+        
+        stores = stores.filter(s => getDist(s) <= 5.0);
+        
         stores.sort((a, b) => {
             return getDist(a) - getDist(b);
         });
+
         
         if (q) {
             const qLower = q.toLowerCase();
@@ -2587,13 +2591,13 @@ async function searchStoresPickup(q) {
         }
 
         if (stores.length === 0) {
-            statusEl.innerHTML = '找不到相關自取優惠餐廳。';
+            statusEl.innerHTML = '找不到相關優惠餐廳。';
             return;
         }
 
         const safeQ = (q || '').replace(/'/g, "\\\'").replace(/"/g, '&quot;');
         statusEl.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <div>為您找到 ${stores.length} 家自取優惠餐廳：</div>
+                                <div>為您推薦 ${stores.length} 家優惠餐廳：</div>
                                 <button onclick="searchStores()" style="background:#06c167; color:#fff; border:none; padding:5px 12px; border-radius:15px; font-weight:bold; cursor:pointer; font-size:13px; margin-left:10px; flex-shrink:0;">一般外送</button>
                               </div>`;
         statusEl.className = 'status success';
@@ -2619,7 +2623,7 @@ async function searchStoresPickup(q) {
             }
 
             return `
-            <div class="card" onclick="openStore('${storeUuid}', '${name.replace(/'/g, "\\'")}', '${actionUrl}')" style="position:relative;">
+            <div class="card" onclick="localStorage.setItem('uberCartIsDiscount', 'true'); openStore('${storeUuid}', '${name.replace(/'/g, "\\'")}', '${actionUrl}')" style="position:relative;">
                 ${distBadge}
                 <div class="card-img" style="background-image: url('${imgUrl}');"></div>
                 <div class="card-body">
@@ -3847,7 +3851,14 @@ let aTotalExcess = (function(){
     return te;
 })();
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">外送加成:</td><td style="padding:2px 0 2px 4px;">$${aTotalExcess}</td></tr>`;
+
+const isDiscount = localStorage.getItem('uberCartIsDiscount') === 'true';
+const pickupDiscount = isDiscount ? 10 : 0;
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
+if (isDiscount) {
+    origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>`;
+}
+
 origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.99 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
 origTable += `</table>`;
 origTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
@@ -3861,7 +3872,8 @@ origTable += (function(){
 
     const pd = total >= 300 ? 150 : Math.floor(total/2);
     const pr = (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.99 * 3600000)) ? 10 : 0;
-    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalOrigExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr}</span>`;
+    const pickup = localStorage.getItem("uberCartIsDiscount") === "true" ? 10 : 0;
+    return `總計: <span style="text-decoration:line-through; color:#999; font-size:13px; margin-right:4px;">$${total + visualSvcFee + totalOrigExcess}</span> <span style="color:#d32f2f; font-size:18px;">$${total - pd + visualSvcFee + totalExcess - pr - pickup}</span>`;
 })();
 origTable += `</div>`;
 
@@ -3887,7 +3899,14 @@ sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPromo}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">代訂費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFee}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">外送加成:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitExcess}</td></tr>`;
+
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">服務費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$0</td></tr>`;
+const isDiscount = localStorage.getItem('uberCartIsDiscount') === 'true';
+const splitPickupDisc = isDiscount ? 10 * costRes.bins.length : 0;
+if (isDiscount) {
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPickupDisc}</td></tr>`;
+}
+
 if (splitPreorder > 0) {
     sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPreorder}</td></tr>`;
 }
@@ -4615,7 +4634,8 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess - preOrderDiscount;
+        const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
+        let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess - preOrderDiscount - (isPickup ? 10 : 0);
 
           grandTotal += binTotal;
 
@@ -4637,6 +4657,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
         if (preOrderDiscount > 0) msgText += `🕒 預訂折扣(3小時以上): -$${preOrderDiscount}\n`;
+        if (isPickup) msgText += `🌟 優惠專區折扣: -$${10 * costRes.bins.length}\n`;
 
         msgText += `💰 總結算金額: $${grandTotal}`;
 
@@ -4738,7 +4759,8 @@ async function _sendOrderToLine(forceSubmit = false) {
 
         let preOrderDiscount = isPreOrder ? 10 : 0;
 
-        let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount;
+        const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
+        let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount - (isPickup ? 10 : 0);
 
 
 
@@ -4761,6 +4783,7 @@ async function _sendOrderToLine(forceSubmit = false) {
           msgText += `🛵 外送加成: $${totalExcessDeliveryFee}\n`;
           msgText += `🧑‍💼 服務費: $0\n`;
           if (preOrderDiscount > 0) msgText += `📅 預定折扣(3小時以上): -$${preOrderDiscount}\n`;
+        if (isPickup) msgText += `🌟 優惠專區折扣: -$10\n`;
           msgText += `\n💰 總計: $${grandTotal}`;
       }
       }
@@ -6892,7 +6915,10 @@ function normalizeAddress(addr) {
 
   Object.keys(sg).forEach(s => totalExcessDeliveryFee += Math.max(0, ...sg[s].map(it => it.storeDeliveryFee||0)));
 
-  let noBinCost = (totalSum - promoDiscount) + 50 + totalExcessDeliveryFee - preOrderDiscount;
+  
+  let pickupDisc = localStorage.getItem('uberCartIsDiscount') === 'true' ? 10 : 0;
+  let noBinCost = (totalSum - promoDiscount) + 50 + totalExcessDeliveryFee - preOrderDiscount - pickupDisc;
+
 
 
 
@@ -7054,7 +7080,9 @@ function normalizeAddress(addr) {
 
         
 
-        cost += binFoodCost + feePerBin + binExcess;
+        
+        cost += binFoodCost + feePerBin + binExcess - (localStorage.getItem('uberCartIsDiscount') === 'true' ? 10 : 0);
+
 
       }
 
