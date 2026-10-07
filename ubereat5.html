@@ -2608,7 +2608,7 @@ async function searchStoresPickup(q) {
             }
 
             return `
-            <div class="card" onclick="openStore('${actionUrl}', '${name.replace(/'/g, "\\'")}', '${storeUuid}')" style="position:relative;">
+            <div class="card" onclick="openStore('${actionUrl}', '${name.replace(/'/g, "\\'")}', '${storeUuid}', false, 'PICKUP')" style="position:relative;">
                 ${distBadge}
                 <div class="card-img" style="background-image: url('${imgUrl}');"></div>
                 <div class="card-body">
@@ -5606,7 +5606,7 @@ const note = document.getElementById('modalNote').value.trim();
 
 
 
-async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
+async function openStore(uuid, storeName, actionUrl = '', skipFetch = false, diningMode = 'DELIVERY') {
     window.customizationRetries = {}; // Reset retries state on store entry
     
     if (cart.length > 0 && storeName && cart[0].storeName && cart[0].storeName !== storeName) {
@@ -5630,9 +5630,9 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false) {
       if(storeName) currentStoreName = storeName;
 
     if(actionUrl) {
-        currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=DELIVERY';
+        currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=' + diningMode;
     } else {
-        currentStoreUrl = 'https://www.ubereats.com/tw/store/-/' + uuid + '?diningMode=DELIVERY';
+        currentStoreUrl = 'https://www.ubereats.com/tw/store/-/' + uuid + '?diningMode=' + diningMode;
     }
 
       currentStoreUuid = uuid;
