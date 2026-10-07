@@ -2668,6 +2668,15 @@ function syncStoreSearchInput(val) {
 }
 
 function toggleStoreSearch() {
+  if (typeof currentView !== 'undefined' && currentView === 'list') {
+      const hiddenInput = document.getElementById('storeSearchHiddenInput');
+      if (hiddenInput) hiddenInput.blur();
+      
+      if (typeof openQueryOverlay === 'function') {
+          openQueryOverlay();
+      }
+      return;
+  }
 
   const title = document.getElementById('headerTitleText');
 
