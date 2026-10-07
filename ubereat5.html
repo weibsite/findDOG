@@ -2616,11 +2616,19 @@ async function searchStoresPickup(q) {
             const storeUuid = s.storeUuid || '';
             
             let distBadge = '';
-            let parsedDist = getDist(s);
-            if (parsedDist < 99999) {
-                let distKm = parsedDist.toFixed(1);
-                distBadge = `<div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; z-index:1;">${distKm} km</div>`;
+            let etdText = '';
+            if (s.meta && Array.isArray(s.meta)) {
+                const etdMeta = s.meta.find(m => m.badgeType === 'ETD');
+                if (etdMeta && etdMeta.accessibilityText) {
+                    etdText = etdMeta.accessibilityText;
+                } else if (etdMeta && etdMeta.text) {
+                    etdText = etdMeta.text;
+                }
             }
+            if (!etdText) {
+                etdText = '-$10優惠';
+            }
+            distBadge = `<div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; z-index:1;">${etdText}</div>`;
 
             return `
             <div class="card" onclick="localStorage.setItem('uberCartIsDiscount', 'true'); openStore('${storeUuid}', '${name.replace(/'/g, "\\'")}', '${actionUrl}')" style="position:relative;">
@@ -2629,7 +2637,7 @@ async function searchStoresPickup(q) {
                 <div class="card-body">
                   <div class="card-name">${name}</div>
                   <div class="card-meta">
-                      <span style="color:#ff9800; font-weight:bold;">自取優惠專區</span>
+                      <span style="color:#ff9800; font-weight:bold;">優惠專區每單再折10元</span>
                   </div>
                 </div>
             </div>
