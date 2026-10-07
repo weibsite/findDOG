@@ -5681,7 +5681,11 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false, din
 
     }
 
-      if(storeName) currentStoreName = storeName;
+      if(storeName)     try {
+        currentStoreName = decodeURIComponent(storeName);
+    } catch (e) {
+        currentStoreName = storeName;
+    }
 
     if(actionUrl) {
         currentStoreUrl = 'https://www.ubereats.com/tw' + actionUrl + (actionUrl.includes('?') ? '&' : '?') + 'diningMode=' + diningMode;
