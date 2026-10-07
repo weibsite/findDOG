@@ -2127,6 +2127,7 @@ function generateStoreListHTML(stores, q, currentVertical) {
 
 
 async function searchStores() {
+    window.isDiscountZone = false;
 
     // [修補] 防止搜尋按鈕被連按，導致重複輪詢與浪費 Token
     if (window._searchLock) return;
@@ -2497,6 +2498,8 @@ async function searchStores() {
 
 
 async function searchStoresPickup(q) {
+    window.isDiscountZone = true;
+    currentView = "list";
     if (!isAddressSet) return;
     if (typeof closeQueryOverlay === 'function') closeQueryOverlay();
     
@@ -5605,6 +5608,7 @@ const note = document.getElementById('modalNote').value.trim();
 
 
   function goHome() {
+    window.isDiscountZone = false;
 
     currentView = 'home';
 
@@ -7510,6 +7514,26 @@ function openQueryOverlay() {
     const overlay = document.getElementById('globalSearchOverlay');
     if (!overlay) return;
     overlay.style.display = 'flex';
+    
+    const mainBtn = document.getElementById('searchMainBtnMobile');
+    const inputMobile = document.getElementById('globalSearchInputMobile');
+    if (mainBtn && inputMobile) {
+        if (window.isDiscountZone) {
+            mainBtn.innerText = '尋找優惠';
+            mainBtn.setAttribute('onclick', 'searchStoresPickup(document.getElementById("globalSearchInputMobile").value.trim())');
+            mainBtn.style.background = '#ff9800';
+            mainBtn.style.color = '#fff';
+            inputMobile.placeholder = '搜尋優惠餐廳...';
+            inputMobile.setAttribute('onkeydown', 'if(event.key==="Enter"){ event.preventDefault(); searchStoresPickup(this.value.trim()); }');
+        } else {
+            mainBtn.innerText = '尋找食物';
+            mainBtn.setAttribute('onclick', 'searchStores()');
+            mainBtn.style.background = '#06c167';
+            mainBtn.style.color = '#000';
+            inputMobile.placeholder = '想吃什麼？ (例如: 麥當勞)';
+            inputMobile.setAttribute('onkeydown', 'if(event.key==="Enter"){ searchStores(); }');
+        }
+    }
     
     // Sync and focus mobile input synchronously
     const headerInput = document.getElementById('query');
