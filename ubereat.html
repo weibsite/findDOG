@@ -4587,7 +4587,9 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        costRes.bins.forEach((bin, bIdx) => {
+        
+        const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
+costRes.bins.forEach((bin, bIdx) => {
 
           msgText += `📦 【多單 ${bIdx + 1}】\n`;
 
@@ -4665,7 +4667,6 @@ async function _sendOrderToLine(forceSubmit = false) {
 
 
 
-        const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
         let binTotal = (binFoodSum - binPromo) + feePerBin + binExcess - preOrderDiscount - (isPickup ? 10 : 0);
 
           grandTotal += binTotal;
@@ -4790,8 +4791,9 @@ async function _sendOrderToLine(forceSubmit = false) {
 
         let preOrderDiscount = isPreOrder ? 10 : 0;
 
+        
         const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
-        let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount - (isPickup ? 10 : 0);
+let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - preOrderDiscount - (isPickup ? 10 : 0);
 
 
 
@@ -6925,7 +6927,9 @@ function normalizeAddress(addr) {
 
   let preOrderDiscount = 0;
 
-  if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
+  
+        const isPickup = localStorage.getItem('uberCartIsDiscount') === 'true';
+if (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP') {
 
     const ts = document.getElementById('scheduleTime');
 
