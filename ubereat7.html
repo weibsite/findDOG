@@ -70,9 +70,12 @@
       transition: background-color 5000s ease-in-out 0s;
   }
 
-  #addrInput { color: #ff3366 !important; }
-  #addrInput:-webkit-autofill {
-      -webkit-text-fill-color: #ff3366 !important;
+  #addrInput:-webkit-autofill,
+  #addrInput:-webkit-autofill:hover, 
+  #addrInput:-webkit-autofill:focus, 
+  #addrInput:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px #fff0f5 inset !important;
+      -webkit-text-fill-color: #111 !important;
   }
 
   .input-row input::-webkit-calendar-picker-indicator { opacity: 1; color: #999; cursor: pointer; }
@@ -318,12 +321,12 @@
   </div>
 
   <!-- ===== Address & Time Card ===== -->
-  <div class="section" id="addrSection" style="background: #fff; border-radius: 18px; padding: 0; margin: 20px 0; box-shadow: 0 6px 24px rgba(0,0,0,0.07); border: 1px solid #f0f0f0; overflow: hidden; transition: background-color 0.3s, border-color 0.3s;">
+  <div class="section" id="addrSection" style="background: #fff0f5; border-radius: 18px; padding: 0; margin: 20px 0; box-shadow: 0 6px 24px rgba(0,0,0,0.07); border: 1px solid #ffb3c6; overflow: hidden; transition: background-color 0.3s, border-color 0.3s;">
     
     <!-- Address Input Row -->
-    <div style="display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid #f0f0f0;">
+    <div style="display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid #ffe0ea; background: transparent;">
       <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0; font-size: 22px; cursor: pointer; color: #ff3366; margin-right: 12px; display: flex; align-items: center;" title="使用目前位置">📍</button>
-      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 6px 0; color: #333;" />
+      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 6px 0; color: #111; font-weight: bold;" />
       <datalist id="addr-list"></datalist>
     </div>
     
@@ -436,7 +439,7 @@
 
       <div class="input-row">
 
-        <input type="tel" id="initPhone" placeholder="您的手機號碼 (選填)" oninput="syncPhone('init')" />
+        <input type="tel" id="initPhone" placeholder="您的手機號碼" oninput="syncPhone('init')" />
 
       </div>
 
@@ -1189,9 +1192,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } else {
 
-      section.style.backgroundColor = '#fafafa'; // 恢復預設淺灰色
+      section.style.backgroundColor = '#fff0f5'; // 恢復預設粉紅色
 
-      section.style.borderColor = '#eee';
+      section.style.borderColor = '#ffb3c6';
 
     }
 
@@ -1837,7 +1840,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (btnRest) { btnRest.style.background = 'transparent'; btnRest.style.color = '#999'; btnRest.style.boxShadow = 'none'; }
           if (btnRestMob) { btnRestMob.style.background = 'transparent'; btnRestMob.style.color = '#999'; btnRestMob.style.boxShadow = 'none'; }
           
-          const ph = '想買什麼？ (例如: 美廉社)';
+          const ph = '想買什麼？ (例如: 大全聯)';
           if (queryInput) queryInput.placeholder = ph;
           if (queryInputMob) queryInputMob.placeholder = ph;
           const sTxt = '尋找生鮮';
