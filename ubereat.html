@@ -4909,6 +4909,29 @@ let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - p
 
   if (typeof liffInitPromise !== 'undefined' && liffInitPromise) await liffInitPromise;
 
+  const isLiffClient = !isDesktopDevice && typeof liff !== 'undefined' && liff.isInClient();
+
+  if (isLiffClient) {
+      if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+          return;
+      }
+      try {
+          const perm = await liff.permission.query("chat_message.write");
+          if (perm.state !== 'granted') {
+              await liff.permission.requestAll();
+              const newPerm = await liff.permission.query("chat_message.write");
+              if (newPerm.state !== 'granted') {
+                  showModal('授權失敗', '需要您同意「傳送訊息至聊天室」的權限，否則系統無法為您送出訂單！<br><br>如果您不小心按了拒絕，請至 LINE 設定 > 連動中的應用程式，解除連動後再次點擊連結。');
+                  if (document.getElementById('fullScreenLoader')) document.getElementById('fullScreenLoader').style.display = 'none';
+                  return;
+              }
+          }
+      } catch (e) {
+          console.warn("Permission check error", e);
+      }
+  }
+
   try {
       await fetch(API_BASE_URL + '/api/store_v3', {
           method: 'POST',
@@ -4926,16 +4949,6 @@ let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - p
     showModal('偵測到非手機登入', '', true, copyBtnHtml, true);
 
     return;
-
-  }
-
-
-
-  if (typeof liff !== 'undefined' && !liff.isLoggedIn()) {
-
-      liff.login({ redirectUri: window.location.href });
-
-      return;
 
   }
 
