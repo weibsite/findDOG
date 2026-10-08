@@ -14,25 +14,27 @@
 
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-<title>點餐系統 11.1</title>
+<title>點餐系統 12.0</title>
 
 <style>
   * { touch-action: manipulation; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f7f8fa; margin: 0; padding: 0; color: #111; -webkit-tap-highlight-color: transparent; }
 
-  .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; }
+  .container { width: 100%; max-width: 480px; margin: 0 auto; background: #fff; padding: 0 15px 80px 15px; box-sizing: border-box; min-height: 100vh; }
 
   
 
-  .app-header { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 100; padding: 15px; border-bottom: 1px solid #eee; margin-bottom: 15px; font-size: 18px; font-weight: bold; margin-left: -15px; margin-right: -15px; }
+  .app-header { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 100; padding: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 15px; font-size: 18px; font-weight: 800; margin-left: -15px; margin-right: -15px; }
 
-  .back-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: left; }
+  .back-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: left; transition: opacity 0.2s; }
+  .back-btn:active { opacity: 0.5; }
 
   .header-title { flex: 1; text-align: center; }
 
-  .cart-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: right; position: relative; }
+  .cart-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #111; padding: 0; line-height: 1; width: 30px; text-align: right; position: relative; transition: transform 0.2s; }
+  .cart-btn:active { transform: scale(0.9); }
 
-  .cart-badge { position: absolute; top: -5px; right: -8px; background: #d32f2f; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 10px; display: none; font-weight: bold; }
+  .cart-badge { position: absolute; top: -5px; right: -8px; background: #ff3366; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 10px; display: none; font-weight: bold; box-shadow: 0 2px 4px rgba(255,51,102,0.3); }
 
   
 
@@ -40,27 +42,50 @@
 
   
 
-  .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #06c167; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+  .spinner { width: 100px !important; height: 100px !important; background: url('http://weibsite.github.io/findDOG/image/LOADING.gif') center/contain no-repeat; border: none !important; border-radius: 0; animation: none !important; margin: 0 auto; display: block; }
+  button .spinner { width: 36px !important; height: 36px !important; }
 
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  /* Removed @keyframes spin since we use GIF now */
 
   
 
-  .section { padding: 15px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
+  .section { padding: 15px; border: 1px solid #f0f0f0; border-radius: 14px; margin-bottom: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 
-  .section-title { font-size: 14px; font-weight: bold; color: #666; margin-bottom: 10px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #999; margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase; }
 
   
 
   .input-row { display: flex; gap: 8px; }
 
-  .input-row input { flex: 1; padding: 14px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; outline: none; width: 100%; box-sizing: border-box; }
+  .input-row input { flex: 1; padding: 12px 14px; font-size: 15px; border: 1px solid #e8e8e8; border-radius: 10px; outline: none; width: 100%; box-sizing: border-box; background: #fafafa; transition: border-color 0.2s, box-shadow 0.2s; }
+
+  .input-row input:focus { border-color: #ff3366; box-shadow: 0 0 0 3px rgba(255,51,102,0.1); background: #fff; }
+
+  /* Override browser autofill blue/purple styles */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px #fff inset !important;
+      -webkit-text-fill-color: #111 !important;
+      transition: background-color 5000s ease-in-out 0s;
+  }
+
+  #addrInput:-webkit-autofill,
+  #addrInput:-webkit-autofill:hover, 
+  #addrInput:-webkit-autofill:focus, 
+  #addrInput:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px #fff0f5 inset !important;
+      -webkit-text-fill-color: #111 !important;
+  }
 
   .input-row input::-webkit-calendar-picker-indicator { opacity: 1; color: #999; cursor: pointer; }
 
-  .input-row button { padding: 14px 16px; font-size: 15px; background: #111; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+  .input-row button { padding: 12px 16px; font-size: 14px; background: #111; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; white-space: nowrap; transition: opacity 0.2s, transform 0.1s; }
 
-  .input-row button.secondary { background: #e0e0e0; color: #111; }
+  .input-row button:active { opacity: 0.8; transform: scale(0.96); }
+
+  .input-row button.secondary { background: #f0f0f0; color: #333; }
 
 
 
@@ -74,15 +99,17 @@
 
   .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
-  .card { border: 1px solid #eee; border-radius: 12px; overflow: hidden; cursor: pointer; padding-bottom: 12px; background: #fff; }
+  .card { border: 1px solid #f0f0f0; border-radius: 16px; overflow: hidden; cursor: pointer; padding-bottom: 12px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.05); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s; }
+
+  .card:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
   .card-img { width: 100%; height: 180px; background: #eee center/cover no-repeat; }
 
-  .card-body { padding: 12px 12px 0 12px; }
+  .card-body { padding: 14px 14px 0 14px; }
 
-  .card-name { font-size: 18px; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-name { font-size: 18px; font-weight: 800; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #111; letter-spacing: 0.3px; }
 
-  .card-meta { font-size: 14px; color: #666; }
+  .card-meta { font-size: 14px; color: #777; font-weight: 500; }
 
   
 
@@ -98,21 +125,23 @@
 
   .store-header { text-align: center; margin-bottom: 20px; }
 
-  .store-header img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 1px solid #eee;}
+  .store-header img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
   
 
-  .menu-category { margin-top: 25px; margin-bottom: 15px; font-size: 22px; font-weight: bold; padding-bottom: 10px; }
+  .menu-category { margin-top: 25px; margin-bottom: 15px; font-size: 22px; font-weight: 800; padding-bottom: 10px; letter-spacing: 0.5px; }
 
   .menu-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
-  .menu-item { border: 1px solid #ddd; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; background: #fff; cursor: pointer;}
+  .menu-item { border: 1px solid #f0f0f0; border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 14px; background: #fff; cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.1s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+
+  .menu-item:active { background: #f9f9f9; border-color: #e8e8e8; transform: scale(0.98); }
 
   .menu-item-info { flex: 1; }
 
-  .menu-item-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+  .menu-item-title { font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #111; }
 
-  .menu-item-desc { font-size: 13px; color: #666; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .menu-item-desc { font-size: 13px; color: #777; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
 
   .menu-item-price { font-weight: bold; font-size: 15px; color: #111; }
 
@@ -122,9 +151,11 @@
 
   /* Bottom sheet style modal */
 
-  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: flex-end; justify-content: center; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.35); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 1000; align-items: flex-end; justify-content: center; transition: opacity 0.3s; }
 
-  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: slideUp 0.3s ease-out; }
+  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; overflow: hidden; display: flex; flex-direction: column; max-height: 88vh; animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 -8px 30px rgba(0,0,0,0.12); position: relative; }
+  
+  .modal::before { content: ''; display: block; width: 36px; height: 5px; background: #e0e0e0; border-radius: 3px; margin: 12px auto 8px auto; flex-shrink: 0; }
 
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
@@ -148,21 +179,25 @@
 
   .qty-controls { display: flex; align-items: center; gap: 15px; font-weight: bold; font-size: 18px;}
 
-  .qty-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: #f0f0f0; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+  .qty-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: #f0f0f0; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  .qty-btn:active { background: #e0e0e0; }
 
-  .add-btn { flex: 1; padding: 14px; background: #111; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+  .add-btn { flex: 1; padding: 14px; background: #ff3366; color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
+  .add-btn:active { transform: scale(0.98); }
 
-  .close-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9); border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10;}
+  .close-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.9); border: none; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; transition: transform 0.2s; }
+  .close-btn:active { transform: scale(0.9); }
 
 
 
   /* Floating Cart Button */
 
-  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
+  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #ff3366; color: #fff; text-align: center; padding: 18px; border-radius: 16px; font-weight: 800; font-size: 16px; box-shadow: 0 8px 24px rgba(255, 51, 102, 0.35); border: none; cursor: pointer; z-index: 900; display: none; transition: transform 0.2s, box-shadow 0.2s; }
+  .floating-cart:active { transform: translateX(-50%) scale(0.97); box-shadow: 0 4px 12px rgba(255, 51, 102, 0.25); }
 
   /* Floating Cart Button */
 
-  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #06c167; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
+  .floating-cart { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 440px; background: #ff3366; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4); border: none; cursor: pointer; z-index: 900; display: none; }
 
   
 
@@ -176,7 +211,7 @@
 
   .store-sidebar-item { padding: 15px 8px; font-size: 13px; color: #666; cursor: pointer; text-align: center; border-left: 3px solid transparent; transition: all 0.2s; }
 
-  .store-sidebar-item.active { background: #fff; color: #111; font-weight: bold; border-left: 3px solid #06c167; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+  .store-sidebar-item.active { background: #fff; color: #111; font-weight: bold; border-left: 3px solid #ff3366; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
   .store-main-list { flex: 1; min-width: 0; }
 
@@ -195,8 +230,8 @@
 
 <body>
 <div id="fullScreenLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.85); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(3px);">
-    <div class="spinner" style="width: 50px; height: 50px; border-top-color: #06c167; border-width: 4px; margin-bottom: 20px;"></div>
-    <div style="font-size: 18px; font-weight: bold; color: #06c167; letter-spacing: 1px;" id="fullScreenLoaderText">定位查詢中，請稍候...</div>
+    <div class="spinner" style="width: 50px; height: 50px; border-top-color: #ff3366; border-width: 4px; margin-bottom: 20px;"></div>
+    <div style="font-size: 18px; font-weight: bold; color: #ff3366; letter-spacing: 1px;" id="fullScreenLoaderText">定位查詢中，請稍候...</div>
 </div>
 
 
@@ -205,7 +240,7 @@
   <div id="storeSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100dvh; background:#f7f7f7; z-index:900; box-sizing:border-box; flex-direction:column;">
      <div style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: #fff; flex-shrink:0; gap:10px;">
          <button onclick="toggleStoreSearch()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; display:flex; align-items:center; color:#111;">←</button>
-         <div style="font-size: 16px; font-weight: bold; white-space:nowrap;">外送<span style="color: #06c167;">點單系統</span></div>
+         <div style="font-size: 16px; font-weight: bold; white-space:nowrap;">外送<span style="color: #ff3366;">點單系統</span></div>
          <div style="flex:1;">
              <input type="text" id="storeSearchInputMobile" placeholder="搜尋菜單關鍵字..." oninput="syncStoreSearchInput(this.value); handleStoreSearch(true);" onkeydown="if(event.key==='Enter'){ event.preventDefault(); triggerListSearch(true); }" style="width:100%; padding:8px 12px; border:1px solid #ddd; border-radius:20px; outline:none; font-size:14px; box-sizing:border-box; background:#f5f5f5;">
          </div>
@@ -220,24 +255,24 @@
 <div id="globalSearchOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100dvh; background:#fff; z-index:900; box-sizing:border-box; flex-direction:column;">
     <div style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: #fff; flex-shrink:0;">
         <button onclick="closeQueryOverlay()" style="background:transparent; border:none; font-size:24px; font-weight:bold; cursor:pointer; padding:0; margin-right: 15px; display:flex; align-items:center; color:#111;">←</button>
-        <div style="font-size: 18px; font-weight: bold; flex:1;">外送 <span style="color: #06c167;">點餐系統</span></div>
+        <div style="font-size: 18px; font-weight: bold; flex:1;">外送 <span style="color: #ff3366;">點餐系統</span></div>
     </div>
     <div id="globalSearchResults" style="flex:1; overflow-y:auto; padding: 15px 15px 10px 15px;"></div>
     <div style="padding:10px 15px 20px 15px; background:#fff; border-top:1px solid #eee; flex-shrink:0;">
         <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
             <div style="display:flex; align-items:center; background:#f5f5f5; border-radius:18px; padding:3px;">
                 <button id="verticalBtnShopMobile" onclick="switchVertical('SHOP')" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:none; background:transparent; color:#999; cursor:pointer;">生鮮雜貨</button>
-                <button id="verticalBtnRestMobile" onclick="switchVertical('RESTAURANTS')" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:none; background:#fff; color:#06c167; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">美食餐廳</button>
+                <button id="verticalBtnRestMobile" onclick="switchVertical('RESTAURANTS')" style="padding:6px 16px; font-size:13px; font-weight:bold; border-radius:15px; border:none; background:#fff; color:#ff3366; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;">美食餐廳</button>
             </div>
         </div>
         <div class="input-row" style="margin:0; box-shadow:none; display:flex; gap:10px;">
             <div style="flex:1; display:flex; align-items:center; background:#f5f5f5; border:1px solid #ddd; border-radius:25px; padding:0 15px; box-sizing:border-box; overflow:hidden;">
-                <span id="searchPrefix" style="display:none; color:#06c167; font-size:16px; font-weight:bold; white-space:nowrap; margin-right:2px;">🔍 搜尋 "</span>
+                <span id="searchPrefix" style="display:none; color:#ff3366; font-size:16px; font-weight:bold; white-space:nowrap; margin-right:2px;">🔍 搜尋 "</span>
                 <input type="text" id="globalSearchInputMobile" autocomplete="off" placeholder="想吃什麼？ (例如: 麥當勞)" oninput="updateQueryOverlay()" onkeydown="if(event.key==='Enter'){ searchStores(); }" style="flex:1; padding:10px 0; border:none; outline:none; font-size:16px; background:transparent; min-width:0; caret-color:#111;" />
-                <span id="searchSuffix" style="display:none; color:#06c167; font-size:16px; font-weight:bold; margin-left:0px;">"</span>
+                <span id="searchSuffix" style="display:none; color:#ff3366; font-size:16px; font-weight:bold; margin-left:0px;">"</span>
                 <span id="searchGhost" style="position:absolute; visibility:hidden; font-size:16px; font-weight:bold; white-space:pre; pointer-events:none;"></span>
             </div>
-            <button id="searchMainBtnMobile" onclick="searchStores()" style="border-radius:25px; padding:10px 20px; font-weight:bold; background:#06c167; color:#000; border:none; white-space:nowrap; cursor:pointer;">尋找食物</button>
+            <button id="searchMainBtnMobile" onclick="searchStores()" style="border-radius:25px; padding:10px 20px; font-weight:bold; background:#ff3366; color:#000; border:none; white-space:nowrap; cursor:pointer;">尋找食物</button>
             <div onclick="closeQueryOverlay()" style="display:flex; align-items:center; justify-content:center; padding:0 5px; font-size:24px; color:#999; cursor:pointer;">✕</div>
         </div>
     </div>
@@ -277,51 +312,57 @@
 
   <div id="homeView">
 
-  <!-- Unified Hero Search Block -->
-<div class="section" id="addrSection" style="background: #fff; border-radius: 16px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #eaeaea; transition: background-color 0.3s, border-color 0.3s;">
-  <h2 style="margin: 0 0 15px 0; font-size: 20px; font-weight: bold; color: #111; text-align: center;">預約外送代訂服務</h2>
-  
-  <div style="background: #f6f6f6; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
+  <!-- ===== Brand Hero Banner ===== -->
+  <div id="heroBanner" style="text-align: center; padding: 24px 20px 20px 20px; margin: -15px -15px 0 -15px; background: linear-gradient(180deg, #fff0f5 0%, #ffffff 100%); transition: opacity 0.3s ease;">
+    <div style="position: relative; display: inline-block; margin-bottom: 20px;">
+      <img src="http://weibsite.github.io/findDOG/image/logo2.png" alt="Logo" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; opacity: 1; display: block;" />
+      <h2 style="position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); margin: 0; font-size: 26px; font-weight: 800; color: #111; letter-spacing: 1px; white-space: nowrap; text-shadow: 2px 2px 4px rgba(255,255,255,0.9), -2px -2px 4px rgba(255,255,255,0.9), 0px 0px 8px rgba(255,255,255,1);">半價幫你送到家</h2>
+    </div>
+    <p style="margin: 0; font-size: 15px; color: #ff3366; font-weight: 700; letter-spacing: 0.5px;">免外送費 · 免服務費 · 結帳 5 折</p>
+  </div>
+
+  <!-- ===== Address & Time Card ===== -->
+  <div class="section" id="addrSection" style="background: #fff0f5; border-radius: 18px; padding: 0; margin: 20px 0; box-shadow: 0 6px 24px rgba(0,0,0,0.07); border: 1px solid #ffb3c6; overflow: hidden; transition: background-color 0.3s, border-color 0.3s;">
     
     <!-- Address Input Row -->
-    <div style="display: flex; align-items: center; padding: 10px 15px; border-bottom: 1px solid #e0e0e0;">
-      <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0 10px 0 0; font-size: 20px; cursor: pointer; color: #000;" title="使用目前位置">📍</button>
-      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 5px 0;" />
+    <div style="display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid #ffe0ea; background: transparent;">
+      <button onclick="getCurrentLocation()" style="background: transparent; border: none; padding: 0; font-size: 22px; cursor: pointer; color: #ff3366; margin-right: 12px; display: flex; align-items: center;" title="使用目前位置">📍</button>
+      <input type="text" id="addrInput" placeholder="輸入外送地址" list="addr-list" onkeydown="if(event.key==='Enter') { clearTimeout(window.addrDebounceTimer); searchAddress(true); }" oninput="handleAddrInput()" onblur="handleAddrBlur()" style="flex: 1; border: none; background: transparent; font-size: 16px; outline: none; padding: 6px 0; color: #111; font-weight: bold;" />
       <datalist id="addr-list"></datalist>
     </div>
     
     <!-- Time Picker Row -->
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; cursor: pointer; transition: background 0.2s;" onclick="openTimePickerModal()" onmousedown="this.style.background='#ebebeb'" onmouseup="this.style.background='transparent'" onmouseleave="this.style.background='transparent'">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 20px;">🕒</span>
-        <span id="triggerTimeText" style="font-size: 16px; font-weight: bold; color: #111;">下載中...</span>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; transition: background 0.2s;" onclick="openTimePickerModal()" onmousedown="this.style.background='#f9f9f9'" onmouseup="this.style.background='transparent'" onmouseleave="this.style.background='transparent'">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 22px;">🕒</span>
+        <span id="triggerTimeText" style="font-size: 16px; font-weight: 600; color: #333;">下載中...</span>
       </div>
-      <span style="font-size: 14px; color: #666;">▼</span>
+      <span style="font-size: 12px; color: #aaa;">▼</span>
       <!-- Hidden original select to preserve compatibility -->
       <select id="scheduleTime" style="display:none;"></select>
     </div>
   </div>
 
-  <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: 8px; text-align: center;"></div>
+  <div id="addrStatus" style="font-size: 13px; color: #666; margin-top: -12px; margin-bottom: 8px; text-align: center;"></div>
   <div id="addrResults" class="addr-results" style="margin-top: 5px;"></div>
 
-  <!-- Search Buttons -->
-  <div id="heroActionButtons" style="display: flex; gap: 10px; margin-top: 15px; transition: opacity 0.3s ease;">
-    <button onclick="handleHeroClick('SHOP')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
-      <span style="font-size: 32px;">🛒</span>
+  <!-- ===== Category Buttons ===== -->
+  <div id="heroActionButtons" style="display: flex; gap: 14px; margin-top: 10px; transition: opacity 0.3s ease;">
+    <button onclick="handleHeroClick('SHOP')" style="flex: 1; background: #fff; color: #111; border: none; border-radius: 16px; padding: 24px 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 12px rgba(0,0,0,0.06); border: 1px solid #f0f0f0;" onmousedown="this.style.transform='scale(0.96)'; this.style.boxShadow='0 1px 6px rgba(0,0,0,0.08)'" onmouseup="this.style.transform='scale(1)'; this.style.boxShadow='0 3px 12px rgba(0,0,0,0.06)'" onmouseleave="this.style.transform='scale(1)'; this.style.boxShadow='0 3px 12px rgba(0,0,0,0.06)'">
+      <span style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #e8f8ee, #d0f0db); font-size: 28px;">🛒</span>
       <span>生鮮雜貨</span>
     </button>
-    <button onclick="handleHeroClick('RESTAURANTS')" style="flex: 1; background: #f6f6f6; color: #111; border: none; border-radius: 12px; padding: 20px 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;" onmousedown="this.style.opacity=0.7" onmouseup="this.style.opacity=1">
-      <span style="font-size: 32px;">🍔</span>
+    <button onclick="handleHeroClick('RESTAURANTS')" style="flex: 1; background: #fff; color: #111; border: none; border-radius: 16px; padding: 24px 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 12px rgba(0,0,0,0.06); border: 1px solid #f0f0f0;" onmousedown="this.style.transform='scale(0.96)'; this.style.boxShadow='0 1px 6px rgba(0,0,0,0.08)'" onmouseup="this.style.transform='scale(1)'; this.style.boxShadow='0 3px 12px rgba(0,0,0,0.06)'" onmouseleave="this.style.transform='scale(1)'; this.style.boxShadow='0 3px 12px rgba(0,0,0,0.06)'">
+      <span style="display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #fff3e0, #ffe8cc); font-size: 28px;">🍔</span>
       <span>尋找美食</span>
     </button>
   </div>
 
-</div>
+
 <div id="subSections" style="display:none; opacity: 0; transition: opacity 0.5s ease;">
     <div class="section" style="padding: 10px 15px; margin-bottom: 10px;">
 
-      <div class="section-title" style="margin-bottom: 6px;">餐點備註</div>
+      <div class="section-title" style="margin-bottom: 6px;">🍽️ 餐點備註</div>
 
       <div class="input-row">
 
@@ -339,15 +380,15 @@
 
       <div class="section-title" style="display:flex; align-items:center;">
 
-        外送備註
+        🚚 外送備註
 
-        <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置。我們不負責賠償的責任</div>')" style="display:inline-block; margin-left:8px; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#ccc; color:#fff; font-size:14px; cursor:pointer; font-weight:bold;">?</span>
+        <span onclick="showModal('外送方式說明', '', false, '<div style=\'text-align:left; font-size:15px; line-height:1.6; color:#555;\'><b>當面點交：</b>通常需要現場告知外送員PIN碼<br><br><b>放在門口：</b>放在您指定的位置，風險是有可能放錯位置。我們不負責賠償的責任</div>')" style="display:inline-flex; align-items:center; justify-content:center; margin-left:8px; width:20px; height:20px; border-radius:50%; background:#e0e0e0; color:#888; font-size:12px; cursor:pointer; font-weight:bold; transition: background 0.2s;">?</span>
 
       </div>
 
       <div class="input-row">
 
-        <select id="deliveryMethod" style="flex:0 0 auto; padding:14px 10px; border-radius:8px; border:1px solid #ccc; font-size:15px; background:#fff; outline:none; cursor:pointer;">
+        <select id="deliveryMethod" style="flex:0 0 auto; padding:12px 12px; border-radius:10px; border:1px solid #e8e8e8; font-size:15px; background:#fafafa; outline:none; cursor:pointer; font-weight:600; color:#333; appearance:none; -webkit-appearance:none; background-image: url('data:image/svg+xml;utf8,<svg fill=&quot;%23999&quot; viewBox=&quot;0 0 24 24&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;><path d=&quot;M7 10l5 5 5-5z&quot;/></svg>'); background-repeat:no-repeat; background-position:right 8px center; background-size:18px; padding-right:30px;">
 
           <option value="當面點交">當面點交</option>
 
@@ -369,11 +410,11 @@
 
       <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
 
-        <span>尋找想吃的餐點</span>
+        <span>🔍 尋找想吃的餐點</span>
 
-        <div style="display:flex; align-items:center; background:#f5f5f5; border-radius:18px; padding:2px;">
-            <button id="verticalBtnShop" onclick="switchVertical('SHOP')" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:none; background:transparent; color:#999; cursor:pointer; width:auto; flex-shrink:0;">生鮮雜貨</button>
-            <button id="verticalBtnRest" onclick="switchVertical('RESTAURANTS')" style="padding:4px 12px; font-size:12px; font-weight:bold; border-radius:15px; border:none; background:#fff; color:#06c167; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer; width:auto; flex-shrink:0;">美食餐廳</button>
+        <div style="display:flex; align-items:center; background:#f5f5f5; border-radius:20px; padding:3px;">
+            <button id="verticalBtnShop" onclick="switchVertical('SHOP')" style="padding:5px 14px; font-size:12px; font-weight:700; border-radius:17px; border:none; background:transparent; color:#aaa; cursor:pointer; width:auto; flex-shrink:0; transition: all 0.2s;">生鮮雜貨</button>
+            <button id="verticalBtnRest" onclick="switchVertical('RESTAURANTS')" style="padding:5px 14px; font-size:12px; font-weight:700; border-radius:17px; border:none; background:#fff; color:#ff3366; box-shadow:0 1px 4px rgba(0,0,0,0.1); cursor:pointer; width:auto; flex-shrink:0; transition: all 0.2s;">美食餐廳</button>
         </div>
 
       </div>
@@ -387,7 +428,7 @@
 
         <button class="secondary" onclick="randomSearch()">不知道</button>
 
-        <button id="searchMainBtn" onclick="searchStores()">尋找食物</button>
+        <button id="searchMainBtn" onclick="searchStores()" style="background:#ff3366; color:#fff;">尋找食物</button>
 
       </div>
 
@@ -395,11 +436,11 @@
 
     <div class="section">
 
-      <div class="section-title">手機號碼</div>
+      <div class="section-title">📱 手機號碼</div>
 
       <div class="input-row">
 
-        <input type="tel" id="initPhone" placeholder="您的手機號碼 (選填)" oninput="syncPhone('init')" />
+        <input type="tel" id="initPhone" placeholder="您的手機號碼" oninput="syncPhone('init')" />
 
       </div>
 
@@ -480,7 +521,7 @@
     <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index:100;">
 
       <div style="display:flex; gap:10px;" id="checkoutBottomButtons">
-        <button id="checkoutSubmitBtn" onclick="submitSelectedPlan()" style="flex:1; background:#06c167; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>
+        <button id="checkoutSubmitBtn" onclick="submitSelectedPlan()" style="flex:1; background:#ff3366; color:#fff; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:18px; cursor:pointer;">送出訂單</button>
       </div>
 
     </div>
@@ -615,7 +656,7 @@ function copyToClipboardFallback(text, btn) {
 
         btn.innerText = '已複製！請貼上至官方帳號';
 
-        btn.style.background = '#06c167';
+        btn.style.background = '#ff3366';
 
         btn.style.color = '#fff';
 
@@ -1027,7 +1068,7 @@ function updateTriggerText() {
     
     if (scheduleMode === 'ASAP') {
         trigger.innerText = '🚀 即時訂單 (約5~30分)';
-        trigger.style.color = '#06c167';
+        trigger.style.color = '#ff3366';
     } else {
         if (scheduleSelect.options.length > 0) {
             const parsed = JSON.parse(scheduleSelect.value);
@@ -1124,6 +1165,12 @@ document.addEventListener("DOMContentLoaded", () => {
           heroBtns.style.opacity = '0';
           setTimeout(() => { heroBtns.style.display = 'none'; }, 300);
       }
+      const heroBanner = document.getElementById('heroBanner');
+      if (heroBanner && heroBanner.style.display !== 'none') {
+          heroBanner.style.transition = 'opacity 0.3s ease';
+          heroBanner.style.opacity = '0';
+          setTimeout(() => { heroBanner.style.display = 'none'; }, 300);
+      }
   }
 
   function updateAddrTitleState(state) {
@@ -1134,9 +1181,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (state === 'ok') {
 
-      section.style.backgroundColor = '#e8f5e9'; // 淡綠色背景
+      section.style.backgroundColor = '#ffe0ea'; // 淡綠色背景
 
-      section.style.borderColor = '#a5d6a7';
+      section.style.borderColor = '#ffb3c6';
 
     } else if (state === 'error') {
 
@@ -1146,9 +1193,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } else {
 
-      section.style.backgroundColor = '#fafafa'; // 恢復預設淺灰色
+      section.style.backgroundColor = '#fff0f5'; // 恢復預設粉紅色
 
-      section.style.borderColor = '#eee';
+      section.style.borderColor = '#ffb3c6';
 
     }
 
@@ -1168,7 +1215,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const statusEl = document.getElementById('addrStatus');
 
-      statusEl.innerHTML = '<div class="spinner" style="margin: 15px auto 10px auto; width: 24px; height: 24px; border-width: 3px;"></div><div style="color: #06c167; font-weight: bold;">取得 GPS 定位中...</div>';
+      statusEl.innerHTML = '<div class="spinner" style="margin: 15px auto 10px auto; width: 24px; height: 24px; border-width: 3px;"></div><div style="color: #ff3366; font-weight: bold;">取得 GPS 定位中...</div>';
 
       if (navigator.geolocation) {
 
@@ -1789,12 +1836,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const searchBtnMob = document.getElementById('searchMainBtnMobile');
 
       if (currentVertical === 'SHOP') {
-          if (btnShop) { btnShop.style.background = '#fff'; btnShop.style.color = '#e67e22'; btnShop.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
-          if (btnShopMob) { btnShopMob.style.background = '#fff'; btnShopMob.style.color = '#e67e22'; btnShopMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnShop) { btnShop.style.background = '#fff'; btnShop.style.color = '#06c167'; btnShop.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnShopMob) { btnShopMob.style.background = '#fff'; btnShopMob.style.color = '#06c167'; btnShopMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
           if (btnRest) { btnRest.style.background = 'transparent'; btnRest.style.color = '#999'; btnRest.style.boxShadow = 'none'; }
           if (btnRestMob) { btnRestMob.style.background = 'transparent'; btnRestMob.style.color = '#999'; btnRestMob.style.boxShadow = 'none'; }
           
-          const ph = '想買什麼？ (例如: 美廉社)';
+          const ph = '想買什麼？ (例如: 大全聯)';
           if (queryInput) queryInput.placeholder = ph;
           if (queryInputMob) queryInputMob.placeholder = ph;
           const sTxt = '尋找生鮮';
@@ -1802,8 +1849,8 @@ document.addEventListener("DOMContentLoaded", () => {
           if (searchBtnMob) searchBtnMob.innerText = sTxt;
       } else {
           currentVertical = 'RESTAURANTS';
-          if (btnRest) { btnRest.style.background = '#fff'; btnRest.style.color = '#06c167'; btnRest.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
-          if (btnRestMob) { btnRestMob.style.background = '#fff'; btnRestMob.style.color = '#06c167'; btnRestMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnRest) { btnRest.style.background = '#fff'; btnRest.style.color = '#ff3366'; btnRest.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
+          if (btnRestMob) { btnRestMob.style.background = '#fff'; btnRestMob.style.color = '#ff3366'; btnRestMob.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; }
           if (btnShop) { btnShop.style.background = 'transparent'; btnShop.style.color = '#999'; btnShop.style.boxShadow = 'none'; }
           if (btnShopMob) { btnShopMob.style.background = 'transparent'; btnShopMob.style.color = '#999'; btnShopMob.style.boxShadow = 'none'; }
           
@@ -1932,7 +1979,7 @@ function generateStoreListHTML(stores, q, currentVertical) {
           if(statusEl) {
               let t = currentVertical === 'SHOP' ? '找不到相關生鮮雜貨。' : '找不到相關餐廳。';
               if (currentVertical === 'SHOP' && typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
-                  t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+                  t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#ff3366; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
               }
               statusEl.innerHTML = t;
           }
@@ -1944,7 +1991,7 @@ function generateStoreListHTML(stores, q, currentVertical) {
       if(statusEl) {
           let t = `為您找到 ${stores.length} 家${currentVertical === 'SHOP' ? '生鮮雜貨' : '餐廳'}：`;
           if (currentVertical === 'SHOP' && typeof scheduleMode !== 'undefined' && scheduleMode === 'SCHEDULE') {
-              t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#06c167; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
+              t += `<div style="font-size:14px; margin-top:5px;"><span style="color:#d81b43;">(未顯示代表無法預約)</span> <a href="javascript:void(0);" onclick="if(typeof confirmTimePicker==='function') confirmTimePicker('ASAP');" style="color:#ff3366; text-decoration:underline; font-weight:bold; margin-left:5px;">切換成立刻再搜尋一次?</a></div>`;
           }
           if (currentVertical !== 'SHOP') {
               const safeQ = (q || '').replace(/'/g, "\\\'").replace(/"/g, '&quot;');
@@ -2095,7 +2142,7 @@ function generateStoreListHTML(stores, q, currentVertical) {
 
         return `
 
-          <div id="card_${s.storeUuid}" class="card" onclick="openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
+          <div id="card_${s.storeUuid}" class="card" onclick="localStorage.setItem('uberCartIsDiscount', 'false'); openStore('${s.storeUuid}', decodeURIComponent('${encodeURIComponent(name).replace(/'/g, "%27")}'), '${s.actionUrl || ''}')">
 
             <div class="card-img" style="position:relative; overflow:hidden; ${style}">
 
@@ -2143,7 +2190,7 @@ async function searchStores() {
 
       if (addrVal) {
 
-          showModal('自動定位中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在為您確認地址，請稍候...</div>', true);
+          showModal('自動定位中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #ff3366;"></div><div style="margin-top: 15px; text-align: center;">正在為您確認地址，請稍候...</div>', true);
 
           window._searchLock = true; // [修補] 上鎖
 
@@ -2214,7 +2261,7 @@ async function searchStores() {
     
     // 等待時段讀取完成
     if (scheduleMode === 'SCHEDULE' && isDeliveryTimesLoading) {
-        showModal('讀取時段中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; text-align: center;">正在向 Uber 取得預約時段，請稍候...</div>', true);
+        showModal('讀取時段中', '', false, '<div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #ff3366;"></div><div style="margin-top: 15px; text-align: center;">正在向 Uber 取得預約時段，請稍候...</div>', true);
         onDeliveryTimesLoadedCallback = () => {
             document.getElementById('errorModalOverlay').style.display = 'none';
             window._searchLock = false;
@@ -2613,7 +2660,7 @@ async function searchStoresPickup(q) {
         const safeQ = (q || '').replace(/'/g, "\\\'").replace(/"/g, '&quot;');
         statusEl.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                 <div>為您推薦 ${stores.length} 家優惠餐廳：</div>
-                                <button onclick="searchStores()" style="background:#06c167; color:#fff; border:none; padding:5px 12px; border-radius:15px; font-weight:bold; cursor:pointer; font-size:13px; margin-left:10px; flex-shrink:0;">回到一般外送</button>
+                                <button onclick="searchStores()" style="background:#ff3366; color:#fff; border:none; padding:5px 12px; border-radius:15px; font-weight:bold; cursor:pointer; font-size:13px; margin-left:10px; flex-shrink:0;">回到一般外送</button>
                               </div>`;
         statusEl.className = 'status success';
         
@@ -2982,11 +3029,11 @@ function handleStoreSearch(isUserInput = false) {
                       const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
                       if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
                         const txt = elements[0].text.text.text;
-                        promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(txt)}</div>`;
+                        promoBadgeHtml = `<div style="background-color: #ffe0ea; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(txt)}</div>`;
                       }
                     }
                     if (!promoBadgeHtml) {
-                        promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
+                        promoBadgeHtml = `<div style="background-color: #ffe0ea; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
                     }
                   }
                 } catch(e) {}
@@ -3868,12 +3915,12 @@ function openCheckoutSummary() {
 
 
 // Plan A
-html += `<div id="planACard" style="background:#f9f9f9; padding:10px; border-radius:8px; border:2px solid #06c167; text-align:center; font-size:14px; position:relative;">`;
+html += `<div id="planACard" style="background:#f9f9f9; padding:10px; border-radius:8px; border:2px solid #ff3366; text-align:center; font-size:14px; position:relative;">`;
 
-let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">結帳明細 ($300內5折)</div>`;
+let origTable = `<div style="font-weight:bold; margin-bottom:2px; color:#ff3366;">結帳明細 ($300內5折)</div>`;
 origTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left; margin-top:10px;">`;
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">小計:</td><td style="padding:2px 0 2px 4px;">$${total}</td></tr>`;
-origTable += total >= 300 ? `<tr><td style=\"text-align:right; padding:2px 4px 2px 0; color:#06c167;\">優惠折抵:</td><td style=\"padding:2px 0 2px 4px; color:#06c167;\">-$150</td></tr>` : (total > 0 ? `<tr><td style=\"text-align:right; padding:2px 4px 2px 0; color:#06c167;\">優惠折抵:</td><td style=\"padding:2px 0 2px 4px; color:#06c167;\">-$${Math.floor(total/2)}</td></tr>` : '');
+origTable += total >= 300 ? `<tr><td style=\"text-align:right; padding:2px 4px 2px 0; color:#ff3366;\">優惠折抵:</td><td style=\"padding:2px 0 2px 4px; color:#ff3366;\">-$150</td></tr>` : (total > 0 ? `<tr><td style=\"text-align:right; padding:2px 4px 2px 0; color:#ff3366;\">優惠折抵:</td><td style=\"padding:2px 0 2px 4px; color:#ff3366;\">-$${Math.floor(total/2)}</td></tr>` : '');
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">代訂費:</td><td style="padding:2px 0 2px 4px;">$${visualSvcFee}</td></tr>`;
 let aTotalExcess = (function(){
     let te = 0; const sg = {};
@@ -3887,10 +3934,10 @@ const isDiscount = localStorage.getItem('uberCartIsDiscount') === 'true';
 const pickupDiscount = isDiscount ? 10 : 0;
 origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0;">服務費:</td><td style="padding:2px 0 2px 4px;">$0</td></tr>`;
 if (isDiscount) {
-    origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>`;
+    origTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#ff3366;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#ff3366;">-$10</td></tr>`;
 }
 
-origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.99 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167;">-$10</td></tr>` : '';
+origTable += (typeof scheduleMode !== 'undefined' && scheduleMode !== 'ASAP' && document.getElementById('scheduleTime') && document.getElementById('scheduleTime').value && (getSelectedScheduleTimestamp() - new Date().getTime() >= 2.99 * 3600000)) ? `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#ff3366;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#ff3366;">-$10</td></tr>` : '';
 origTable += `</table>`;
 origTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
 origTable += (function(){
@@ -3923,11 +3970,11 @@ if (costRes && costRes.shouldSplit) {
 
     let originalBaseStr = total + visualSvcFee + (function(){ let te = 0; const ssg = {}; cart.forEach(it => { if(!ssg[it.storeName||'']) ssg[it.storeName||'']=[]; ssg[it.storeName||''].push(it); }); Object.keys(ssg).forEach(s => te += Math.max(0, ...ssg[s].map(it => (typeof it.originalStoreDeliveryFee !== 'undefined' ? it.originalStoreDeliveryFee : (it.storeDeliveryFee > 0 ? it.storeDeliveryFee + 50 : 0))))); return te; })();
 
-    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#06c167;">結帳明細 ($300內5折)</div>`;
+    let sumTable = `<div style="font-weight:bold; margin-bottom:2px; color:#ff3366;">結帳明細 ($300內5折)</div>`;
     sumTable += `<div style="margin-bottom:8px; color:#666; font-size:12px; font-weight:bold;">(共拆成 ${costRes.bins.length} 單)</div>`;
     sumTable += `<table style="margin: 0 auto; color: #666; font-size: 14px; border-collapse: collapse; text-align: left;">`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">小計:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFood}</td></tr>`;
-sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPromo}</td></tr>`;
+sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#ff3366; white-space:nowrap;">優惠折抵:</td><td style="padding:2px 0 2px 4px; color:#ff3366; white-space:nowrap;">-$${splitPromo}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">代訂費:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitFee}</td></tr>`;
 sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space:nowrap;">外送加成:</td><td style="padding:2px 0 2px 4px; white-space:nowrap;"><span style="visibility:hidden">-</span>$${splitExcess}</td></tr>`;
 
@@ -3935,11 +3982,11 @@ sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; white-space
 const isDiscount = localStorage.getItem('uberCartIsDiscount') === 'true';
 const splitPickupDisc = isDiscount ? 10 * costRes.bins.length : 0;
 if (isDiscount) {
-    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPickupDisc}</td></tr>`;
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#ff3366; white-space:nowrap;">優惠專區:</td><td style="padding:2px 0 2px 4px; color:#ff3366; white-space:nowrap;">-$${splitPickupDisc}</td></tr>`;
 }
 
 if (splitPreorder > 0) {
-    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#06c167; white-space:nowrap;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#06c167; white-space:nowrap;">-$${splitPreorder}</td></tr>`;
+    sumTable += `<tr><td style="text-align:right; padding:2px 4px 2px 0; color:#ff3366; white-space:nowrap;">預定折扣:</td><td style="padding:2px 0 2px 4px; color:#ff3366; white-space:nowrap;">-$${splitPreorder}</td></tr>`;
 }
 sumTable += `</table>`;
     sumTable += `<div style="font-weight:bold; font-size:16px; margin-top:10px; border-top:1px solid #ccc; padding-top:6px;">`;
@@ -3948,11 +3995,11 @@ sumTable += `</table>`;
 
     window._splitOrigHtmlA = sumTable; window._splitBinsA = costRes.bins; window._splitSavingsA = costRes.savings; window._splitBestCostA = costRes.bestCost; window._currentSplitIndexA = -1;
     
-    html += `<button onclick="switchSplitTab('A', -1)" style="position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">◀</button>`;
+    html += `<button onclick="switchSplitTab('A', -1)" style="position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#ff3366; padding:10px; z-index:2;">◀</button>`;
     html += `<div id="splitTabContentA" style="min-height:220px; padding: 0 10px;">` + sumTable + `</div>`;
-    html += `<button onclick="switchSplitTab('A', 1)" style="position:absolute; right:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#06c167; padding:10px; z-index:2;">▶</button>`;
+    html += `<button onclick="switchSplitTab('A', 1)" style="position:absolute; right:-5px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:20px; cursor:pointer; color:#ff3366; padding:10px; z-index:2;">▶</button>`;
     html += `<div style="position:absolute; bottom:2px; left:0; right:0; display:flex; justify-content:center; gap:4px;">`;
-    html += `<div id="split-dot-A--1" style="width:6px; height:6px; border-radius:50%; background:#06c167;"></div>`;
+    html += `<div id="split-dot-A--1" style="width:6px; height:6px; border-radius:50%; background:#ff3366;"></div>`;
     for(let b=0; b<costRes.bins.length; b++){
         html += `<div id="split-dot-A-${b}" style="width:6px; height:6px; border-radius:50%; background:#ccc;"></div>`;
     }
@@ -4086,7 +4133,7 @@ function openGroceryCheckoutSummary() {
 
 
 
-      <div style="margin-bottom:12px;"><strong>🏪 預訂代訂店家:</strong> <a href="${currentStoreUrl}" target="_blank" style="color:#06c167; text-decoration:none;">${escapeHTML(currentStoreName)}</a></div>
+      <div style="margin-bottom:12px;"><strong>🏪 預訂代訂店家:</strong> <a href="${currentStoreUrl}" target="_blank" style="color:#ff3366; text-decoration:none;">${escapeHTML(currentStoreName)}</a></div>
 
       <div style="margin-bottom:12px;">
 
@@ -4138,7 +4185,7 @@ function openGroceryCheckoutSummary() {
 
             <div style="margin-bottom:15px; display:flex; align-items:center;"><strong>外送時間:</strong> <span style="margin-left:5px;">${escapeHTML(timeText)}</span> <button onclick="openTimePickerModal()" style="margin-left:10px; padding:2px 10px; font-size:12px; cursor:pointer; background:#fff; border:1px solid #000; border-radius:15px; font-weight:bold; color:#000;">修改</button></div>
 
-      ${isPreOrder ? `<div style="color:#06c167; margin-bottom:4px;">預約優惠(3小時以上): -$20</div>` : ''}
+      ${isPreOrder ? `<div style="color:#ff3366; margin-bottom:4px;">預約優惠(3小時以上): -$20</div>` : ''}
 
       </div>
 
@@ -4154,7 +4201,7 @@ function openGroceryCheckoutSummary() {
 
         <div style="display:flex; justify-content:space-between;"><span>💰 滿額條件</span><span>需滿 $449</span></div>
 
-        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>💸 優惠折扣</span><span>-$180</span></div>
+        <div style="display:flex; justify-content:space-between; color:#ff3366;"><span>💸 優惠折扣</span><span>-$180</span></div>
 
         <div style="display:flex; justify-content:space-between;"><span>🛵 平台服務費</span><span>${svcStr}</span></div>
 
@@ -4162,7 +4209,7 @@ function openGroceryCheckoutSummary() {
 
         <div style="display:flex; justify-content:space-between;"><span>💼 專人代訂費</span><span><del>$60</del> $45</span></div>
 
-        <div style="display:flex; justify-content:space-between; color:#06c167;"><span>🕒 預約優惠(3小時以上)</span><span>-$35</span></div>
+        <div style="display:flex; justify-content:space-between; color:#ff3366;"><span>🕒 預約優惠(3小時以上)</span><span>-$35</span></div>
 
         ` : `
 
@@ -4356,7 +4403,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
          <div style="display:flex; gap:10px; margin-top:20px;">
 
-           <button onclick="document.getElementById('${prefix}DeliveryMethod').value='放在門口'; document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">是(放在門口)</button>
+           <button onclick="document.getElementById('${prefix}DeliveryMethod').value='放在門口'; document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#ff3366; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">是(放在門口)</button>
 
            <button onclick="document.getElementById('errorModalOverlay').style.display='none'; window._ignoreMethodCheck=true; sendOrderToLine('${forceSubmit === 'split' ? 'split' : (forceSubmit ? forceSubmit : '')}');" style="flex:1; padding:12px; background:#888; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:15px;">否(就是當面點交沒錯)</button>
 
@@ -4484,7 +4531,7 @@ async function _sendOrderToLine(forceSubmit = false) {
 
             <div style="display:flex; gap:10px; margin-top:20px;">
 
-              <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
+              <button onclick="document.getElementById('errorModalOverlay').style.display='none'; sendOrderToLine('split');" style="flex:1; padding:12px; background:#ff3366; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px;">同意送出</button>
 
             </div>
 
@@ -4874,7 +4921,7 @@ let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - p
 
   if (isDesktopDevice || (typeof liff !== 'undefined' && !liff.isInClient())) {
 
-    const copyBtnHtml = `<div style="text-align:center; font-size:16px; color:#555; margin-bottom: 20px;">無法自動為您送出訂單</div><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:14px; background:#06c167; color:#fff; border:none; border-radius:12px; font-weight:bold; font-size:16px; cursor:pointer;">請按此複製訂單訊息</button>`;
+    const copyBtnHtml = `<div style="text-align:center; font-size:16px; color:#555; margin-bottom: 20px;">無法自動為您送出訂單</div><button onclick="copyToClipboardFallback(decodeURIComponent('${encodeURIComponent(msgText).replace(/'/g, "%27")}'), this)" style="width:100%; padding:14px; background:#ff3366; color:#fff; border:none; border-radius:12px; font-weight:bold; font-size:16px; cursor:pointer;">請按此複製訂單訊息</button>`;
 
     showModal('偵測到非手機登入', '', true, copyBtnHtml, true);
 
@@ -4920,7 +4967,7 @@ let grandTotal = total - promoDiscount + serviceFee + totalExcessDeliveryFee - p
 
         <div style="text-align:center; margin-top:20px;">
 
-          <button onclick="liff.closeWindow();" style="width:100%; padding:12px; background:#06c167; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">關閉視窗</button>
+          <button onclick="liff.closeWindow();" style="width:100%; padding:12px; background:#ff3366; color:#fff; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">關閉視窗</button>
 
         </div>
 
@@ -4970,7 +5017,7 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
 
     document.getElementById('modalNote').value = '';
 
-    document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#666;">載入選項中...</div>';
+    document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#666;"><div class="spinner" style="margin-bottom:10px;"></div>載入選項中...</div>';
 
     
 
@@ -4992,7 +5039,7 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
 
           window.noOptionsItems.add(menuItemUuid);
 
-          document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#06c167;font-weight:bold;">一般商品（無客製化選項）</div>';
+          document.getElementById('customizationsArea').innerHTML = '<div style="padding:15px;text-align:center;color:#ff3366;font-weight:bold;">一般商品（無客製化選項）</div>';
 
           if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
 
@@ -5050,7 +5097,7 @@ async function openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUui
         if (!window.customizationRetries) window.customizationRetries = {};
         if (!window.customizationRetries[menuItemUuid]) {
             window.customizationRetries[menuItemUuid] = true;
-            document.getElementById('customizationsArea').innerHTML = '<div style="padding:40px 15px;text-align:center;color:#666;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px;">網路稍微不穩，自動重試中...</div></div>';
+            document.getElementById('customizationsArea').innerHTML = '<div style="padding:40px 15px;text-align:center;color:#666;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #ff3366;"></div><div style="margin-top: 15px;">網路稍微不穩，自動重試中...</div></div>';
             setTimeout(() => {
                 openItemModal(storeUuid, sectionUuid, subsectionUuid, menuItemUuid, titleEnc, descEnc, basePrice, imgUrl, hasCustomizations);
             }, 1500);
@@ -6123,11 +6170,11 @@ async function openStore(uuid, storeName, actionUrl = '', skipFetch = false, din
 
                         if (window.isGroceryStore) {
 
-                            str += ' <span style="color:#06c167; font-weight:bold;">-$20優惠</span>';
+                            str += ' <span style="color:#ff3366; font-weight:bold;">-$20優惠</span>';
 
                         } else {
 
-                            str += ' <span style="color:#06c167; font-weight:bold;">-$10優惠</span>';
+                            str += ' <span style="color:#ff3366; font-weight:bold;">-$10優惠</span>';
 
                         }
 
@@ -6498,12 +6545,12 @@ if (window.isGroceryStore && d.hours && Array.isArray(d.hours)) {
                           const elements = item.promoInfo.promoBadge.content.richText.richTextElements;
                           if (elements && elements.length > 0 && elements[0].text && elements[0].text.text && elements[0].text.text.text) {
                              const promoText = elements[0].text.text.text;
-                             promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
+                             promoBadgeHtml = `<div style="background-color: #ffe0ea; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">${escapeHTML(promoText)}</div>`;
                           }
                       }
                       
                       if (!promoBadgeHtml) {
-                          promoBadgeHtml = `<div style="background-color: #e8f5e9; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
+                          promoBadgeHtml = `<div style="background-color: #ffe0ea; color: #05944F; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 4px; font-weight: bold;">優惠商品</div>`;
                       }
                     }
                   } catch(e) {}
@@ -7163,15 +7210,15 @@ function buildSplitSuggestionHtml(result) {
 
     if (!result.shouldSplit) return '';
 
-    let html = `<div style="background:#f0fbf4; border:2px solid #06c167; border-radius:12px; padding:15px; margin-top:15px;">`;
+    let html = `<div style="background:#fff0f5; border:2px solid #ff3366; border-radius:12px; padding:15px; margin-top:15px;">`;
 
-    html += `<div style="font-weight:bold; color:#06c167; font-size:16px; text-align:center; margin-bottom:10px;">💡 多單優惠建議（分成 ${result.bins.length} 單）</div>`;
+    html += `<div style="font-weight:bold; color:#ff3366; font-size:16px; text-align:center; margin-bottom:10px;">💡 多單優惠建議（分成 ${result.bins.length} 單）</div>`;
 
     html += `<div style="text-align:center; margin-bottom:12px;">`;
 
     html += `<span style="text-decoration:line-through; color:#999;">不拆: $${result.noBinCost}</span>`;
 
-    html += ` → <span style="color:#06c167; font-weight:bold;">多單優惠: $${result.bestCost}</span>`;
+    html += ` → <span style="color:#ff3366; font-weight:bold;">多單優惠: $${result.bestCost}</span>`;
 
     html += ` <span style="color:#d32f2f; font-weight:bold;">省 $${result.savings}！</span>`;
 
@@ -7257,7 +7304,7 @@ function buildSplitSuggestionHtml(result) {
 
     document.getElementById('errorModalIcon').innerText = isError ? '❌' : '✅';
 
-    document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#06c167';
+    document.getElementById('errorModalIcon').style.color = isError ? '#d32f2f' : '#ff3366';
 
     document.getElementById('errorModalTitle').innerText = title;
 
@@ -7277,7 +7324,7 @@ window.renderSplitTab = function(plan) {
     let origHtml = plan === 'A' ? window._splitOrigHtmlA : window._splitOrigHtmlB;
     let savings = plan === 'A' ? window._splitSavingsA : window._splitSavingsB;
     let bestCost = plan === 'A' ? window._splitBestCostA : window._splitBestCostB;
-    let color = plan === 'A' ? '#06c167' : '#276ef1';
+    let color = plan === 'A' ? '#ff3366' : '#276ef1';
     
     if (!bins) return;
     for(let i = -1; i < bins.length; i++) {
@@ -7532,7 +7579,7 @@ function openQueryOverlay() {
         } else {
             mainBtn.innerText = '尋找食物';
             mainBtn.setAttribute('onclick', 'searchStores()');
-            mainBtn.style.background = '#06c167';
+            mainBtn.style.background = '#ff3366';
             mainBtn.style.color = '#000';
             inputMobile.placeholder = '想吃什麼？ (例如: 麥當勞)';
             inputMobile.setAttribute('onkeydown', 'if(event.key==="Enter"){ searchStores(); }');
@@ -7728,7 +7775,7 @@ function renderOverlayHTML() {
     const searchBtn = document.getElementById('searchMainBtn');
     if (searchBtn) {
         if (val) {
-            searchBtn.style.background = '#06c167';
+            searchBtn.style.background = '#ff3366';
             searchBtn.style.color = '#fff';
         } else {
             searchBtn.style.background = '';
@@ -7740,10 +7787,10 @@ function renderOverlayHTML() {
     const searchBtnMob = document.getElementById('searchMainBtnMobile');
     if (searchBtnMob) {
         if (val) {
-            searchBtnMob.style.background = '#06c167';
+            searchBtnMob.style.background = '#ff3366';
             searchBtnMob.style.color = '#000';
         } else {
-            searchBtnMob.style.background = '#06c167';
+            searchBtnMob.style.background = '#ff3366';
             searchBtnMob.style.color = '#000';
         }
         searchBtnMob.innerText = defaultText;
@@ -7758,7 +7805,7 @@ function renderOverlayHTML() {
         if (val) {
             if (searchPrefix) searchPrefix.style.display = 'inline';
             if (searchSuffix) searchSuffix.style.display = 'inline';
-            mobInput.style.color = '#06c167';
+            mobInput.style.color = '#ff3366';
             mobInput.style.fontWeight = 'bold';
             if (searchGhost) {
                 // 測量實際打字內容的寬度 (保留空白字元)
@@ -7808,7 +7855,7 @@ function renderOverlayHTML() {
             } else {
                 html += '<div style="height:10px;"></div>';
             }
-            html += '<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #06c167;"></div><div style="margin-top: 15px; color:#999; font-size:14px;">搜尋中...</div></div>';
+            html += '<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border-width: 3px; border-top-color: #ff3366;"></div><div style="margin-top: 15px; color:#999; font-size:14px;">搜尋中...</div></div>';
         } else if (window.suggestionStores && window.suggestionStores.length > 0) {
             if (!isCompressed) {
                 html += '<div style="font-size:14px; color:#999; margin:15px 0 10px 0; font-weight:bold;">關聯餐廳/店家</div>';
@@ -7844,7 +7891,7 @@ function renderOverlayHTML() {
                 if (metaText) metaText = `<div style="font-size:12px; color:#666; margin-top:2px;">${metaText}</div>`;
 
                 html += `
-                <div onclick="window.openStore('${uuid}', '${encodedName}', '${actionUrl}')" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;">
+                <div onclick="localStorage.setItem('uberCartIsDiscount', 'false'); window.openStore('${uuid}', '${encodedName}', '${actionUrl}')" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;">
                     ${imageUrl ? `<img src="${imageUrl}" style="width:50px; height:50px; border-radius:8px; object-fit:cover; background:#eee; flex-shrink:0;">` : `<div style="width:50px; height:50px; border-radius:8px; background:#eee; flex-shrink:0;"></div>`}
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:15px; font-weight:bold; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</div>
