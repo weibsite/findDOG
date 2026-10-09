@@ -186,7 +186,15 @@
                             statusHtml += `<p style='color: #666; font-size: 18px; margin-bottom: 5px;'>訂單編號: <strong style="color:#111; font-size:22px;">${data.ext_order_id}</strong></p>`;
                         }
                         
-                        if (data.tracking_url) {
+                        if (data.tracking_urls && data.tracking_urls.length > 0) {
+                            statusHtml += `<h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>`;
+                            data.tracking_urls.forEach((url, idx) => {
+                                statusHtml += `<a href="${url}" class="btn" style="margin-top: 10px;" target="_blank">📍 追蹤訂單 ${data.tracking_urls.length > 1 ? (idx + 1) : ''}</a>`;
+                            });
+                            if (data.tracking_urls.length === 1) {
+                                setTimeout(() => { window.location.href = data.tracking_urls[0]; }, 500);
+                            }
+                        } else if (data.tracking_url) {
                             statusHtml += `
                                 <h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>
                                 <a href="${data.tracking_url}" class="btn">📍 如果沒有自動跳轉，請點此開啟</a>
@@ -199,11 +207,13 @@
                                 <h3 style="color: #007bff; font-size: 20px; margin-top: 15px;">👨‍💻 代訂已接收訂單</h3>
                                 <p style="color: #666; margin-top: 5px;">正在為您處理中，請稍候...</p>
                             `;
+                            setTimeout(() => { window.location.reload(); }, 5000);
                         } else {
                             statusHtml += `
-                                <h3 style="color: #ff9800; font-size: 20px; margin-top: 15px;">⏳ 等待代訂接單</h3>
+                                <h3 style="color: #ff9800; font-size: 20px; margin-top: 15px;"><img src="http://weibsite.github.io/findDOG/image/LOADING.gif" style="width: 40px; vertical-align: middle; margin-right: 5px;"> 等待代訂接單</h3>
                                 <p style="color: #d32f2f; margin-top: 5px; font-weight: bold;">(如10分鐘沒改變狀態請催單)</p>
                             `;
+                            setTimeout(() => { window.location.reload(); }, 5000);
                         }
                         statusArea.innerHTML = statusHtml;
                     } else {
