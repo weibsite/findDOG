@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <title>訂單追蹤</title>
+    <style>
+        * { touch-action: manipulation; box-sizing: border-box; }
+        body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; color: #333; }
+        .card { background: white; padding: 25px 20px; border-radius: 12px; margin: 20px auto; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: #111; font-size: 22px; }
+        .status-area { margin: 20px 0; }
+        .order-text { white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px; text-align: left; margin-top: 20px; color: #555; border: 1px solid #eee; }
+        .btn { display: block; background: #06c167; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; text-decoration: none; font-weight: bold; margin-top: 20px; transition: opacity 0.2s; }
+        .btn:active { opacity: 0.8; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #06c167; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📦 訂單追蹤</h2>
+        <div id="trackStatusArea" class="status-area">
+            <div class="loader"></div>
+            <h3 style="color: #666; font-size: 18px;">正在查詢您的訂單...</h3>
+        </div>
+        <div id="trackOrderText" class="order-text" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 從網址列取得 UUID
+            const urlParams = new URLSearchParams(window.location.search);
+            let orderId = urlParams.get('id');
+            
+            // LIFF 初始化 (如果您將此網頁設定為 LIFF App)
+            try {
+                // 如果您使用 LIFF，通常需要在這裡 liff.init({ liffId: "..." })
+                // await liff.init({ liffId: "YOUR_LIFF_ID" });
+            } catch (err) {
+                console.error('LIFF init failed', err);
+            }
+
+            const statusArea = document.getElementById('trackStatusArea');
+            const orderTextArea = document.getElementById('trackOrderText');
+            
+            if (!orderId) {
+                statusArea.innerHTML = `<h3 style="color:red;">無效的追蹤連結</h3><p style="color:#666;">找不到訂單編號</p>`;
+                return;
+            }
+
+            // 動態取得 API 連線位置 (與 ubereat.html 共用 config.json)
+            let trackApiBase = '';
+            try {
+                const configRes = await fetch('config.json?t=' + Date.now());
+                if (configRes.ok) {
+                    const configData = await configRes.json();
+                    if (configData.api_url) {
+                        trackApiBase = configData.api_url.replace(/\/$/, "");
+                    }
+                }
+            } catch(e) {
+                console.log('無法讀取 config.json，嘗試使用相對路徑');
+            }
+            
+            // 查詢訂單進度
+            try {
+                const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        orderTextArea.textContent = data.text;
+                        orderTextArea.style.display = 'block';
+                        
+                        let statusHtml = '';
+                        if (data.ext_order_id) {
+                            statusHtml += `<p style='color: #666; font-size: 18px; margin-bottom: 5px;'>訂單編號: <strong style="color:#111; font-size:22px;">${data.ext_order_id}</strong></p>`;
+                        }
+                        
+                        if (data.tracking_url) {
+                            statusHtml += `
+                                <h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>
+                                <a href="${data.tracking_url}" target="_blank" class="btn">📍 前往追蹤外送進度</a>
+                            `;
+                        } else {
+                            statusHtml += `
+                                <h3 style="color: #ff9800; font-size: 20px; margin-top: 15px;">⏳ 代訂正在服務中</h3>
+                                <p style="color: #666; margin-top: 5px;">請稍等 5~30 分鐘...</p>
+                            `;
+                        }
+                        statusArea.innerHTML = statusHtml;
+                    } else {
+                        statusArea.innerHTML = `<h3 style="color:red;">找不到此訂單</h3><p style="color:#666;">可能是系統處理中或連結錯誤</p>`;
+                    }
+                } else {
+                    statusArea.innerHTML = `<h3 style="color:red;">伺服器回應錯誤</h3>`;
+                }
+            } catch(e) {
+                statusArea.innerHTML = `<h3 style="color:red;">無法連線到伺服器</h3><p style="color:#666;">請確認您的網路連線或稍後再試</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
