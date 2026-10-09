@@ -29,6 +29,100 @@
     </div>
 
     <script>
+        
+        function parseOrderText(rawText) {
+            const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
+            let parsed = {
+                header: '', address: '', time: '', store: '', url: '',
+                items: [], tag: '', subtotal: '', discount: '', fees: [], total: '',
+                foodNotes: '', deliveryNotes: '', others: []
+            };
+            let currentSection = 'header';
+            for(let line of lines) {
+                if (line.startsWith('🛵 UberEats') || line.includes('揪團訂單')) { parsed.header = line; continue; }
+                if (line.startsWith('📍')) { parsed.address = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('🕒')) { parsed.time = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('🏪')) { parsed.store = line.replace('🏪', '').trim(); continue; }
+                if (line.startsWith('🔗')) { parsed.url = line.substring(line.indexOf('http')); continue; }
+                if (line.match(/^\d+\./)) { parsed.items.push({text: line, sub: []}); currentSection = 'items'; continue; }
+                if (currentSection === 'items' && line.startsWith('-')) { parsed.items[parsed.items.length-1].sub.push(line); continue; }
+                if (line.startsWith('🏷️')) { parsed.tag = line.replace('🏷️', '').trim(); continue; }
+                if (line.startsWith('💵')) { parsed.subtotal = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('🎉')) { parsed.discount = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('🏍️') || line.startsWith('🛵') || line.startsWith('🧑💼') || line.startsWith('🧑‍💼') || line.startsWith('📅')) {
+                    let parts = line.split(':');
+                    if(parts.length > 1) { parsed.fees.push({ name: parts[0].trim(), value: parts[1].trim() }); }
+                    continue; 
+                }
+                if (line.startsWith('💰')) { parsed.total = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('🍽️')) { parsed.foodNotes = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if (line.startsWith('📝')) { parsed.deliveryNotes = line.substring(line.indexOf(':')+1).trim(); continue; }
+                if(currentSection !== 'items') { parsed.others.push(line); }
+            }
+            return parsed;
+        }
+
+        function renderOrderDetails(parsed, rawText) {
+            // 如果連店家都抓不到，退回純文字顯示
+            if (!parsed.store && parsed.items.length === 0) {
+                return `<pre style="white-space: pre-wrap; margin:0; font-family: monospace;">${rawText}</pre>`;
+            }
+
+            let html = `<div style="text-align: left; font-family: -apple-system, sans-serif; font-size: 14px; color: #333;">`;
+            
+            // 店家與時間
+            html += `<div style="background: #e8f5e9; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #c8e6c9;">`;
+            html += `<div style="font-size: 16px; font-weight: bold; color: #2e7d32; margin-bottom: 5px;">🏪 ${parsed.store}</div>`;
+            if (parsed.url) html += `<a href="${parsed.url}" target="_blank" style="color: #06c167; text-decoration: none; font-size: 13px; font-weight: bold;">🔗 前往 UberEats 菜單</a><br>`;
+            if (parsed.time) html += `<div style="margin-top: 8px;">🕒 <strong>時間:</strong> ${parsed.time}</div>`;
+            if (parsed.address) html += `<div style="margin-top: 4px;">📍 <strong>地址:</strong> ${parsed.address}</div>`;
+            html += `</div>`;
+
+            // 餐點
+            if (parsed.items.length > 0) {
+                html += `<h4 style="margin: 0 0 8px 0; color: #444; border-bottom: 2px solid #eee; padding-bottom: 4px;">🍔 訂購餐點</h4>`;
+                html += `<ul style="list-style: none; padding: 0; margin: 0 0 15px 0;">`;
+                parsed.items.forEach(item => {
+                    let parts = item.text.split('=');
+                    let name = parts[0] ? parts[0].trim() : item.text;
+                    let price = parts[1] ? parts[1].trim() : '';
+                    html += `<li style="padding: 6px 0; border-bottom: 1px dashed #eee;">`;
+                    html += `<div style="display: flex; justify-content: space-between;"><span>${name}</span><strong style="color:#000;">${price}</strong></div>`;
+                    item.sub.forEach(sub => {
+                        html += `<div style="font-size: 12px; color: #888; margin-top: 2px; padding-left: 15px;">${sub}</div>`;
+                    });
+                    html += `</li>`;
+                });
+                html += `</ul>`;
+            }
+
+            // 費用明細
+            html += `<h4 style="margin: 0 0 8px 0; color: #444; border-bottom: 2px solid #eee; padding-bottom: 4px;">🧾 費用明細</h4>`;
+            html += `<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 14px;">`;
+            if(parsed.subtotal) html += `<tr><td style="padding: 4px 0;">💵 小計</td><td style="text-align: right;">${parsed.subtotal}</td></tr>`;
+            if(parsed.discount) html += `<tr><td style="padding: 4px 0; color: #d32f2f;">🎉 優惠折抵 ${parsed.tag}</td><td style="text-align: right; color: #d32f2f;">${parsed.discount}</td></tr>`;
+            parsed.fees.forEach(fee => {
+                html += `<tr><td style="padding: 4px 0; color: #666;">${fee.name}</td><td style="text-align: right; color: #666;">${fee.value}</td></tr>`;
+            });
+            if(parsed.total) {
+                html += `<tr style="border-top: 2px solid #eee; font-weight: bold; font-size: 16px;">
+                         <td style="padding: 8px 0; color: #111;">💰 總計</td>
+                         <td style="text-align: right; color: #d32f2f; font-size: 18px;">${parsed.total}</td></tr>`;
+            }
+            html += `</table>`;
+
+            // 備註
+            if (parsed.foodNotes || parsed.deliveryNotes) {
+                html += `<div style="background: #fff3e0; padding: 12px; border-radius: 8px; font-size: 13px; border: 1px solid #ffe0b2;">`;
+                if (parsed.foodNotes) html += `<div style="margin-bottom: 6px; color: #e65100;">🍽️ <strong>餐點備註:</strong><br>${parsed.foodNotes}</div>`;
+                if (parsed.deliveryNotes) html += `<div style="color: #e65100;">📝 <strong>外送備註:</strong><br>${parsed.deliveryNotes}</div>`;
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // 從網址列取得 UUID (支援 LINE LIFF 轉址特性)
             const urlParams = new URLSearchParams(window.location.search);
@@ -79,7 +173,11 @@
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success') {
-                        orderTextArea.textContent = data.text;
+                        const parsedData = parseOrderText(data.text);
+                        orderTextArea.innerHTML = renderOrderDetails(parsedData, data.text);
+                        orderTextArea.style.backgroundColor = 'transparent';
+                        orderTextArea.style.border = 'none';
+                        orderTextArea.style.padding = '0';
                         orderTextArea.style.display = 'block';
                         
                         let statusHtml = '';
