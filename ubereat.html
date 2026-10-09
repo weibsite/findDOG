@@ -229,17 +229,6 @@
 </head>
 
 <body>
-
-<div id="trackingView" style="display:none; width:100vw; min-height:100vh; background:#f0f2f5; position:absolute; top:0; left:0; z-index:9999999; overflow-y:auto; box-sizing:border-box; padding:20px; text-align:center;">
-    <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); max-width:400px; margin:20px auto;">
-        <h2 style="margin-top:0;">📦 訂單追蹤</h2>
-        <div id="trackStatusArea">
-            <h3 style="color: #ff9800;">⏳ 載入中...</h3>
-        </div>
-        <div id="trackOrderText" style="white-space:pre-wrap; background:#f8f9fa; padding:15px; border-radius:4px; font-family:monospace; font-size:13px; text-align:left; margin-top:20px;"></div>
-    </div>
-</div>
-
 <div id="fullScreenLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.85); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(3px);">
     <div class="spinner" style="width: 50px; height: 50px; border-top-color: #f43f5e; border-width: 4px; margin-bottom: 20px;"></div>
     <div style="font-size: 18px; font-weight: bold; color: #f43f5e; letter-spacing: 1px;" id="fullScreenLoaderText">定位查詢中，請稍候...</div>
@@ -600,61 +589,6 @@
 
 
 <script>
-
-// --- Tracking View Logic ---
-window.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('view') === 'track') {
-        const orderId = urlParams.get('id');
-        document.getElementById('trackingView').style.display = 'block';
-        
-        // Hide normal app elements
-        const container = document.querySelector('.container');
-        if (container) container.style.display = 'none';
-        
-        let trackApiBase = '';
-        try {
-            const configRes = await fetch('config.json?t=' + Date.now());
-            if (configRes.ok) {
-                const configData = await configRes.json();
-                if (configData.api_url) {
-                    trackApiBase = configData.api_url.replace(/\/$/, "");
-                }
-            }
-        } catch(e) {}
-        
-        try {
-            const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'success') {
-                    document.getElementById('trackOrderText').textContent = data.text;
-                    let statusHtml = '';
-                    if (data.ext_order_id) {
-                        statusHtml += `<p style='color: #666; font-size: 18px;'>訂單編號: <strong>${data.ext_order_id}</strong></p>`;
-                    }
-                    if (data.tracking_url) {
-                        statusHtml += `
-                            <h3 style="color: #06c167;">✅ 已取得追蹤網址</h3>
-                            <a href="${data.tracking_url}" target="_blank" style="display:block; background:#06c167; color:white; border:none; padding:15px; border-radius:8px; font-size:16px; text-decoration:none; font-weight:bold; margin-top:20px;">前往追蹤外送進度</a>
-                        `;
-                    } else {
-                        statusHtml += `
-                            <h3 style="color: #ff9800;">⏳ 代訂正在服務中</h3>
-                            <p style="color: #666;">請稍等 5~30 分鐘...</p>
-                        `;
-                    }
-                    document.getElementById('trackStatusArea').innerHTML = statusHtml;
-                } else {
-                    document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">找不到此訂單</h3>`;
-                }
-            }
-        } catch(e) {
-            document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">連線錯誤，請稍後再試</h3>`;
-        }
-    }
-});
-
 
   
   function getSelectedScheduleTimestamp() {
@@ -7453,61 +7387,6 @@ window.switchSplitTab = function(plan, dir) {
 
 </script>
 <script>
-
-// --- Tracking View Logic ---
-window.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('view') === 'track') {
-        const orderId = urlParams.get('id');
-        document.getElementById('trackingView').style.display = 'block';
-        
-        // Hide normal app elements
-        const container = document.querySelector('.container');
-        if (container) container.style.display = 'none';
-        
-        let trackApiBase = '';
-        try {
-            const configRes = await fetch('config.json?t=' + Date.now());
-            if (configRes.ok) {
-                const configData = await configRes.json();
-                if (configData.api_url) {
-                    trackApiBase = configData.api_url.replace(/\/$/, "");
-                }
-            }
-        } catch(e) {}
-        
-        try {
-            const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'success') {
-                    document.getElementById('trackOrderText').textContent = data.text;
-                    let statusHtml = '';
-                    if (data.ext_order_id) {
-                        statusHtml += `<p style='color: #666; font-size: 18px;'>訂單編號: <strong>${data.ext_order_id}</strong></p>`;
-                    }
-                    if (data.tracking_url) {
-                        statusHtml += `
-                            <h3 style="color: #06c167;">✅ 已取得追蹤網址</h3>
-                            <a href="${data.tracking_url}" target="_blank" style="display:block; background:#06c167; color:white; border:none; padding:15px; border-radius:8px; font-size:16px; text-decoration:none; font-weight:bold; margin-top:20px;">前往追蹤外送進度</a>
-                        `;
-                    } else {
-                        statusHtml += `
-                            <h3 style="color: #ff9800;">⏳ 代訂正在服務中</h3>
-                            <p style="color: #666;">請稍等 5~30 分鐘...</p>
-                        `;
-                    }
-                    document.getElementById('trackStatusArea').innerHTML = statusHtml;
-                } else {
-                    document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">找不到此訂單</h3>`;
-                }
-            }
-        } catch(e) {
-            document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">連線錯誤，請稍後再試</h3>`;
-        }
-    }
-});
-
   window.doStoreKeywordSearch = function(kw) {
 
       const box = document.getElementById('headerSearchBox');
@@ -7686,61 +7565,6 @@ function showToast(msg) {
 
 
 <script>
-
-// --- Tracking View Logic ---
-window.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('view') === 'track') {
-        const orderId = urlParams.get('id');
-        document.getElementById('trackingView').style.display = 'block';
-        
-        // Hide normal app elements
-        const container = document.querySelector('.container');
-        if (container) container.style.display = 'none';
-        
-        let trackApiBase = '';
-        try {
-            const configRes = await fetch('config.json?t=' + Date.now());
-            if (configRes.ok) {
-                const configData = await configRes.json();
-                if (configData.api_url) {
-                    trackApiBase = configData.api_url.replace(/\/$/, "");
-                }
-            }
-        } catch(e) {}
-        
-        try {
-            const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'success') {
-                    document.getElementById('trackOrderText').textContent = data.text;
-                    let statusHtml = '';
-                    if (data.ext_order_id) {
-                        statusHtml += `<p style='color: #666; font-size: 18px;'>訂單編號: <strong>${data.ext_order_id}</strong></p>`;
-                    }
-                    if (data.tracking_url) {
-                        statusHtml += `
-                            <h3 style="color: #06c167;">✅ 已取得追蹤網址</h3>
-                            <a href="${data.tracking_url}" target="_blank" style="display:block; background:#06c167; color:white; border:none; padding:15px; border-radius:8px; font-size:16px; text-decoration:none; font-weight:bold; margin-top:20px;">前往追蹤外送進度</a>
-                        `;
-                    } else {
-                        statusHtml += `
-                            <h3 style="color: #ff9800;">⏳ 代訂正在服務中</h3>
-                            <p style="color: #666;">請稍等 5~30 分鐘...</p>
-                        `;
-                    }
-                    document.getElementById('trackStatusArea').innerHTML = statusHtml;
-                } else {
-                    document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">找不到此訂單</h3>`;
-                }
-            }
-        } catch(e) {
-            document.getElementById('trackStatusArea').innerHTML = `<h3 style="color:red;">連線錯誤，請稍後再試</h3>`;
-        }
-    }
-});
-
 
 
 let queryDebounceTimer = null;
@@ -8080,7 +7904,7 @@ function renderOverlayHTML() {
                 if (metaText) metaText = `<div style="font-size:12px; color:#666; margin-top:2px;">${metaText}</div>`;
 
                 html += `
-                <div onclick="localStorage.setItem('uberCartIsDiscount', 'false'); window.openStore('${uuid}', '${encodedName}', '${actionUrl}')" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;">
+                <div onclick="localStorage.setItem('uberCartIsDiscount', 'false'); if(typeof closeQueryOverlay === 'function') closeQueryOverlay(); window.openStore('${uuid}', '${encodedName}', '${actionUrl}')" style="display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; cursor:pointer;">
                     ${imageUrl ? `<img src="${imageUrl}" style="width:50px; height:50px; border-radius:8px; object-fit:cover; background:#eee; flex-shrink:0;">` : `<div style="width:50px; height:50px; border-radius:8px; background:#eee; flex-shrink:0;"></div>`}
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:15px; font-weight:bold; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</div>
