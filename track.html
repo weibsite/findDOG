@@ -30,9 +30,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // 從網址列取得 UUID
+            // 從網址列取得 UUID (支援 LINE LIFF 轉址特性)
             const urlParams = new URLSearchParams(window.location.search);
             let orderId = urlParams.get('id');
+            
+            // 如果一般網址參數找不到，嘗試從 liff.state 解析 (LINE 會把參數藏在 liff.state 中)
+            if (!orderId && urlParams.has('liff.state')) {
+                const liffState = urlParams.get('liff.state');
+                const stateParams = new URLSearchParams(liffState.startsWith('?') ? liffState : '?' + liffState);
+                orderId = stateParams.get('id');
+            }
             
             // LIFF 初始化 (如果您將此網頁設定為 LIFF App)
             try {
