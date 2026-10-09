@@ -169,62 +169,67 @@
             }
             
             // 查詢訂單進度
-            try {
-                const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        const parsedData = parseOrderText(data.text);
-                        orderTextArea.innerHTML = renderOrderDetails(parsedData, data.text);
-                        orderTextArea.style.backgroundColor = 'transparent';
-                        orderTextArea.style.border = 'none';
-                        orderTextArea.style.padding = '0';
-                        orderTextArea.style.display = 'block';
-                        
-                        let statusHtml = '';
-                        if (data.ext_order_id) {
-                            statusHtml += `<p style='color: #666; font-size: 18px; margin-bottom: 5px;'>訂單編號: <strong style="color:#111; font-size:22px;">${data.ext_order_id}</strong></p>`;
-                        }
-                        
-                        if (data.tracking_urls && data.tracking_urls.length > 0) {
-                            statusHtml += `<h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>`;
-                            data.tracking_urls.forEach((url, idx) => {
-                                statusHtml += `<a href="${url}" class="btn" style="margin-top: 10px;" target="_blank">📍 追蹤訂單 ${data.tracking_urls.length > 1 ? (idx + 1) : ''}</a>`;
-                            });
-                            if (data.tracking_urls.length === 1) {
-                                setTimeout(() => { window.location.href = data.tracking_urls[0]; }, 500);
+            async function checkStatus() {
+                try {
+                    const res = await fetch(`${trackApiBase}/api/track_info?id=${orderId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            const parsedData = parseOrderText(data.text);
+                            orderTextArea.innerHTML = renderOrderDetails(parsedData, data.text);
+                            orderTextArea.style.backgroundColor = 'transparent';
+                            orderTextArea.style.border = 'none';
+                            orderTextArea.style.padding = '0';
+                            orderTextArea.style.display = 'block';
+                            
+                            let statusHtml = '';
+                            if (data.ext_order_id) {
+                                statusHtml += `<p style='color: #666; font-size: 18px; margin-bottom: 5px;'>訂單編號: <strong style="color:#111; font-size:22px;">${data.ext_order_id}</strong></p>`;
                             }
-                        } else if (data.tracking_url) {
-                            statusHtml += `
-                                <h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>
-                                <a href="${data.tracking_url}" class="btn">📍 如果沒有自動跳轉，請點此開啟</a>
-                            `;
-                            setTimeout(() => {
-                                window.location.href = data.tracking_url;
-                            }, 500);
-                        } else if (data.order_status === 'used') {
-                            statusHtml += `
-                                <h3 style="color: #007bff; font-size: 20px; margin-top: 15px;">👨‍💻 代訂已接收訂單</h3>
-                                <p style="color: #666; margin-top: 5px;">正在為您處理中，請稍候...</p>
-                            `;
-                            setTimeout(() => { window.location.reload(); }, 5000);
+                            
+                            if (data.tracking_urls && data.tracking_urls.length > 0) {
+                                statusHtml += `<h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>`;
+                                data.tracking_urls.forEach((url, idx) => {
+                                    statusHtml += `<a href="${url}" class="btn" style="margin-top: 10px;" target="_blank">📍 追蹤訂單 ${data.tracking_urls.length > 1 ? (idx + 1) : ''}</a>`;
+                                });
+                                if (data.tracking_urls.length === 1) {
+                                    setTimeout(() => { window.location.href = data.tracking_urls[0]; }, 500);
+                                }
+                            } else if (data.tracking_url) {
+                                statusHtml += `
+                                    <h3 style="color: #06c167; font-size: 20px; margin-top: 15px;">✅ 已取得追蹤網址</h3>
+                                    <a href="${data.tracking_url}" class="btn">📍 如果沒有自動跳轉，請點此開啟</a>
+                                `;
+                                setTimeout(() => {
+                                    window.location.href = data.tracking_url;
+                                }, 500);
+                            } else if (data.order_status === 'used') {
+                                statusHtml += `
+                                    <h3 style="color: #007bff; font-size: 20px; margin-top: 15px;"><img src="http://weibsite.github.io/findDOG/image/LOADING.gif" style="width: 40px; vertical-align: middle; margin-right: 5px;"> 代訂已接收訂單</h3>
+                                    <p style="color: #666; margin-top: 5px;">正在為您處理中，請稍候...</p>
+                                `;
+                                setTimeout(checkStatus, 5000);
+                            } else {
+                                statusHtml += `
+                                    <h3 style="color: #ff9800; font-size: 20px; margin-top: 15px;"><img src="http://weibsite.github.io/findDOG/image/sit.gif" style="width: 40px; vertical-align: middle; margin-right: 5px;"> 等待代訂接單</h3>
+                                    <p style="color: #d32f2f; margin-top: 5px; font-weight: bold;">(如10分鐘沒改變狀態請催單)</p>
+                                `;
+                                setTimeout(checkStatus, 5000);
+                            }
+                            statusArea.innerHTML = statusHtml;
                         } else {
-                            statusHtml += `
-                                <h3 style="color: #ff9800; font-size: 20px; margin-top: 15px;"><img src="http://weibsite.github.io/findDOG/image/LOADING.gif" style="width: 40px; vertical-align: middle; margin-right: 5px;"> 等待代訂接單</h3>
-                                <p style="color: #d32f2f; margin-top: 5px; font-weight: bold;">(如10分鐘沒改變狀態請催單)</p>
-                            `;
-                            setTimeout(() => { window.location.reload(); }, 5000);
+                            statusArea.innerHTML = `<h3 style="color:red;">找不到此訂單</h3><p style="color:#666;">可能是系統處理中或連結錯誤</p>`;
                         }
-                        statusArea.innerHTML = statusHtml;
                     } else {
-                        statusArea.innerHTML = `<h3 style="color:red;">找不到此訂單</h3><p style="color:#666;">可能是系統處理中或連結錯誤</p>`;
+                        statusArea.innerHTML = `<h3 style="color:red;">伺服器回應錯誤</h3>`;
                     }
-                } else {
-                    statusArea.innerHTML = `<h3 style="color:red;">伺服器回應錯誤</h3>`;
+                } catch(e) {
+                    statusArea.innerHTML = `<h3 style="color:red;">無法連線到伺服器</h3><p style="color:#666;">請確認您的網路連線或稍後再試</p>`;
                 }
-            } catch(e) {
-                statusArea.innerHTML = `<h3 style="color:red;">無法連線到伺服器</h3><p style="color:#666;">請確認您的網路連線或稍後再試</p>`;
             }
+            
+            // 初次執行
+            checkStatus();
         });
     </script>
 </body>
