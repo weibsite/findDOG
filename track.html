@@ -63,8 +63,10 @@
                 const configRes = await fetch('config.json?t=' + Date.now());
                 if (configRes.ok) {
                     const configData = await configRes.json();
-                    if (configData.api_url) {
-                        trackApiBase = configData.api_url.replace(/\/$/, "");
+                    // config.json 裡面使用的是 line_url (HTTP) 或 ws_url (WebSocket)
+                    const apiUrl = configData.line_url || configData.api_url;
+                    if (apiUrl) {
+                        trackApiBase = apiUrl.replace(/\/$/, "");
                     }
                 }
             } catch(e) {
