@@ -269,16 +269,23 @@
         }
 
         function parseFileDate(filename) {
-            const nameParts = filename.split('_');
-            const dStr = nameParts[1]; 
-            const tStr = nameParts[2].split('.')[0]; 
-            const year = parseInt(dStr.substring(0,4));
-            const month = parseInt(dStr.substring(4,6)) - 1;
-            const day = parseInt(dStr.substring(6,8));
-            const hour = parseInt(tStr.substring(0,2));
-            const min = parseInt(tStr.substring(2,4));
-            const sec = parseInt(tStr.substring(4,6));
-            return new Date(year, month, day, hour, min, sec);
+            try {
+                if (!filename) return new Date(0);
+                const nameParts = filename.split('_');
+                if (nameParts.length < 3) return new Date(0);
+                const dStr = nameParts[1]; 
+                const tStr = nameParts[2].split('.')[0]; 
+                if (dStr.length < 8 || tStr.length < 6) return new Date(0);
+                const year = parseInt(dStr.substring(0,4));
+                const month = parseInt(dStr.substring(4,6)) - 1;
+                const day = parseInt(dStr.substring(6,8));
+                const hour = parseInt(tStr.substring(0,2));
+                const min = parseInt(tStr.substring(2,4));
+                const sec = parseInt(tStr.substring(4,6));
+                return new Date(year, month, day, hour, min, sec);
+            } catch(e) {
+                return new Date(0);
+            }
         }
 
         function applyFilter() {
@@ -326,8 +333,19 @@
         }
 
         function formatTime(filename) {
-            const timeStr = filename.split('_')[2].replace('.mp4', '');
-            return timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+            try {
+                if (!filename) return "--:--:--";
+                const parts = filename.split('_');
+                if (parts.length >= 3) {
+                    const timeStr = parts[2].replace('.mp4', '');
+                    if (timeStr.length >= 6) {
+                        return timeStr.substring(0,2) + ":" + timeStr.substring(2,4) + ":" + timeStr.substring(4,6);
+                    }
+                }
+                return filename;
+            } catch(e) {
+                return filename;
+            }
         }
 
         function updateTimeline() {
@@ -429,16 +447,7 @@
         }
 
         function updateHistoryStartTime(rec) {
-            const nameParts = rec.filename.split('_');
-            const dStr = nameParts[1]; 
-            const tStr = nameParts[2].split('.')[0]; 
-            const year = parseInt(dStr.substring(0,4));
-            const month = parseInt(dStr.substring(4,6)) - 1;
-            const day = parseInt(dStr.substring(6,8));
-            const hour = parseInt(tStr.substring(0,2));
-            const min = parseInt(tStr.substring(2,4));
-            const sec = parseInt(tStr.substring(4,6));
-            currentHistoryStartTime = new Date(year, month, day, hour, min, sec);
+            currentHistoryStartTime = parseFileDate(rec ? rec.filename : "");
         }
 
         function preloadNext(index) {
