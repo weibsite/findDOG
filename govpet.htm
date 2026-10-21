@@ -956,22 +956,27 @@ function updateAnimalInfoCard() {
 
     const igBtn = document.getElementById('animal-ig-btn'); 
     let linkUrl = proj.igUrl || proj.source_url || "";
+    if (!linkUrl && proj.id && proj.id.includes('_')) {
+        let chipId = proj.id.split('_')[0];
+        if (chipId && chipId.length >= 6) {
+            try {
+                linkUrl = `https://www.pet.gov.tw/Web/O203_Single.aspx?cid=${btoa(chipId)}`;
+            } catch (e) {}
+        }
+    }
     if (linkUrl && linkUrl.trim() !== '') { 
         igBtn.href = linkUrl; 
         igBtn.classList.remove('hidden'); 
         let urlLower = linkUrl.toLowerCase(); 
-        if (urlLower.includes('pet.gov.tw')) {
-            igBtn.innerText = '🏛️ 農業部寵物登記官方詳細資訊';
-            igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-amber-600 hover:bg-amber-700 text-white text-center shadow-[2px_2px_0px_#1a202c]";
-        } else if (urlLower.includes('threads')) { 
+        if (urlLower.includes('threads')) { 
             igBtn.innerText = '🔗 原貼文連結'; 
             igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } else if (urlLower.includes('instagram.com') && !urlLower.includes('/p/') && !urlLower.includes('/reel/')) { 
             igBtn.innerText = '🐾 回報人 IG'; 
             igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } else { 
-            igBtn.innerText = '🔗 來源網址連結'; 
-            igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
+            igBtn.innerText = '🔗 原始連結'; 
+            igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 hover:bg-blue-700 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } 
     } else { 
         igBtn.classList.add('hidden'); 
@@ -1392,6 +1397,15 @@ async function backgroundSyncAllProjects() {
                     }
                     if (!p.igUrl && p.source_url) {
                         p.igUrl = p.source_url;
+                    }
+                    if (!p.source_url && !p.igUrl && p.id && p.id.includes('_')) {
+                        let chipId = p.id.split('_')[0];
+                        if (chipId && chipId.length >= 6) {
+                            try {
+                                p.source_url = `https://www.pet.gov.tw/Web/O203_Single.aspx?cid=${btoa(chipId)}`;
+                                p.igUrl = p.source_url;
+                            } catch (e) {}
+                        }
                     }
                     if (!p.contactInfo && p.source_url) {
                         p.contactInfo = "來源網址: " + p.source_url;
