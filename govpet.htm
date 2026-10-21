@@ -296,13 +296,19 @@ function processGpsUpdate(lat, lng) {
     if (gpsState !== 'active') { gpsState = 'active'; renderMap(); }
     const now = Date.now(); 
     if (!isReportingMode && !isSpectatorMode && !isMyRouteMode && localHistory.length === 0) { 
-        map.flyTo([lat, lng], 17, { duration: 1.5 }); 
-        map.once('moveend', () => {
-            if (!hasConnectedWs) {
-                hasConnectedWs = true;
-                connectWebSocket();
-            }
-        });
+        if (typeof map !== 'undefined' && map && map.flyTo) {
+            map.flyTo([lat, lng], 17, { duration: 1.5 }); 
+            map.once('moveend', () => {
+                if (!hasConnectedWs) {
+                    hasConnectedWs = true;
+                    connectWebSocket();
+                }
+            });
+        }
+        if (!hasConnectedWs) {
+            hasConnectedWs = true;
+            connectWebSocket();
+        }
         setTimeout(() => { if (Object.keys(PROJECTS).length > 0) updateProjectDropdown(); }, 500); 
     } else {
         if (!hasConnectedWs) {
@@ -369,7 +375,7 @@ function startLocationServices(autoStart) {
 
 document.getElementById('master-start-btn').addEventListener('click', () => { currentUserName = document.getElementById('user-name-input').value.trim() || `志工${Math.floor(100 + Math.random() * 900)}`; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); setPersistentData('dogMap_userName', currentUserName); setPersistentData('dogMap_userColor', dbUserColor); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(false); });
 function checkLocalSetupAndStart() { const savedName = getPersistentData('dogMap_userName'); if (savedName) { currentUserName = savedName; dbUserColor = getPersistentData('dogMap_userColor') || generateRandomColor(); document.getElementById('profile-edit-trigger').style.backgroundColor = dbUserColor; updateStepCounter(); startLocationServices(true); } }
-async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); drawAllProjects(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } checkLocalSetupAndStart(); }
+async function initSystem() { try { const configRes = await fetch('config.json?t=' + Date.now()); const configData = await configRes.json(); if (configData && configData.ws_url) NGROK_WS_URL = configData.ws_url; } catch (e) {} fetch('https://raw.githubusercontent.com/g0v/twgeojson/master/json/twCounty2010.geo.json').then(res => res.json()).then(data => { data.features.forEach(feature => { let polys = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates; polys.forEach(poly => { let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180; poly[0].forEach(coord => { if (coord[1] < minLat) minLat = coord[1]; if (coord[1] > maxLat) maxLat = coord[1]; if (coord[0] < minLng) minLng = coord[0]; if (coord[0] > maxLng) maxLng = coord[0]; }); taiwanPolygons.push({ coordinates: poly, bounds: L.latLngBounds([minLat, minLng], [maxLat, maxLng]) }); }); }); requestFogRender(); }).catch(err => console.warn('無法載入台灣地形檔', err)); map = L.map('map', { zoomControl: false, doubleClickZoom: false }).setView([23.5, 121], 8); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map); L.control.zoom({ position: 'bottomright' }).addTo(map); markersLayer = L.layerGroup().addTo(map); map.on('dragstart zoomstart mousedown touchstart', () => { isMapInteracting = true; if (mapInteractionTimer) clearTimeout(mapInteractionTimer); resetPowerSavingTimer(); }); map.on('moveend zoomend mouseup touchend', () => { mapInteractionTimer = setTimeout(() => { isMapInteracting = false; }, 15000); renderMap(); drawAllProjects(); resetPowerSavingTimer(); }); map.createPane('fogPane'); map.getPane('fogPane').style.zIndex = 450; map.getPane('fogPane').style.pointerEvents = 'none'; initFogSystem(); setInterval(renderMap, 15000); if (isAdmin) { document.getElementById('admin-login-modal').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); } checkLocalSetupAndStart(); backgroundSyncAllProjects(); }
 function updateProgress(step, status, text) { const el = document.getElementById(`prog-${step}`); if (!el) return; if (status === 'active') { el.className = "text-blue-600 font-black animate-pulse"; el.innerHTML = "🔄 " + text; } else if (status === 'done') { el.className = "text-green-600 font-black"; el.innerHTML = "✅ " + text; } else if (status === 'error') { el.className = "text-red-600 font-black"; el.innerHTML = "❌ " + text; } else { el.className = "text-gray-400"; el.innerHTML = "⏳ " + text; } }
 async function uploadBlobFile(blob, filename) { const formData = new FormData(); formData.append('files', blob, filename); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
 async function uploadFileObj(file) { const formData = new FormData(); formData.append('files', file); const urls = await doUploadFetch(formData); return urls.length > 0 ? urls[0] : ""; }
@@ -920,40 +926,51 @@ function updateAnimalInfoCard() {
         imgEl.removeAttribute('data-original-src');
         imgEl.src = "";
     }
-    document.getElementById('animal-name-date').innerText = proj.animalName; 
+    let displayName = proj.animalName; 
+    if (!displayName) { 
+        let rawInfo = (proj.notes || proj.announcement || "").split("種類:").pop() || ""; 
+        let cleanName = rawInfo.replace(/花色:/g, "").replace(/特徵:/g, "").replace(/[^\w\u4e00-\u9fff]/g, "").trim(); 
+        displayName = cleanName ? cleanName.slice(0, 10) : `政府通報 (${proj.animal_type || proj.type || "毛孩"})`; 
+    } 
+    let displayDate = proj.lostDate || proj.lost_time || ""; 
+    if (displayDate) { 
+        displayName += ` (${displayDate.split('T')[0]})`; 
+    } 
+    document.getElementById('animal-name-date').innerText = displayName; 
     
     // -- 上傳者資訊區塊 --
-    let baseText = escapeHTML(proj.announcement || "無").replace(/\n/g, '<br>');
+    let baseText = escapeHTML(proj.announcement || proj.notes || "目前無詳細資料").replace(/\n/g, '<br>');
     let reporterHtml = "";
     if (proj.reporterUid || proj.reporterName) {
         let rName = proj.reporterName || "熱心志工";
-        let rCount = proj.reporterUploadCount || 1; // 預設 1，等待後端支援傳入這欄位
-        
-        // 若 UID 等於目前自己的 UID，強制使用最新名字；若不是，則看對方是否在線上(allUsersData)去抓取最新名稱
+        let rCount = proj.reporterUploadCount || 1;
         if (proj.reporterUid === myUid) {
             rName = currentUserName;
         } else if (proj.reporterUid && allUsersData[proj.reporterUid] && allUsersData[proj.reporterUid].userName) {
             rName = allUsersData[proj.reporterUid].userName;
         }
-        
         reporterHtml = `<div class="mt-2 pt-2 border-t border-dashed border-gray-400 text-right text-[11px] text-blue-700 font-bold tracking-wide">🐾 ${escapeHTML(rName)} 協助尋找主人 (${rCount})</div>`;
     }
     document.getElementById('announcement-text').innerHTML = baseText + reporterHtml; 
     // --------------------
 
     const igBtn = document.getElementById('animal-ig-btn'); 
-    if (proj.igUrl && proj.igUrl.trim() !== '') { 
-        igBtn.href = proj.igUrl; 
+    let linkUrl = proj.igUrl || proj.source_url || "";
+    if (linkUrl && linkUrl.trim() !== '') { 
+        igBtn.href = linkUrl; 
         igBtn.classList.remove('hidden'); 
-        let urlLower = proj.igUrl.toLowerCase(); 
-        if (urlLower.includes('threads')) { 
+        let urlLower = linkUrl.toLowerCase(); 
+        if (urlLower.includes('pet.gov.tw')) {
+            igBtn.innerText = '🏛️ 農業部寵物登記官方詳細資訊';
+            igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-amber-600 hover:bg-amber-700 text-white text-center shadow-[2px_2px_0px_#1a202c]";
+        } else if (urlLower.includes('threads')) { 
             igBtn.innerText = '🔗 原貼文連結'; 
             igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } else if (urlLower.includes('instagram.com') && !urlLower.includes('/p/') && !urlLower.includes('/reel/')) { 
             igBtn.innerText = '🐾 回報人 IG'; 
             igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } else { 
-            igBtn.innerText = '🔗 原貼文連結'; 
+            igBtn.innerText = '🔗 來源網址連結'; 
             igBtn.className = "block mt-2 pixel-btn w-full py-1 text-[10px] sm:text-xs bg-blue-600 text-white text-center shadow-[2px_2px_0px_#1a202c]"; 
         } 
     } else { 
@@ -1358,7 +1375,28 @@ async function backgroundSyncAllProjects() {
                     }
                     p.photos = actualPhotos;
                     p.videos = actualVideos;
-                    p.announcement = p.announcement || "目前無最新公告";
+                    p.announcement = p.announcement || p.notes || "目前無最新公告";
+                    if (!p.animalName) {
+                        let rawInfo = (p.notes || p.announcement || "").split("種類:").pop() || "";
+                        let cleanName = rawInfo.replace(/花色:/g, "").replace(/特徵:/g, "").replace(/[^\w\u4e00-\u9fff]/g, "").trim();
+                        p.animalName = cleanName ? cleanName.slice(0, 10) : `政府通報 (${p.animal_type || p.type || "毛孩"})`;
+                    }
+                    if (!p.lostDate && p.lost_time) {
+                        p.lostDate = p.lost_time;
+                    }
+                    if (!p.type && p.animal_type) {
+                        p.type = p.animal_type === "狗" ? "dog" : (p.animal_type === "貓" ? "cat" : "other");
+                    }
+                    if (!p.source_url && p.igUrl) {
+                        p.source_url = p.igUrl;
+                    }
+                    if (!p.igUrl && p.source_url) {
+                        p.igUrl = p.source_url;
+                    }
+                    if (!p.contactInfo && p.source_url) {
+                        p.contactInfo = "來源網址: " + p.source_url;
+                    }
+                    p.isContactPublic = true;
                     if (!p.bounds && typeof p.lat === 'number' && typeof p.lng === 'number') {
                         p.bounds = [[p.lat - 0.001, p.lng - 0.001], [p.lat + 0.001, p.lng + 0.001]];
                     } else if (!p.bounds) {
@@ -1393,7 +1431,7 @@ async function backgroundSyncAllProjects() {
 function connectWebSocket() { ws = new WebSocket(NGROK_WS_URL); ws.onopen = () => { isSystemReady = true; document.getElementById('sync-ping').style.backgroundColor = '#10b981'; document.getElementById('toast-text').innerHTML = "連線成功" + (gpsState === 'denied' ? " <span class='text-red-600 font-black animate-pulse'>[GPS斷線]</span>" : ""); ws.send(JSON.stringify({ type: "init_shelter_light", uid: myUid, project: currentProjectKey || "default" }));
         bgSyncPage = 0;
         setTimeout(backgroundSyncAllProjects, 1000); if (localHistory.length > 0) saveLocationToServer(null, true); }; ws.onmessage = (event) => { const response = JSON.parse(event.data); if (response.type === 'sync_shelter' || response.type === 'sync') {
-    if (response.data && response.data.shelter_animals) {
+    if (response.data && response.data.shelter_animals && Object.keys(response.data.shelter_animals).length > 0) {
         PROJECTS = response.data.shelter_animals; Object.keys(PROJECTS).forEach(k => { if (PROJECTS[k].photos) { let actualPhotos = []; let actualVideos = PROJECTS[k].videos || []; PROJECTS[k].photos.forEach(p => { let urlStr = typeof p === 'string' ? p : p.url; if (urlStr && urlStr.match(/\.(mp4|webm|mov|ogg)$/i)) { actualVideos.push(p); } else { actualPhotos.push(p); } }); PROJECTS[k].photos = actualPhotos; PROJECTS[k].videos = actualVideos; } if (!allAnnouncements[k] || allAnnouncements[k] === "目前無最新公告。") { allAnnouncements[k] = PROJECTS[k].announcement || "目前無最新公告。"; } }); prepareDynamicFilters(); updateProjectDropdown(); drawAllProjects(); updateAnimalInfoCard(); } } if (response.type === 'sync' || response.type === 'sync_shelter') { allUsersData = response.data.locations || {}; renderMap(); updateStepCounter(); } 
 
 // === 新增：管理義工資料返回的處理邏輯 ===
