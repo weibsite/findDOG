@@ -1750,7 +1750,36 @@
       return /\.(png|jpe?g|webp|gif|bmp|svg)($|\?)/i.test(u) ||
              u.includes('picasso-frontend.momoshop.com.tw') ||
              u.includes('/uploads/') ||
-             u.includes('/img/');
+             u.includes('/img/') ||
+             u.startsWith('./uploads/') ||
+             u.startsWith('uploads/');
+    }
+
+    // 伺服器上傳圖片正規化：將伺服器 /uploads/ 路徑轉為 ./uploads/ 靜態 CDN 路徑以節省伺服器頻寬
+    function resolveUploadUrl(url) {
+      if (!url || typeof url !== 'string') return '';
+      const u = url.trim();
+      if (u.includes('/uploads/') || u.startsWith('uploads/') || u.startsWith('./uploads/')) {
+        const filename = u.split('uploads/').pop().split(/[?#]/)[0].trim();
+        if (filename) {
+          return `./uploads/${filename}`;
+        }
+      }
+      return u;
+    }
+
+    // CDN 圖片讀取備援處理：若 ./uploads/ 404 或尚未同步至 CDN，自動切換至伺服器原路徑備援
+    function handleImageFallback(imgEl) {
+      if (!imgEl || imgEl.dataset.fallback) return;
+      imgEl.dataset.fallback = '1';
+      const src = imgEl.getAttribute('src') || '';
+      if (src.includes('/uploads/') || src.startsWith('./uploads/') || src.startsWith('uploads/')) {
+        const filename = src.split('uploads/').pop().split(/[?#]/)[0].trim();
+        if (filename) {
+          console.warn(`[CDN圖片備援] ./uploads/${filename} 載入失敗，切換回伺服器備援路徑`);
+          imgEl.src = `https://api.9ysong.shop/callback2/uploads/${filename}`;
+        }
+      }
     }
 
     function extractTextAndImage(rawText, rawImgUrl) {
@@ -1771,6 +1800,9 @@
             cleanText = cleanText.replace(/[說明描述答案項選項：:\s\-\(\)（）\[\]【】]+$/, '').trim();
           }
         }
+      }
+      if (foundImg) {
+        foundImg = resolveUploadUrl(foundImg);
       }
       return { text: cleanText, img: foundImg };
     }
@@ -1796,13 +1828,16 @@
       const rawWrongs = item.wrong || [];
       const rawImgWrongs = item.wrong_imgs || [];
       const textWrongs = [];
-      const imgWrongs = [...rawImgWrongs];
+      const imgWrongs = rawImgWrongs.map(resolveUploadUrl);
 
       rawWrongs.forEach(w => {
         if (!w) return;
         const p = extractTextAndImage(w);
         if (p.text) textWrongs.push(p.text);
-        if (p.img && !imgWrongs.includes(p.img)) imgWrongs.push(p.img);
+        if (p.img) {
+          const resImg = resolveUploadUrl(p.img);
+          if (!imgWrongs.includes(resImg)) imgWrongs.push(resImg);
+        }
       });
 
       if (textWrongs.length > 0 || imgWrongs.length > 0) {
@@ -1810,7 +1845,7 @@
           <div class="wrong-box">
             <span style="font-size: 0.78rem;">錯誤選項：</span>
             ${textWrongs.map(w => `<span class="wrong-tag">${highlight(w, query)}</span>`).join('')}
-            ${imgWrongs.map(u => `<a href="${u}" target="_blank" title="查看錯誤選項原圖"><img src="${u}" style="max-height: 38px; max-width: 60px; border-radius: 4px; border: 1px solid #fecdd3; vertical-align: middle; margin-left: 4px; background: #fff;" loading="lazy"></a>`).join('')}
+            ${imgWrongs.map(u => `<a href="${u}" target="_blank" title="查看錯誤選項原圖"><img src="${u}" style="max-height: 38px; max-width: 60px; border-radius: 4px; border: 1px solid #fecdd3; vertical-align: middle; margin-left: 4px; background: #fff;" loading="lazy" onerror="handleImageFallback(this)"></a>`).join('')}
           </div>
         `;
       }
@@ -1820,7 +1855,7 @@
         ansContent = `
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <a href="${targetImg}" target="_blank" title="點擊檢視原圖">
-              <img class="ans-img" src="${targetImg}" alt="答案圖片" loading="lazy">
+              <img class="ans-img" src="${targetImg}" alt="答案圖片" loading="lazy" onerror="handleImageFallback(this)">
             </a>
             <div class="ans-value">${highlight(textDesc, query)}</div>
           </div>
@@ -1829,7 +1864,7 @@
         ansContent = `
           <div style="display: flex; align-items: center; gap: 10px;">
             <a href="${targetImg}" target="_blank" title="點擊檢視原圖">
-              <img class="ans-img" src="${targetImg}" alt="答案圖片" loading="lazy">
+              <img class="ans-img" src="${targetImg}" alt="答案圖片" loading="lazy" onerror="handleImageFallback(this)">
             </a>
             <div style="font-size: 0.8rem; color: #166534;">[圖片答案]</div>
           </div>
@@ -2113,7 +2148,7 @@
       if (parsedAnsModal.img) {
         const u = parsedAnsModal.img;
         const txt = parsedAnsModal.text ? ` (${parsedAnsModal.text})` : '';
-        currentAnsEl.innerHTML = `<a href="${u}" target="_blank" style="color: #166534; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px;"><img src="${u}" style="max-height: 36px; max-width: 60px; border-radius: 4px; border: 1px solid #bbf7d0; background: #fff;" loading="lazy"><span>[圖片答案${txt} (點此檢視原圖)]</span></a>`;
+        currentAnsEl.innerHTML = `<a href="${u}" target="_blank" style="color: #166534; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px;"><img src="${u}" style="max-height: 36px; max-width: 60px; border-radius: 4px; border: 1px solid #bbf7d0; background: #fff;" loading="lazy" onerror="handleImageFallback(this)"><span>[圖片答案${txt} (點此檢視原圖)]</span></a>`;
       } else {
         currentAnsEl.textContent = item.ans || '（目前無正解）';
       }
@@ -2228,7 +2263,7 @@
           if (opt.imgBase64) {
             leftHtml = `
               <div class="opt-img-left">
-                <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片">
+                <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片" onerror="handleImageFallback(this)">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <button type="button" class="opt-act-btn" onclick="openCropEditorForReportOption(${idx})">
                     ✂️ 放大/縮小範圍
@@ -2569,8 +2604,12 @@
 
     function applyQuestionsData(data, sourceName) {
       if (data.questions && Array.isArray(data.questions)) {
-        // 同步每個題目的讚與反讚票數
+        // 同步每個題目的讚與反讚票數，並正規化 uploads 圖片路徑
         data.questions.forEach(q => {
+          if (q.img_url) q.img_url = resolveUploadUrl(q.img_url);
+          if (q.wrong_imgs && Array.isArray(q.wrong_imgs)) {
+            q.wrong_imgs = q.wrong_imgs.map(resolveUploadUrl);
+          }
           VOTE_COUNTS[q.id] = { likes: q.likes || 0, dislikes: q.dislikes || 0 };
         });
 
@@ -2706,7 +2745,7 @@
           if (opt.imgBase64) {
             leftHtml = `
               <div class="opt-img-left">
-                <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片">
+                <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片" onerror="handleImageFallback(this)">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                   <button type="button" class="opt-act-btn" onclick="openCropEditorForOption(${idx})">
                     ✂️ 放大/縮小範圍
