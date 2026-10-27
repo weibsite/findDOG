@@ -2376,47 +2376,83 @@
     });
 
     async function syncWithLiveDatabase() {
-      const apiUrl = (window.location.protocol === 'file:' || !window.location.host.includes('9ysong.shop'))
+      // 1. 優先嘗試從 GitHub Pages CDN 下載靜態 JSON (高速全球 CDN，零伺服器頻寬負擔)
+      //    在 GitHub Pages 上 (weibsite.github.io) 優先載入同目錄的 ./momo_questions.json
+      const isGitHubHosted = window.location.host.includes('github.io');
+      const githubJsonUrl = isGitHubHosted 
+        ? './momo_questions.json' 
+        : 'https://weibsite.github.io/findDOG/momo_questions.json';
+
+      // 2. 伺服器原連線方式 (保留原本連線作為備援，發生任何異常無縫接軌)
+      const serverApiUrl = (window.location.protocol === 'file:' || !window.location.host.includes('9ysong.shop'))
         ? 'https://api.9ysong.shop/callback2/api/questions'
         : '/callback2/api/questions';
 
+      let loadedSuccessfully = false;
+
+      // 步驟 A: 優先嘗試自 GitHub CDN 載入題庫
       try {
-        const headers = {};
-        if (lastDbVersion && lastDbVersion !== '0') {
-          headers['If-None-Match'] = `"${lastDbVersion}"`;
-        }
-        const res = await fetch(apiUrl, { headers, cache: 'no-cache' });
-        if (res.status === 304) {
-          updateLiveBadge(true, ALL_QUESTIONS.length);
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.questions && data.questions.length > 0) {
-            // 同步每個題目的讚與反讚票數
-            data.questions.forEach(q => {
-              VOTE_COUNTS[q.id] = { likes: q.likes || 0, dislikes: q.dislikes || 0 };
-            });
-
-            // 伺服器已記錄本機 IP 之投票紀錄，直接採用以 IP 為主的投票資料 (解決 LINE 或瀏覽器環境限制)
-            if (data.user_votes && typeof data.user_votes === 'object') {
-              USER_VOTES = data.user_votes;
-            }
-
-            ALL_QUESTIONS = sortByDateDesc(data.questions);
-            lastDbVersion = data.last_modified || '0';
-            saveVotes();
-
-            const totalCountEl = document.getElementById('totalQuestionsCount');
-            if (totalCountEl) totalCountEl.textContent = data.questions.length.toLocaleString();
-            updateSearch();
-            updateLiveBadge(true, data.questions.length);
-            console.log(`[即時同步] 已成功從 SQLite 資料庫同步 ${data.questions.length} 筆最新題庫！`);
+        console.log('[題庫同步] 優先嘗試自 GitHub CDN 載入題庫 JSON...');
+        const ghRes = await fetch(githubJsonUrl, { cache: 'no-cache' });
+        if (ghRes.ok) {
+          const ghData = await ghRes.json();
+          if (ghData && ghData.questions && ghData.questions.length > 0) {
+            applyQuestionsData(ghData, 'GitHub CDN');
+            loadedSuccessfully = true;
           }
         }
-      } catch (e) {
-        console.log('[即時同步] 目前使用本地快照資料庫');
-        updateLiveBadge(false, ALL_QUESTIONS.length);
+      } catch (err) {
+        console.warn('[題庫同步] GitHub CDN 暫不可用，自動切換至原後端伺服器備援連線:', err);
+      }
+
+      // 步驟 B (原連線備援): 若 GitHub 尚未同步或無法載入，自動無縫切換回原伺服器 API
+      if (!loadedSuccessfully) {
+        try {
+          console.log('[題庫同步] 切換至原後端伺服器 API 備援連線...');
+          const headers = {};
+          if (lastDbVersion && lastDbVersion !== '0') {
+            headers['If-None-Match'] = `"${lastDbVersion}"`;
+          }
+          const res = await fetch(serverApiUrl, { headers, cache: 'no-cache' });
+          if (res.status === 304) {
+            updateLiveBadge(true, ALL_QUESTIONS.length);
+            return;
+          }
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.questions && data.questions.length > 0) {
+              applyQuestionsData(data, '後端伺服器');
+              loadedSuccessfully = true;
+            }
+          }
+        } catch (serverErr) {
+          console.error('[題庫同步] 伺服器備援連線亦失敗，維持使用本地快照資料庫:', serverErr);
+          updateLiveBadge(false, ALL_QUESTIONS.length);
+        }
+      }
+    }
+
+    function applyQuestionsData(data, sourceName) {
+      if (data.questions && Array.isArray(data.questions)) {
+        // 同步每個題目的讚與反讚票數
+        data.questions.forEach(q => {
+          VOTE_COUNTS[q.id] = { likes: q.likes || 0, dislikes: q.dislikes || 0 };
+        });
+
+        // 若伺服器或 JSON 中包含 user_votes
+        if (data.user_votes && typeof data.user_votes === 'object') {
+          USER_VOTES = data.user_votes;
+        }
+
+        ALL_QUESTIONS = sortByDateDesc(data.questions);
+        lastDbVersion = data.last_modified || '0';
+        saveVotes();
+
+        const totalCountEl = document.getElementById('totalQuestionsCount');
+        if (totalCountEl) totalCountEl.textContent = data.questions.length.toLocaleString();
+        updateSearch();
+        updateLiveBadge(true, data.questions.length);
+        console.log(`[題庫同步] 成功由【${sourceName}】載入 ${data.questions.length} 筆最新題庫！`);
       }
     }
 
