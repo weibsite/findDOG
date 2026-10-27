@@ -1100,6 +1100,106 @@
       transform: translateY(-3px);
     }
 
+    /* === 底部固定置底廣告 Banner (Sticky Footer) === */
+    body.has-bottom-ad {
+      padding-bottom: 136px;
+    }
+    body.has-bottom-ad .back-to-top {
+      bottom: 142px;
+    }
+
+    .momo-ad-banner-wrap {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: center;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    .momo-ad-banner {
+      display: block;
+      width: 100%;
+      max-width: 460px; /* 寬度剛好吻合圖片廣告寬度，不再留兩側大黑邊 */
+      height: 110px;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      background-color: transparent;
+      background-image: url('banner.jpg');
+      background-repeat: no-repeat;
+      background-size: cover; /* 自動滿版無縫填滿，絕不留黑邊，手機版不縮小 */
+      background-position: calc(50% - 37px) calc(50% + 30px);
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    @media (max-width: 480px) {
+      .momo-ad-banner {
+        max-width: 100%;
+        height: 95px; /* 手機版自適應高度，比例更自然 */
+        background-position: calc(50% - 20px) calc(50% + 15px);
+      }
+      body.has-bottom-ad {
+        padding-bottom: 120px;
+      }
+      body.has-bottom-ad .back-to-top {
+        bottom: 126px;
+      }
+    }
+
+    .momo-ad-banner:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .ad-tag-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.68);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .ad-close-btn {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #ffffff;
+      font-size: 13px;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+      z-index: 2;
+    }
+
+    .ad-close-btn:hover {
+      background: rgba(225, 29, 72, 0.85);
+      transform: scale(1.1);
+    }
+
     /* Pagination / Load more */
     .load-more-btn {
       display: block;
@@ -1328,7 +1428,7 @@
 
   </style>
 </head>
-<body>
+<body class="has-bottom-ad">
 
   <!-- 畫面右上固定浮動區 (活動倒數 + MOMO知識王官方LINE) 捲動不受影響 -->
   <div class="top-floating-bar" id="topFloatingBar">
@@ -1408,6 +1508,14 @@
       <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
   </button>
+
+  <!-- 底部固定置底廣告 Banner (Sticky Footer) -->
+  <div class="momo-ad-banner-wrap" id="adBannerWrap">
+    <a href="https://line.me/R/ti/p/@znx2009l" target="_blank" rel="noopener noreferrer" class="momo-ad-banner" id="adBannerLink">
+      <span class="ad-tag-badge">贊助商廣告</span>
+      <button type="button" class="ad-close-btn" id="adCloseBtn" onclick="closeAdBanner(event)" title="關閉廣告">✕</button>
+    </a>
+  </div>
 
   <!-- 回報/輸入答案視窗 (Modal) -->
   <div id="reportModal" class="modal-overlay" style="display: none;">
@@ -2075,6 +2183,16 @@
       const modal = document.getElementById('reportModal');
       if (modal) modal.style.display = 'none';
       currentReportingItem = null;
+    }
+
+    function closeAdBanner(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const wrap = document.getElementById('adBannerWrap');
+      if (wrap) wrap.style.display = 'none';
+      document.body.classList.remove('has-bottom-ad');
     }
 
     // 渲染「提供/修正答案」4 個選項卡片 (樣式與增加題庫一致)
