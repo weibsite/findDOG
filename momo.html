@@ -46,39 +46,141 @@
       position: relative;
     }
 
-    /* 右上綠底 MOMO知識王官方LINE 連結按鈕 */
-    .line-official-btn {
-      position: absolute;
-      top: 0;
-      right: 0;
+    /* 畫面右上固定浮動區 (活動倒數 + MOMO官方LINE) 捲動不受影響 */
+    .top-floating-bar {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .top-floating-bar > * {
+      pointer-events: auto;
+    }
+
+    /* 活動倒數浮動膠囊 */
+    .activity-countdown-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: #06c755; /* LINE 官方綠底 */
-      color: #ffffff !important;
-      padding: 9px 18px;
+      padding: 8px 15px;
       border-radius: 9999px;
-      font-size: 0.9rem;
+      cursor: default;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(10px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+
+    .activity-countdown-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    }
+
+    /* 進行中狀態：烈焰紅橘 + 呼吸燈 */
+    .activity-countdown-pill.is-active {
+      background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 18px rgba(220, 38, 38, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* 等待下場狀態：高雅深藍灰 + 柔光點 */
+    .activity-countdown-pill.is-waiting {
+      background: rgba(15, 23, 42, 0.88);
+      color: #f8fafc;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .act-pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .activity-countdown-pill.is-active .act-pulse-dot {
+      background: #fef08a;
+      box-shadow: 0 0 10px #fef08a;
+      animation: actGlowPulse 1.2s infinite ease-in-out;
+    }
+
+    .activity-countdown-pill.is-waiting .act-pulse-dot {
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    @keyframes actGlowPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.45; }
+    }
+
+    .act-content {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .act-title-text {
+      font-size: 0.78rem;
+      font-weight: 700;
+      opacity: 0.92;
+    }
+
+    .act-timer-num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 800;
+      font-size: 0.92rem;
+      letter-spacing: 0.4px;
+    }
+
+    /* 右上綠底 MOMO知識題庫王官方LINE 連結按鈕 (浮動於右上) */
+    .line-official-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #06c755;
+      color: #ffffff !important;
+      padding: 7px 14px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+      box-shadow: 0 4px 12px rgba(6, 199, 85, 0.35);
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      z-index: 10;
     }
 
     .line-official-btn:hover {
       background: #05b34c;
       transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(6, 199, 85, 0.45);
+      box-shadow: 0 6px 16px rgba(6, 199, 85, 0.45);
     }
 
-    @media (max-width: 680px) {
+    @media (max-width: 640px) {
+      .top-floating-bar {
+        top: 10px;
+        right: 10px;
+        gap: 6px;
+      }
+      .activity-countdown-pill {
+        padding: 5px 10px;
+        gap: 6px;
+      }
+      .act-title-text {
+        font-size: 0.72rem;
+      }
+      .act-timer-num {
+        font-size: 0.82rem;
+      }
       .line-official-btn {
-        position: static;
-        margin: 0 auto 12px;
-        display: inline-flex;
-        font-size: 0.85rem;
-        padding: 7px 15px;
+        padding: 5px 10px;
+        font-size: 0.75rem;
       }
     }
 
@@ -1207,14 +1309,25 @@
 </head>
 <body>
 
+  <!-- 畫面右上固定浮動區 (活動倒數 + MOMO知識王官方LINE) 捲動不受影響 -->
+  <div class="top-floating-bar" id="topFloatingBar">
+    <div class="activity-countdown-pill is-waiting" id="activityWidget" title="MOMO 每日問答活動時段：10:11~40、12:11~40、14:11~40、18:11~40、20:11~40、22:11~40">
+      <span class="act-pulse-dot" id="actPulseDot"></span>
+      <div class="act-content">
+        <span class="act-title-text" id="actTitleText">下場活動倒數</span>
+        <span class="act-timer-num" id="actTimerNum">--:--</span>
+      </div>
+    </div>
+    <a href="https://line.me/R/ti/p/@bob4452s" target="_blank" rel="noopener noreferrer" class="line-official-btn" title="加入 MOMO知識題庫王官方LINE">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 5.91 2 10.74c0 2.93 1.7 5.5 4.31 6.98-.17.68-.78 2.53-.83 2.72-.08.31.11.31.24.22.1-.07 2.32-1.56 3.3-2.22.95.16 1.95.24 2.98.24 5.52 0 10-3.91 10-8.74S17.52 2 12 2zm-4.7 10.2H6.1v-3.9h1.2v3.9zm2.4 0h-1.2v-3.9h1.2v3.9zm3.5 0h-1.2l-1.6-2.1v2.1h-1.2v-3.9h1.2l1.6 2.1v-2.1h1.2v3.9zm3.1 0h-2.3v-3.9h2.3v1h-1.1v.5h1v1h-1v.5h1.1v.9z"/>
+      </svg>
+      <span>MOMO知識題庫王官方LINE</span>
+    </a>
+  </div>
+
   <div class="container">
     <header>
-      <a href="https://line.me/R/ti/p/@bob4452s" target="_blank" rel="noopener noreferrer" class="line-official-btn" title="加入 MOMO知識王題庫LINE">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 5.91 2 10.74c0 2.93 1.7 5.5 4.31 6.98-.17.68-.78 2.53-.83 2.72-.08.31.11.31.24.22.1-.07 2.32-1.56 3.3-2.22.95.16 1.95.24 2.98.24 5.52 0 10-3.91 10-8.74S17.52 2 12 2zm-4.7 10.2H6.1v-3.9h1.2v3.9zm2.4 0h-1.2v-3.9h1.2v3.9zm3.5 0h-1.2l-1.6-2.1v2.1h-1.2v-3.9h1.2l1.6 2.1v-2.1h1.2v3.9zm3.1 0h-2.3v-3.9h2.3v1h-1.1v.5h1v1h-1v.5h1.1v.9z"/>
-        </svg>
-        <span>MOMO知識王題庫LINE</span>
-      </a>
       <div class="logo-badge">⚡ 即時答題助手</div>
       <h1>MOMO 每日問答題庫搜尋</h1>
       <p class="subtitle">共收錄 1,772 道題目 ‧ 輸入任意文字即時篩選題目與正確答案</p>
@@ -1479,24 +1592,12 @@
       return /\.(png|jpe?g|webp|gif)($|\?)/i.test(url);
     }
 
-        // 檢查設備投票紀錄，若題目正解文字或更新時間與記錄時不同，代表答案已有變化，投票應歸零重新計算 (自動清除舊投票)
+    // 檢查 IP 投票紀錄（由伺服器透過用戶 IP 提供，LINE 或各瀏覽器環境皆能統一即時同步）
     function getDeviceVote(item) {
       if (!item) return null;
       const saved = USER_VOTES[item.id];
       if (!saved) return null;
-
-      const voteType = typeof saved === 'string' ? saved : saved.type;
-      const savedAns = typeof saved === 'object' ? saved.ans : null;
-      const savedDate = typeof saved === 'object' ? saved.date : null;
-
-      // 核心規則：若答案文字或更新時間改變，舊評價無效，重新計算
-      if ((savedAns !== null && savedAns !== (item.ans || '')) || 
-          (savedDate !== null && savedDate !== (item.date || ''))) {
-        delete USER_VOTES[item.id];
-        saveVotes();
-        return null;
-      }
-      return voteType;
+      return typeof saved === 'string' ? saved : (saved ? saved.type : null);
     }
 
     function renderCard(item, query) {
@@ -1666,14 +1767,14 @@
       }
 
       if (currentVote === type) {
-        showToast(type === 'like' ? '您已為此答案點過讚囉！' : '您已為此答案按過反讚囉！');
+        showToast(type === 'like' ? '此 IP 已為此答案點過讚囉！' : '此 IP 已為此答案按過反讚囉！');
         return;
       }
 
       const prevType = currentVote;
 
       if (currentVote && currentVote !== type) {
-        // 從另一個評價切換過來 (每個設備每個答案限投一票)
+        // 從另一個評價切換過來 (每個 IP 每個題目限投一票)
         if (currentVote === 'like') {
           VOTE_COUNTS[qid].likes = Math.max(0, (VOTE_COUNTS[qid].likes || 0) - 1);
           VOTE_COUNTS[qid].dislikes = (VOTE_COUNTS[qid].dislikes || 0) + 1;
@@ -1681,7 +1782,7 @@
           VOTE_COUNTS[qid].dislikes = Math.max(0, (VOTE_COUNTS[qid].dislikes || 0) - 1);
           VOTE_COUNTS[qid].likes = (VOTE_COUNTS[qid].likes || 0) + 1;
         }
-        USER_VOTES[qid] = { type: type, ans: item.ans || '', date: item.date || '' };
+        USER_VOTES[qid] = type;
         showToast(type === 'like' ? '已變更評價為讚 👍' : '已變更評價為反讚 👎');
       } else {
         // 第一次投票
@@ -1692,7 +1793,7 @@
           VOTE_COUNTS[qid].dislikes = (VOTE_COUNTS[qid].dislikes || 0) + 1;
           showToast('已按反讚 👎 若知道正解歡迎點箭頭回報！');
         }
-        USER_VOTES[qid] = { type: type, ans: item.ans || '', date: item.date || '' };
+        USER_VOTES[qid] = type;
       }
 
       // 同步記憶體物件
@@ -1702,7 +1803,7 @@
       saveVotes();
       updateVoteButtonsUI(qid);
 
-      // 送至伺服器即時同步 SQLite 資料庫
+      // 送至伺服器即時以 IP 記錄於 SQLite 資料庫
       sendVoteToServer(qid, type, prevType);
     }
 
@@ -1723,6 +1824,9 @@
             likes: data.counts.likes,
             dislikes: data.counts.dislikes
           };
+          if (data.user_vote) {
+            USER_VOTES[qid] = data.user_vote;
+          }
           const it = ALL_QUESTIONS.find(q => q.id === qid);
           if (it) {
             it.likes = data.counts.likes;
@@ -1733,7 +1837,7 @@
         }
       })
       .catch(err => {
-        console.log('[投票已記錄於本地設備]', err);
+        console.log('[投票已暫存於本地]', err);
       });
     }
 
@@ -2177,22 +2281,15 @@
         if (res.ok) {
           const data = await res.json();
           if (data && data.questions && data.questions.length > 0) {
-            // 比對題目，若有答案變化或重設，清除本地過期投票
+            // 同步每個題目的讚與反讚票數
             data.questions.forEach(q => {
               VOTE_COUNTS[q.id] = { likes: q.likes || 0, dislikes: q.dislikes || 0 };
-              
-              const saved = USER_VOTES[q.id];
-              if (saved) {
-                const savedAns = typeof saved === 'object' ? saved.ans : null;
-                const savedDate = typeof saved === 'object' ? saved.date : null;
-                // 若伺服器上答案更新或重設讚數為0，清除本地投票使設備可重新計票
-                if ((savedAns !== null && savedAns !== (q.ans || '')) ||
-                    (savedDate !== null && savedDate !== (q.date || '')) ||
-                    (q.likes === 0 && q.dislikes === 0 && savedAns !== null)) {
-                  delete USER_VOTES[q.id];
-                }
-              }
             });
+
+            // 伺服器已記錄本機 IP 之投票紀錄，直接採用以 IP 為主的投票資料 (解決 LINE 或瀏覽器環境限制)
+            if (data.user_votes && typeof data.user_votes === 'object') {
+              USER_VOTES = data.user_votes;
+            }
 
             ALL_QUESTIONS = data.questions;
             lastDbVersion = data.last_modified || '0';
@@ -2677,9 +2774,87 @@
       }
     }
 
+    // =========================================================
+    // 台灣時間 MOMO 活動倒數計時器 (漂浮在畫面右上，捲動不受影響)
+    // 活動時段：10:11~40, 12:11~40, 14:11~40, 18:11~40, 20:11~40, 22:11~40
+    // =========================================================
+    const MOMO_ACTIVITY_SESSIONS = [
+      { startH: 10, startM: 11, endH: 10, endM: 40, label: '10:11' },
+      { startH: 12, startM: 11, endH: 12, endM: 40, label: '12:11' },
+      { startH: 14, startM: 11, endH: 14, endM: 40, label: '14:11' },
+      { startH: 18, startM: 11, endH: 18, endM: 40, label: '18:11' },
+      { startH: 20, startM: 11, endH: 20, endM: 40, label: '20:11' },
+      { startH: 22, startM: 11, endH: 22, endM: 40, label: '22:11' }
+    ];
+
+    function getTaiwanDate() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      return new Date(utc + (3600000 * 8)); // 台灣 UTC+8
+    }
+
+    function formatTimeDuration(totalSeconds) {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      if (h > 0) {
+        return `${h}時 ${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
+      }
+      return `${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
+    }
+
+    function updateActivityCountdown() {
+      const widget = document.getElementById('activityWidget');
+      const titleEl = document.getElementById('actTitleText');
+      const timerEl = document.getElementById('actTimerNum');
+      if (!widget || !titleEl || !timerEl) return;
+
+      const twDate = getTaiwanDate();
+      const nowSec = twDate.getHours() * 3600 + twDate.getMinutes() * 60 + twDate.getSeconds();
+
+      // 1. 檢測是否處於任一場活動進行中 (10:11~40, 12:11~40, 14:11~40, 18:11~40, 20:11~40, 22:11~40)
+      for (let i = 0; i < MOMO_ACTIVITY_SESSIONS.length; i++) {
+        const sess = MOMO_ACTIVITY_SESSIONS[i];
+        const sSec = sess.startH * 3600 + sess.startM * 60;
+        const eSec = sess.endH * 3600 + sess.endM * 60;
+
+        if (nowSec >= sSec && nowSec < eSec) {
+          const remSec = eSec - nowSec;
+          widget.className = 'activity-countdown-pill is-active';
+          titleEl.textContent = '🔥 活動進行中 剩餘';
+          timerEl.textContent = formatTimeDuration(remSec);
+          return;
+        }
+      }
+
+      // 2. 檢測今天下一場活動開始時間
+      for (let i = 0; i < MOMO_ACTIVITY_SESSIONS.length; i++) {
+        const sess = MOMO_ACTIVITY_SESSIONS[i];
+        const sSec = sess.startH * 3600 + sess.startM * 60;
+
+        if (sSec > nowSec) {
+          const waitSec = sSec - nowSec;
+          widget.className = 'activity-countdown-pill is-waiting';
+          titleEl.textContent = `⏳ 下場活動 (${sess.label}) 倒數`;
+          timerEl.textContent = formatTimeDuration(waitSec);
+          return;
+        }
+      }
+
+      // 3. 今日場次全數結束，倒數至明天第一場 10:11
+      const firstSess = MOMO_ACTIVITY_SESSIONS[0];
+      const tomorrowSec = (86400 - nowSec) + (firstSess.startH * 3600 + firstSess.startM * 60);
+      widget.className = 'activity-countdown-pill is-waiting';
+      titleEl.textContent = `⏳ 明日首場 (${firstSess.label}) 倒數`;
+      timerEl.textContent = formatTimeDuration(tomorrowSec);
+    }
+
     // Initial load
     updateSearch();
     syncWithLiveDatabase();
+    updateActivityCountdown();
+    // 每 1 秒即時刷新活動倒數
+    setInterval(updateActivityCountdown, 1000);
     // 每 30 秒自動檢測資料庫是否有題目/答案更新 (304 Not Modified 極速無負擔)
     setInterval(syncWithLiveDatabase, 30000);
   </script>
