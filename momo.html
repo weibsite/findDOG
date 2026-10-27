@@ -43,6 +43,43 @@
     header {
       text-align: center;
       margin-bottom: 28px;
+      position: relative;
+    }
+
+    /* 右上綠底 MOMO知識王官方LINE 連結按鈕 */
+    .line-official-btn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #06c755; /* LINE 官方綠底 */
+      color: #ffffff !important;
+      padding: 9px 18px;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(6, 199, 85, 0.35);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 10;
+    }
+
+    .line-official-btn:hover {
+      background: #05b34c;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(6, 199, 85, 0.45);
+    }
+
+    @media (max-width: 680px) {
+      .line-official-btn {
+        position: static;
+        margin: 0 auto 12px;
+        display: inline-flex;
+        font-size: 0.85rem;
+        padding: 7px 15px;
+      }
     }
 
     .logo-badge {
@@ -278,28 +315,515 @@
       transform: scale(1.05);
     }
 
-    .copy-btn {
+    /* Answer Actions (Like / Dislike / Arrow) */
+    .ans-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .vote-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+
+    .vote-btn {
       background: #ffffff;
-      border: 1px solid #86efac;
-      color: #15803d;
-      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      width: 32px;
+      height: 32px;
       border-radius: 6px;
-      font-size: 0.82rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .vote-btn:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+      transform: translateY(-1px);
+    }
+
+    .vote-btn.like-btn.active {
+      background: #dcfce7;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+    }
+
+    .vote-btn.dislike-btn.active {
+      background: #fee2e2;
+      border-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+    }
+
+    /* 按讚旁邊的綠字數量 / 反讚旁邊的紅字數量 */
+    .vote-num {
+      font-size: 0.95rem;
+      font-weight: 800;
+      min-width: 14px;
+      cursor: pointer;
+      line-height: 1;
+      transition: transform 0.15s ease;
+    }
+
+    .vote-num:hover {
+      transform: scale(1.15);
+    }
+
+    .vote-num.like-num {
+      color: #16a34a; /* 綠字 代表按讚數量 */
+    }
+
+    .vote-num.dislike-num {
+      color: #dc2626; /* 紅字 代表反讚數量 */
+    }
+
+    /* Upward Arrow & Popover */
+    .popover-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .arrow-btn {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .arrow-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #94a3b8;
+      transform: translateY(-1px);
+    }
+
+    .arrow-btn.active {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #64748b;
+    }
+
+    .popover-bubble {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      right: 0;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 9px 14px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+      z-index: 150;
+      cursor: pointer;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      white-space: nowrap;
+      animation: popoverFadeIn 0.15s ease-out;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .popover-bubble.show {
+      display: flex;
+    }
+
+    .popover-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      right: 10px;
+      border-width: 6px;
+      border-style: solid;
+      border-color: #0f172a transparent transparent transparent;
+    }
+
+    .popover-bubble:hover {
+      background: #1e293b;
+    }
+
+    .popover-bubble:hover .popover-line2 {
+      color: #38bdf8;
+      text-decoration: underline;
+    }
+
+    .popover-line1 {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+    }
+
+    .popover-line2 {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #67e8f9;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    @keyframes popoverFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Modal Overlay & Card */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      background: #f8fafc;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.5rem;
+      color: #64748b;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: 0.15s;
+    }
+
+    .modal-close-btn:hover {
+      color: #0f172a;
+      background: #e2e8f0;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-q-preview {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .modal-q-badge {
+      display: inline-block;
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .modal-q-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.4;
+    }
+
+    .modal-current-ans {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: #166534;
+      word-break: break-all;
+    }
+
+    .modal-current-ans span.curr-label {
+      font-weight: 700;
+      color: #15803d;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .input-with-upload {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .form-input {
+      flex: 1;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      color: #0f172a;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 56, 92, 0.15);
+    }
+
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      height: 42px;
       flex-shrink: 0;
-      transition: all 0.15s;
     }
 
-    .copy-btn:hover {
-      background: #dcfce7;
-      border-color: #4ade80;
+    .upload-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+      color: #0f172a;
     }
 
-    .copy-btn.copied {
-      background: #15803d;
+    .image-preview-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 4px;
+    }
+
+    .preview-thumbnail-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .preview-thumbnail-wrap img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+    }
+
+    .preview-meta {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .preview-filename {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    .preview-filesize {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .preview-remove-btn {
+      background: #fee2e2;
+      border: 1px solid #fecdd3;
+      color: #b91c1c;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .preview-remove-btn:hover {
+      background: #fca5a5;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 20px;
+      border-top: 1px solid #f1f5f9;
+      background: #f8fafc;
+    }
+
+    .btn-cancel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .btn-cancel:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-submit {
+      background: var(--primary-gradient);
+      border: none;
       color: #ffffff;
-      border-color: #15803d;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(224, 11, 65, 0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(224, 11, 65, 0.4);
+    }
+
+    /* Toast Notification */
+    .toast-msg {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 600px) {
+      .ans-box {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .ans-actions {
+        justify-content: flex-end;
+      }
+      .modal-card {
+        max-width: 95%;
+      }
+      .input-with-upload {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .upload-btn {
+        justify-content: center;
+      }
+      .toast-msg {
+        max-width: 90%;
+        white-space: normal;
+        text-align: center;
+      }
     }
 
     /* Wrong answers & Meta */
@@ -413,6 +937,12 @@
 
   <div class="container">
     <header>
+      <a href="https://line.me/R/ti/p/@bob4452s" target="_blank" rel="noopener noreferrer" class="line-official-btn" title="加入 MOMO知識王官方LINE">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 5.91 2 10.74c0 2.93 1.7 5.5 4.31 6.98-.17.68-.78 2.53-.83 2.72-.08.31.11.31.24.22.1-.07 2.32-1.56 3.3-2.22.95.16 1.95.24 2.98.24 5.52 0 10-3.91 10-8.74S17.52 2 12 2zm-4.7 10.2H6.1v-3.9h1.2v3.9zm2.4 0h-1.2v-3.9h1.2v3.9zm3.5 0h-1.2l-1.6-2.1v2.1h-1.2v-3.9h1.2l1.6 2.1v-2.1h1.2v3.9zm3.1 0h-2.3v-3.9h2.3v1h-1.1v.5h1v1h-1v.5h1.1v.9z"/>
+        </svg>
+        <span>MOMO知識王官方LINE</span>
+      </a>
       <div class="logo-badge">⚡ 即時答題助手</div>
       <h1>MOMO 每日問答題庫搜尋</h1>
       <p class="subtitle">共收錄 1,772 道題目 ‧ 輸入任意文字即時篩選題目與正確答案</p>
@@ -478,6 +1008,29 @@
     let displayedCount = 0;
     const PAGE_SIZE = 50;
 
+    // 評價 (讚/反讚) 與回報資料儲存 (以設備 localStorage 記錄)
+    let USER_VOTES = {};
+    let VOTE_COUNTS = {};
+    let currentReportingItem = null;
+    let currentReportImageBase64 = null;
+    let currentReportImageName = '';
+    let toastTimer = null;
+
+    try {
+      USER_VOTES = JSON.parse(localStorage.getItem('momo_votes') || '{}');
+      VOTE_COUNTS = JSON.parse(localStorage.getItem('momo_vote_counts') || '{}');
+    } catch (e) {
+      USER_VOTES = {};
+      VOTE_COUNTS = {};
+    }
+
+    function saveVotes() {
+      try {
+        localStorage.setItem('momo_votes', JSON.stringify(USER_VOTES));
+        localStorage.setItem('momo_vote_counts', JSON.stringify(VOTE_COUNTS));
+      } catch (e) {}
+    }
+
     function escapeRegExp(string) {
       return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
@@ -526,6 +1079,11 @@
         ansContent = `<div class="ans-value">${highlightedAns}</div>`;
       }
 
+      const userVote = USER_VOTES[item.id];
+      const counts = VOTE_COUNTS[item.id] || { likes: 0, dislikes: 0 };
+      const likeCount = counts.likes || 0;
+      const dislikeCount = counts.dislikes || 0;
+
       card.innerHTML = `
         <div class="card-header">
           <span class="q-num">#${item.id}</span>
@@ -536,7 +1094,41 @@
             <span class="ans-label">✓ 正解</span>
             ${ansContent}
           </div>
-          <button class="copy-btn" onclick="copyAns(this, '${encodeURIComponent(item.ans)}')">複製答案</button>
+          <div class="ans-actions">
+            <div class="vote-item">
+              <button class="vote-btn like-btn ${userVote === 'like' ? 'active' : ''}" 
+                      id="like-btn-${item.id}"
+                      onclick="handleVote(${item.id}, 'like', event)" 
+                      title="按讚（這個答案是正確的）">
+                👍
+              </button>
+              <span class="vote-num like-num" id="like-count-${item.id}" onclick="handleVote(${item.id}, 'like', event)" title="按讚數量">${likeCount}</span>
+            </div>
+            <div class="vote-item">
+              <button class="vote-btn dislike-btn ${userVote === 'dislike' ? 'active' : ''}" 
+                      id="dislike-btn-${item.id}"
+                      onclick="handleVote(${item.id}, 'dislike', event)" 
+                      title="反讚（這個答案有誤或不正確）">
+                👎
+              </button>
+              <span class="vote-num dislike-num" id="dislike-count-${item.id}" onclick="handleVote(${item.id}, 'dislike', event)" title="反讚數量">${dislikeCount}</span>
+            </div>
+            <div class="popover-wrapper">
+              <button class="arrow-btn" 
+                      id="arrow-btn-${item.id}"
+                      onclick="togglePopover(${item.id}, event)" 
+                      title="答案有問題嗎？按此回報答案">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+              </button>
+              <div class="popover-bubble" id="popover-${item.id}" onclick="openReportModal(${item.id}, event)">
+                <div class="popover-line1">答案有問題嗎？</div>
+                <div class="popover-line2">可按我輸入答案 ✍️</div>
+              </div>
+            </div>
+          </div>
         </div>
         ${wrongHtml}
         <div class="card-footer">
@@ -596,19 +1188,257 @@
       updateSearch();
     }
 
-    function copyAns(btn, encodedAns) {
-      const ans = decodeURIComponent(encodedAns);
-      navigator.clipboard.writeText(ans).then(() => {
-        const originalText = btn.textContent;
-        btn.textContent = '已複製 ✓';
-        btn.classList.add('copied');
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.classList.remove('copied');
-        }, 1500);
-      }).catch(() => {
-        alert('複製失敗，請手動選取');
-      });
+    function handleVote(qid, type, event) {
+      if (event) event.stopPropagation();
+
+      const currentVote = USER_VOTES[qid];
+      if (!VOTE_COUNTS[qid]) {
+        VOTE_COUNTS[qid] = { likes: 0, dislikes: 0 };
+      }
+
+      if (currentVote === type) {
+        showToast(type === 'like' ? '您已為此答案點過讚囉！' : '您已為此答案按過反讚囉！');
+        return;
+      }
+
+      if (currentVote && currentVote !== type) {
+        // 從另一個評價切換過來 (每個設備每個答案限投一票)
+        if (currentVote === 'like') {
+          VOTE_COUNTS[qid].likes = Math.max(0, (VOTE_COUNTS[qid].likes || 0) - 1);
+          VOTE_COUNTS[qid].dislikes = (VOTE_COUNTS[qid].dislikes || 0) + 1;
+        } else {
+          VOTE_COUNTS[qid].dislikes = Math.max(0, (VOTE_COUNTS[qid].dislikes || 0) - 1);
+          VOTE_COUNTS[qid].likes = (VOTE_COUNTS[qid].likes || 0) + 1;
+        }
+        USER_VOTES[qid] = type;
+        showToast(type === 'like' ? '已變更評價為讚 👍' : '已變更評價為反讚 👎');
+      } else {
+        // 第一次投票
+        if (type === 'like') {
+          VOTE_COUNTS[qid].likes = (VOTE_COUNTS[qid].likes || 0) + 1;
+          showToast('已點讚 👍 感謝您的評價！');
+        } else {
+          VOTE_COUNTS[qid].dislikes = (VOTE_COUNTS[qid].dislikes || 0) + 1;
+          showToast('已按反讚 👎 若知道正解歡迎點箭頭回報！');
+        }
+        USER_VOTES[qid] = type;
+      }
+
+      saveVotes();
+      updateVoteButtonsUI(qid);
+    }
+
+    function updateVoteButtonsUI(qid) {
+      const userVote = USER_VOTES[qid];
+      const counts = VOTE_COUNTS[qid] || { likes: 0, dislikes: 0 };
+
+      const likeBtn = document.getElementById(`like-btn-${qid}`);
+      const dislikeBtn = document.getElementById(`dislike-btn-${qid}`);
+      const likeCountEl = document.getElementById(`like-count-${qid}`);
+      const dislikeCountEl = document.getElementById(`dislike-count-${qid}`);
+
+      if (likeBtn) {
+        likeBtn.classList.toggle('active', userVote === 'like');
+      }
+      if (dislikeBtn) {
+        dislikeBtn.classList.toggle('active', userVote === 'dislike');
+      }
+      if (likeCountEl) {
+        likeCountEl.textContent = counts.likes || 0;
+      }
+      if (dislikeCountEl) {
+        dislikeCountEl.textContent = counts.dislikes || 0;
+      }
+    }
+
+    function togglePopover(qid, event) {
+      if (event) event.stopPropagation();
+      const popover = document.getElementById(`popover-${qid}`);
+      const arrowBtn = document.getElementById(`arrow-btn-${qid}`);
+      const isAlreadyShow = popover && popover.classList.contains('show');
+
+      // 關閉所有其他浮框
+      document.querySelectorAll('.popover-bubble.show').forEach(el => el.classList.remove('show'));
+      document.querySelectorAll('.arrow-btn.active').forEach(el => el.classList.remove('active'));
+
+      if (!isAlreadyShow && popover) {
+        popover.classList.add('show');
+        if (arrowBtn) arrowBtn.classList.add('active');
+      }
+    }
+
+    // 點擊頁面其他地方自動關閉浮框
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.popover-wrapper')) {
+        document.querySelectorAll('.popover-bubble.show').forEach(el => el.classList.remove('show'));
+        document.querySelectorAll('.arrow-btn.active').forEach(el => el.classList.remove('active'));
+      }
+    });
+
+    function openReportModal(qid, event) {
+      if (event) event.stopPropagation();
+
+      // 關閉所有浮框
+      document.querySelectorAll('.popover-bubble.show').forEach(el => el.classList.remove('show'));
+      document.querySelectorAll('.arrow-btn.active').forEach(el => el.classList.remove('active'));
+
+      const item = ALL_QUESTIONS.find(q => q.id === qid);
+      if (!item) return;
+
+      currentReportingItem = item;
+      clearSelectedImage();
+
+      document.getElementById('modalQNum').textContent = '#' + item.id;
+      document.getElementById('modalQText').textContent = item.q;
+      
+      const currentAnsEl = document.getElementById('modalCurrentAns');
+      if (isImageUrl(item.ans)) {
+        currentAnsEl.innerHTML = `<a href="${item.ans}" target="_blank" style="color: #166534; text-decoration: underline;">[圖片答案 (點此開啟連結)]</a>`;
+      } else {
+        currentAnsEl.textContent = item.ans || '（目前無正解）';
+      }
+
+      document.getElementById('modalAnsInput').value = '';
+      document.getElementById('modalWrongInput').value = '';
+      document.getElementById('modalNoteInput').value = '';
+
+      const modal = document.getElementById('reportModal');
+      modal.style.display = 'flex';
+      setTimeout(() => {
+        document.getElementById('modalAnsInput').focus();
+      }, 50);
+    }
+
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      modal.style.display = 'none';
+      currentReportingItem = null;
+      clearSelectedImage();
+    }
+
+    // 點擊 Modal 背景遮罩關閉
+    document.getElementById('reportModal').addEventListener('click', (e) => {
+      if (e.target.id === 'reportModal') {
+        closeReportModal();
+      }
+    });
+
+    // ESC 鍵關閉 Modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeReportModal();
+        document.querySelectorAll('.popover-bubble.show').forEach(el => el.classList.remove('show'));
+        document.querySelectorAll('.arrow-btn.active').forEach(el => el.classList.remove('active'));
+      }
+    });
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇圖片檔案格式 (PNG, JPG, WebP 等)');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        alert('圖片檔案較大，請選擇 10MB 以下的圖片');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        currentReportImageBase64 = evt.target.result;
+        currentReportImageName = file.name;
+        document.getElementById('imagePreviewImg').src = currentReportImageBase64;
+        document.getElementById('imagePreviewName').textContent = file.name;
+        document.getElementById('imagePreviewSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+        document.getElementById('imagePreviewContainer').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearSelectedImage() {
+      currentReportImageBase64 = null;
+      currentReportImageName = '';
+      const fileInput = document.getElementById('modalFileInput');
+      if (fileInput) fileInput.value = '';
+      const previewContainer = document.getElementById('imagePreviewContainer');
+      if (previewContainer) previewContainer.style.display = 'none';
+    }
+
+    function submitReport() {
+      if (!currentReportingItem) return;
+
+      const ansInput = document.getElementById('modalAnsInput').value.trim();
+      const wrongInput = document.getElementById('modalWrongInput').value.trim();
+      const noteInput = document.getElementById('modalNoteInput').value.trim();
+
+      if (!ansInput && !currentReportImageBase64) {
+        alert('請輸入答案文字，或點擊「上傳圖片」提供答案圖片！');
+        document.getElementById('modalAnsInput').focus();
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0') + ':' +
+        String(now.getSeconds()).padStart(2, '0');
+
+      const reportPayload = {
+        id: 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        qid: currentReportingItem.id,
+        question: currentReportingItem.q,
+        originalAns: currentReportingItem.ans,
+        suggestedAns: ansInput,
+        hasImage: !!currentReportImageBase64,
+        imageName: currentReportImageName,
+        wrongOptions: wrongInput ? wrongInput.split(/[,，\n]/).map(s => s.trim()).filter(Boolean) : [],
+        note: noteInput,
+        submittedAt: timeStr
+      };
+
+      // 1. 儲存於使用者瀏覽器 (localStorage)
+      try {
+        const localReports = JSON.parse(localStorage.getItem('momo_web_reports') || '[]');
+        localReports.push(reportPayload);
+        localStorage.setItem('momo_web_reports', JSON.stringify(localReports));
+      } catch (e) {}
+
+      // 2. 提交至伺服器端點 (經過大門伺服器 server.py 轉發至 port 9000)
+      const uploadUrl = (window.location.protocol === 'file:' || !window.location.host.includes('9ysong.shop'))
+        ? 'https://api.9ysong.shop/callback2/api/web-report'
+        : '/callback2/api/web-report';
+
+      try {
+        fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...reportPayload,
+            imageBase64: currentReportImageBase64
+          })
+        }).catch(() => {});
+      } catch (e) {}
+
+      closeReportModal();
+      showToast('🎉 感謝回報！您的答案已送出，審核後將更新至題庫！');
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toastMsg');
+      if (!toast) return;
+
+      toast.textContent = text;
+      toast.classList.add('show');
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
     }
 
     // Event listeners
@@ -640,5 +1470,74 @@
     // Initial load
     updateSearch();
   </script>
+  <!-- 回報/輸入答案視窗 (Modal) -->
+  <div id="reportModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>✏️ 提供 / 修正正確答案</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeReportModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-q-preview">
+          <div class="modal-q-badge" id="modalQNum">#1</div>
+          <div class="modal-q-text" id="modalQText">題目載入中...</div>
+        </div>
+
+        <div class="modal-current-ans" id="modalCurrentAnsBox">
+          <span class="curr-label">目前題庫答案：</span>
+          <span id="modalCurrentAns">（無正解）</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modalAnsInput">正確答案：</label>
+          <div class="input-with-upload">
+            <input type="text" id="modalAnsInput" class="form-input" placeholder="請在此輸入您所知道的正確答案..." autocomplete="off">
+            <button type="button" class="upload-btn" onclick="document.getElementById('modalFileInput').click()" title="上傳截圖或圖片答案">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span>上傳圖片</span>
+            </button>
+          </div>
+          <input type="file" id="modalFileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        </div>
+
+        <!-- 圖片預覽區 -->
+        <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+          <div class="preview-thumbnail-wrap">
+            <img id="imagePreviewImg" src="" alt="預覽圖">
+            <div class="preview-meta">
+              <span id="imagePreviewName" class="preview-filename">screenshot.png</span>
+              <span id="imagePreviewSize" class="preview-filesize">0 KB</span>
+            </div>
+          </div>
+          <button type="button" class="preview-remove-btn" onclick="clearSelectedImage()" title="移除此圖片">✕ 移除</button>
+        </div>
+
+        <div class="form-group" style="margin-top: 4px;">
+          <label class="form-label" for="modalWrongInput">補充錯誤選項（選填）：</label>
+          <input type="text" id="modalWrongInput" class="form-input" placeholder="若有踩雷的錯誤選項可填寫在此（多個請用逗號隔開）..." autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="modalNoteInput">補充備註（選填）：</label>
+          <input type="text" id="modalNoteInput" class="form-input" placeholder="例如：第幾季活動、官方更新..." autocomplete="off">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeReportModal()">取消</button>
+        <button type="button" class="btn-submit" onclick="submitReport()">送出回報</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 訊息浮籤 -->
+  <div id="toastMsg" class="toast-msg"></div>
+
 </body>
 </html>
