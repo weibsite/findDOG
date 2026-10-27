@@ -2376,39 +2376,56 @@
     });
 
     async function syncWithLiveDatabase() {
-      // 1. 優先嘗試從 GitHub Pages CDN 下載靜態 JSON (高速全球 CDN，零伺服器頻寬負擔)
-      //    在 GitHub Pages 上 (weibsite.github.io) 優先載入同目錄的 ./momo_questions.json
-      const isGitHubHosted = window.location.host.includes('github.io');
-      const githubJsonUrl = isGitHubHosted 
-        ? './momo_questions.json' 
-        : 'https://weibsite.github.io/findDOG/momo_questions.json';
+      // 靜態 JSON 優先候選網址清單 (零伺服器頻寬負擔)
+      const staticJsonCandidates = [];
 
-      // 2. 伺服器原連線方式 (保留原本連線作為備援，發生任何異常無縫接軌)
+      // 1. 若為標準網頁協議，優先嘗試同目錄相對路徑 (在 finddog.online 最快、同源無跨域、無重定向)
+      if (window.location.protocol.startsWith('http')) {
+        staticJsonCandidates.push('./momo_questions.json');
+      }
+
+      // 2. 自訂網域名稱 (全站 HTTPS CDN，含 Access-Control-Allow-Origin: *)
+      staticJsonCandidates.push('https://finddog.online/momo_questions.json');
+
+      // 3. GitHub 官方 RAW CDN (全球 CDN，支援 CORS 全域跨域、無重定向)
+      staticJsonCandidates.push('https://raw.githubusercontent.com/weibsite/findDOG/main/momo_questions.json');
+
+      // 4. 本機伺服器靜態 GZIP JSON (僅 100KB，避開資料庫運算)
+      if (window.location.protocol === 'file:' || !window.location.host.includes('9ysong.shop')) {
+        staticJsonCandidates.push('https://api.9ysong.shop/callback2/momo_questions.json');
+      } else {
+        staticJsonCandidates.push('/callback2/momo_questions.json');
+      }
+
+      // 5. 終極備援：原動態伺服器 API
       const serverApiUrl = (window.location.protocol === 'file:' || !window.location.host.includes('9ysong.shop'))
         ? 'https://api.9ysong.shop/callback2/api/questions'
         : '/callback2/api/questions';
 
       let loadedSuccessfully = false;
 
-      // 步驟 A: 優先嘗試自 GitHub CDN 載入題庫
-      try {
-        console.log('[題庫同步] 優先嘗試自 GitHub CDN 載入題庫 JSON...');
-        const ghRes = await fetch(githubJsonUrl, { cache: 'no-cache' });
-        if (ghRes.ok) {
-          const ghData = await ghRes.json();
-          if (ghData && ghData.questions && ghData.questions.length > 0) {
-            applyQuestionsData(ghData, 'GitHub CDN');
-            loadedSuccessfully = true;
+      // 步驟 A: 依序嘗試靜態 JSON 來源
+      for (const url of staticJsonCandidates) {
+        try {
+          console.log(`[題庫同步] 嘗試自 CDN 靜態載入題庫: ${url}`);
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.questions && data.questions.length > 0) {
+              applyQuestionsData(data, `靜態 CDN (${url})`);
+              loadedSuccessfully = true;
+              break;
+            }
           }
+        } catch (err) {
+          console.warn(`[題庫同步] 來源 ${url} 載入失敗:`, err);
         }
-      } catch (err) {
-        console.warn('[題庫同步] GitHub CDN 暫不可用，自動切換至原後端伺服器備援連線:', err);
       }
 
-      // 步驟 B (原連線備援): 若 GitHub 尚未同步或無法載入，自動無縫切換回原伺服器 API
+      // 步驟 B (原連線終極備援): 若所有靜態 JSON 皆失敗，才切換回原伺服器 API
       if (!loadedSuccessfully) {
         try {
-          console.log('[題庫同步] 切換至原後端伺服器 API 備援連線...');
+          console.log('[題庫同步] 所有靜態 JSON 皆不可用，切換至原後端伺服器 API 備援連線...');
           const headers = {};
           if (lastDbVersion && lastDbVersion !== '0') {
             headers['If-None-Match'] = `"${lastDbVersion}"`;
@@ -2421,7 +2438,7 @@
           if (res.ok) {
             const data = await res.json();
             if (data && data.questions && data.questions.length > 0) {
-              applyQuestionsData(data, '後端伺服器');
+              applyQuestionsData(data, '後端伺服器動態 API');
               loadedSuccessfully = true;
             }
           }
