@@ -1446,6 +1446,11 @@
         </div>
 
         <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label" for="modalUploaderName">提供者暱稱（選填，將記錄於題庫提供者；未填以 IP 識別）：</label>
+          <input type="text" id="modalUploaderName" class="form-input" placeholder="例如：小明、阿海（選填）" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
           <label class="form-label" for="modalNoteInput">補充說明（選填）：</label>
           <input type="text" id="modalNoteInput" class="form-input" placeholder="例如：第幾季活動、官方更新等..." autocomplete="off">
         </div>
@@ -1504,9 +1509,15 @@
           <div id="optionCardsContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
         </div>
 
-        <!-- 步驟 3: 補充說明 -->
+        <!-- 步驟 3: 提供者暱稱 -->
         <div class="form-group" style="margin-top: 14px;">
-          <label class="form-label" for="newQNote">3. 補充說明（選填）：</label>
+          <label class="form-label" for="newQUploaderName">3. 提供者暱稱（選填，將記錄於題庫提供者；未填以 IP 識別）：</label>
+          <input type="text" id="newQUploaderName" class="form-input" placeholder="例如：小明、阿海（選填）" autocomplete="off">
+        </div>
+
+        <!-- 步驟 4: 補充說明 -->
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label" for="newQNote">4. 補充說明（選填）：</label>
           <input type="text" id="newQNote" class="form-input" placeholder="例如：第幾季題目、哪個特賣活動等..." autocomplete="off">
         </div>
       </div>
@@ -1634,6 +1645,28 @@
              u.includes('/img/');
     }
 
+    function extractTextAndImage(rawText, rawImgUrl) {
+      let cleanText = (rawText || '').trim();
+      let foundImg = (rawImgUrl || '').trim();
+
+      if (isImageUrl(cleanText)) {
+        if (!foundImg) foundImg = cleanText;
+        cleanText = '';
+      } else {
+        const urlMatch = cleanText.match(/(https?:\/\/[^\s)\]">]+)/);
+        if (urlMatch) {
+          const candUrl = urlMatch[1].replace(/[.,;:]$/, '');
+          if (isImageUrl(candUrl)) {
+            if (!foundImg) foundImg = candUrl;
+            cleanText = cleanText.replace(urlMatch[1], '').trim();
+            cleanText = cleanText.replace(/^[說明描述答案項選項：:\s\-\(\)（）\[\]【】]+/, '');
+            cleanText = cleanText.replace(/[說明描述答案項選項：:\s\-\(\)（）\[\]【】]+$/, '').trim();
+          }
+        }
+      }
+      return { text: cleanText, img: foundImg };
+    }
+
     // 檢查 IP 投票紀錄（由伺服器透過用戶 IP 提供，LINE 或各瀏覽器環境皆能統一即時同步）
     function getDeviceVote(item) {
       if (!item) return null;
@@ -1647,13 +1680,23 @@
       card.className = 'q-card';
 
       const highlightedQ = highlight(item.q, query);
-      const isAnsImg = isImageUrl(item.ans);
-      const targetImg = item.img_url || (isAnsImg ? item.ans : '');
-      const textDesc = (!isAnsImg && item.ans && item.ans !== '[圖片答案]') ? item.ans : '';
+      const parsedAns = extractTextAndImage(item.ans, item.img_url);
+      const targetImg = parsedAns.img;
+      const textDesc = (parsedAns.text && parsedAns.text !== '[圖片答案]') ? parsedAns.text : '';
 
       let wrongHtml = '';
-      const textWrongs = item.wrong || [];
-      const imgWrongs = item.wrong_imgs || [];
+      const rawWrongs = item.wrong || [];
+      const rawImgWrongs = item.wrong_imgs || [];
+      const textWrongs = [];
+      const imgWrongs = [...rawImgWrongs];
+
+      rawWrongs.forEach(w => {
+        if (!w) return;
+        const p = extractTextAndImage(w);
+        if (p.text) textWrongs.push(p.text);
+        if (p.img && !imgWrongs.includes(p.img)) imgWrongs.push(p.img);
+      });
+
       if (textWrongs.length > 0 || imgWrongs.length > 0) {
         wrongHtml = `
           <div class="wrong-box">
@@ -1958,21 +2001,25 @@
       document.getElementById('modalQText').textContent = item.q;
       
       const currentAnsEl = document.getElementById('modalCurrentAns');
-      const hasModalImg = item.img_url || isImageUrl(item.ans);
-      if (hasModalImg) {
-        const u = item.img_url || item.ans;
-        currentAnsEl.innerHTML = `<a href="${u}" target="_blank" style="color: #166534; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px;"><img src="${u}" style="max-height: 36px; max-width: 60px; border-radius: 4px; border: 1px solid #bbf7d0; background: #fff;" loading="lazy"><span>[圖片答案 (點此檢視原圖)]</span></a>`;
+      const parsedAnsModal = extractTextAndImage(item.ans, item.img_url);
+      if (parsedAnsModal.img) {
+        const u = parsedAnsModal.img;
+        const txt = parsedAnsModal.text ? ` (${parsedAnsModal.text})` : '';
+        currentAnsEl.innerHTML = `<a href="${u}" target="_blank" style="color: #166534; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px;"><img src="${u}" style="max-height: 36px; max-width: 60px; border-radius: 4px; border: 1px solid #bbf7d0; background: #fff;" loading="lazy"><span>[圖片答案${txt} (點此檢視原圖)]</span></a>`;
       } else {
         currentAnsEl.textContent = item.ans || '（目前無正解）';
       }
 
       document.getElementById('modalNoteInput').value = '';
+      const savedNick = localStorage.getItem('momo_uploader_nickname') || '';
+      const uploaderInput = document.getElementById('modalUploaderName');
+      if (uploaderInput) uploaderInput.value = savedNick;
 
       // 初始化 4 個選項：帶入題目目前的答案與已知錯誤選項
-      const isAnsImg = isImageUrl(item.ans);
-      const hasImg = Boolean(item.img_url) || isAnsImg;
-      const targetImg = item.img_url || (isAnsImg ? item.ans : '');
-      const textDesc = (!isAnsImg && item.ans) ? item.ans : '';
+      const parsedOptAns = extractTextAndImage(item.ans, item.img_url);
+      const hasImg = Boolean(parsedOptAns.img);
+      const targetImg = parsedOptAns.img || '';
+      const textDesc = parsedOptAns.text || '';
 
       reportOptions = [
         {
@@ -1988,8 +2035,15 @@
       ];
 
       // 帶入既有錯誤選項
-      const textWrongs = (item.wrong || []).filter(w => !isImageUrl(w));
-      const imgWrongs = [...(item.wrong || []).filter(w => isImageUrl(w)), ...(item.wrong_imgs || [])];
+      const rawWrongsModal = item.wrong || [];
+      const textWrongs = [];
+      const imgWrongs = [...(item.wrong_imgs || [])];
+      rawWrongsModal.forEach(w => {
+        if (!w) return;
+        const p = extractTextAndImage(w);
+        if (p.text) textWrongs.push(p.text);
+        if (p.img && !imgWrongs.includes(p.img)) imgWrongs.push(p.img);
+      });
 
       let wrongSlot = 1;
       textWrongs.forEach(tw => {
@@ -2230,6 +2284,12 @@
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
 
+      const uploaderInput = document.getElementById('modalUploaderName');
+      const uploaderNick = uploaderInput ? uploaderInput.value.trim() : '';
+      if (uploaderNick) {
+        try { localStorage.setItem('momo_uploader_nickname', uploaderNick); } catch (e) {}
+      }
+
       const reportPayload = {
         id: 'web_fix_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         qid: currentReportingItem.id,
@@ -2238,6 +2298,7 @@
         suggestedAns: correctVal || (ansImgBase64 ? '[圖片答案]' : ''),
         ansImageBase64: ansImgBase64,
         wrongOptions: wrongList,
+        uploaderName: uploaderNick,
         note: noteInput ? (noteInput + ' (來自網頁提供/修正答案)') : '來自網頁提供/修正答案',
         submittedAt: timeStr
       };
@@ -2259,16 +2320,20 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reportPayload)
       })
-      .then(res => res.json())
-      .then(data => {
-        console.log('[答案修正送出成功]', data);
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403 || data.status === 'rejected') {
+          showToast('⚠️ 提交失敗：' + (data.message || '您的回報紀錄異常，已被系統自動拒絕。'));
+        } else {
+          showToast('🎉 感謝回報！您的答案已送出，管理員在 LINE 審核確認後將即時更新至題庫！');
+        }
       })
       .catch(err => {
         console.log('[答案修正暫存送出]', err);
+        showToast('🎉 感謝回報！您的答案已暫存送出審核！');
       });
 
       closeReportModal();
-      showToast('🎉 感謝回報！您的答案已送出，管理員在 LINE 審核確認後將即時更新至題庫！');
     }
 
     function showToast(text) {
@@ -2382,6 +2447,9 @@
       document.getElementById('newQText').value = query;
       clearNewQImage();
       document.getElementById('newQNote').value = '';
+      const savedNick = localStorage.getItem('momo_uploader_nickname') || '';
+      const uploaderInput = document.getElementById('newQUploaderName');
+      if (uploaderInput) uploaderInput.value = savedNick;
 
       // 初始化 4 個選項，預設選項 A 為正解
       newQuizOptions = [
@@ -2774,6 +2842,12 @@
         String(now.getMinutes()).padStart(2, '0') + ':' +
         String(now.getSeconds()).padStart(2, '0');
 
+      const uploaderInput = document.getElementById('newQUploaderName');
+      const uploaderNick = uploaderInput ? uploaderInput.value.trim() : '';
+      if (uploaderNick) {
+        try { localStorage.setItem('momo_uploader_nickname', uploaderNick); } catch (e) {}
+      }
+
       const payload = {
         id: 'web_add_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         qid: null, // 全新新題
@@ -2782,6 +2856,7 @@
         ansImageBase64: ansImgBase64,
         imageBase64: newQuizImageBase64,
         wrongOptions: wrongList,
+        uploaderName: uploaderNick,
         note: note ? (note + ' (來自網頁「找不到嗎？請幫忙增加題庫」)') : '來自網頁「找不到嗎？請幫忙增加題庫」',
         submittedAt: timeStr
       };
@@ -2795,16 +2870,20 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      .then(res => res.json())
-      .then(data => {
-        console.log('[新題增加送出成功]', data);
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 403 || data.status === 'rejected') {
+          showToast('⚠️ 增加失敗：' + (data.message || '您的增加紀錄異常，已被系統自動拒絕。'));
+        } else {
+          showToast('🎉 感謝您的熱心提供！新題目已送出審核，管理員在 LINE 核准後將自動同步加入題庫！');
+        }
       })
       .catch(err => {
         console.log('[新題增加已暫存送出]', err);
+        showToast('🎉 感謝您的熱心提供！新題目已送出審核！');
       });
 
       closeAddQuizModal();
-      showToast('🎉 感謝您的熱心提供！新題目已送出審核，管理員在 LINE 核准後將自動同步加入題庫！');
     }
 
     function updateLiveBadge(isOnline, count) {
