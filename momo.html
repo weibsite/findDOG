@@ -1111,6 +1111,44 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
+    .opt-img-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .opt-img-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    .opt-img-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .opt-img-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .opt-desc-tip {
+      font-size: 0.76rem;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.35;
+    }
+
     .opt-img-box {
       display: flex;
       align-items: center;
@@ -1171,11 +1209,11 @@
 
   <div class="container">
     <header>
-      <a href="https://line.me/R/ti/p/@bob4452s" target="_blank" rel="noopener noreferrer" class="line-official-btn" title="加入 MOMO知識王官方LINE">
+      <a href="https://line.me/R/ti/p/@bob4452s" target="_blank" rel="noopener noreferrer" class="line-official-btn" title="加入 MOMO知識王題庫LINE">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 5.91 2 10.74c0 2.93 1.7 5.5 4.31 6.98-.17.68-.78 2.53-.83 2.72-.08.31.11.31.24.22.1-.07 2.32-1.56 3.3-2.22.95.16 1.95.24 2.98.24 5.52 0 10-3.91 10-8.74S17.52 2 12 2zm-4.7 10.2H6.1v-3.9h1.2v3.9zm2.4 0h-1.2v-3.9h1.2v3.9zm3.5 0h-1.2l-1.6-2.1v2.1h-1.2v-3.9h1.2l1.6 2.1v-2.1h1.2v3.9zm3.1 0h-2.3v-3.9h2.3v1h-1.1v.5h1v1h-1v.5h1.1v.9z"/>
         </svg>
-        <span>MOMO知識王官方LINE</span>
+        <span>MOMO知識王題庫LINE</span>
       </a>
       <div class="logo-badge">⚡ 即時答題助手</div>
       <h1>MOMO 每日問答題庫搜尋</h1>
@@ -1239,7 +1277,7 @@
 
   <!-- 回報/輸入答案視窗 (Modal) -->
   <div id="reportModal" class="modal-overlay" style="display: none;">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 680px;">
       <div class="modal-header">
         <div class="modal-title">
           <span>✏️ 提供 / 修正正確答案</span>
@@ -1253,52 +1291,35 @@
           <div class="modal-q-text" id="modalQText">題目載入中...</div>
         </div>
 
-        <div class="modal-current-ans" id="modalCurrentAnsBox">
+        <div class="modal-current-ans" id="modalCurrentAnsBox" style="margin-bottom: 14px;">
           <span class="curr-label">目前題庫答案：</span>
           <span id="modalCurrentAns">（無正解）</span>
         </div>
 
+        <!-- 選項與正解設定區塊 (跟增加題庫完全相同的方式，可文字、可圖片、支援縮放裁切，勾選唯一正解) -->
         <div class="form-group">
-          <label class="form-label" for="modalAnsInput">正確答案：</label>
-          <div class="input-with-upload">
-            <input type="text" id="modalAnsInput" class="form-input" placeholder="請在此輸入您所知道的正確答案..." autocomplete="off">
-            <button type="button" class="upload-btn" onclick="document.getElementById('modalFileInput').click()" title="上傳截圖或圖片答案">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-              </svg>
-              <span>上傳圖片</span>
-            </button>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+            <label class="form-label" style="font-weight: 800; font-size: 0.95rem; color: #0f172a; margin-bottom: 0;">
+              答案與選項設定（可輸入文字或上傳圖片）<span style="color: #ef4444;">*</span>
+            </label>
+            <span style="font-size: 0.8rem; color: #64748b;">
+              💡 勾選<b>唯一一個正解</b>，其他選項為<b>錯誤答案（最多三個）</b>
+            </span>
           </div>
-          <input type="file" id="modalFileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+
+          <!-- 4 個選項卡片容器 -->
+          <div id="reportOptionCardsContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
         </div>
 
-        <!-- 圖片預覽區 -->
-        <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
-          <div class="preview-thumbnail-wrap">
-            <img id="imagePreviewImg" src="" alt="預覽圖">
-            <div class="preview-meta">
-              <span id="imagePreviewName" class="preview-filename">screenshot.png</span>
-              <span id="imagePreviewSize" class="preview-filesize">0 KB</span>
-            </div>
-          </div>
-          <button type="button" class="preview-remove-btn" onclick="clearSelectedImage()" title="移除此圖片">✕ 移除</button>
-        </div>
-
-        <div class="form-group" style="margin-top: 4px;">
-          <label class="form-label" for="modalWrongInput">補充錯誤選項（選填）：</label>
-          <input type="text" id="modalWrongInput" class="form-input" placeholder="若有踩雷的錯誤選項可填寫在此（多個請用逗號隔開）..." autocomplete="off">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="modalNoteInput">補充備註（選填）：</label>
-          <input type="text" id="modalNoteInput" class="form-input" placeholder="例如：第幾季活動、官方更新..." autocomplete="off">
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label" for="modalNoteInput">補充說明（選填）：</label>
+          <input type="text" id="modalNoteInput" class="form-input" placeholder="例如：第幾季活動、官方更新等..." autocomplete="off">
         </div>
       </div>
 
       <div class="modal-footer">
         <button type="button" class="btn-cancel" onclick="closeReportModal()">取消</button>
-        <button type="button" class="btn-submit" onclick="submitReport()">送出回報</button>
+        <button type="button" class="btn-submit" onclick="submitReport()">🚀 送出修正答案</button>
       </div>
     </div>
   </div>
@@ -1764,6 +1785,14 @@
       }
     });
 
+    // 修正/提供答案選項狀態 (4 個選項：A、B、C、D)
+    let reportOptions = [
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: true },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false }
+    ];
+
     function openReportModal(qid, event) {
       if (event) event.stopPropagation();
 
@@ -1775,7 +1804,6 @@
       if (!item) return;
 
       currentReportingItem = item;
-      clearSelectedImage();
 
       document.getElementById('modalQNum').textContent = '#' + item.id;
       document.getElementById('modalQText').textContent = item.q;
@@ -1787,22 +1815,196 @@
         currentAnsEl.textContent = item.ans || '（目前無正解）';
       }
 
-      document.getElementById('modalAnsInput').value = '';
-      document.getElementById('modalWrongInput').value = '';
       document.getElementById('modalNoteInput').value = '';
+
+      // 初始化 4 個選項：帶入題目目前的答案與已知錯誤選項
+      const isAnsImg = isImageUrl(item.ans);
+      const hasImg = Boolean(item.img_url) || isAnsImg;
+      const targetImg = item.img_url || (isAnsImg ? item.ans : '');
+      const textDesc = (!isAnsImg && item.ans) ? item.ans : '';
+
+      reportOptions = [
+        {
+          mode: hasImg ? 'image' : 'text',
+          val: textDesc,
+          imgBase64: targetImg,
+          textDesc: textDesc,
+          isCorrect: true
+        },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false }
+      ];
+
+      // 帶入既有錯誤選項
+      const textWrongs = (item.wrong || []).filter(w => !isImageUrl(w));
+      const imgWrongs = [...(item.wrong || []).filter(w => isImageUrl(w)), ...(item.wrong_imgs || [])];
+
+      let wrongSlot = 1;
+      textWrongs.forEach(tw => {
+        if (wrongSlot < 4) {
+          reportOptions[wrongSlot].mode = 'text';
+          reportOptions[wrongSlot].val = tw;
+          reportOptions[wrongSlot].textDesc = '';
+          reportOptions[wrongSlot].imgBase64 = '';
+          wrongSlot++;
+        }
+      });
+      imgWrongs.forEach(iw => {
+        if (wrongSlot < 4) {
+          reportOptions[wrongSlot].mode = 'image';
+          reportOptions[wrongSlot].imgBase64 = iw;
+          reportOptions[wrongSlot].textDesc = '';
+          reportOptions[wrongSlot].val = '';
+          wrongSlot++;
+        }
+      });
+
+      renderReportOptionCards();
 
       const modal = document.getElementById('reportModal');
       modal.style.display = 'flex';
-      setTimeout(() => {
-        document.getElementById('modalAnsInput').focus();
-      }, 50);
     }
 
     function closeReportModal() {
       const modal = document.getElementById('reportModal');
-      modal.style.display = 'none';
+      if (modal) modal.style.display = 'none';
       currentReportingItem = null;
-      clearSelectedImage();
+    }
+
+    // 渲染「提供/修正答案」4 個選項卡片 (樣式與增加題庫一致)
+    function renderReportOptionCards() {
+      const container = document.getElementById('reportOptionCardsContainer');
+      if (!container) return;
+
+      const labels = ['選項 A', '選項 B', '選項 C', '選項 D'];
+      container.innerHTML = '';
+
+      reportOptions.forEach((opt, idx) => {
+        const card = document.createElement('div');
+        card.className = `opt-card ${opt.isCorrect ? 'is-correct-card' : ''}`;
+
+        const isCorrectHtml = opt.isCorrect 
+          ? `<span class="opt-status-badge correct">⭕ 唯一正解</span>`
+          : `<span class="opt-status-badge wrong">❌ 錯誤答案</span>`;
+
+        let bodyHtml = '';
+        if (opt.mode === 'text') {
+          bodyHtml = `
+            <input type="text" 
+                   class="form-input" 
+                   id="reportOptVal_${idx}" 
+                   placeholder="輸入 ${labels[idx]} 文字內容（例如：商品名、答案詞彙）..." 
+                   value="${escapeHtml(opt.val)}" 
+                   oninput="reportOptions[${idx}].val = this.value"
+                   autocomplete="off">
+          `;
+        } else {
+          // 圖片模式：左邊圖片/上傳按鈕，右邊輸入文字敘述
+          let leftHtml = '';
+          if (opt.imgBase64) {
+            leftHtml = `
+              <div class="opt-img-left">
+                <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <button type="button" class="opt-act-btn" onclick="openCropEditorForReportOption(${idx})">
+                    ✂️ 放大/縮小範圍
+                  </button>
+                  <button type="button" class="opt-act-btn" onclick="clearReportOptionImage(${idx})" style="color: #ef4444;">
+                    🗑️ 移除圖片
+                  </button>
+                </div>
+              </div>
+            `;
+          } else {
+            leftHtml = `
+              <div class="opt-img-left">
+                <button type="button" class="opt-act-btn" onclick="document.getElementById('reportOptFileInput_${idx}').click()" style="background: #0284c7; color: #fff; border-color: #0284c7; padding: 7px 12px;">
+                  📷 選擇圖片並裁切範圍
+                </button>
+                <input type="file" id="reportOptFileInput_${idx}" accept="image/*" style="display:none;" onchange="handleReportOptionImageFile(${idx}, event)">
+              </div>
+            `;
+          }
+
+          bodyHtml = `
+            <div class="opt-img-row">
+              ${leftHtml}
+              <div class="opt-img-right">
+                <input type="text" 
+                       class="form-input" 
+                       id="reportOptTextDesc_${idx}" 
+                       placeholder="輸入文字敘述（例如：左下黑 右上白、粉紅瓶子等）..." 
+                       value="${escapeHtml(opt.textDesc || '')}" 
+                       oninput="reportOptions[${idx}].textDesc = this.value"
+                       autocomplete="off">
+                <div class="opt-desc-tip">
+                  💡 說明：輸入文字敘述讓別人能夠不看圖片就知道答案
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="opt-card-header">
+            <label class="opt-radio-wrapper" onclick="setReportCorrectOption(${idx})">
+              <input type="radio" name="reportOptCorrectRadio" id="reportOptRadio_${idx}" ${opt.isCorrect ? 'checked' : ''} style="cursor: pointer; accent-color: #16a34a;">
+              <span style="font-weight: 800; font-size: 0.9rem; color: #1e293b;">${labels[idx]}</span>
+              ${isCorrectHtml}
+            </label>
+            <div class="opt-mode-tabs">
+              <button type="button" class="opt-mode-btn ${opt.mode === 'text' ? 'active' : ''}" onclick="switchReportOptionMode(${idx}, 'text')">📝 文字</button>
+              <button type="button" class="opt-mode-btn ${opt.mode === 'image' ? 'active' : ''}" onclick="switchReportOptionMode(${idx}, 'image')">🖼️ 圖片</button>
+            </div>
+          </div>
+          <div>${bodyHtml}</div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function setReportCorrectOption(targetIdx) {
+      reportOptions.forEach((opt, idx) => {
+        opt.isCorrect = (idx === targetIdx);
+      });
+      renderReportOptionCards();
+    }
+
+    function switchReportOptionMode(idx, mode) {
+      if (mode === 'image' && !reportOptions[idx].textDesc && reportOptions[idx].val) {
+        reportOptions[idx].textDesc = reportOptions[idx].val;
+      } else if (mode === 'text' && !reportOptions[idx].val && reportOptions[idx].textDesc) {
+        reportOptions[idx].val = reportOptions[idx].textDesc;
+      }
+      reportOptions[idx].mode = mode;
+      renderReportOptionCards();
+    }
+
+    function clearReportOptionImage(idx) {
+      reportOptions[idx].imgBase64 = '';
+      renderReportOptionCards();
+    }
+
+    function handleReportOptionImageFile(idx, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        alert('請選擇圖片格式檔案');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        startCropSession('report', idx, evt.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openCropEditorForReportOption(idx) {
+      if (reportOptions[idx] && reportOptions[idx].imgBase64) {
+        startCropSession('report', idx, reportOptions[idx].imgBase64);
+      }
     }
 
     // 點擊 Modal 背景遮罩關閉
@@ -1819,58 +2021,55 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeReportModal();
+        closeAddQuizModal();
+        closeCropModal();
         document.querySelectorAll('.popover-bubble.show').forEach(el => el.classList.remove('show'));
         document.querySelectorAll('.arrow-btn.active').forEach(el => el.classList.remove('active'));
       }
     });
 
-    function handleImageUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      if (!file.type.startsWith('image/')) {
-        alert('請選擇圖片檔案格式 (PNG, JPG, WebP 等)');
-        return;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        alert('圖片檔案較大，請選擇 10MB 以下的圖片');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        currentReportImageBase64 = evt.target.result;
-        currentReportImageName = file.name;
-        document.getElementById('imagePreviewImg').src = currentReportImageBase64;
-        document.getElementById('imagePreviewName').textContent = file.name;
-        document.getElementById('imagePreviewSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
-        document.getElementById('imagePreviewContainer').style.display = 'flex';
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function clearSelectedImage() {
-      currentReportImageBase64 = null;
-      currentReportImageName = '';
-      const fileInput = document.getElementById('modalFileInput');
-      if (fileInput) fileInput.value = '';
-      const previewContainer = document.getElementById('imagePreviewContainer');
-      if (previewContainer) previewContainer.style.display = 'none';
-    }
-
     function submitReport() {
       if (!currentReportingItem) return;
 
-      const ansInput = document.getElementById('modalAnsInput').value.trim();
-      const wrongInput = document.getElementById('modalWrongInput').value.trim();
       const noteInput = document.getElementById('modalNoteInput').value.trim();
 
-      if (!ansInput && !currentReportImageBase64) {
-        alert('請輸入答案文字，或點擊「上傳圖片」提供答案圖片！');
-        document.getElementById('modalAnsInput').focus();
+      // 檢查勾選的正解
+      const correctOpt = reportOptions.find(o => o.isCorrect);
+      if (!correctOpt) {
+        alert('請勾選唯一一個正確答案！');
         return;
       }
+
+      let correctVal = '';
+      let ansImgBase64 = null;
+      if (correctOpt.mode === 'text') {
+        correctVal = (correctOpt.val || '').trim();
+      } else {
+        ansImgBase64 = correctOpt.imgBase64 || null;
+        correctVal = (correctOpt.textDesc || '').trim();
+      }
+
+      if (!correctVal && !ansImgBase64) {
+        alert('您勾選的正解尚未填寫內容或上傳圖片！請填寫正解內容。');
+        return;
+      }
+
+      // 整理最多 3 個錯誤答案
+      const wrongList = [];
+      reportOptions.forEach(opt => {
+        if (!opt.isCorrect) {
+          if (opt.mode === 'text') {
+            const v = (opt.val || '').trim();
+            if (v) wrongList.push({ type: 'text', val: v });
+          } else if (opt.mode === 'image') {
+            const img = opt.imgBase64 || null;
+            const desc = (opt.textDesc || '').trim();
+            if (img || desc) {
+              wrongList.push({ type: 'image', imageBase64: img, val: desc });
+            }
+          }
+        }
+      });
 
       const now = new Date();
       const timeStr = now.getFullYear() + '-' +
@@ -1881,15 +2080,14 @@
         String(now.getSeconds()).padStart(2, '0');
 
       const reportPayload = {
-        id: 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        id: 'web_fix_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         qid: currentReportingItem.id,
         question: currentReportingItem.q,
         originalAns: currentReportingItem.ans,
-        suggestedAns: ansInput,
-        hasImage: !!currentReportImageBase64,
-        imageName: currentReportImageName,
-        wrongOptions: wrongInput ? wrongInput.split(/[,，\n]/).map(s => s.trim()).filter(Boolean) : [],
-        note: noteInput,
+        suggestedAns: correctVal || (ansImgBase64 ? '[圖片答案]' : ''),
+        ansImageBase64: ansImgBase64,
+        wrongOptions: wrongList,
+        note: noteInput ? (noteInput + ' (來自網頁提供/修正答案)') : '來自網頁提供/修正答案',
         submittedAt: timeStr
       };
 
@@ -1905,19 +2103,21 @@
         ? 'https://api.9ysong.shop/callback2/api/web-report'
         : '/callback2/api/web-report';
 
-      try {
-        fetch(uploadUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...reportPayload,
-            imageBase64: currentReportImageBase64
-          })
-        }).catch(() => {});
-      } catch (e) {}
+      fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportPayload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('[答案修正送出成功]', data);
+      })
+      .catch(err => {
+        console.log('[答案修正暫存送出]', err);
+      });
 
       closeReportModal();
-      showToast('🎉 感謝回報！您的答案已送出，審核後將更新至題庫！');
+      showToast('🎉 感謝回報！您的答案已送出，管理員在 LINE 審核確認後將即時更新至題庫！');
     }
 
     function showToast(text) {
@@ -2017,10 +2217,10 @@
     // =========================================================
     let newQuizImageBase64 = null;
     let newQuizOptions = [
-      { mode: 'text', val: '', imgBase64: '', isCorrect: true },
-      { mode: 'text', val: '', imgBase64: '', isCorrect: false },
-      { mode: 'text', val: '', imgBase64: '', isCorrect: false },
-      { mode: 'text', val: '', imgBase64: '', isCorrect: false }
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: true },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+      { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false }
     ];
 
     // 縮放裁切狀態
@@ -2041,10 +2241,10 @@
 
       // 初始化 4 個選項，預設選項 A 為正解
       newQuizOptions = [
-        { mode: 'text', val: '', imgBase64: '', isCorrect: true },
-        { mode: 'text', val: '', imgBase64: '', isCorrect: false },
-        { mode: 'text', val: '', imgBase64: '', isCorrect: false },
-        { mode: 'text', val: '', imgBase64: '', isCorrect: false }
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: true },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false },
+        { mode: 'text', val: '', imgBase64: '', textDesc: '', isCorrect: false }
       ];
       renderOptionCards();
 
@@ -2118,30 +2318,50 @@
                    autocomplete="off">
           `;
         } else {
-          // 圖片模式
+          // 圖片模式：左邊圖片/上傳按鈕，右邊輸入文字敘述
+          let leftHtml = '';
           if (opt.imgBase64) {
-            bodyHtml = `
-              <div class="opt-img-box">
+            leftHtml = `
+              <div class="opt-img-left">
                 <img src="${opt.imgBase64}" class="opt-img-thumb" alt="選項圖片">
-                <button type="button" class="opt-act-btn" onclick="openCropEditorForOption(${idx})">
-                  ✂️ 放大/縮小範圍
-                </button>
-                <button type="button" class="opt-act-btn" onclick="clearOptionImage(${idx})" style="color: #ef4444;">
-                  🗑️ 移除圖片
-                </button>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <button type="button" class="opt-act-btn" onclick="openCropEditorForOption(${idx})">
+                    ✂️ 放大/縮小範圍
+                  </button>
+                  <button type="button" class="opt-act-btn" onclick="clearOptionImage(${idx})" style="color: #ef4444;">
+                    🗑️ 移除圖片
+                  </button>
+                </div>
               </div>
             `;
           } else {
-            bodyHtml = `
-              <div class="opt-img-box">
-                <button type="button" class="opt-act-btn" onclick="document.getElementById('optFileInput_${idx}').click()" style="background: #0284c7; color: #fff; border-color: #0284c7;">
+            leftHtml = `
+              <div class="opt-img-left">
+                <button type="button" class="opt-act-btn" onclick="document.getElementById('optFileInput_${idx}').click()" style="background: #0284c7; color: #fff; border-color: #0284c7; padding: 7px 12px;">
                   📷 選擇圖片並裁切範圍
                 </button>
                 <input type="file" id="optFileInput_${idx}" accept="image/*" style="display:none;" onchange="handleOptionImageFile(${idx}, event)">
-                <span style="font-size: 0.8rem; color: #94a3b8;">(支援放大/縮小範圍調整)</span>
               </div>
             `;
           }
+
+          bodyHtml = `
+            <div class="opt-img-row">
+              ${leftHtml}
+              <div class="opt-img-right">
+                <input type="text" 
+                       class="form-input" 
+                       id="optTextDesc_${idx}" 
+                       placeholder="輸入文字敘述（例如：左下黑 右上白、粉紅瓶子等）..." 
+                       value="${escapeHtml(opt.textDesc || '')}" 
+                       oninput="newQuizOptions[${idx}].textDesc = this.value"
+                       autocomplete="off">
+                <div class="opt-desc-tip">
+                  💡 說明：輸入文字敘述讓別人能夠不看圖片就知道答案
+                </div>
+              </div>
+            </div>
+          `;
         }
 
         card.innerHTML = `
@@ -2171,6 +2391,11 @@
     }
 
     function switchOptionMode(idx, mode) {
+      if (mode === 'image' && !newQuizOptions[idx].textDesc && newQuizOptions[idx].val) {
+        newQuizOptions[idx].textDesc = newQuizOptions[idx].val;
+      } else if (mode === 'text' && !newQuizOptions[idx].val && newQuizOptions[idx].textDesc) {
+        newQuizOptions[idx].val = newQuizOptions[idx].textDesc;
+      }
       newQuizOptions[idx].mode = mode;
       renderOptionCards();
     }
@@ -2201,9 +2426,19 @@
       }
     }
 
-    // 啟動圖片範圍裁切工作台
-    function startCropSession(idx, dataUrl) {
-      cropTargetOptIndex = idx;
+    let cropContext = 'add'; // 'add' 或 'report'
+
+    // 啟動圖片範圍裁切工作台 (支援增加題庫與修正答案兩種模式)
+    function startCropSession(contextOrIdx, idxOrDataUrl, optionalDataUrl) {
+      if (typeof contextOrIdx === 'string') {
+        cropContext = contextOrIdx;
+        cropTargetOptIndex = idxOrDataUrl;
+        var dataUrl = optionalDataUrl;
+      } else {
+        cropContext = 'add';
+        cropTargetOptIndex = contextOrIdx;
+        var dataUrl = idxOrDataUrl;
+      }
       const img = new Image();
       img.onload = function() {
         cropImageObj = img;
@@ -2316,10 +2551,17 @@
       if (!canvas) return;
       const croppedBase64 = canvas.toDataURL('image/jpeg', 0.88);
 
-      newQuizOptions[cropTargetOptIndex].imgBase64 = croppedBase64;
-      closeCropModal();
-      renderOptionCards();
-      showToast('✅ 選項圖片範圍已成功裁切套用！');
+      if (cropContext === 'report') {
+        reportOptions[cropTargetOptIndex].imgBase64 = croppedBase64;
+        closeCropModal();
+        renderReportOptionCards();
+        showToast('✅ 修正選項圖片範圍已成功裁切套用！');
+      } else {
+        newQuizOptions[cropTargetOptIndex].imgBase64 = croppedBase64;
+        closeCropModal();
+        renderOptionCards();
+        showToast('✅ 選項圖片範圍已成功裁切套用！');
+      }
     }
 
     function escapeHtml(str) {
@@ -2350,13 +2592,15 @@
       }
 
       let correctVal = '';
+      let ansImgBase64 = null;
       if (correctOpt.mode === 'text') {
         correctVal = (correctOpt.val || '').trim();
       } else {
-        correctVal = correctOpt.imgBase64;
+        ansImgBase64 = correctOpt.imgBase64 || null;
+        correctVal = (correctOpt.textDesc || '').trim();
       }
 
-      if (!correctVal) {
+      if (!correctVal && !ansImgBase64) {
         alert('您勾選的正解尚未填寫內容或上傳圖片！請填寫正解選項。');
         return;
       }
@@ -2365,10 +2609,15 @@
       const wrongList = [];
       newQuizOptions.forEach(opt => {
         if (!opt.isCorrect) {
-          if (opt.mode === 'text' && (opt.val || '').trim()) {
-            wrongList.push({ type: 'text', val: opt.val.trim() });
-          } else if (opt.mode === 'image' && opt.imgBase64) {
-            wrongList.push({ type: 'image', imageBase64: opt.imgBase64 });
+          if (opt.mode === 'text') {
+            const v = (opt.val || '').trim();
+            if (v) wrongList.push({ type: 'text', val: v });
+          } else if (opt.mode === 'image') {
+            const img = opt.imgBase64 || null;
+            const desc = (opt.textDesc || '').trim();
+            if (img || desc) {
+              wrongList.push({ type: 'image', imageBase64: img, val: desc });
+            }
           }
         }
       });
@@ -2385,7 +2634,8 @@
         id: 'web_add_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         qid: null, // 全新新題
         question: qText,
-        suggestedAns: correctVal,
+        suggestedAns: correctVal || (ansImgBase64 ? '[圖片答案]' : ''),
+        ansImageBase64: ansImgBase64,
         imageBase64: newQuizImageBase64,
         wrongOptions: wrongList,
         note: note ? (note + ' (來自網頁「找不到嗎？請幫忙增加題庫」)') : '來自網頁「找不到嗎？請幫忙增加題庫」',
