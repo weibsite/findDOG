@@ -1002,6 +1002,8 @@
       margin-top: 10px;
       padding-top: 8px;
       border-top: 1px dashed #f1f5f9;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
     .update-time-pill {
@@ -1022,6 +1024,25 @@
       background: #f1f5f9;
       color: #334155;
       border-color: #cbd5e1;
+    }
+
+    .provider-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.76rem;
+      color: #0369a1;
+      background: #f0f9ff;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      border: 1px solid #bae6fd;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .provider-pill:hover {
+      background: #e0f2fe;
+      border-color: #7dd3fc;
     }
 
     /* Highlight */
@@ -1589,7 +1610,12 @@
     }
 
     function isImageUrl(url) {
-      return /\.(png|jpe?g|webp|gif)($|\?)/i.test(url);
+      if (!url || typeof url !== 'string') return false;
+      const u = url.trim();
+      return /\.(png|jpe?g|webp|gif|bmp|svg)($|\?)/i.test(u) ||
+             u.includes('picasso-frontend.momoshop.com.tw') ||
+             u.includes('/uploads/') ||
+             u.includes('/img/');
     }
 
     // 檢查 IP 投票紀錄（由伺服器透過用戶 IP 提供，LINE 或各瀏覽器環境皆能統一即時同步）
@@ -1605,8 +1631,9 @@
       card.className = 'q-card';
 
       const highlightedQ = highlight(item.q, query);
-      const targetImg = item.img_url || (isImageUrl(item.ans) ? item.ans : '');
-      const textDesc = (!isImageUrl(item.ans) && item.ans) ? item.ans : '';
+      const isAnsImg = isImageUrl(item.ans);
+      const targetImg = item.img_url || (isAnsImg ? item.ans : '');
+      const textDesc = (!isAnsImg && item.ans && item.ans !== '[圖片答案]') ? item.ans : '';
 
       let wrongHtml = '';
       const textWrongs = item.wrong || [];
@@ -1700,6 +1727,7 @@
         ${wrongHtml}
         <div class="card-footer">
           <span class="update-time-pill" title="此題答案最後獨立更新時間">🕒 答案更新時間：${item.date || '未知'}</span>
+          ${item.provider ? `<span class="provider-pill" title="LINE 答案提供者">👤 提供者：${highlight(item.provider, query)}</span>` : ''}
         </div>
       `;
 
@@ -1715,7 +1743,7 @@
       } else {
         const terms = query.split(/\s+/).filter(Boolean);
         currentResults = ALL_QUESTIONS.filter(item => {
-          const target = (item.q + ' ' + (item.ans || '') + ' ' + (item.wrong ? item.wrong.join(' ') : '')).toLowerCase();
+          const target = (item.q + ' ' + (item.ans || '') + ' ' + (item.wrong ? item.wrong.join(' ') : '') + ' ' + (item.provider || '')).toLowerCase();
           return terms.every(t => target.includes(t));
         });
       }
@@ -1913,8 +1941,10 @@
       document.getElementById('modalQText').textContent = item.q;
       
       const currentAnsEl = document.getElementById('modalCurrentAns');
-      if (isImageUrl(item.ans)) {
-        currentAnsEl.innerHTML = `<a href="${item.ans}" target="_blank" style="color: #166534; text-decoration: underline;">[圖片答案 (點此開啟連結)]</a>`;
+      const hasModalImg = item.img_url || isImageUrl(item.ans);
+      if (hasModalImg) {
+        const u = item.img_url || item.ans;
+        currentAnsEl.innerHTML = `<a href="${u}" target="_blank" style="color: #166534; text-decoration: underline; display: inline-flex; align-items: center; gap: 6px;"><img src="${u}" style="max-height: 36px; max-width: 60px; border-radius: 4px; border: 1px solid #bbf7d0; background: #fff;" loading="lazy"><span>[圖片答案 (點此檢視原圖)]</span></a>`;
       } else {
         currentAnsEl.textContent = item.ans || '（目前無正解）';
       }
