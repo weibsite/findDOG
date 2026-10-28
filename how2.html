@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超簡單！Chrome 擴充套件安裝教學（小白也能 3 分鐘搞定）</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --primary-dark: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      line-height: 1.65;
+      padding: 40px 16px;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    /* 頂部 Header */
+    .header {
+      text-align: center;
+      margin-bottom: 35px;
+    }
+
+    .badge-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* 頂端快速下載導覽列 */
+    .top-nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    .top-nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      color: #0f172a;
+    }
+
+    .top-download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff !important;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .top-download-btn:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.38);
+    }
+
+    /* 頂部顯眼下載專區 Hero Card */
+    .download-hero-card {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 2px solid #93c5fd;
+      border-radius: 18px;
+      padding: 22px 26px;
+      margin: 22px auto 0;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 10px 24px -6px rgba(37, 99, 235, 0.18);
+      flex-wrap: wrap;
+    }
+
+    .download-hero-left {
+      flex: 1;
+      min-width: 260px;
+      text-align: left;
+    }
+
+    .download-hero-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .download-hero-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin-bottom: 4px;
+    }
+
+    .download-hero-desc {
+      font-size: 13.5px;
+      color: #475569;
+    }
+
+    .download-hero-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff !important;
+      padding: 13px 26px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 800;
+      text-decoration: none;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+    }
+
+    .download-hero-btn:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px rgba(37, 99, 235, 0.45);
+    }
+
+    @media (max-width: 640px) {
+      .top-nav-bar {
+        padding: 10px 14px;
+      }
+      .top-nav-logo {
+        font-size: 13.5px;
+      }
+      .top-download-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .download-hero-card {
+        padding: 18px;
+        flex-direction: column;
+        text-align: center;
+      }
+      .download-hero-left {
+        text-align: center;
+      }
+      .download-hero-btn {
+        width: 100%;
+        padding: 12px 18px;
+        font-size: 15px;
+      }
+    }
+
+    /* 貼心提示小卡 */
+    .intro-banner {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: #ffffff;
+      border-radius: 16px;
+      padding: 22px 26px;
+      margin-bottom: 35px;
+      box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .intro-icon {
+      font-size: 36px;
+      flex-shrink: 0;
+    }
+
+    .intro-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .intro-desc {
+      font-size: 14px;
+      color: #dbeafe;
+      line-height: 1.5;
+    }
+
+    /* 步驟容器 */
+    .steps-container {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .step-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      box-shadow: var(--shadow);
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .step-card:hover {
+      border-color: #93c5fd;
+      transform: translateY(-2px);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .step-pill {
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .step-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .step-body {
+      font-size: 15px;
+      color: #334155;
+      margin-bottom: 18px;
+      line-height: 1.7;
+    }
+
+    .highlight-word {
+      background: #fef08a;
+      color: #854d0e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .action-badge {
+      display: inline-block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+
+    /* 圖文教學展示框 */
+    .visual-box {
+      background: #f8fafc;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    /* 步驟 1 圖解：解壓縮 */
+    .unzip-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      width: 100%;
+      padding: 10px 0;
+    }
+
+    .unzip-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .unzip-icon {
+      font-size: 44px;
+    }
+
+    .unzip-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .unzip-arrow {
+      font-size: 24px;
+      color: #94a3b8;
+    }
+
+    /* 步驟 2 圖解：右上角三個點選單 */
+    .menu-demo {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 320px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .menu-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      color: #334155;
+    }
+
+    .menu-row.highlighted {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 800;
+      border-left: 4px solid var(--primary);
+    }
+
+    /* 快捷複製網址條 */
+    .url-quick-box {
+      width: 100%;
+      max-width: 460px;
+      background: #ffffff;
+      border: 1.5px solid #93c5fd;
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .url-code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0369a1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-copy {
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .btn-copy:hover {
+      background: #0369a1;
+    }
+
+    .btn-copy.copied {
+      background: var(--success);
+    }
+
+    /* 步驟 3 圖解：開關 */
+    .switch-demo {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      background: #ffffff;
+      border: 2px solid #2563eb;
+      border-radius: 12px;
+      padding: 12px 24px;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+    }
+
+    .switch-demo-text {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .switch-ui {
+      width: 52px;
+      height: 28px;
+      background: #2563eb;
+      border-radius: 999px;
+      position: relative;
+    }
+
+    .switch-ui::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 22px;
+      height: 22px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    }
+
+    /* 步驟 4 圖解：按鈕與資料夾 */
+    .load-btn-demo {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 12px 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .folder-demo-box {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .folder-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      color: #475569;
+    }
+
+    .folder-row.target {
+      background: #e0f2fe;
+      border: 1.5px solid #38bdf8;
+      color: #0369a1;
+      font-weight: 800;
+    }
+
+    /* 警告小標籤 */
+    .warning-box {
+      background: #fffbeb;
+      border-left: 4px solid var(--warning);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      color: #92400e;
+      margin-top: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    /* 固定到右上角教學 */
+    .pin-card {
+      background: #fdf4ff;
+      border: 2px solid #f0abfc;
+      border-radius: 20px;
+      padding: 24px 26px;
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .pin-icon {
+      font-size: 40px;
+      flex-shrink: 0;
+    }
+
+    .pin-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #86198f;
+      margin-bottom: 4px;
+    }
+
+    .pin-desc {
+      font-size: 14px;
+      color: #701a75;
+      line-height: 1.55;
+    }
+
+    /* 常見問題 FAQ */
+    .faq-section {
+      margin-top: 40px;
+    }
+
+    .faq-heading {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .faq-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .faq-item {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+
+    .faq-q {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .faq-a {
+      font-size: 14px;
+      color: #475569;
+      line-height: 1.6;
+      padding-left: 24px;
+    }
+
+    /* 底部收尾 */
+    .footer {
+      text-align: center;
+      margin-top: 45px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    /* 提示 Toast */
+    #toast {
+      position: fixed;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%) translateY(50px);
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: all 0.25s ease;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- 頂端快速下載導覽列 -->
+    <div class="top-nav-bar">
+      <div class="top-nav-logo">
+        <span style="font-size: 20px;">🧩</span>
+        <span>MOMO 答題知識王・擴充安裝指南</span>
+      </div>
+      <a href="https://finddog.online/MOMO答題知識王chrome擴充.zip" class="top-download-btn" target="_blank" rel="noopener noreferrer" title="下載擴充套件壓縮檔 (.zip)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>下載擴充套件 (.zip)</span>
+      </a>
+    </div>
+
+    <!-- 頂部頁頭 -->
+    <div class="header">
+      <div class="badge-hero">
+        <span>✨</span> 新手專用指南・零電腦基礎・照著做就會
+      </div>
+      <h1>Chrome 擴充套件安裝教學</h1>
+      <div class="subtitle">只要跟著下面 4 個簡單步驟，輕鬆就能把擴充小工具放進你的瀏覽器！</div>
+
+      <!-- 頂部顯眼下載專區 Hero Card -->
+      <div class="download-hero-card">
+        <div class="download-hero-left">
+          <div class="download-hero-badge">官方雲端載點</div>
+          <div class="download-hero-title">MOMO 答題知識王 Chrome 擴充套件</div>
+          <div class="download-hero-desc">免商店安裝・解壓縮即可載入・支援全自動答題與正解同步</div>
+        </div>
+        <a href="https://finddog.online/MOMO答題知識王chrome擴充.zip" class="download-hero-btn" target="_blank" rel="noopener noreferrer" title="點此下載最新擴充套件 (.zip)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>立即下載擴充檔 (.zip)</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 貼心重點導讀 -->
+    <div class="intro-banner">
+      <div class="intro-icon">💡</div>
+      <div>
+        <div class="intro-title">什麼是「未封裝項目」？</div>
+        <div class="intro-desc">
+          一般從官方商店安裝是全自動的；而「未封裝項目」就是直接載入一個已解壓縮的資料夾。只要學會一次，以後任何強大的專案工具你都能自己輕鬆安裝！
+        </div>
+      </div>
+    </div>
+
+    <!-- 核心 4 步驟 -->
+    <div class="steps-container">
+
+      <!-- 步驟 1 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-pill">第 1 步</div>
+          <div class="step-title">先「解壓縮」你下載回來的檔案</div>
+        </div>
+        <div class="step-body">
+          下載回來的檔案通常是個帶有拉鍊圖案的 <span class="action-badge">.zip 壓縮檔</span>。<br>
+          <span style="font-size: 13.5px; color: #475569;">（若您尚未下載，請先 <a href="https://finddog.online/MOMO答題知識王chrome擴充.zip" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; text-decoration: underline;">點此下載擴充壓縮檔 (.zip)</a>）</span><br>
+          請對著那個壓縮檔點擊 <strong>滑鼠右鍵</strong>，選擇 <span class="highlight-word">「全部解壓縮」</span>（或解壓縮至此），解壓縮後會產生一個 <strong style="color: #d97706;">一般的黃色資料夾</strong>。
+        </div>
+
+        <div class="visual-box">
+          <div class="unzip-flow">
+            <div class="unzip-step">
+              <div class="unzip-icon">🤐</div>
+              <div class="unzip-label">下載的 .zip 檔</div>
+            </div>
+            <div class="unzip-arrow">➔</div>
+            <div class="unzip-step">
+              <div class="action-badge">右鍵 ➔ 全部解壓縮</div>
+            </div>
+            <div class="unzip-arrow">➔</div>
+            <div class="unzip-step">
+              <div class="unzip-icon">📁</div>
+              <div class="unzip-label" style="color: #059669;">解壓縮後的黃色資料夾</div>
+            </div>
+          </div>
+          <div style="font-size: 13px; color: #64748b;">
+            請記住這個黃色資料夾放在哪裡（例如：桌面 或 下載資料夾）。
+          </div>
+        </div>
+
+        <div class="warning-box">
+          <span>⚠️</span>
+          <div><strong>常見新手失誤：</strong>千萬不能跳過解壓縮直接選取 .zip 檔喔！瀏覽器只看得懂解開後的黃色資料夾！</div>
+        </div>
+      </div>
+
+      <!-- 步驟 2 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-pill">第 2 步</div>
+          <div class="step-title">打開瀏覽器的「擴充功能」管理頁面</div>
+        </div>
+        <div class="step-body">
+          請打開你的 Google Chrome 或 Edge 瀏覽器，有兩種最快的方法可以進入：
+        </div>
+
+        <div class="visual-box">
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+            【推薦方法 A】複製網址直接貼在網址列（最快）
+          </div>
+          <div class="url-quick-box">
+            <div class="url-code" id="chromeUrl">chrome://extensions</div>
+            <button class="btn-copy" onclick="copyText('chromeUrl', this)">點我複製網址</button>
+          </div>
+          <div style="font-size: 12.5px; color: #64748b;">
+            貼上後按下鍵盤上的 <strong>Enter ↵</strong> 鍵即可立刻抵達！
+          </div>
+
+          <div style="width: 100%; border-top: 1px dashed #cbd5e1; margin: 8px 0;"></div>
+
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+            【方法 B】手動點擊選單進入
+          </div>
+          <div class="menu-demo">
+            <div class="menu-row">1. 點右上角三個點 <strong>⋮</strong></div>
+            <div class="menu-row">2. 滑鼠移到「擴充功能」</div>
+            <div class="menu-row highlighted">3. 點擊 👉「管理擴充功能」</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 步驟 3 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-pill">第 3 步</div>
+          <div class="step-title">把右上角的「開發人員模式」開關打開</div>
+        </div>
+        <div class="step-body">
+          進入管理頁面後，把視線移到網頁的 <strong>最右上角</strong>。<br>
+          你會看到一個寫著 <span class="highlight-word">「開發人員模式」</span>（Developer mode）的開關，點一下它，讓它向右切換並變成 <strong>藍色</strong>（開啟）。
+        </div>
+
+        <div class="visual-box">
+          <div class="switch-demo">
+            <span class="switch-demo-text">開發人員模式</span>
+            <div class="switch-ui"></div>
+          </div>
+          <div style="font-size: 13.5px; color: #059669; font-weight: 700;">
+            ✅ 開關打開後，頁面左上方就會立刻多出一排按鈕！
+          </div>
+        </div>
+      </div>
+
+      <!-- 步驟 4 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-pill">第 4 步</div>
+          <div class="step-title">點「載入未封裝項目」並選擇剛才的資料夾</div>
+        </div>
+        <div class="step-body">
+          開關打開後，請看網頁的 <strong>左上方</strong>：<br>
+          1. 點選第一個按鈕 <span class="action-badge">📂 載入未封裝項目</span>。<br>
+          2. 在跳出來的視窗中，找到你在 <strong>第 1 步解壓縮出來的黃色資料夾</strong>。<br>
+          3. 點選那個資料夾後，點擊視窗右下角的 <span class="highlight-word">「選擇資料夾」</span> 按鈕。
+        </div>
+
+        <div class="visual-box">
+          <div class="load-btn-demo">
+            <span>📂 載入未封裝項目</span>
+          </div>
+
+          <div style="font-size: 20px; color: #94a3b8;">↓</div>
+
+          <div class="folder-demo-box">
+            <div class="folder-row">📁 下載資料夾 / 桌面</div>
+            <div class="folder-row target">📁 你的擴充套件資料夾 (點一下選取)</div>
+            <div style="text-align: right; margin-top: 10px;">
+              <span class="action-badge" style="background: #2563eb; color: #fff; border: none; padding: 6px 14px;">選擇資料夾</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="warning-box" style="background: #f0fdf4; border-left-color: #10b981; color: #166534;">
+          <span>🎉</span>
+          <div><strong>大功告成！</strong> 點完選擇資料夾後，擴充套件就已經正式安裝進你的 Chrome 瀏覽器中了！</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 加分技巧：釘選到右上角 -->
+    <div class="pin-card">
+      <div class="pin-icon">📌</div>
+      <div>
+        <div class="pin-title">超實用小技巧：如何把外掛固定在瀏覽器右上角？</div>
+        <div class="pin-desc">
+          安裝完後，點一下網址列右邊像 <strong>「拼圖塊 🧩」</strong> 的圖示，在清單中找到外掛名稱，點一下旁邊的 <strong>「小圖釘 📌」</strong>，小圖示就會永遠出現在瀏覽器右上角，隨時點開就能用！
+        </div>
+      </div>
+    </div>
+
+    <!-- 新手常見疑問 Q&A -->
+    <div class="faq-section">
+      <div class="faq-heading">
+        <span>❓</span> 新手常見問題與疑難排解
+      </div>
+
+      <div class="faq-grid">
+        <div class="faq-item">
+          <div class="faq-q"><span>Q1.</span> 為什麼點了「選擇資料夾」後，跳出錯誤說「資訊清單檔案遺失」？</div>
+          <div class="faq-a">
+            這代表你選錯層資料夾了！請點進去資料夾裡面，選取 <strong>直接看得到 <code>manifest.json</code> 檔案</strong> 的那一層資料夾就可以了。
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q"><span>Q2.</span> 如果我之後改了程式碼，或下載了新版本，要怎麼更新？</div>
+          <div class="faq-a">
+            完全不需要重新安裝！只要回到 <code>chrome://extensions</code> 頁面，找到該外掛的小方塊，點一下右下角的 <strong>「圓形旋轉箭頭 🔄」</strong>，就會立刻更新生效囉！
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q"><span>Q3.</span> 我使用的是 Microsoft Edge 瀏覽器，步驟有一樣嗎？</div>
+          <div class="faq-a">
+            完全一樣！Edge 與 Chrome 採用相同技術，只要在 Edge 網址列輸入 <code>edge://extensions</code>，一樣開啟「開發人員模式」，操作步驟一模一樣！
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部收尾 -->
+    <div class="footer">
+      💡 恭喜你掌握了 Chrome 未封裝套件的安裝技巧！祝你使用愉快！
+    </div>
+
+  </div>
+
+  <!-- Toast 通知框 -->
+  <div id="toast">已複製到剪貼簿！</div>
+
+  <script>
+    function copyText(elementId, btn) {
+      const text = document.getElementById(elementId).textContent.trim();
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ 網址已複製！請在網址列按 Ctrl+V 貼上並按 Enter');
+        btn.classList.add('copied');
+        const origText = btn.textContent;
+        btn.textContent = '已複製！';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.textContent = origText;
+        }, 1800);
+      }).catch(() => {
+        showToast('複製失敗，請手動複製網址');
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2400);
+    }
+  </script>
+</body>
+</html>
