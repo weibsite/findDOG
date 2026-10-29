@@ -382,12 +382,18 @@
           candidates.push(noYuan);
         }
       }
+      // 斜線拆分別名 (例如「日本/韓國」→ 兩個候選詞)
+      // 安全防護：若答案本身是日期/數字格式 (如 11/1、11/14)，拆出的片段太短會
+      // 造成「1」誤命中「11/14」等選項，需過濾掉純數字且長度 <= 2 的短片段
       if (clean.includes('/') || clean.includes('／')) {
-        clean.split(/[/／]/).forEach(part => {
+        const parts = clean.split(/[/／]/);
+        const isDateLike = parts.every(p => /^\d+$/.test(p.trim())); // 全部分段都是純數字 → 日期格式
+        parts.forEach(part => {
           const pt = part.trim();
-          if (pt && !candidates.includes(pt)) {
-            candidates.push(pt);
-          }
+          if (!pt || candidates.includes(pt)) return;
+          // 若是日期格式的拆分片段（純數字且長度 <= 2），跳過不加入候選詞
+          if (isDateLike && /^\d{1,2}$/.test(pt)) return;
+          candidates.push(pt);
         });
       }
     }
@@ -458,12 +464,32 @@
         // 策略 2: 多候選詞文字雙向模糊比對 (含斜線別名、括號別名) 與圖片 UUID 比對
         targetChoice = qData.choices.find((c, idx) => {
           if (c.text && candidates.length > 0) {
-            const cleanCTxt = c.text.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
+            // 日期/數字格式答案（如 11/1, 11月1日）使用原始文字精確比對，不去除斜線符號
+            // 這樣可避免「11/1」→「111」誤命中「11/14」→「1114」的問題
+            const isDateAnswer = candidates.some(cnd => /^\d+[\/月日]\d+/.test(cnd));
             for (const cand of candidates) {
-              const cleanCand = cand.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
-              if (cleanCTxt && cleanCand && (cleanCTxt === cleanCand || cleanCTxt.includes(cleanCand) || cleanCand.includes(cleanCTxt))) {
-                c.choiceOrder = idx + 1;
-                return true;
+              if (isDateAnswer) {
+                // 日期格式：直接用原始文字完整比對（允許去除空格）
+                const rawC = c.text.replace(/\s/g, '').toLowerCase();
+                const rawCand = cand.replace(/\s/g, '').toLowerCase();
+                if (rawC === rawCand) {
+                  c.choiceOrder = idx + 1;
+                  return true;
+                }
+              } else {
+                // 一般文字：去除常見分隔符後模糊比對
+                const cleanCTxt = c.text.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
+                const cleanCand = cand.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
+                if (!cleanCTxt || !cleanCand) continue;
+                // 安全防護：候選詞或選項文字長度 <= 2 時只允許完全相等比對
+                // 避免「1」誤命中「1114」等短數字串誤判
+                const isSafeSubstring = cleanCand.length >= 3 && cleanCTxt.length >= 3;
+                if (cleanCTxt === cleanCand ||
+                    (isSafeSubstring && cleanCTxt.includes(cleanCand)) ||
+                    (isSafeSubstring && cleanCand.includes(cleanCTxt))) {
+                  c.choiceOrder = idx + 1;
+                  return true;
+                }
               }
             }
           }
