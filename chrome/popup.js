@@ -372,4 +372,69 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   })();
+
+  // 6. 動態設定目前版本與比對 finddog.online/chrome/manifest.json 取得更新資訊
+  (function initUpdateChecker() {
+    const appVerEl = document.getElementById('appVersion');
+    const banner = document.getElementById('updateBanner');
+    const newVerEl = document.getElementById('updateNewVer');
+    const curVerEl = document.getElementById('updateCurVer');
+    const changelogEl = document.getElementById('updateChangelog');
+    const btnDownload = document.getElementById('btnDownloadZip');
+
+    const currentVer = chrome.runtime.getManifest().version;
+    if (appVerEl) {
+      appVerEl.textContent = `v${currentVer}`;
+    }
+    if (!banner) return;
+
+    function isNewer(remote, local) {
+      const r = remote.split('.').map(n => parseInt(n) || 0);
+      const l = local.split('.').map(n => parseInt(n) || 0);
+      const len = Math.max(r.length, l.length);
+      for (let i = 0; i < len; i++) {
+        const rv = r[i] || 0;
+        const lv = l[i] || 0;
+        if (rv > lv) return true;
+        if (rv < lv) return false;
+      }
+      return false;
+    }
+
+    const checkUrls = [
+      `https://finddog.online/chrome/manifest.json?_t=${Date.now()}`,
+      `http://finddog.online/chrome/manifest.json?_t=${Date.now()}`
+    ];
+
+    async function fetchRemoteManifest() {
+      for (const u of checkUrls) {
+        try {
+          const resp = await fetch(u, { cache: 'no-cache' });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.version) return data;
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    fetchRemoteManifest().then(remoteManifest => {
+      if (!remoteManifest || !remoteManifest.version) return;
+      const remoteVer = String(remoteManifest.version).trim();
+      if (isNewer(remoteVer, currentVer)) {
+        if (newVerEl) newVerEl.textContent = `v${remoteVer}`;
+        if (curVerEl) curVerEl.textContent = `目前 v${currentVer}`;
+        if (changelogEl) {
+          changelogEl.textContent = remoteManifest.description
+            ? `💡 最新說明：${remoteManifest.description}`
+            : '💡 發現新版本！建議立即更新以獲得最佳答題體驗。';
+        }
+        if (btnDownload) {
+          btnDownload.href = 'http://finddog.online/chrome/MOMO答題知識王chrome擴充.zip';
+        }
+        banner.style.display = 'block';
+      }
+    });
+  })();
 });
