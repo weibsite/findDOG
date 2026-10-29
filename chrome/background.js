@@ -44,6 +44,22 @@ async function reportAutoLearn(payload) {
   }
 }
 
+async function reportAutoLearnBatch(reports) {
+  if (!reports || reports.length === 0) return;
+  try {
+    const res = await fetch(SERVER_AUTO_LEARN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reports: reports, count: reports.length, batch: true })
+    });
+    if (res.ok) {
+      console.log(`[momo 答題神隊友 SW] 🎯 整局 ${reports.length} 道題目已批次成功送達伺服器！`);
+    }
+  } catch (err) {
+    console.warn('[momo 答題神隊友 SW] 批次自動學習上傳失敗:', err);
+  }
+}
+
 // 清除舊版本殘留的 declarativeNetRequest 偽裝規則，徹底還原原生瀏覽器環境
 async function clearLegacyDisguiseRules() {
   try {
@@ -79,7 +95,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // 異步回應
   }
 
-  // 2. 自動回報官方正解至伺服器
+  // 2. 自動回報官方正解至伺服器 (支援整局結束批次回報與舊版單題回報)
+  if (request.action === 'autoLearnBatch') {
+    reportAutoLearnBatch(request.reports);
+    sendResponse({ status: 'ok' });
+    return true;
+  }
+
   if (request.action === 'autoLearn') {
     reportAutoLearn(request.payload);
     sendResponse({ status: 'ok' });

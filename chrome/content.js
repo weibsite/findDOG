@@ -150,6 +150,13 @@
       if (checkTimer) return;
       checkTimer = setTimeout(() => {
         checkTimer = null;
+        // 偵測遊戲結束 / 結算畫面 (如全對結算、答錯結束等)
+        const isGameOverScreen = document.querySelector('#box_end, #box_fail, .Area_finish, .quiz_end, .pop_end, .dialog_fail, .dialog_finish') ||
+                                 (document.getElementById('box_game') && document.getElementById('box_game').style.display === 'none');
+        if (isGameOverScreen && typeof roundReportsBuffer !== 'undefined' && roundReportsBuffer.length > 0) {
+          flushRoundReports();
+        }
+
         const optionsList = document.getElementById('KK_options');
         if (!optionsList) return;
 
@@ -421,6 +428,12 @@
   // =========================================================
   function handleQuestionLoaded(qData) {
     dismissManualDecisionCard();
+
+    // 新題目載入時，重設計時器
+    if (roundIdleFlushTimer) {
+      clearTimeout(roundIdleFlushTimer);
+      roundIdleFlushTimer = null;
+    }
 
     chrome.storage.local.get({
       enableHighlight: true,
@@ -994,9 +1007,41 @@
   }
 
   // =========================================================
-  // 處理 2：答題結算時，自動回報官方正解或排除錯誤選項 (協同進化)
+  // 處理 2：答題結算時，先暫存於本局緩衝區，整局結束後一次性批次回報 (大幅降低伺服器 HTTP 負載)
   // =========================================================
   let lastReportedQuestionKey = '';
+  let roundReportsBuffer = [];
+  let roundIdleFlushTimer = null;
+
+  function flushRoundReports(isUnload = false) {
+    if (roundIdleFlushTimer) {
+      clearTimeout(roundIdleFlushTimer);
+      roundIdleFlushTimer = null;
+    }
+    if (!roundReportsBuffer || roundReportsBuffer.length === 0) return;
+
+    const batch = roundReportsBuffer.splice(0, roundReportsBuffer.length);
+    console.log(`[momo 答題神隊友] 🎯 整局作答結束！一次性批次回傳本局 ${batch.length} 道題目至伺服器...`, batch);
+
+    if (isUnload && navigator.sendBeacon) {
+      try {
+        const blob = new Blob([JSON.stringify({ reports: batch, count: batch.length, batch: true })], { type: 'application/json' });
+        navigator.sendBeacon(SERVER_AUTO_LEARN_URL, blob);
+        return;
+      } catch (e) {}
+    }
+
+    chrome.runtime.sendMessage({
+      action: 'autoLearnBatch',
+      reports: batch
+    }, function() {
+      showFloatingNotice(`🎉 整局結束！已將本局 ${batch.length} 道題目一次性同步全網題庫！`, '#10b981');
+    });
+  }
+
+  // 監聽網頁離開或關閉，防呆自動結算送出
+  window.addEventListener('beforeunload', () => flushRoundReports(true));
+  window.addEventListener('pagehide', () => flushRoundReports(true));
 
   function handleAnswerRevealed(reportData) {
     dismissManualDecisionCard();
@@ -1108,20 +1153,34 @@
         client: 'momo-evolution-extension-v2'
       };
 
-      console.log(`[momo 答題神隊友] 正在委派 Service Worker 回傳伺服器 (${isCorrect ? '官方正解' : '答錯排除選項'})...`, payload);
+      // 核心升級：不再每題即時打伺服器，而是暫存於本局隊列中！
+      const existingIdx = roundReportsBuffer.findIndex(r => r.question === payload.question && r.questionImage === payload.questionImage);
+      if (existingIdx !== -1) {
+        roundReportsBuffer[existingIdx] = payload;
+      } else {
+        roundReportsBuffer.push(payload);
+      }
 
-      chrome.runtime.sendMessage({
-        action: 'autoLearn',
-        payload: payload
-      }, function() {
-        const newCount = (cfg.contributedCount || 0) + 1;
-        chrome.storage.local.set({ contributedCount: newCount });
-        if (isCorrect) {
-          showFloatingNotice(`🎉 感謝貢獻！官方正解已同步全網題庫！(已累積貢獻 ${newCount} 題)`, '#d81e5b');
-        } else {
-          showFloatingNotice(`💡 已自動將剛才排除的錯誤選項同步全網題庫，加速收斂正解！`, '#f59e0b');
-        }
-      });
+      const newCount = (cfg.contributedCount || 0) + 1;
+      chrome.storage.local.set({ contributedCount: newCount });
+
+      if (isCorrect) {
+        showFloatingNotice(`💡 已記錄第 ${roundReportsBuffer.length} 題作答（整局結束將自動合併同步全網）`, '#d81e5b');
+      } else {
+        showFloatingNotice(`💡 已記錄排除選項（整局結束將自動合併同步全網）`, '#f59e0b');
+      }
+
+      // 答題靜置備援定時器：若 6 秒內無下一題載入，自動判定整局結束並送出
+      if (roundIdleFlushTimer) clearTimeout(roundIdleFlushTimer);
+      roundIdleFlushTimer = setTimeout(() => {
+        console.log('[momo 答題神隊友] 答題靜置超過 6 秒，判定整局作答結束，啟動批次回傳...');
+        flushRoundReports();
+      }, 6000);
+
+      // 若本局累積滿 10 題，立即送出一次
+      if (roundReportsBuffer.length >= 10) {
+        flushRoundReports();
+      }
     });
   }
 
