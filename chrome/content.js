@@ -154,7 +154,16 @@
         if (!optionsList) return;
 
         const correctLi = optionsList.querySelector('li.is_correct');
-        const wrongLi = optionsList.querySelector('li.is_wrong, li.wrong, li.is_error, li.selected.wrong');
+        let wrongLi = optionsList.querySelector('li.is_wrong, li.wrong, li.is_error, li.selected.wrong, li.is_fail, li.is_err');
+
+        // 若畫面上出現答錯/失敗提示，且當前有已選選項，視為明確答錯
+        if (!correctLi && !wrongLi) {
+          const isGameFailed = document.querySelector('#box_fail, .pop_fail, .quiz_fail, .dialog_fail, .is_fail') ||
+                               (document.getElementById('box_game') && document.getElementById('box_game').classList.contains('is_fail'));
+          if (isGameFailed) {
+            wrongLi = optionsList.querySelector('li.selected, li.is_selected, li.on, li.active');
+          }
+        }
 
         if (!correctLi && !wrongLi) return;
 
@@ -461,12 +470,39 @@
           showFloatingNotice(`🎯 已標記第 ${designatedIndex} 個選項：【${cleanText || candidate.text || '指定選項'}】（自動作答已關閉，請點選）`, '#f59e0b');
         }
       } else {
-        // 策略 2: 多候選詞文字雙向模糊比對 (含斜線別名、括號別名) 與圖片 UUID 比對
+        let wrongList = (matched.wrong || []);
+        let wrongImgList = (matched.wrong_imgs || []);
+
+        // 雙向防護：若正解候選詞 (candidates) 或答案圖片存在於 wrong 清單中，
+        // 在比對前自動將正解從錯誤清單中剔除，防止錯誤清單誤殺正解！
+        if (candidates.length > 0) {
+          const normCands = candidates.map(c => c.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase());
+          wrongList = wrongList.filter(w => !normCands.includes((w || '').replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase()));
+        }
+        if (ansTargetImg) {
+          wrongImgList = wrongImgList.filter(wi => !wi || !wi.includes(ansTargetImg));
+        }
+
+        const isKnownWrong = (c) => {
+          if (c.text) {
+            const ct = c.text.trim();
+            if (wrongList.some(w => w && w.trim() === ct)) return true;
+          }
+          if (c.image) {
+            const ci = c.image.split('/').pop().split('?')[0];
+            if (wrongImgList.some(wi => wi && ci && wi.includes(ci))) return true;
+          }
+          return false;
+        };
+
+        const isDateAnswer = candidates.some(cnd => /^\d+[\/月日]\d+/.test(cnd));
+
+        // 策略 2A: 100% 精準完全相等比對 (絕對優先！徹底排除任何已知錯誤選項)
+        // 解決 #13「momoBOOK」被前面帶有 S 的錯誤選項「momoBOOKS」截胡的嚴重問題！
         targetChoice = qData.choices.find((c, idx) => {
+          if (isKnownWrong(c)) return false;
+
           if (c.text && candidates.length > 0) {
-            // 日期/數字格式答案（如 11/1, 11月1日）使用原始文字精確比對，不去除斜線符號
-            // 這樣可避免「11/1」→「111」誤命中「11/14」→「1114」的問題
-            const isDateAnswer = candidates.some(cnd => /^\d+[\/月日]\d+/.test(cnd));
             for (const cand of candidates) {
               if (isDateAnswer) {
                 // 日期格式：直接用原始文字完整比對（允許去除空格）
@@ -477,16 +513,10 @@
                   return true;
                 }
               } else {
-                // 一般文字：去除常見分隔符後模糊比對
+                // 一般文字：精準完全相等比對
                 const cleanCTxt = c.text.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
                 const cleanCand = cand.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
-                if (!cleanCTxt || !cleanCand) continue;
-                // 安全防護：候選詞或選項文字長度 <= 2 時只允許完全相等比對
-                // 避免「1」誤命中「1114」等短數字串誤判
-                const isSafeSubstring = cleanCand.length >= 3 && cleanCTxt.length >= 3;
-                if (cleanCTxt === cleanCand ||
-                    (isSafeSubstring && cleanCTxt.includes(cleanCand)) ||
-                    (isSafeSubstring && cleanCand.includes(cleanCTxt))) {
+                if (cleanCTxt && cleanCand && cleanCTxt === cleanCand) {
                   c.choiceOrder = idx + 1;
                   return true;
                 }
@@ -499,6 +529,27 @@
           }
           return false;
         });
+
+        // 策略 2B: 寬鬆模糊子字串比對 (僅在所有選項都沒有完全精準相等時才作為次選啟動)
+        if (!targetChoice && !isDateAnswer) {
+          targetChoice = qData.choices.find((c, idx) => {
+            if (isKnownWrong(c)) return false;
+
+            if (c.text && candidates.length > 0) {
+              const cleanCTxt = c.text.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
+              for (const cand of candidates) {
+                const cleanCand = cand.replace(/[\s\-_,，.。?？!！]/g, '').toLowerCase();
+                if (!cleanCTxt || !cleanCand) continue;
+                const isSafeSubstring = cleanCand.length >= 3 && cleanCTxt.length >= 3;
+                if (isSafeSubstring && (cleanCTxt.includes(cleanCand) || cleanCand.includes(cleanCTxt))) {
+                  c.choiceOrder = idx + 1;
+                  return true;
+                }
+              }
+            }
+            return false;
+          });
+        }
 
         if (targetChoice) {
           isDefiniteMatch = true;
@@ -563,6 +614,8 @@
   // =========================================================
   // 智慧自動答題引擎 (單純模擬點選目標選項與確認按鈕，已關閉 API 偷偷送出)
   // =========================================================
+  let lastAutoAttempted = null;
+
   function executeAutoAnswer(matched, targetChoice, qData) {
     chrome.storage.local.get({
       enableAutoClick: true,
@@ -594,6 +647,17 @@
         // 1. 步驟 1：觸發目標選項擬真點擊 (自動選擇)
         const clicked = triggerOptionClick(targetChoice);
         if (clicked) {
+          // 記錄剛才自動點選的選項，以備結算失敗時作為強效備援回報
+          lastAutoAttempted = {
+            questionText: (qData.questionText || '').trim(),
+            questionImage: (qData.questionImage || '').trim(),
+            choiceText: (targetChoice.text || '').trim(),
+            choiceImage: (targetChoice.image || '').trim(),
+            choiceId: targetChoice.choiceId || '',
+            matchedItem: matched,
+            timestamp: Date.now()
+          };
+
           console.log('[momo 答題神隊友] 🎯 步驟 1：已自動選中目標選項，準備點擊確認...');
           // 2. 步驟 2：Momo 官方前端需要點擊 #KK_actionBtn 確認按鈕！
           // 連鎖點擊延遲：加入 180ms ~ 280ms 擬真輕微隨機微調
@@ -959,25 +1023,51 @@
       const qText = (reportData.questionText || '').trim();
       const ansText = (reportData.correctText || '').trim();
       const ansImage = (reportData.correctImage || '').trim();
-      const failedText = (reportData.failedChoiceText || '').trim();
-      const failedImage = (reportData.failedChoiceImage || '').trim();
+      let failedText = (reportData.failedChoiceText || reportData.fallbackAttemptText || '').trim();
+      let failedImage = (reportData.failedChoiceImage || reportData.fallbackAttemptImage || '').trim();
       let qImg = (reportData.questionImage || '').trim();
+
+      // 若答錯且未捕捉到失敗選項，優先使用最後自動作答的記錄備援！
+      const isCorrect = Boolean(reportData.isCorrect);
+      if (!isCorrect && !failedText && !failedImage && lastAutoAttempted) {
+        const timeDiff = Date.now() - (lastAutoAttempted.timestamp || 0);
+        if (timeDiff < 25000) {
+          failedText = (lastAutoAttempted.choiceText || '').trim();
+          failedImage = (lastAutoAttempted.choiceImage || '').trim();
+          console.log('[momo 答題神隊友] 💡 透過最後自動作答記錄補足失敗選項：', failedText || failedImage);
+        }
+      }
 
       // 若結算未帶 questionImage，嘗試由 DOM 補足
       if (!qImg) {
         const domImg = document.querySelector('#KK_question img, .Area_question img, .quiz_question img, #box_game .question img, .box_question img');
         if (domImg && domImg.src) {
           qImg = domImg.src;
+        } else if (lastAutoAttempted && lastAutoAttempted.questionImage) {
+          qImg = lastAutoAttempted.questionImage;
         }
       }
 
       if (!qText && !qImg) return;
 
-      const isCorrect = Boolean(reportData.isCorrect);
-
       // 核心升級：答對時須有正解；答錯時須有確認被排除的選項
       if (isCorrect && !ansText && !ansImage) return;
       if (!isCorrect && !failedText && !failedImage) return;
+
+      // 即時本機快取淘汰機制：若答錯，立即在記憶體快取中淘汰該錯誤答案，避免同一 Session 再次掉入陷阱
+      if (!isCorrect && (failedText || failedImage)) {
+        const currentMatched = (lastAutoAttempted && lastAutoAttempted.matchedItem) || findMatchingQuestion(qText, qImg);
+        if (currentMatched) {
+          if (!currentMatched.wrong) currentMatched.wrong = [];
+          if (!currentMatched.wrong_imgs) currentMatched.wrong_imgs = [];
+          if (failedText && !currentMatched.wrong.includes(failedText)) currentMatched.wrong.push(failedText);
+          if (failedImage && !currentMatched.wrong_imgs.includes(failedImage)) currentMatched.wrong_imgs.push(failedImage);
+          if (currentMatched.ans && failedText && currentMatched.ans.trim() === failedText) {
+            currentMatched.ans = '';
+            console.log('[momo 答題神隊友] ⚠️ 本機快取已即時淘汰錯誤正解：', failedText);
+          }
+        }
+      }
 
       // 防抖去重：避免同一題因 DOM 與網路攔截雙軌觸發而重複回傳
       const dedupeKey = isCorrect
