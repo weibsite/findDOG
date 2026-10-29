@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>momo 答題神隊友</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- 頂部標題區 -->
+    <div class="header">
+      <div class="logo-wrap">
+        <img src="icons/icon48.png" alt="logo" class="logo-img">
+        <div class="logo-text">
+          <div class="app-title">momo 答題神隊友</div>
+          <div class="app-subtitle">全網題庫協同進化助手</div>
+        </div>
+      </div>
+      <div class="version-tag">v1.5.1</div>
+    </div>
+
+    <!-- 題庫狀態看板 -->
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-dot"></span>
+        <span class="status-label">CDN 題庫狀態：</span>
+        <span class="status-val" id="bankStatus">載入中...</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">題庫總數：</span>
+        <span class="status-val highlight-num" id="bankCount">- 題</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">您的累計貢獻：</span>
+        <span class="status-val trophy-num" id="contributedCount">0 題</span>
+      </div>
+    </div>
+
+    <!-- 功能模式設定 -->
+    <div class="settings-group">
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-title">🤖 自動選擇正解</div>
+          <div class="setting-desc" id="autoClickDesc">🟢 已開啟：找到正解時自動勾選目標選項</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleAutoClick" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="setting-info">
+          <div class="setting-title">⏩ 自動點擊下一步 (下一題)</div>
+          <div class="setting-desc" id="autoNextDesc">🟢 已開啟：答對後自動點擊按鈕進入下一題</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleAutoNext" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- 調整區 1: 答題速度調整 -->
+      <div class="setting-item-speed" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div class="setting-title">⏱️ 答題速度調整</div>
+          <span id="speedValueBadge" class="speed-badge">⚡ 最快 (約0.5s ±0.2s)</span>
+        </div>
+        <div class="slider-wrapper">
+          <input type="range" id="rangeAnswerSpeed" min="1" max="10" step="1" value="10" class="speed-range">
+          <div class="range-labels">
+            <span>🐢 最慢 (1/10)</span>
+            <span>⚡ 目前最快</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 調整區 2: 隨機抖動範圍調整 (±0.1s ~ ±0.7s) -->
+      <div class="setting-item-speed" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div class="setting-title">🎲 隨機抖動範圍</div>
+          <span id="jitterValueBadge" class="speed-badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">±0.2 秒</span>
+        </div>
+        <div class="slider-wrapper">
+          <input type="range" id="rangeAnswerJitter" min="0.1" max="0.7" step="0.1" value="0.2" class="speed-range">
+          <div class="range-labels">
+            <span>🎯 最少 (±0.1s)</span>
+            <span>🌊 最高 (±0.7s)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按鈕區 -->
+    <div class="actions-group">
+      <button type="button" class="btn btn-step2" id="btnStep2OpenWindow">
+        <span>📱 開啟 420×900 獨立手機視窗</span>
+      </button>
+
+      <button type="button" class="btn btn-secondary" id="btnSync">
+        🔄 立即檢查題庫更新
+      </button>
+      <a href="https://finddog.online/momo.html" target="_blank" class="btn btn-primary" id="btnOpenWeb">
+        🔍 開啟線上搜尋題庫 (momo.html)
+      </a>
+    </div>
+
+    <!-- Cookie 槽位管理 -->
+    <div class="settings-group" style="margin-top: 12px;">
+      <div style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">🍪 Cookie 帳號槽位管理</div>
+      <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">選擇槽位 (1~9)，再按儲存或讀取</div>
+      <!-- 9 個槽位按鈕 -->
+      <div id="popup-cookie-slots" style="display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin-bottom: 8px;"></div>
+      <!-- 槽位狀態 -->
+      <div id="popup-slot-status" style="font-size: 11px; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 5px 8px; border-radius: 7px; margin-bottom: 8px; min-height: 16px; text-align: center;">
+        請先選擇一個槽位
+      </div>
+      <!-- 儲存 / 讀取 -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+        <button type="button" id="popup-cookie-save-btn" class="btn" style="background: linear-gradient(135deg,#3b82f6,#1d4ed8); opacity:0.5; cursor:not-allowed; font-size:12px; padding:7px 0;">💾 儲存</button>
+        <button type="button" id="popup-cookie-load-btn" class="btn" style="background: linear-gradient(135deg,#8b5cf6,#6d28d9); opacity:0.5; cursor:not-allowed; font-size:12px; padding:7px 0;">📂 讀取</button>
+      </div>
+    </div>
+
+    <!-- 底部提示 -->
+    <div class="footer-tip">
+      💡 只要大家一起答題，題庫就會自動秒速進化！
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

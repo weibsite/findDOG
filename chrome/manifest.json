@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "momo 答題神隊友 - 協同進化版",
+  "version": "1.5.2",
+  "description": "在 momo 答題活動中自動提示正解、支援題目圖片UUID精準鎖定、支援「自動選答案」與「自動點下一步」開關、支援 1~9 組 Cookie 槽位快速備份切換、支援帳號名稱自動辨識、答題後自動同步回傳伺服器題庫協同進化！",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "tabs",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://*.momoshop.com.tw/*",
+    "https://momoshop.com.tw/*",
+    "http://*.momoshop.com.tw/*",
+    "http://momoshop.com.tw/*",
+    "https://*.momo.com.tw/*",
+    "https://momo.com.tw/*",
+    "https://finddog.online/*",
+    "https://api.9ysong.shop/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.momoshop.com.tw/*"],
+      "js": ["injected.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://*.momoshop.com.tw/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js", "icons/*"],
+      "matches": ["https://*.momoshop.com.tw/*"]
+    }
+  ]
+}
