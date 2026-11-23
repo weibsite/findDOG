@@ -189,7 +189,14 @@
     
 
     <script>
-        const BASE_HOST = (location.protocol === 'file:') ? 'http://127.0.0.1:8000' : '';
+        // 自動識別後端 API 伺服器主機 (支援 finddog.online 跨網域反代、本地 localhost 與 file: 協議)
+        let BASE_HOST = '';
+        if (location.protocol === 'file:') {
+            BASE_HOST = 'http://127.0.0.1:8000';
+        } else if (location.hostname.includes('finddog.online')) {
+            BASE_HOST = 'https://api.9ysong.shop';
+        }
+
         function toggleFullScreen(elemId) {
             const el = document.getElementById(elemId);
             if (!document.fullscreenElement) {
@@ -261,6 +268,7 @@
             const resp = await fetch(BASE_HOST + '/api/stream/c/offer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                mode: 'cors',
                 body: JSON.stringify({
                     sdp: pc.localDescription.sdp,
                     type: pc.localDescription.type
